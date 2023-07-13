@@ -4,29 +4,26 @@ API
 Core
 ----
 
-.. automodule:: adccfactory.core
+.. automodule:: celldetective.segmentation
+   :members:
+
+.. automodule:: celldetective.tracking
+   :members:
+
+.. automodule:: celldetective.measure
+   :members:
+
+.. automodule:: celldetective.signals
    :members:
 
 Utils
 -----
   
-.. automodule:: adccfactory.utils
+.. automodule:: celldetective.io
    :members:
-   
-Plot
-----
-   
-.. automodule:: adccfactory.plot
-   :members:
-   
-Visual
-------
-   
-.. automodule:: adccfactory.visual
-   :members:
-   
-Parse
------
-   
-.. automodule:: adccfactory.parse
+
+.. automodule:: celldetective.utils
+   :members:   
+
+.. automodule:: celldetective.filters
    :members:

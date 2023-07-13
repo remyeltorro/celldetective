@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath('../../examples/'))
 
 # -- Project information
 
-project = 'CellDetective'
+project = 'celldetective'
 copyright = '2023, Rémy Torro'
 author = 'Rémy Torro'
 

@@ -6,7 +6,7 @@ with some basic Sphinx docs.
 
 Read the tutorial here:
 
-https://docs.readthedocs.io/en/stable/tutorial/
+https://celldetective.readthedocs.io/
 
 .. image:: article/figures/pipeline.png
     :width: 90%

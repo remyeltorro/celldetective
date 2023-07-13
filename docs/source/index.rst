@@ -1,22 +1,41 @@
-Welcome to Lumache's documentation!
-===================================
+Welcome to ADCCFactory's documentation!
+=======================================
 
-**Lumache** (/lu'make/) is a Python library for cooks and food lovers
-that creates recipes mixing random ingredients.
-It pulls data from the `Open Food Facts database <https://world.openfoodfacts.org/>`_
-and offers a *simple* and *intuitive* API.
+**ADCCFactory** is a python GUI and functional API to analyze complex mutichannel fluorescence images acquired in the context of antibody-dependent cell cytotoxicity (ADCC) experiments.
+The source code is publicly available on `GitHub <https://github.com/remyeltorro/ADCCFactory/>`_.
 
-Check out the :doc:`usage` section for further information, including
-how to :ref:`installation` the project.
 
 .. note::
 
-   This project is under active development.
+   This project is in its early documentation stage.
 
 Contents
 --------
 
 .. toctree::
+   :caption: Basics:
 
-   usage
-   api
+   Quickstart
+   GUI
+   Visual_inspection_tool
+   
+.. toctree::
+   :caption: Data:
+   
+   Population_model
+   Configuration_file
+   Microscopy
+   Datasets
+   Models
+
+
+.. toctree::
+   :caption: Examples:
+   
+   example_notebook   
+   
+
+.. toctree::
+   :caption: API Reference:
+   
+   API

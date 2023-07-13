@@ -19,8 +19,8 @@ version = '0.0.0'
 
 # -- General configuration
 
-import adccfactory.core.utils as u
-print(dir(u))
+#import adccfactory.core.utils as u
+#print(dir(u))
 
 
 
@@ -36,7 +36,7 @@ extensions = [
 ]
 
 
-autoapi_dirs = ['adccfactory']
+autoapi_dirs = ['celldetective']
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),

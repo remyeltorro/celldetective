@@ -19,7 +19,7 @@ from .tracking import clean_trajectories
 from .utils import regression_plot, train_test_split, compute_weights
 
 
-def signal_analysis(trajectories, model, interpolate_na=True,
+def analyze_signals(trajectories, model, interpolate_na=True,
 					selected_signals=None,
 					column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
 
@@ -1248,3 +1248,6 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 	model = Model(inputs, x2, name=header) 
 
 	return model
+
+def analyze_signals_at_position(pos, mode, use_gpu=True):
+	pass

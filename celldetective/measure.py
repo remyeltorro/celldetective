@@ -627,3 +627,5 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 	positions['class_id'] = positions['class_id'].astype(float)
 	return positions
 
+def measure_at_position(pos, mode):
+	pass

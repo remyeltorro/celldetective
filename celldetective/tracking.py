@@ -826,4 +826,19 @@ def compute_instantaneous_diffusion(trajectories, column_labels={'track': "TRACK
 
 	return trajectories
 
+def track_at_position(pos, mode, stack_prefix=None, use_gpu=True, return_tracks=False, view_on_napari=False):
 
+	# work in progress
+	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+	subprocess.call(f"python {abs_path}/scripts/track.py --pos {pos} --mode {mode}", shell=True)
+	# if return_tracks or view_on_napari:
+	# 	data,properties,graph,labels,stack = load_napari_data(pos, population=mode)
+	# if view_on_napari:
+	# 	if stack_prefix is None:
+	# 		stack_prefix = ''
+	# 	stack = locate_stack(pos, prefix=stack_prefix)
+	# 	#view_on_napari_btrack(tracks=None, stack=stack, labels=labels)
+	# if return_labels:
+	# 	return labels
+	# else:
+	# 	return None

@@ -18,10 +18,10 @@ from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
 from skimage.measure import regionprops_table
 from skimage.exposure import match_histograms
-
 import pandas as pd
+import subprocess
 
-import matplotlib.pyplot as plt
+abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
 
 def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_napari=False,
 			use_gpu=True, time_flat_normalization=False, time_flat_percentiles=(0.0,99.99)):
@@ -370,6 +370,25 @@ def filter_image(img, filters=None):
 			func = eval(f[0]+'_filter')
 			img = func(img, *f[1:])	
 		return img
+
+
+def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, return_labels=False, view_on_napari=False):
+
+	# work in progress
+	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+	#print('command: ',f"python {abs_path}/scripts/segment.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}")
+	subprocess.call(f"python {abs_path}/scripts/segment.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
+	if return_labels or view_on_napari:
+		labels = locate_labels(pos, population=mode)
+	if view_on_napari:
+		if stack_prefix is None:
+			stack_prefix = ''
+		stack = locate_stack(pos, prefix=stack_prefix)
+		_view_on_napari(tracks=None, stack=stack, labels=labels)
+	if return_labels:
+		return labels
+	else:
+		return None
 
 if __name__ == "__main__":
 	print(segment(None,'test'))

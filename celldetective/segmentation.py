@@ -11,7 +11,7 @@ import numpy as np
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 from skimage.transform import resize
-from .io import _view_on_napari
+from .io import _view_on_napari, locate_labels, locate_stack, _view_on_napari
 from .filters import * #rework this to give a name
 import scipy.ndimage as ndi
 from skimage.segmentation import watershed
@@ -20,6 +20,7 @@ from skimage.measure import regionprops_table
 from skimage.exposure import match_histograms
 import pandas as pd
 import subprocess
+
 
 abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
 
@@ -78,6 +79,11 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 	else:
 		print('Model input configuration could not be located...')
 		return None
+
+	if not use_gpu:
+		os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+	else:
+		os.environ['CUDA_VISIBLE_DEVICES'] = '0'		
 
 	if channels is not None:
 		assert len(channels)==stack.shape[-1],f'The channel names provided do not match with the expected number of channels in the stack: {stack.shape[-1]}.'
@@ -374,10 +380,40 @@ def filter_image(img, filters=None):
 
 def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, return_labels=False, view_on_napari=False):
 
-	# work in progress
+	"""
+	Perform image segmentation at the specified position using a pre-trained model.
+
+	Parameters
+	----------
+	pos : str
+		The path to the position directory containing the input images to be segmented.
+	mode : str
+		The segmentation mode. This determines the type of objects to be segmented ('target' or 'effector').
+	model_name : str
+		The name of the pre-trained segmentation model to be used.
+	stack_prefix : str or None, optional
+		The prefix of the stack file name. Defaults to None.
+	use_gpu : bool, optional
+		Whether to use the GPU for segmentation if available. Defaults to True.
+	return_labels : bool, optional
+		If True, the function returns the segmentation labels as an output. Defaults to False.
+	view_on_napari : bool, optional
+		If True, the segmented labels are displayed in a Napari viewer. Defaults to False.
+
+	Returns
+	-------
+	numpy.ndarray or None
+		If `return_labels` is True, the function returns the segmentation labels as a NumPy array. Otherwise, it returns None. The subprocess writes the
+		segmentation labels in the position directory.
+
+	Examples
+	--------
+	>>> labels = segment_at_position('ExperimentFolder/W1/100/', 'effector', 'mice_t_cell_RICM', return_labels=True)
+
+	"""
+	
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
-	#print('command: ',f"python {abs_path}/scripts/segment.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}")
-	subprocess.call(f"python {abs_path}/scripts/segment.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
+	subprocess.call(f"python {abs_path}/scripts/segment_cells.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
 	if return_labels or view_on_napari:
 		labels = locate_labels(pos, population=mode)
 	if view_on_napari:

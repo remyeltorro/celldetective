@@ -2,7 +2,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import re
+import os
+os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow.config import list_physical_devices
+import configparser
 
 def create_patch_mask(h, w, center=None, radius=None):
 
@@ -458,3 +462,159 @@ def _extract_channel_indices(channels, required_channels):
 		channel_indices = np.arange(len(required_channels))
 
 	return channel_indices
+
+def ConfigSectionMap(path,section):
+
+	"""
+	Parse the config file to extract experiment parameters
+	following https://wiki.python.org/moin/ConfigParserExamples
+
+	Parameters
+	----------
+
+	path: str
+			path to the config.ini file
+
+	section: str
+			name of the section that contains the parameter
+
+	Returns
+	-------
+
+	dict1: dictionary
+
+	"""
+
+	Config = configparser.ConfigParser()
+	Config.read(path)
+	dict1 = {}
+	options = Config.options(section)
+	for option in options:
+		try:
+			dict1[option] = Config.get(section, option)
+			if dict1[option] == -1:
+				DebugPrint("skip: %s" % option)
+		except:
+			print("exception on %s!" % option)
+			dict1[option] = None
+	return dict1
+
+def _extract_channel_indices_from_config(config, channels_to_extract):
+
+	channels = []
+	for c in channels_to_extract:
+		try:
+			c1 = int(ConfigSectionMap(config,"MovieSettings")[c])
+			channels.append(c1)
+		except Exception as e:
+			print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
+			channels = None
+			break
+	return channels
+
+def _extract_nbr_channels_from_config(config, return_names=False):
+
+	# Read channels
+	nbr_channels = 0
+	channels = []
+	try:
+		brightfield_channel = int(ConfigSectionMap(config,"MovieSettings")["brightfield_channel"])
+		nbr_channels += 1
+		channels.append('brightfield_channel')
+	except:
+		brightfield_channel = None
+
+	try:
+		live_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["live_nuclei_channel"])
+		nbr_channels += 1
+		channels.append('live_nuclei_channel')
+	except:
+		live_nuclei_channel = None
+
+	try:
+		dead_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["dead_nuclei_channel"])
+		nbr_channels +=1
+		channels.append('dead_nuclei_channel')
+	except:
+		dead_nuclei_channel = None
+
+	try:
+		effector_fluo_channel = int(ConfigSectionMap(config,"MovieSettings")["effector_fluo_channel"])
+		nbr_channels +=1
+		channels.append('effector_fluo_channel')
+	except:
+		effector_fluo_channel = None
+
+	try:
+		adhesion_channel = int(ConfigSectionMap(config,"MovieSettings")["adhesion_channel"])
+		nbr_channels += 1
+		channels.append('adhesion_channel')
+	except:
+		adhesion_channel = None
+
+	try:
+		fluo_channel_1 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_1"])
+		nbr_channels += 1
+		channels.append('fluo_channel_1')
+	except:
+		fluo_channel_1 = None	
+
+	try:
+		fluo_channel_2 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_2"])
+		nbr_channels += 1
+		channels.append('fluo_channel_2')
+	except:
+		fluo_channel_2 = None
+
+	if return_names:
+		return nbr_channels,channels
+	else:
+		return nbr_channels
+
+def _get_img_num_per_channel(channels_indices, len_movie, nbr_channels):
+
+	img_num_all_channels = []
+	for c in channels_indices:
+		indices = np.arange(len_movie*nbr_channels)[c::nbr_channels]
+		img_num_all_channels.append(indices)
+	img_num_all_channels = np.array(img_num_all_channels, dtype=int)	
+	return img_num_all_channels
+
+def _extract_labels_from_config(config,number_of_wells):
+
+	"""
+
+	Extract each well's biological condition from the configuration file
+
+	Parameters
+	----------
+
+	config: str,
+			path to the configuration file
+
+	number_of_wells: int,
+			total number of wells in the experiment
+
+	Returns
+	-------
+
+	labels: string of the biological condition for each well
+
+	"""
+	
+	try:
+		concentrations = ConfigSectionMap(config,"Labels")["concentrations"].split(",")
+		cell_types = ConfigSectionMap(config,"Labels")["cell_types"].split(",")
+		antibodies = ConfigSectionMap(config,"Labels")["antibodies"].split(",")
+		pharmaceutical_agents = ConfigSectionMap(config,"Labels")["pharmaceutical_agents"].split(",")
+		if not np.all(pharmaceutical_agents=="None"):
+			labels = ["[CT] "+a+"; [Ab] "+b+" @ "+c+" pM "+d for a,b,c,d in zip(cell_types,antibodies,concentrations,pharmaceutical_agents)]
+		else:
+			labels = ["[CT] "+a+"; [Ab] "+b+" @ "+c+" pM " for a,b,c in zip(cell_types,antibodies,concentrations)]
+
+
+	except Exception as e:
+		print(f"{e}: the well labels cannot be read from the concentration and cell_type fields")
+		labels = np.linspace(0,number_wells-1,number_wells,dtype=str)
+
+	return(labels)

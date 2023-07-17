@@ -1,6 +1,6 @@
 from natsort import natsorted
 from glob import glob
-from tifffile import imread
+from tifffile import imread, TiffFile
 import numpy as np
 import os
 import pandas as pd
@@ -8,6 +8,8 @@ import napari
 import gc
 from tqdm import tqdm
 from csbdeep.utils import normalize_mi_ma
+import skimage.io as skio
+from scipy.ndimage import zoom
 
 def locate_stack(position, prefix='Aligned'):
 
@@ -703,7 +705,7 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 		return available_models, modelpath
 
 def locate_segmentation_model(name):
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/software/models/segmentation*/"
+	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation*/"
 	models = glob(modelpath+'*/')
 
 	match=None
@@ -826,5 +828,18 @@ def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.
 		gc.collect()
 
 	return values
+
+def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
+
+	frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+	if frames.ndim==2:
+		frames = frames[:,:,np.newaxis]
+	if normalize_input:
+		frames = normalize_multichannel(frames, **normalize_kwargs)
+	if scale is not None:
+		frames = zoom(frames, [scale,scale,1], order=3)
+	return frames
+
+
 
 

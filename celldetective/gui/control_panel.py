@@ -11,7 +11,6 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
 
-
 class ControlPanel(QMainWindow):
 
 	def __init__(self, parent=None, exp_dir=""):
@@ -27,8 +26,8 @@ class ControlPanel(QMainWindow):
 		self.init_wells_and_positions()
 		self.load_configuration()
 
-		w = QWidget()
-		self.grid = QGridLayout(w)
+		self.w = QWidget()
+		self.grid = QGridLayout(self.w)
 		self.grid.setSpacing(5)
 		self.grid.setContentsMargins(20,20,20,20) #left top right bottom
 
@@ -52,12 +51,12 @@ class ControlPanel(QMainWindow):
 		#tabWidget.addTab(CheckFrame, "Control")
 		#tab_index_analyze = tabWidget.addTab(AnalyzeFrame, "Analyze")
 		#tabWidget.setTabIcon(tab_index_analyze, icon(MDI6.chart_bell_curve, color='black'))
-		#tabWidget.setStyleSheet(self.qtab_style)
+		tabWidget.setStyleSheet(self.parent.qtab_style)
 
 		self.grid.addWidget(tabWidget, 7,0,1,3, alignment=Qt.AlignTop)
 		self.grid.setSpacing(5)
 
-		self.setCentralWidget(w)
+		self.setCentralWidget(self.w)
 
 	def init_wells_and_positions(self):
 
@@ -109,7 +108,7 @@ class ControlPanel(QMainWindow):
 		self.position_list = QComboBox()
 		self.position_list.addItems(["*"])
 		self.position_list.addItems(self.positions[0])
-		#self.position_list.activated.connect(self.check_control_done)
+		self.position_list.activated.connect(self.update_position_options)
 		self.to_disable.append(self.position_list)
 
 
@@ -244,6 +243,18 @@ class ControlPanel(QMainWindow):
 		except:
 			pass
 
+		try:
+			if self.ProcessTargets.SegModelLoader:
+				self.ProcessTargets.SegModelLoader.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessEffectors.SegModelLoader:
+				self.ProcessEffectors.SegModelLoader.close()
+		except:
+			pass
+
 		gc.collect()
 
 
@@ -268,3 +279,63 @@ class ControlPanel(QMainWindow):
 	def open_config_editor(self):
 		self.cfg_editor = ConfigEditor(self)
 		self.cfg_editor.show()
+
+	def locate_selected_position(self):
+
+		"""
+		Set the current position if the option one well, one positon is selected
+		Display error messages otherwise.
+
+		"""
+
+		if self.well_list.currentText()=="*":
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Critical)
+			msgBox.setText("Please select a single well...")
+			msgBox.setWindowTitle("Error")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+		else:
+			self.well_index = [self.well_labels.index(str(self.well_list.currentText()))]
+
+		for w_idx in self.well_index:
+
+			pos = self.positions[w_idx]
+			if self.position_list.currentText()=="*":
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Critical)
+				msgBox.setText("Please select a single position...")
+				msgBox.setWindowTitle("Error")
+				msgBox.setStandardButtons(QMessageBox.Ok)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Ok:
+					return None
+			else:
+				pos_indices = natsorted([pos.index(self.position_list.currentText())])
+
+			well = self.wells[w_idx]
+
+			for pos_idx in pos_indices:
+				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
+
+	def update_position_options(self):
+		
+		self.pos = self.position_list.currentText()
+		panels = [self.ProcessEffectors, self.ProcessTargets]
+		if self.position_list.currentText()=="*":
+			for p in panels:
+				p.check_seg_btn.setEnabled(False)
+		else:
+			if not self.well_list.currentText()=="*":
+				self.locate_selected_position()
+				if os.path.exists(self.pos+'/labels_effectors/'):
+					self.ProcessEffectors.check_seg_btn.setEnabled(True)
+				else:
+					self.ProcessEffectors.check_seg_btn.setEnabled(False)
+				if os.path.exists(self.pos+'/labels_targets/'):
+					self.ProcessTargets.check_seg_btn.setEnabled(True)
+				else:
+					self.ProcessTargets.check_seg_btn.setEnabled(False)
+

@@ -91,7 +91,7 @@ def locate_labels(position, population='target'):
 
 
 	if population=="target":
-		label_path = natsorted(glob(position+"labels/*.tif"))
+		label_path = natsorted(glob(position+"labels_targets/*.tif"))
 	elif population=="effector":
 		label_path = natsorted(glob(position+"labels_effectors/*.tif"))
 	labels = np.array([imread(i) for i in label_path])
@@ -592,9 +592,16 @@ def control_segmentation_napari(position, prefix='Aligned', population="target")
 	viewer.add_labels(labels, name='segmentation',opacity=0.4)
 	viewer.show(block=True)
 
+	# temporary fix for slight napari memory leak
+	for i in range(10000):
+		try:
+			viewer.layers.pop()
+		except:
+			pass
+
 	del viewer
 	del stack
-	del labels 
+	del labels
 	gc.collect()
 
 
@@ -692,9 +699,9 @@ def control_tracking_table(position, calibration=1, prefix="Aligned", population
 def get_segmentation_models_list(mode='targets', return_path=False):
 	
 	if mode=='targets':
-		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/software/models/segmentation_targets/"
+		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_targets/"
 	elif mode=='effectors':
-		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/software/models/segmentation_effectors/"
+		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_effectors/"
 
 	available_models = glob(modelpath+'*/')
 	available_models = [m.split('/')[-2] for m in available_models]

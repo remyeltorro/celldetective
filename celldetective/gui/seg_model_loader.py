@@ -9,12 +9,20 @@ from glob import glob
 import os
 
 class SegmentationModelLoader(QWidget):
+	
+	"""
+	Upload a segmentation model or define a Threshold pipeline.
+	"""
 
 	def __init__(self, parent):
 		
 		super().__init__()
 		self.parent = parent
 		self.mode = self.parent.mode
+		if self.mode=="targets":
+			self.target_folder = "segmentation_targets"
+		elif self.mode=="effectors":
+			self.target_folder = "segmentation_effectors"
 		self.setWindowTitle('Upload model')
 		self.generate_content()
 		center_window(self)
@@ -35,7 +43,6 @@ class SegmentationModelLoader(QWidget):
 		option_layout.addWidget(self.stardist_button)
 
 		self.cellpose_button = QRadioButton('Cellpose')
-		self.cellpose_button.toggled.connect(self.show_cellpose_options)
 		#self.cellpose_button.setIcon(QIcon(abs_path+f"/icons/cellpose.png"))
 		option_layout.addWidget(self.cellpose_button)
 
@@ -44,50 +51,21 @@ class SegmentationModelLoader(QWidget):
 		option_layout.addWidget(self.threshold_button)
 
 		self.layout.addLayout(option_layout, 1,0,1,2, alignment=Qt.AlignCenter)
-
-		self.calibration_label = QLabel("Training calibration:\n[µm]")
-		self.layout.addWidget(self.calibration_label,2,0,1,1)
-		self.spatial_calib_le = QLineEdit("0,1")
-		self.qdv = QDoubleValidator(0.0, np.amax([self.parent.parent.shape_x, self.parent.parent.shape_y]), 8, notation=QDoubleValidator.StandardNotation)
-		self.spatial_calib_le.setValidator(self.qdv)
-
-		self.layout.addWidget(self.spatial_calib_le, 2,1,1,2)
-		#self.stardist_options = [self.spatial_calib_le, self.calibration_label]
-
-		self.channel_options = ["--","live_nuclei_channel", "dead_nuclei_channel", "effector_fluo_channel", "brightfield_channel", "adhesion_channel", "fluo_channel_1", "fluo_channel_2"]
-		self.ch_1_label = QLabel("channel 1:")
-		self.layout.addWidget(self.ch_1_label, 3, 0, 1, 1)
-		self.combo_ch1 = QComboBox()
-		self.combo_ch1.addItems(self.channel_options)
-		self.layout.addWidget(self.combo_ch1, 3, 1, 1, 2)
-
-		self.ch_2_label = QLabel("channel 2:")
-		self.layout.addWidget(self.ch_2_label, 4, 0, 1, 1)
-		self.combo_ch2 = QComboBox()
-		self.combo_ch2.addItems(self.channel_options)
-		self.layout.addWidget(self.combo_ch2, 4, 1, 1, 2)
-		
-		self.ch_3_label = QLabel("channel 3:")
-		self.layout.addWidget(self.ch_3_label, 5, 0, 1, 1)
-		self.combo_ch3 = QComboBox()
-		self.combo_ch3.addItems(self.channel_options)
-		self.layout.addWidget(self.combo_ch3, 5, 1, 1, 2)
-
-		self.ch_4_label = QLabel("channel 4:")
-		self.layout.addWidget(self.ch_4_label, 6, 0, 1, 1)
-		self.combo_ch4 = QComboBox()
-		self.combo_ch4.addItems(self.channel_options)
-		self.layout.addWidget(self.combo_ch4, 6, 1, 1, 2)
-
-		self.stardist_options = [self.ch_3_label, self.ch_4_label, self.combo_ch3, self.combo_ch4]
+		self.generate_base_block()
+		self.layout.addLayout(self.base_block, 2,0,1,2)
+		self.generate_stardist_specific_block()
+		self.layout.addLayout(self.stardist_block, 3,0,1,2)
 		self.combos = [self.combo_ch1, self.combo_ch2, self.combo_ch3, self.combo_ch4]
 
 		self.normalize_checkbox = QCheckBox()
 		self.normalize_checkbox.setChecked(True)
-		self.layout.addWidget(QLabel('normalize: '), 8,0,1,1)
+		self.normalize_lbl = QLabel('normalize: ')
+		self.layout.addWidget(self.normalize_lbl, 8,0,1,1)
 		self.layout.addWidget(self.normalize_checkbox,8, 1,1,2, Qt.AlignLeft)
 
 		self.generate_cellpose_options()
+		self.layout.addLayout(self.cellpose_block, 3,0,1,2)
+		self.generate_threshold_options()
 
 		# Create file dialog
 		self.file_dialog = QFileDialog()
@@ -105,39 +83,121 @@ class SegmentationModelLoader(QWidget):
 		self.upload_button.setIconSize(QSize(25, 25))
 		self.upload_button.setStyleSheet(self.parent.parent.parent.button_style_sheet)
 		self.layout.addWidget(self.upload_button, 10, 0, 1, 1)
+		
+		self.base_block_options = [self.calibration_label, self.spatial_calib_le, self.ch_1_label, self.combo_ch1, self.ch_2_label, self.combo_ch2, 
+								   self.normalize_checkbox, self.normalize_lbl, 
+								   #self.open_dialog_button, 
+								   #self.file_label, 
+								   #self.upload_button,
+								   ]
+
+		self.stardist_button.toggled.connect(self.show_seg_options)
+		self.cellpose_button.toggled.connect(self.show_seg_options)
+		self.threshold_button.toggled.connect(self.show_seg_options)
 
 		self.setLayout(self.layout)
 		self.show()
 
+	def generate_base_block(self):
+
+		"""
+		Create widgets common to StarDist and Cellpose.
+		"""
+		
+		self.base_block = QGridLayout()
+		
+		self.calibration_label = QLabel("pixel calibration: ")
+		self.base_block.addWidget(self.calibration_label,0,0,1,1, alignment=Qt.AlignLeft)
+		self.spatial_calib_le = QLineEdit("0,1")
+		self.qdv = QDoubleValidator(0.0, np.amax([self.parent.parent.shape_x, self.parent.parent.shape_y]), 8, notation=QDoubleValidator.StandardNotation)
+		self.spatial_calib_le.setValidator(self.qdv)
+		self.base_block.addWidget(self.spatial_calib_le, 0,1,1,2,alignment=Qt.AlignRight)
+
+		self.channel_options = ["--","live_nuclei_channel", "dead_nuclei_channel", "effector_fluo_channel", "brightfield_channel", "adhesion_channel", "fluo_channel_1", "fluo_channel_2"]
+		self.ch_1_label = QLabel("channel 1: ")
+		self.base_block.addWidget(self.ch_1_label, 1, 0, 1, 1, alignment=Qt.AlignLeft)
+		self.combo_ch1 = QComboBox()
+		self.combo_ch1.addItems(self.channel_options)
+		self.base_block.addWidget(self.combo_ch1, 1, 1, 1, 2, alignment=Qt.AlignRight)
+
+		self.ch_2_label = QLabel("channel 2: ")
+		self.base_block.addWidget(self.ch_2_label, 2, 0, 1, 1, alignment=Qt.AlignLeft)
+		self.combo_ch2 = QComboBox()
+		self.combo_ch2.addItems(self.channel_options)
+		self.base_block.addWidget(self.combo_ch2, 2, 1, 1, 2, alignment=Qt.AlignRight)
+
+	def generate_stardist_specific_block(self):
+
+		"""
+		Create StarDist specific fields to use the model properly when calling it from the app.
+		"""
+
+		self.stardist_block = QGridLayout()
+		self.ch_3_label = QLabel("channel 3: ")
+		self.stardist_block.addWidget(self.ch_3_label, 0, 0, 1, 1, alignment=Qt.AlignLeft)
+		self.combo_ch3 = QComboBox()
+		self.combo_ch3.addItems(self.channel_options)
+		self.stardist_block.addWidget(self.combo_ch3, 0, 1, 1, 2, alignment=Qt.AlignRight)
+
+		self.ch_4_label = QLabel("channel 4: ")
+		self.stardist_block.addWidget(self.ch_4_label, 1, 0, 1, 1, alignment=Qt.AlignLeft)
+		self.combo_ch4 = QComboBox()
+		self.combo_ch4.addItems(self.channel_options)
+		self.stardist_block.addWidget(self.combo_ch4, 1, 1, 1, 2, alignment=Qt.AlignRight)
+
+		self.stardist_options = [self.ch_3_label, self.ch_4_label, self.combo_ch3, self.combo_ch4]
+
 	def generate_cellpose_options(self):
 
-		self.cp_diameter_label = QLabel('diameter: ')
+		"""
+		Create Cellpose specific fields to use the model properly when calling it from the app.
+		"""
+
+		self.cellpose_block = QGridLayout()
+		self.cp_diameter_label = QLabel('diameter:   ')
 		self.cp_diameter_le = QLineEdit("30,0")
 		self.cp_diameter_le.setValidator(self.qdv)
-		self.layout.addWidget(self.cp_diameter_label, 5, 0, 1, 2)
-		self.layout.addWidget(self.cp_diameter_le, 5, 1, 1, 2)
-
+		self.cellpose_block.addWidget(self.cp_diameter_label, 0, 0, 1, 2)
+		self.cellpose_block.addWidget(self.cp_diameter_le, 0, 1, 1, 2)
 
 		qdv_prob = QDoubleValidator(-6, 6, 8, notation=QDoubleValidator.StandardNotation)
-		self.cp_cellprob_label = QLabel('cellprob\nthreshold: ')
+		self.cp_cellprob_label = QLabel('cellprob\nthreshold:   ')
 		self.cp_cellprob_le = QLineEdit('0,0')
 		self.cp_cellprob_le.setValidator(qdv_prob)
-		self.layout.addWidget(self.cp_cellprob_label, 6, 0, 1, 2)
-		self.layout.addWidget(self.cp_cellprob_le, 6, 1, 1, 2)
+		self.cellpose_block.addWidget(self.cp_cellprob_label, 1, 0, 1, 2)
+		self.cellpose_block.addWidget(self.cp_cellprob_le, 1, 1, 1, 2)
 
-
-		self.cp_flow_label = QLabel('flow threshold: ')
+		self.cp_flow_label = QLabel('flow threshold:   ')
 		self.cp_flow_le = QLineEdit('0,4')
 		self.cp_flow_le.setValidator(qdv_prob)
-		self.layout.addWidget(self.cp_flow_label, 7, 0, 1, 2)
-		self.layout.addWidget(self.cp_flow_le, 7, 1, 1, 2)
+		self.cellpose_block.addWidget(self.cp_flow_label, 2, 0, 1, 2)
+		self.cellpose_block.addWidget(self.cp_flow_le, 2, 1, 1, 2)
 
 		self.cellpose_options = [self.cp_diameter_label,self.cp_diameter_le,self.cp_cellprob_label,
 			self.cp_cellprob_le, self.cp_flow_label, self.cp_flow_le]
 		for c in self.cellpose_options:
 			c.hide()
 
+	def generate_threshold_options(self):
+
+		"""
+		Show the threshold config pipeline button.
+		"""
+
+		self.threshold_config_button = QPushButton("Threshold Config Wizard")
+		self.threshold_config_button.setIcon(icon(MDI6.auto_fix,color="#1565c0"))
+		self.threshold_config_button.setIconSize(QSize(25, 25))
+		self.threshold_config_button.setVisible(False)
+		self.threshold_config_button.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		#self.threshold_config_button.clicked.connect(self.open_threshold_config_wizard)
+		self.layout.addWidget(self.threshold_config_button,3,0,1,2)
+		self.threshold_config_button.hide()
+
 	def showDialog(self):
+
+		"""
+		Import the model in the proper folder.
+		"""
 
 		# Set the file dialog according to the option chosen
 		if self.stardist_button.isChecked():
@@ -181,25 +241,32 @@ class SegmentationModelLoader(QWidget):
 
 			if self.seg_mode=="threshold":
 				self.file_label.setText(self.filename.split("/")[-1])
+				# set threshold model in the parent process_block (both in memory and model zoo option)
 
-	def show_cellpose_options(self):
+	def show_seg_options(self):
+
+		"""
+		Show the relevant widgets, mask the others.
+		"""
 
 		if self.cellpose_button.isChecked():
 			self.spatial_calib_le.setToolTip('Cellpose rescales the images such that the cells are 30.0 pixels. You can compute the scale from the training data as\n(pixel calibration [µm] in training images)*(cell diameter [px] in training images)/(30 [px]).\nIf you pass images with a different calibration to the model, they will be rescaled automatically.\nThe rescaling is ignored if you pass a diameter different from 30 px below.')
-			self.ch_1_label.setText('cyto:')
-			self.ch_2_label.setText('nuclei:')
-			for c in self.stardist_options:
+			self.ch_1_label.setText('cyto: ')
+			self.ch_2_label.setText('nuclei: ')
+			for c in self.stardist_options+[self.threshold_config_button]:
 				c.hide()
-			for c in self.cellpose_options:
+			for c in self.cellpose_options+self.base_block_options:
 				c.show()
-
-		else:
+		elif self.stardist_button.isChecked():
 			self.spatial_calib_le.setToolTip('')
-			self.ch_1_label.setText('channel 1:')
-			self.ch_2_label.setText('channel 2:')
-			for c in self.stardist_options:
+			self.ch_1_label.setText('channel 1: ')
+			self.ch_2_label.setText('channel 2: ')
+			for c in self.stardist_options+self.base_block_options:
 				c.show()
-			for c in self.cellpose_options:
+			for c in self.cellpose_options+[self.threshold_config_button]:
 				c.hide()
-		self.layout.setSpacing(5)
+		else:
+			for c in self.stardist_options+self.cellpose_options+self.base_block_options:
+				c.hide()
+			self.threshold_config_button.show()
 		self.adjustSize()

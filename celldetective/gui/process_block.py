@@ -1,10 +1,15 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QHBoxLayout, QCheckBox
+from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, QMessageBox
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
-from celldetective.io import get_segmentation_models_list, control_segmentation_napari
+from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list
 from celldetective.gui import SegmentationModelLoader
+from celldetective.gui.gui_utils import QHSeperationLine
+from celldetective.segmentation import segment_at_position
+import numpy as np
+from glob import glob
+from natsort import natsorted
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -13,6 +18,7 @@ class ProcessPanel(QFrame):
 		self.parent = parent
 		self.mode = mode
 		self.exp_channels = self.parent.exp_channels
+		self.threshold_config = None
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -58,9 +64,13 @@ class ProcessPanel(QFrame):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(25, 25))
+			self.parent.w.adjustSize()
+			self.parent.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(25, 25))
+			self.parent.w.adjustSize()
+			self.parent.adjustSize()
 
 	def populate_contents(self):
 
@@ -68,7 +78,113 @@ class ProcessPanel(QFrame):
 		self.grid_contents = QGridLayout(self.ContentsFrame)
 		self.grid_contents.setContentsMargins(0,0,0,0)
 		self.generate_segmentation_options()
+		self.generate_tracking_options()
+		self.generate_measure_options()
+		self.generate_signal_analysis_options()
+
+		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
+		self.submit_btn = QPushButton("Submit")
+		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.submit_btn.clicked.connect(self.process_population)
+		self.grid_contents.addWidget(self.submit_btn, 10, 0, 1, 4)
+
+	def generate_measure_options(self):
 		
+		measure_layout = QHBoxLayout()
+
+		self.measure_action = QCheckBox("MEASURE")
+		self.measure_action.setStyleSheet("""
+			font-size: 14px;
+			padding-left: 10px;
+			padding-top: 5px;
+			""")
+		self.measure_action.setIcon(icon(MDI6.eyedropper,color="black"))
+		self.measure_action.setIconSize(QSize(25, 25))
+		self.measure_action.setToolTip("Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
+		measure_layout.addWidget(self.measure_action)
+		#self.to_disable.append(self.measure_action_tc)
+		self.grid_contents.addLayout(measure_layout,5,0,1,4)
+
+	def generate_signal_analysis_options(self):
+
+		signal_layout = QVBoxLayout()
+		self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
+		self.signal_analysis_action.setStyleSheet("""
+			font-size: 14px;
+			padding-left: 10px;
+			padding-top: 5px;
+			""")
+		self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative,color="black"))
+		self.signal_analysis_action.setIconSize(QSize(25, 25))
+		self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
+		self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
+		signal_layout.addWidget(self.signal_analysis_action)
+		#self.to_disable.append(self.measure_action_tc)
+		
+		model_zoo_layout = QHBoxLayout()
+		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
+
+		signal_models = get_signal_models_list()
+		self.signal_models_list = QComboBox()
+		self.signal_models_list.addItems(signal_models)
+		self.signal_models_list.setEnabled(False)
+		#self.to_disable.append(self.cell_models_list)
+
+		self.train_signal_model_btn = QPushButton("TRAIN")
+		self.train_signal_model_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
+		self.train_signal_model_btn.setIcon(icon(MDI6.redo_variant,color='black'))
+		self.train_signal_model_btn.setIconSize(QSize(20, 20)) 
+		self.train_signal_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
+		model_zoo_layout.addWidget(self.train_signal_model_btn, 5)
+		#self.train_button_cell.clicked.connect(self.train_cell_model)
+		signal_layout.addLayout(model_zoo_layout)
+		signal_layout.addWidget(self.signal_models_list)
+
+		self.grid_contents.addLayout(signal_layout,6,0,1,4)
+
+	def generate_tracking_options(self):
+		grid_track = QHBoxLayout()
+
+		self.track_action = QCheckBox("TRACK")
+		self.track_action.setIcon(icon(MDI6.chart_timeline_variant,color="black"))
+		self.track_action.setIconSize(QSize(25, 25))
+		self.track_action.setToolTip("Track the target cells using bTrack.")
+		self.track_action.setStyleSheet("""
+			font-size: 14px;
+			padding-left: 10px;
+			padding-top: 5px;
+			""")
+		grid_track.addWidget(self.track_action, 80)
+		#self.to_disable.append(self.track_action_tc)
+
+		self.show_track_table_btn = QPushButton()
+		self.show_track_table_btn.setIcon(icon(MDI6.table,color="black"))
+		self.show_track_table_btn.setIconSize(QSize(25, 25))
+		self.show_track_table_btn.setToolTip("Show trajectories table.")
+		self.show_track_table_btn.setStyleSheet(self.parent.parent.button_select_all)
+		#self.show_track_table_btn.clicked.connect(self.display_trajectory_table)
+		self.show_track_table_btn.setEnabled(False)
+		grid_track.addWidget(self.show_track_table_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
+
+		self.check_tracking_result_btn = QPushButton()
+		self.check_tracking_result_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
+		self.check_tracking_result_btn.setIconSize(QSize(25, 25))
+		self.check_tracking_result_btn.setToolTip("Control dynamically the trajectories.")
+		self.check_tracking_result_btn.setStyleSheet(self.parent.parent.button_select_all)
+		#self.check_tracking_result_btn.clicked.connect(self.check_tracks_anim)
+		self.check_tracking_result_btn.setEnabled(False)
+		grid_track.addWidget(self.check_tracking_result_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
+
+		self.track_config_btn = QPushButton()
+		self.track_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
+		self.track_config_btn.setIconSize(QSize(25, 25))
+		self.track_config_btn.setToolTip("Tracking configuration")
+		self.track_config_btn.setStyleSheet(self.parent.parent.button_select_all)
+		#self.track_config_btn.clicked.connect(self.open_json_editor)
+		grid_track.addWidget(self.track_config_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
+
+		self.grid_contents.addLayout(grid_track, 4, 0, 1,4)
+
 
 	def generate_segmentation_options(self):
 
@@ -95,32 +211,35 @@ class ProcessPanel(QFrame):
 		self.check_seg_btn.setEnabled(False)
 		#self.to_disable.append(self.control_target_seg)
 		grid_segment.addWidget(self.check_seg_btn, 10)
-
 		self.grid_contents.addLayout(grid_segment, 0,0,1,4)
-		self.grid_contents.addWidget(QLabel("Model zoo:"),2,0,1,1)
+		
+		model_zoo_layout = QHBoxLayout()
+		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
 		self.seg_model_list = QComboBox()
 		#self.to_disable.append(self.tc_seg_model_list)
 		self.seg_model_list.setGeometry(50, 50, 200, 30)
 		self.init_seg_model_list()
 
-		self.train_btn = QPushButton("TRAIN")
-		self.train_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
-		self.train_btn.setIcon(icon(MDI6.redo_variant,color='black'))
-		#self.train_btn.setIconSize(QSize(20, 20)) 
-		self.train_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
-		self.grid_contents.addWidget(self.train_btn, 2, 3, 1, 1)
-		# self.train_button_tc.clicked.connect(self.train_stardist_model_tc)
-		# self.to_disable.append(self.train_button_tc)
 
 		self.upload_model_btn = QPushButton("UPLOAD")
 		self.upload_model_btn.setIcon(icon(MDI6.upload,color="black"))
 		self.upload_model_btn.setIconSize(QSize(20, 20))
 		self.upload_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
-		self.upload_model_btn.setToolTip("Upload...")
-		self.grid_contents.addWidget(self.upload_model_btn, 2, 2, 1, 1)
+		self.upload_model_btn.setToolTip("Upload a new segmentation model.")
+		model_zoo_layout.addWidget(self.upload_model_btn, 5)
 		self.upload_model_btn.clicked.connect(self.upload_segmentation_model)
 		# self.to_disable.append(self.upload_tc_model)
 
+		self.train_btn = QPushButton("TRAIN")
+		self.train_btn.setToolTip("Train or retrain a segmentation model on new annotated data.")
+		self.train_btn.setIcon(icon(MDI6.redo_variant,color='black'))
+		self.train_btn.setIconSize(QSize(20, 20))
+		self.train_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
+		model_zoo_layout.addWidget(self.train_btn, 5)
+		# self.train_button_tc.clicked.connect(self.train_stardist_model_tc)
+		# self.to_disable.append(self.train_button_tc)
+
+		self.grid_contents.addLayout(model_zoo_layout, 2, 0, 1,4)
 		self.seg_model_list.setEnabled(False)
 		self.grid_contents.addWidget(self.seg_model_list, 3, 0, 1, 4)
 
@@ -129,7 +248,7 @@ class ProcessPanel(QFrame):
 		#self.freeze()
 		#QApplication.setOverrideCursor(Qt.WaitCursor)
 		self.parent.locate_selected_position()
-		control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode[:-1])
+		control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode,flush_memory=True)
 		gc.collect()
 
 	def enable_segmentation_model_list(self):
@@ -137,6 +256,12 @@ class ProcessPanel(QFrame):
 			self.seg_model_list.setEnabled(True)
 		else:
 			self.seg_model_list.setEnabled(False)
+
+	def enable_signal_model_list(self):
+		if self.signal_analysis_action.isChecked():
+			self.signal_models_list.setEnabled(True)
+		else:
+			self.signal_models_list.setEnabled(False)			
 	
 	def init_seg_model_list(self):
 
@@ -185,16 +310,66 @@ class ProcessPanel(QFrame):
 		self.SegModelLoader = SegmentationModelLoader(self)
 		self.SegModelLoader.show()
 
-	def closeEvent(self, event):
-
-		"""
-		Close child windows if closed.
-		"""
+	def process_population(self):
 		
-		try:
-			if self.SegModelLoader:
-				self.SegModelLoader.close()
-		except:
-			pass
+		if self.parent.well_list.currentText()=="*":
+			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
+		else:
+			self.well_index = [self.parent.well_labels.index(str(self.parent.well_list.currentText()))]
+			print(f"Processing well {self.parent.well_list.currentText()}...")
 
-		gc.collect()
+		# self.freeze()
+		# QApplication.setOverrideCursor(Qt.WaitCursor)
+		
+		loop_iter=0
+		for w_idx in self.well_index:
+
+			pos = self.parent.positions[w_idx]
+			if self.parent.position_list.currentText()=="*":
+				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
+				print("Processing all positions...")
+			else:
+				pos_indices = natsorted([pos.index(self.parent.position_list.currentText())])
+				print(f"Processing position {self.parent.position_list.currentText()}...")
+
+			well = self.parent.wells[w_idx]
+
+			for pos_idx in pos_indices:
+				
+				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
+				print(f"Position {self.pos}...\nLoading stack movie...")
+				model_name = self.seg_model_list.currentText()
+
+				if self.segment_action.isChecked():
+					if (self.seg_model_list.currentText()=="Threshold"):
+						if self.threshold_config is None:
+							msgBox = QMessageBox()
+							msgBox.setIcon(QMessageBox.Warning)
+							msgBox.setText("Please set a threshold configuration from the upload menu first. Abort.")
+							msgBox.setWindowTitle("Warning")
+							msgBox.setStandardButtons(QMessageBox.Ok)
+							returnValue = msgBox.exec()
+							if returnValue == QMessageBox.Ok:
+								return None					
+						else:
+							print(f"Segmentation from threshold config: {self.threshold_config}")
+							#self.segment_from_threshold()
+					else:
+						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=True)
+
+			# 	if self.track_action_tc.isChecked():
+			# 		self.track_tcs()
+
+			# 	if self.measure_action_tc.isChecked():
+
+			# 		self.measure_tcs()
+
+			# 	loop_iter+=1
+
+			# self.stack = None
+		self.parent.update_position_options()
+		if self.segment_action.isChecked():
+			self.segment_action.setChecked(False)
+
+		# QApplication.restoreOverrideCursor()
+		# self.unfreeze()

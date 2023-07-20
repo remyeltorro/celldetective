@@ -90,9 +90,9 @@ def locate_labels(position, population='target'):
 	"""
 
 
-	if population=="target":
+	if population.lower()=="target" or population.lower()=="targets":
 		label_path = natsorted(glob(position+"labels_targets/*.tif"))
-	elif population=="effector":
+	elif population.lower()=="effector" or population.lower()=="effectors":
 		label_path = natsorted(glob(position+"labels_effectors/*.tif"))
 	labels = np.array([imread(i) for i in label_path])
 
@@ -184,9 +184,9 @@ def load_tracking_data(position, prefix="Aligned", population="target"):
 
 	"""
 
-	if population=="target":
+	if population.lower()=="target" or population.lower()=="targets":
 		trajectories = pd.read_csv(position+'output/tables/trajectories_targets.csv')
-	elif population=="effector":
+	elif population.lower()=="effector" or population.lower()=="effectors":
 		trajectories = pd.read_csv(position+'output/tables/trajectories_effectors.csv')
 
 	stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
@@ -307,7 +307,7 @@ def get_tracking_configs_list(return_path=False):
 
 	"""
 
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/software/models/tracking_configs/"
+	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/"
 	available_models = glob(modelpath+'*.json')
 	available_models = [m.split('/')[-1] for m in available_models]
 	available_models = [m.split('.')[0] for m in available_models]
@@ -324,7 +324,7 @@ def interpret_tracking_configuration(config):
 		if os.path.exists(config):
 			return config
 		else:
-			modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/software/models/tracking_configs/"
+			modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/"
 			if os.path.exists(modelpath+config+'.json'):
 				return modelpath+config+'.json'
 			else:
@@ -368,7 +368,7 @@ def get_signal_models_list(return_path=False):
 
 	"""
 
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/software/models/signal_detection/"
+	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/signal_detection/"
 	available_models = glob(modelpath+'*/')
 	available_models = [m.split('/')[-2] for m in available_models]
 
@@ -545,9 +545,9 @@ def load_napari_data(position, prefix="Aligned", population="target"):
 	
 	"""
 
-	if population=="target":
+	if population.lower()=="target" or population.lower()=="targets":
 		napari_data = np.load(position+"output/tables/napari_target_trajectories.npy",allow_pickle=True)
-	elif population=="effector":
+	elif population.lower()=="effector" or population.lower()=="effectors":
 		napari_data = np.load(position+"output/tables/napari_effector_trajectories.npy",allow_pickle=True)
 	data = napari_data.item()['data']
 	properties = napari_data.item()['properties']
@@ -558,7 +558,7 @@ def load_napari_data(position, prefix="Aligned", population="target"):
 	return data,properties,graph,labels,stack
 
 
-def control_segmentation_napari(position, prefix='Aligned', population="target"):
+def control_segmentation_napari(position, prefix='Aligned', population="target", flush_memory=False):
 
 	"""
 	
@@ -592,17 +592,18 @@ def control_segmentation_napari(position, prefix='Aligned', population="target")
 	viewer.add_labels(labels, name='segmentation',opacity=0.4)
 	viewer.show(block=True)
 
-	# temporary fix for slight napari memory leak
-	for i in range(10000):
-		try:
-			viewer.layers.pop()
-		except:
-			pass
+	if flush_memory:
+		# temporary fix for slight napari memory leak
+		for i in range(10000):
+			try:
+				viewer.layers.pop()
+			except:
+				pass
 
-	del viewer
-	del stack
-	del labels
-	gc.collect()
+		del viewer
+		del stack
+		del labels
+		gc.collect()
 
 
 def _view_on_napari(tracks=None, stack=None, labels=None):

@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description="Segment a movie in position with t
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-p',"--position", required=True, help="Path to the position")
 parser.add_argument('-m',"--model", required=True,help="Model name")
-parser.add_argument("--mode", default="target", choices=["target","effector"],help="Cell population of interest")
+parser.add_argument("--mode", default="target", choices=["target","effector","targets","effectors"],help="Cell population of interest")
 parser.add_argument("--use_gpu", default="True", choices=["True","False"],help="use GPU")
 
 args = parser.parse_args()
@@ -40,9 +40,9 @@ if not use_gpu:
 	
 modelname = str(process_arguments['model'])
 
-if mode=="target":
+if mode=="target" or mode=="targets":
 	label_folder = "labels_targets/"
-elif mode=="effector":
+elif mode=="effector" or mode=="effectors":
 	label_folder = "labels_effectors/"
 
 # Locate experiment config

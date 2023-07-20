@@ -7,6 +7,8 @@ from fonticon_mdi6 import MDI6
 import numpy as np
 from glob import glob
 import os
+import json
+import shutil
 
 class SegmentationModelLoader(QWidget):
 	
@@ -47,7 +49,6 @@ class SegmentationModelLoader(QWidget):
 		option_layout.addWidget(self.cellpose_button)
 
 		self.threshold_button = QRadioButton('Threshold')
-		#self.threshold_button.toggled.connect(self.enable_config_wizard)
 		option_layout.addWidget(self.threshold_button)
 
 		self.layout.addLayout(option_layout, 1,0,1,2, alignment=Qt.AlignCenter)
@@ -78,25 +79,38 @@ class SegmentationModelLoader(QWidget):
 		self.layout.addWidget(self.file_label, 9, 1, 1, 1)
 
 		self.upload_button = QPushButton("Upload")
-		#self.upload_button.clicked.connect(self.upload_model)
+		self.upload_button.clicked.connect(self.upload_model)
 		self.upload_button.setIcon(icon(MDI6.upload,color="white"))
 		self.upload_button.setIconSize(QSize(25, 25))
 		self.upload_button.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.upload_button.setEnabled(False)
 		self.layout.addWidget(self.upload_button, 10, 0, 1, 1)
 		
 		self.base_block_options = [self.calibration_label, self.spatial_calib_le, self.ch_1_label, self.combo_ch1, self.ch_2_label, self.combo_ch2, 
-								   self.normalize_checkbox, self.normalize_lbl, 
-								   #self.open_dialog_button, 
-								   #self.file_label, 
-								   #self.upload_button,
+								   self.normalize_checkbox, self.normalize_lbl,
 								   ]
 
 		self.stardist_button.toggled.connect(self.show_seg_options)
 		self.cellpose_button.toggled.connect(self.show_seg_options)
 		self.threshold_button.toggled.connect(self.show_seg_options)
 
+		for cb in self.combos:
+			cb.activated.connect(self.unlock_upload)
+
 		self.setLayout(self.layout)
 		self.show()
+
+	def unlock_upload(self):
+		if self.stardist_button.isChecked():
+			if np.any([c.currentText()!='--' for c in self.combos]):
+				self.upload_button.setEnabled(True)
+			else:
+				self.upload_button.setEnabled(False)
+		elif self.cellpose_button.isChecked():
+			if np.any([c.currentText()!='--' for c in self.combos[:2]]):
+				self.upload_button.setEnabled(True)
+			else:
+				self.upload_button.setEnabled(False)
 
 	def generate_base_block(self):
 
@@ -241,7 +255,6 @@ class SegmentationModelLoader(QWidget):
 
 			if self.seg_mode=="threshold":
 				self.file_label.setText(self.filename.split("/")[-1])
-				# set threshold model in the parent process_block (both in memory and model zoo option)
 
 	def show_seg_options(self):
 
@@ -257,6 +270,7 @@ class SegmentationModelLoader(QWidget):
 				c.hide()
 			for c in self.cellpose_options+self.base_block_options:
 				c.show()
+			self.unlock_upload()
 		elif self.stardist_button.isChecked():
 			self.spatial_calib_le.setToolTip('')
 			self.ch_1_label.setText('channel 1: ')
@@ -265,8 +279,123 @@ class SegmentationModelLoader(QWidget):
 				c.show()
 			for c in self.cellpose_options+[self.threshold_config_button]:
 				c.hide()
+			self.unlock_upload()
 		else:
 			for c in self.stardist_options+self.cellpose_options+self.base_block_options:
 				c.hide()
 			self.threshold_config_button.show()
+			self.upload_button.setEnabled(True)
 		self.adjustSize()
+
+	def upload_model(self):
+
+		"""
+		Upload the model.
+		"""
+
+		if self.file_label.text()=='No file chosen':
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a model first.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+
+		if not self.threshold_button.isChecked():
+			self.generate_input_config()
+			if self.stardist_button.isChecked():
+				try:
+					shutil.copytree(self.filename, self.destination)
+				except FileExistsError:
+					msgBox = QMessageBox()
+					msgBox.setIcon(QMessageBox.Warning)
+					msgBox.setText("A model with the same name already exists in the models folder. Please rename it.")
+					msgBox.setWindowTitle("Warning")
+					msgBox.setStandardButtons(QMessageBox.Ok)
+					returnValue = msgBox.exec()
+					if returnValue == QMessageBox.Ok:
+						return None
+			elif self.cellpose_button.isChecked():
+				try:
+					shutil.copy(self.filename, self.destination)
+				except FileExistsError:
+					msgBox = QMessageBox()
+					msgBox.setIcon(QMessageBox.Warning)
+					msgBox.setText("A model with the same name already exists in the models folder. Please rename it.")
+					msgBox.setWindowTitle("Warning")
+					msgBox.setStandardButtons(QMessageBox.Ok)
+					returnValue = msgBox.exec()
+					if returnValue == QMessageBox.Ok:
+						return None				
+			self.parent.init_seg_model_list()
+			self.close()
+		else:
+			self.parent.threshold_config = self.filename
+			print('Path to threshold configuration successfully set in the software')
+			self.close()
+
+	def generate_input_config(self):
+
+		"""
+		Check the ticked options and input parameters to create
+		a configuration to use the uploaded model properly.
+		"""
+		
+		dico = {}
+
+		# Check model option
+		if self.stardist_button.isChecked():
+			
+			# Get channels
+			channels = []
+			for c in self.combos:
+				if c.currentText()!="--":
+					channels.append(c.currentText())
+			model_type = "stardist"
+			spatial_calib = float(self.spatial_calib_le.text().replace(',','.'))
+			normalize = self.normalize_checkbox.isChecked()
+			dico.update({"channels": channels, 
+						 "spatial_calibration": spatial_calib, 
+						 "normalize": normalize,
+						})
+
+		elif self.cellpose_button.isChecked():
+			
+			# Get channels (cyto and nucleus)
+			channels = []
+			for c in self.combos[:2]:
+				if c.currentText()!="--":
+					channels.append(c.currentText())
+
+			model_type = "cellpose"
+			diameter = float(self.cp_diameter_le.text().replace(',','.'))
+			cellprob_threshold = float(self.cp_cellprob_le.text().replace(',','.'))
+			flow_threshold = float(self.cp_flow_le.text().replace(',','.'))
+			normalize = self.normalize_checkbox.isChecked()
+			spatial_calib = float(self.spatial_calib_le.text().replace(',','.'))
+
+			dico.update({"channels": channels,
+						 "diameter": diameter,
+						 "cellprob_threshold": cellprob_threshold,
+						 "flow_threshold": flow_threshold,
+						 "normalize": normalize,
+						 "spatial_calibration": spatial_calib,
+						 })
+
+		elif self.threshold_button.isChecked():
+			model_type = "threshold"
+			return None
+
+		dico.update({"model_type": model_type})
+		json_object = json.dumps(dico, indent=4)
+
+		# Writing to sample.json
+		if not os.path.exists(self.folder_dest):
+			os.mkdir(self.folder_dest)
+			print("Configuration successfully written in ",self.folder_dest+"/config_input.json")
+			with open(self.folder_dest+"/config_input.json", "w") as outfile:
+				outfile.write(json_object)
+		else:
+			print('The folder already exists. The configuration will not be written.')

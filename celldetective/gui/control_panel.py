@@ -93,7 +93,7 @@ class ControlPanel(QMainWindow):
 
 		self.edit_config_button = QPushButton()
 		self.edit_config_button.setIcon(icon(MDI6.cog_outline,color="black"))
-		self.edit_config_button.setIconSize(QSize(25, 25))
+		self.edit_config_button.setIconSize(QSize(20, 20))
 		self.edit_config_button.setToolTip("Configuration file")
 		self.edit_config_button.clicked.connect(self.open_config_editor)
 		self.edit_config_button.setStyleSheet(self.parent.button_select_all)

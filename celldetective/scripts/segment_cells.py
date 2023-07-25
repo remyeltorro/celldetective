@@ -40,9 +40,9 @@ if not use_gpu:
 	
 modelname = str(process_arguments['model'])
 
-if mode=="target" or mode=="targets":
+if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets/"
-elif mode=="effector" or mode=="effectors":
+elif mode.lower()=="effector" or mode.lower()=="effectors":
 	label_folder = "labels_effectors/"
 
 # Locate experiment config

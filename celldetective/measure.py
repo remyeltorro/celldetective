@@ -208,6 +208,12 @@ def contour_of_instance_segmentation(label, distance):
 
 	return border_label
 
+def drop_tonal_features(features):
+
+	for f in features:
+		if 'intensity' in f:
+			features.remove(f)
+	return features
 
 def measure_features(img, label, features=['area', 'intensity_mean'], channels=None,
 	border_dist=None, haralick_options=None, verbose=True):
@@ -264,9 +270,7 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 		if verbose:
 			print('No image was provided... Skip intensity measurements.')
 		border_dist = None; haralick_options = None;
-		for f in features:
-			if 'intensity' in f:
-				features.remove(f)
+		features = drop_tonal_features(features)
 
 	if img is not None:
 		if img.ndim==2:

@@ -11,10 +11,10 @@ class Styles(object):
 			QPushButton {
 				background-color: #1565c0;
 				color: white;
-				border-radius: 15px;
+				border-radius: 13px;
 				padding: 7px;
 				font-weight: bold;
-				font-size: 14px;
+				font-size: 12px;
 			}
 			QPushButton:hover {
 				background-color: #2070EB;
@@ -26,10 +26,10 @@ class Styles(object):
 			QPushButton:!enabled {
 				background-color: #92a8c0;
 				color: white;
-				border-radius: 15px;
+				border-radius: 13px;
 				padding: 7px;
 				font-weight: bold;
-				font-size: 14px;
+				font-size: 12px;
 			}
 		'''
 
@@ -79,9 +79,9 @@ class Styles(object):
 			QPushButton {
 				background-color: #eeeeee;
 				color: black;
-				border-radius: 15px;
+				border-radius: 10px;
 				padding: 7px;
-				font-size: 10px;
+				font-size: 8px;
 			}
 			QPushButton:hover {
 				background-color: #2070EB;
@@ -97,7 +97,7 @@ class Styles(object):
 				color: black;
 				border-radius: 15px;
 				padding: 7px;
-				font-size: 10px;
+				font-size: 9px;
 			}
 			QPushButton:hover {
 				background-color: #bdbdbd;

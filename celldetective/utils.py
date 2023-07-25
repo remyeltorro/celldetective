@@ -618,3 +618,70 @@ def _extract_labels_from_config(config,number_of_wells):
 		labels = np.linspace(0,number_wells-1,number_wells,dtype=str)
 
 	return(labels)
+
+def extract_experiment_channels(config):
+
+	# Remap intensities to channel:
+	channel_names = []
+	channel_indices = []
+
+	try:
+		brightfield_channel = int(ConfigSectionMap(config,"MovieSettings")["brightfield_channel"])
+		channel_names.append("brightfield_channel")
+		channel_indices.append(brightfield_channel)
+		#exp_channels.update({"brightfield_channel": brightfield_channel})
+	except:
+		pass
+	try:
+		live_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["live_nuclei_channel"])
+		channel_names.append("live_nuclei_channel")
+		channel_indices.append(live_nuclei_channel)
+		#exp_channels.update({"live_nuclei_channel": live_nuclei_channel})
+	except:
+		pass
+	try:
+		dead_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["dead_nuclei_channel"])
+		channel_names.append("dead_nuclei_channel")
+		channel_indices.append(dead_nuclei_channel)
+		#exp_channels.update({"dead_nuclei_channel": dead_nuclei_channel})
+	except:
+		pass
+	try:
+		effector_fluo_channel = int(ConfigSectionMap(config,"MovieSettings")["effector_fluo_channel"])
+		channel_names.append("effector_fluo_channel")
+		channel_indices.append(effector_fluo_channel)
+		#exp_channels.update({"effector_fluo_channel": effector_fluo_channel})
+	except:
+		pass
+	try:
+		adhesion_channel = int(ConfigSectionMap(config,"MovieSettings")["adhesion_channel"])
+		channel_names.append("adhesion_channel")
+		channel_indices.append(adhesion_channel)
+		#exp_channels.update({"adhesion_channel": adhesion_channel})
+	except:
+		pass
+	try:
+		fluo_channel_1 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_1"])
+		channel_names.append("fluo_channel_1")
+		channel_indices.append(fluo_channel_1)
+		#exp_channels.update({"fluo_channel_1": fluo_channel_1})
+	except:
+		pass
+	try:
+		fluo_channel_2 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_2"])
+		channel_names.append("fluo_channel_2")
+		channel_indices.append(fluo_channel_2)
+		#exp_channels.update({"fluo_channel_2": fluo_channel_2})
+	except:
+		pass
+
+	channel_indices = np.array(channel_indices)
+	channel_names = np.array(channel_names)
+	reorder = np.argsort(channel_indices)
+	channel_indices = channel_indices[reorder]
+	channel_names = channel_names[reorder]
+
+	return channel_names, channel_indices
+
+def get_software_location():
+	return os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]

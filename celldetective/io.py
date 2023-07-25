@@ -10,6 +10,7 @@ from tqdm import tqdm
 from csbdeep.utils import normalize_mi_ma
 import skimage.io as skio
 from scipy.ndimage import zoom
+from btrack.datasets import cell_config
 
 def locate_stack(position, prefix='Aligned'):
 
@@ -331,8 +332,8 @@ def interpret_tracking_configuration(config):
 				config = cell_config()
 	elif config is None:
 		config = cell_config()
-	else:
-		return config
+
+	return config
 
 def get_signal_models_list(return_path=False):
 

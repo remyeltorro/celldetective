@@ -6,14 +6,18 @@ from sklearn.preprocessing import StandardScaler
 from btrack.io.utils import localizations_to_objects
 from btrack import BayesianTracker
 
-from .measure import measure_features
-from .utils import rename_intensity_column
-from .io import view_on_napari_btrack, interpret_tracking_configuration
+from celldetective.measure import measure_features
+from celldetective.utils import rename_intensity_column
+from celldetective.io import view_on_napari_btrack, interpret_tracking_configuration
 
 from btrack.datasets import cell_config
+import os
+import subprocess
 
-def track(labels, configuration, stack=None, spatial_calibration=1, features=None, channel_names=None,
-		  haralick_options=None, return_napari_data=False, view_on_napari=False, 
+abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+
+def track(labels, configuration=None, stack=None, spatial_calibration=1, features=None, channel_names=None,
+		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None,
 		  optimizer_options = {'tm_lim': int(12e4)}, track_kwargs={'step_size': 100},
 		  clean_trajectories_kwargs=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
 		  ):
@@ -89,6 +93,8 @@ def track(labels, configuration, stack=None, spatial_calibration=1, features=Non
 	objects = extract_objects_and_features(labels, stack, features, 
 										   channel_names=channel_names,
 										   haralick_options=haralick_options,
+										   mask_timepoints=mask_timepoints,
+										   mask_channels=mask_channels,
 										   )
 
 	columns = list(objects.columns)
@@ -110,6 +116,7 @@ def track(labels, configuration, stack=None, spatial_calibration=1, features=Non
 
 	# 2) track the objects
 	new_btrack_objects = localizations_to_objects(objects)
+
 	with BayesianTracker() as tracker:
 
 		tracker.configure(configuration)
@@ -153,7 +160,7 @@ def track(labels, configuration, stack=None, spatial_calibration=1, features=Non
 	else:
 		return df
 
-def extract_objects_and_features(labels, stack, features, channel_names=None, haralick_options=None):
+def extract_objects_and_features(labels, stack, features, channel_names=None, haralick_options=None, mask_timepoints=None, mask_channels=None):
 
 	"""
 
@@ -171,7 +178,8 @@ def extract_objects_and_features(labels, stack, features, channel_names=None, ha
 		The list of channel names corresponding to the image stack. Used for extracting Haralick features. Default is None.
 	haralick_options : dict or None, optional
 		The options for Haralick feature extraction. If None, no Haralick features are extracted. Default is None.
-
+	mask_timepoints : list of None, optionak
+		Frames to hide during tracking. 
 	Returns
 	-------
 	DataFrame
@@ -200,6 +208,10 @@ def extract_objects_and_features(labels, stack, features, channel_names=None, ha
 	if stack is None:
 		haralick_options = None
 
+	if mask_timepoints is not None:
+		for f in mask_timepoints:
+			labels[f] = 0.
+
 	nbr_frames = len(labels)
 	timestep_dataframes = []
 
@@ -227,8 +239,18 @@ def extract_objects_and_features(labels, stack, features, channel_names=None, ha
 		df_props['t'] = int(t)
 		timestep_dataframes.append(df_props)
 
-	df = pd.concat(timestep_dataframes)
+	df = pd.concat(timestep_dataframes)	
 	df.reset_index(inplace=True, drop=True)
+
+	if mask_channels is not None:
+		cols_to_drop = []
+		for mc in mask_channels:
+			columns = df.columns
+			col_contains = [mc in c for c in columns]
+			to_remove = np.array(columns)[np.array(col_contains)]
+			cols_to_drop.extend(to_remove)
+		if len(cols_to_drop)>0:
+			df = df.drop(cols_to_drop, axis=1)
 
 	return df
 
@@ -842,3 +864,26 @@ def track_at_position(pos, mode, stack_prefix=None, use_gpu=True, return_tracks=
 	# 	return labels
 	# else:
 	# 	return None
+
+def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
+	
+	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+	if not pos.endswith('/'):
+		pos += '/'
+	subprocess.call(f"python {abs_path}/scripts/track_cells.py --pos {pos} --mode {mode}", shell=True)
+	# if return_labels or view_on_napari:
+	# 	labels = locate_labels(pos, population=mode)
+	# if view_on_napari:
+	# 	if stack_prefix is None:
+	# 		stack_prefix = ''
+	# 	stack = locate_stack(pos, prefix=stack_prefix)
+	# 	_view_on_napari(tracks=None, stack=stack, labels=labels)
+	# if return_labels:
+	# 	return labels
+	# else:
+	return None
+
+if __name__ == "__main__":
+	track_at_position("/home/limozin/Documents/Experiments/MinimumJan/W4/401",
+	 				  "targets",
+	 				  )

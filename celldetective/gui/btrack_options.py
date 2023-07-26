@@ -13,6 +13,11 @@ import os
 
 
 class ConfigTracking(QMainWindow):
+	
+	"""
+	UI to set tracking parameters for bTrack.
+
+	"""
 
 	def __init__(self, parent=None):
 		
@@ -23,8 +28,10 @@ class ConfigTracking(QMainWindow):
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":
 			self.config_name = "btrack_config_targets.json"
+			self.track_instructions_write_path = self.parent.exp_dir + "tracking_instructions_targets.json"
 		elif self.mode=="effectors":
 			self.config_name = "btrack_config_effectors.json"
+			self.track_instructions_write_path = self.parent.exp_dir + "tracking_instructions_effectors.json"
 		self.soft_path = get_software_location()
 		
 		exp_config = self.exp_dir +"config.ini"
@@ -40,6 +47,11 @@ class ConfigTracking(QMainWindow):
 		self.populate_widget()
 
 	def populate_widget(self):
+
+		"""
+		Create the multibox design with collapsable frames.
+
+		"""
 		
 		# Create button widget and layout
 		self.scroll_area = QScrollArea(self)
@@ -69,8 +81,9 @@ class ConfigTracking(QMainWindow):
 		self.submit_btn = QPushButton('Submit')
 		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
 		self.submit_btn.clicked.connect(self.write_instructions)
-		main_layout.addWidget(self.submit_btn)		
+		main_layout.addWidget(self.submit_btn)
 
+		self.load_previous_tracking_instructions()
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
 		self.button_widget.adjustSize()
@@ -86,7 +99,12 @@ class ConfigTracking(QMainWindow):
 		QApplication.processEvents()
 		self.adjustScrollArea()
 
+
 	def populate_post_proc_frame(self):
+
+		"""
+		Add widgets and layout in the POST-PROCESSING frame.
+		"""
 
 		grid = QGridLayout(self.post_proc_frame)
 
@@ -120,6 +138,10 @@ class ConfigTracking(QMainWindow):
 
 	def populate_features_frame(self):
 
+		"""
+		Add widgets and layout in the FEATURES frame.
+		"""
+
 		grid = QGridLayout(self.features_frame)
 
 		self.select_features_btn = QPushButton()
@@ -151,6 +173,10 @@ class ConfigTracking(QMainWindow):
 		#self.ContentsFeatures.hide()
 
 	def collapse_features_advanced(self):
+
+		"""
+		Switch the chevron icon and adjust the size for the FEATURES frame.
+		"""
 
 		if self.ContentsFeatures.isHidden():
 			self.collapse_features_btn.setIcon(icon(MDI6.chevron_down,color="black"))
@@ -386,6 +412,10 @@ class ConfigTracking(QMainWindow):
 
 	def collapse_config_advanced(self):
 
+		"""
+		Switch the chevron icon and adjust the size for the CONFIG frame.
+		"""
+
 		if self.ContentsConfig.isHidden():
 			self.collapse_config_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_config_btn.setIconSize(QSize(20, 20))
@@ -570,6 +600,10 @@ class ConfigTracking(QMainWindow):
 
 	def write_instructions(self):
 
+		"""
+		Write the selected options in a json file for later reading by the software.
+		"""
+
 		print('Writing instructions...')
 		tracking_options = {'btrack_config_path': self.config_path}
 		if not self.features_ticked:
@@ -609,10 +643,25 @@ class ConfigTracking(QMainWindow):
 			post_processing_options = None
 
 		tracking_options.update({'post_processing_options': post_processing_options})
+		file_name = self.track_instructions_write_path
+		with open(file_name, 'w') as f:
+			json.dump(tracking_options, f, indent=4)
 
-		print(tracking_options)
+		# Save the JSON data to the file
+		file_name = self.config_path
+		with open(file_name, 'w') as f:
+			f.write(self.config_le.toPlainText())
+		print('Done.')
+		self.close()
+	
+	def load_previous_tracking_instructions(self):
 
-			
+		"""
+		Read the tracking options from a previously written json file.
+		"""
 
+		print('Reading instructions..')
+		# to do
+		pass
 
 

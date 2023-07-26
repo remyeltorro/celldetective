@@ -43,12 +43,14 @@ class ConfigMeasurements(QMainWindow):
 		self.channel_names = np.array(self.channel_names)
 		self.channels = np.array(self.channels)
 
+		self.screen_height = self.parent.parent.parent.screen_height
 		center_window(self)
+
 		self.setMinimumWidth(500)
-		self.setMinimumHeight(800)
-		self.setMaximumHeight(1160)
+		self.setMinimumHeight(int(0.3*self.screen_height))
+		self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
-		#self.load_previous_tracking_instructions()
+		self.load_previous_measurement_instructions()
 
 	def populate_widget(self):
 
@@ -358,6 +360,7 @@ class ConfigMeasurements(QMainWindow):
 		layout.addLayout(self.haralick_layout)
 
 	def switch_to_absolute_normalization_mode(self):
+
 		if self.percentile_mode:
 			self.percentile_mode = False
 			self.haralick_normalization_mode_btn.setIcon(icon(MDI6.percent_circle_outline,color="black"))
@@ -379,44 +382,6 @@ class ConfigMeasurements(QMainWindow):
 			self.haralick_percentile_max_le.setText('99.99')
 
 
-	# def generate_config_panel_contents(self):
-		
-	# 	self.ContentsConfig = QFrame()
-	# 	layout = QVBoxLayout(self.ContentsConfig)
-	# 	layout.setContentsMargins(0,0,0,0)
-
-	# 	btrack_config_layout = QHBoxLayout()
-	# 	self.config_lbl = QLabel("bTrack configuration: ")
-	# 	btrack_config_layout.addWidget(self.config_lbl, 90)
-
-	# 	self.upload_btrack_config_btn = QPushButton()
-	# 	self.upload_btrack_config_btn.setIcon(icon(MDI6.plus,color="black"))
-	# 	self.upload_btrack_config_btn.setIconSize(QSize(20, 20))
-	# 	self.upload_btrack_config_btn.setToolTip("Upload a new bTrack configuration.")
-	# 	self.upload_btrack_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-	# 	self.upload_btrack_config_btn.clicked.connect(self.upload_btrack_config)
-	# 	btrack_config_layout.addWidget(self.upload_btrack_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
-
-	# 	self.reset_config_btn = QPushButton()
-	# 	self.reset_config_btn.setIcon(icon(MDI6.arrow_u_right_top,color="black"))
-	# 	self.reset_config_btn.setIconSize(QSize(20, 20))
-	# 	self.reset_config_btn.setToolTip("Reset the configuration to the default bTrack config.")
-	# 	self.reset_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-	# 	self.reset_config_btn.clicked.connect(self.reset_btrack_config)
-	# 	btrack_config_layout.addWidget(self.reset_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
-
-	# 	layout.addLayout(btrack_config_layout)
-
-	# 	self.config_le = QTextEdit()
-	# 	self.config_le.setMinimumHeight(150)
-	# 	#self.config_le.setStyleSheet("""
-	# 	#							background: #EEEDEB;
-	# 	#							border: 2px solid black;
-	# 	#							""")
-	# 	layout.addWidget(self.config_le)
-	# 	self.load_cell_config()
-
-
 	def show_haralick_options(self):
 
 		"""
@@ -428,105 +393,8 @@ class ConfigMeasurements(QMainWindow):
 				element.setEnabled(True)
 		else:
 			for element in self.haralick_to_hide:
-				element.setEnabled(False)   		
-
-	def upload_btrack_config(self):
-
-		"""
-		Upload a specific bTrack config to the experiment folder for the cell population.
-		"""
-
-		self.file_dialog = QFileDialog()
-		try:
-			modelpath = self.soft_path+"/celldetective/models/tracking_configs/"
-			self.filename = self.file_dialog.getOpenFileName(None, "Load config", modelpath, "json files (*.json)")[0]
-			if self.filename!=self.config_path:
-				copyfile(self.filename, self.config_path)
-			self.load_cell_config()
-		except Exception as e:
-			print(e, modelpath)
-			return None
-
-	def reset_btrack_config(self):
-
-		"""
-		Set the bTrack config to the default bTrack config.
-		"""
-
-		msgBox = QMessageBox()
-		msgBox.setIcon(QMessageBox.Question)
-		msgBox.setText("You are about to revert to the default bTrack configuration? Do you want to proceed?")
-		msgBox.setWindowTitle("Confirm")
-		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-		returnValue = msgBox.exec()
-		if returnValue == QMessageBox.Yes:
-			config = interpret_tracking_configuration(None)
-			if config!=self.config_path:
-				copyfile(config, self.config_path)
-			self.load_cell_config()
-		else:
-			return None
-
-	def activate_feature_options(self):
-
-		"""
-		Tick the features option.
-		"""
-
-		self.switch_feature_option()
-		if self.features_ticked:
-			for element in self.features_to_disable:
-				element.setEnabled(True)
-			self.select_features_btn.setIcon(icon(MDI6.checkbox_outline,color="black"))
-			self.select_features_btn.setIconSize(QSize(20, 20))
-		else:
-			for element in self.features_to_disable:
 				element.setEnabled(False)
-			self.select_features_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
-			self.select_features_btn.setIconSize(QSize(20, 20))
-			self.features_list.list_widget.clearSelection()
-			self.activate_haralick_btn.setChecked(False)
 
-
-	def activate_post_proc_options(self):
-
-		"""
-		Tick the features option.
-		"""
-
-		self.switch_post_proc_option()
-		if self.post_proc_ticked:
-			for element in self.post_proc_options_to_disable:
-				element.setEnabled(True)
-			self.select_post_proc_btn.setIcon(icon(MDI6.checkbox_outline,color="black"))
-			self.select_post_proc_btn.setIconSize(QSize(20, 20))
-		else:
-			for element in self.post_proc_options_to_disable:
-				element.setEnabled(False)
-			self.select_post_proc_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
-			self.select_post_proc_btn.setIconSize(QSize(20, 20))
-
-	def switch_feature_option(self):
-
-		"""
-		Switch the feature option.
-		"""
-
-		if self.features_ticked == True:
-			self.features_ticked = False
-		else:
-			self.features_ticked = True
-
-	def switch_post_proc_option(self):
-
-		"""
-		Switch the feature option.
-		"""
-
-		if self.post_proc_ticked == True:
-			self.post_proc_ticked = False
-		else:
-			self.post_proc_ticked = True	
 
 	def adjustScrollArea(self):
 		
@@ -539,16 +407,6 @@ class ConfigMeasurements(QMainWindow):
 		while self.scroll_area.verticalScrollBar().isVisible() and self.height() < self.maximumHeight():
 			self.resize(self.width(), self.height() + step)
 
-	def load_cell_config(self):
-
-		"""
-		Load the cell configuration and write in the QLineEdit.
-		"""
-
-		file_name = interpret_tracking_configuration(self.config_path)
-		with open(file_name, 'r') as f:
-			json_data = json.load(f)
-			self.config_le.setText(json.dumps(json_data, indent=4))
 
 	def write_instructions(self):
 
@@ -590,34 +448,6 @@ class ConfigMeasurements(QMainWindow):
 		print('Done.')
 		self.close()
 
-	def uncheck_post_proc(self):
-		self.select_post_proc_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
-		self.select_post_proc_btn.setIconSize(QSize(20, 20))
-		self.post_proc_ticked = False
-		for element in self.post_proc_options_to_disable:
-			element.setEnabled(False)
-
-	def check_post_proc(self):
-		self.select_post_proc_btn.setIcon(icon(MDI6.checkbox_outline,color="black"))
-		self.select_post_proc_btn.setIconSize(QSize(20, 20))
-		self.post_proc_ticked = True		
-		for element in self.post_proc_options_to_disable:
-			element.setEnabled(True)
-
-	def uncheck_features(self):
-		self.select_features_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
-		self.select_features_btn.setIconSize(QSize(20, 20))
-		self.features_ticked = False
-		for element in self.features_to_disable:
-			element.setEnabled(False)
-
-	def check_features(self):
-		self.select_features_btn.setIcon(icon(MDI6.checkbox_outline,color="black"))
-		self.select_features_btn.setIconSize(QSize(20, 20))
-		self.features_ticked = True		
-		for element in self.features_to_disable:
-			element.setEnabled(True)
-
 	def extract_haralick_options(self):
 
 		if self.activate_haralick_btn.isChecked():
@@ -634,95 +464,93 @@ class ConfigMeasurements(QMainWindow):
 		else:
 			self.haralick_options = None		
 
-	def load_previous_tracking_instructions(self):
+	def load_previous_measurement_instructions(self):
 
 		"""
-		Read the tracking options from a previously written json file.
+		Read the measurmeent options from a previously written json file and format properly for the UI.
 		"""
 
 		print('Reading instructions..')
-		if os.path.exists(self.track_instructions_write_path):
-			with open(self.track_instructions_write_path, 'r') as f:
-				tracking_instructions = json.load(f)
-				print(tracking_instructions)
+		if os.path.exists(self.measure_instructions_path):
+			with open(self.measure_instructions_path, 'r') as f:
+				measurement_instructions = json.load(f)
+				print(measurement_instructions)
 				
-				# Features
-				features = tracking_instructions['features']
-				if (features is not None) and len(features)>0:
-					self.check_features()
-					self.ContentsFeatures.show()
-					self.features_list.list_widget.clear()
-					self.features_list.list_widget.addItems(features)
-				else:
-					self.ContentsFeatures.hide()
-					self.uncheck_features()
+				if 'features' in measurement_instructions:
+					features = measurement_instructions['features']
+					if (features is not None) and len(features)>0:
+						self.features_list.list_widget.clear()
+						self.features_list.list_widget.addItems(features)
+					else:
+						self.features_list.list_widget.clear()
 
-				# Uncheck channels that are masked
-				mask_channels = tracking_instructions['mask_channels']
-				if (mask_channels is not None) and len(mask_channels)>0:
-					for ch in mask_channels:
-						for cb in self.mask_channels_cb:
-							if cb.text()==ch:
-								cb.setChecked(False)
+				if 'border_distances' in measurement_instructions:
+					border_distances = measurement_instructions['border_distances']
+					if border_distances is not None:
+						if isinstance(border_distances, int):
+							distances = [border_distances]
+						elif isinstance(border_distances, list):
+							distances = []
+							for d in border_distances:
+								if isinstance(d, int) | isinstance(d, float):
+									distances.append(str(int(d)))
+								elif isinstance(d, list):
+									distances.append(str(int(d[0]))+'-'+str(int(d[1])))
+						self.contours_list.list_widget.clear()
+						self.contours_list.list_widget.addItems(distances)
 
-				haralick_options = tracking_instructions['haralick_options']
-				if haralick_options is None:
-					self.activate_haralick_btn.setChecked(False)
-					self.show_haralick_options()
-				else:
-					self.activate_haralick_btn.setChecked(True)
-					self.show_haralick_options()
-					if 'target_channel' in haralick_options:
-						idx = haralick_options['target_channel']
-						#idx = self.haralick_channel_choice.findText(text_to_find)
-						self.haralick_channel_choice.setCurrentIndex(idx)
-					if 'scale_factor' in haralick_options:
-						self.haralick_scale_slider.setValue(float(haralick_options['scale_factor']))
-					if ('percentiles' in haralick_options) and (haralick_options['percentiles'] is not None):
-						perc = list(haralick_options['percentiles'])
-						self.haralick_percentile_min_le.setText(str(perc[0]))
-						self.haralick_percentile_max_le.setText(str(perc[1]))
-					if ('clip_values' in haralick_options) and (haralick_options['clip_values'] is not None):
-						values = list(haralick_options['clip_values'])
-						self.haralick_percentile_min_le.setText(str(values[0]))
-						self.haralick_percentile_max_le.setText(str(values[1]))
-						self.percentile_mode=True
-						self.switch_to_absolute_normalization_mode()
-					if 'n_intensity_bins' in haralick_options:
-						self.haralick_n_gray_levels_le.setText(str(haralick_options['n_intensity_bins']))
-					if 'distance' in haralick_options:
-						self.haralick_distance_le.setText(str(haralick_options['distance']))
+				if 'haralick_options' in measurement_instructions:
+					haralick_options = measurement_instructions['haralick_options']
+					if haralick_options is None:
+						self.activate_haralick_btn.setChecked(False)
+						self.show_haralick_options()
+					else:
+						self.activate_haralick_btn.setChecked(True)
+						self.show_haralick_options()
+						if 'target_channel' in haralick_options:
+							idx = haralick_options['target_channel']
+							self.haralick_channel_choice.setCurrentIndex(idx)
+						if 'scale_factor' in haralick_options:
+							self.haralick_scale_slider.setValue(float(haralick_options['scale_factor']))
+						if ('percentiles' in haralick_options) and (haralick_options['percentiles'] is not None):
+							perc = list(haralick_options['percentiles'])
+							self.haralick_percentile_min_le.setText(str(perc[0]))
+							self.haralick_percentile_max_le.setText(str(perc[1]))
+						if ('clip_values' in haralick_options) and (haralick_options['clip_values'] is not None):
+							values = list(haralick_options['clip_values'])
+							self.haralick_percentile_min_le.setText(str(values[0]))
+							self.haralick_percentile_max_le.setText(str(values[1]))
+							self.percentile_mode=True
+							self.switch_to_absolute_normalization_mode()
+						if 'n_intensity_bins' in haralick_options:
+							self.haralick_n_gray_levels_le.setText(str(haralick_options['n_intensity_bins']))
+						if 'distance' in haralick_options:
+							self.haralick_distance_le.setText(str(haralick_options['distance']))
+
+				if 'intensity_measurement_radii' in measurement_instructions:
+					intensity_measurement_radii = measurement_instructions['intensity_measurement_radii']
+					if intensity_measurement_radii is not None:
+						if isinstance(intensity_measurement_radii, int):
+							radii = [intensity_measurement_radii]
+						elif isinstance(intensity_measurement_radii, list):
+							radii = []
+							for r in intensity_measurement_radii:
+								if isinstance(r, int) | isinstance(r, float):
+									radii.append(str(int(r)))
+								elif isinstance(r, list):
+									radii.append(str(int(r[0]))+'-'+str(int(r[1])))
+						self.radii_list.list_widget.clear()
+						self.radii_list.list_widget.addItems(radii)			
+
+				if 'isotropic_operations' in measurement_instructions:
+					isotropic_operations = measurement_instructions['isotropic_operations']
+					if (isotropic_operations is not None) and len(isotropic_operations)>0:
+						self.operations_list.list_widget.clear()
+						self.operations_list.list_widget.addItems(isotropic_operations)
+					else:
+						self.operations_list.list_widget.clear()
+
 		
-
-
-				# Post processing options
-				post_processing_options = tracking_instructions['post_processing_options']
-				if post_processing_options is None:
-					self.uncheck_post_proc()
-					self.ContentsPostProc.hide()
-					for element in [self.remove_not_in_last_checkbox, self.remove_not_in_first_checkbox, self.interpolate_gaps_checkbox, 
-									self.extrapolate_post_checkbox, self.extrapolate_pre_checkbox, self.interpolate_na_features_checkbox]:
-						element.setChecked(False)
-					self.min_tracklength_slider.setValue(0)
-
-				else:
-					self.check_post_proc()
-					self.ContentsPostProc.show()
-					if "minimum_tracklength" in post_processing_options:
-						self.min_tracklength_slider.setValue(int(post_processing_options["minimum_tracklength"]))
-					if "remove_not_in_first" in post_processing_options:
-						self.remove_not_in_first_checkbox.setChecked(post_processing_options["remove_not_in_first"])
-					if "remove_not_in_last" in post_processing_options:
-						self.remove_not_in_last_checkbox.setChecked(post_processing_options["remove_not_in_last"])
-					if "interpolate_position_gaps" in post_processing_options:
-						self.interpolate_gaps_checkbox.setChecked(post_processing_options["interpolate_position_gaps"])
-					if "extrapolate_tracks_pre" in post_processing_options:
-						self.extrapolate_pre_checkbox.setChecked(post_processing_options["extrapolate_tracks_pre"])
-					if "extrapolate_tracks_post" in post_processing_options:
-						self.extrapolate_post_checkbox.setChecked(post_processing_options["extrapolate_tracks_post"])
-					if "interpolate_na" in post_processing_options:
-						self.interpolate_na_features_checkbox.setChecked(post_processing_options["interpolate_na"])
-
 	def locate_image(self):
 		
 		"""

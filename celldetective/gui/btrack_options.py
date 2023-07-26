@@ -42,11 +42,12 @@ class ConfigTracking(QMainWindow):
 		self.channel_names, self.channels = extract_experiment_channels(exp_config)
 		self.channel_names = np.array(self.channel_names)
 		self.channels = np.array(self.channels)
+		self.screen_height = self.parent.parent.parent.screen_height
 
 		center_window(self)
 		self.setMinimumWidth(500)
-		self.setMinimumHeight(800)
-		self.setMaximumHeight(1160)
+		self.setMinimumHeight(int(0.3*self.screen_height))
+		self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
 		self.load_previous_tracking_instructions()
 

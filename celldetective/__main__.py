@@ -25,6 +25,11 @@ class AppInitWindow(QMainWindow):
 		self.setWindowTitle("celldetective")
 		center_window(self)
 
+		app = QApplication.instance()
+		self.screen = app.primaryScreen()
+		self.geometry = self.screen.availableGeometry()
+		self.screen_width, self.screen_height = self.geometry.getRect()[-2:]
+
 		central_widget = QWidget()
 		self.vertical_layout = QVBoxLayout(central_widget)
 		self.vertical_layout.setContentsMargins(15,15,15,15)

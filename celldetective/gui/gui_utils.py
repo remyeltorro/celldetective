@@ -1,4 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QWidget, QListWidget, QVBoxLayout, QComboBox, QPushButton
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
 def center_window(window):
 	
@@ -134,3 +136,18 @@ class ListWidget(QWidget):
 	# 	listItems=self.list_widget.Items()
 	# 	for item in listItems:
 	# 		self.list_widget.takeItem(self.list_widget.row(item))
+
+
+class FigureCanvas(QWidget):
+	def __init__(self, fig, title="", interactive=True):
+		super().__init__()
+		self.fig = fig
+		self.setWindowTitle(title)
+		center_window(self)
+		self.canvas = FigureCanvasQTAgg(self.fig)
+		if interactive:
+			self.toolbar = NavigationToolbar2QT(self.canvas)
+		layout = QVBoxLayout(self)
+		layout.addWidget(self.canvas)
+		if interactive:
+			layout.addWidget(self.toolbar)

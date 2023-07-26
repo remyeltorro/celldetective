@@ -338,7 +338,7 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	return df_props
 
 def compute_haralick_features(img, labels, channels=None, target_channel=0, scale_factor=1, percentiles=(0.01,99.99), clip_values=None,
-								n_intensity_bins=256, ignore_zero=True, return_mean=True, return_mean_ptp=False, distance=1, disable_progress_bar=False):
+								n_intensity_bins=256, ignore_zero=True, return_mean=True, return_mean_ptp=False, distance=1, disable_progress_bar=False, return_digit_image_only=False):
 
 	"""
 
@@ -452,6 +452,8 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
 			img_binned[i,j] = centered_bins[digitized[i,j] - 1]
 
 	img = img_binned.astype(int)
+	if return_digit_image_only:
+		return img
 
 	haralick_properties = []
 

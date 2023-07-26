@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
-from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine
+from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
@@ -10,6 +10,7 @@ import numpy as np
 import json
 from shutil import copyfile
 import os
+import matplotlib.pyplot as plt
 
 
 class ConfigTracking(QMainWindow):
@@ -45,6 +46,7 @@ class ConfigTracking(QMainWindow):
 		self.setMinimumHeight(800)
 		self.setMaximumHeight(1160)
 		self.populate_widget()
+		self.load_previous_tracking_instructions()
 
 	def populate_widget(self):
 
@@ -83,7 +85,6 @@ class ConfigTracking(QMainWindow):
 		self.submit_btn.clicked.connect(self.write_instructions)
 		main_layout.addWidget(self.submit_btn)
 
-		self.load_previous_tracking_instructions()
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
 		self.button_widget.adjustSize()
@@ -109,9 +110,6 @@ class ConfigTracking(QMainWindow):
 		grid = QGridLayout(self.post_proc_frame)
 
 		self.select_post_proc_btn = QPushButton()
-		self.select_post_proc_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
-		self.select_post_proc_btn.setIconSize(QSize(20, 20))
-		self.post_proc_ticked = False
 		self.select_post_proc_btn.clicked.connect(self.activate_post_proc_options)
 		self.select_post_proc_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		grid.addWidget(self.select_post_proc_btn, 0,0,1,4,alignment=Qt.AlignLeft)
@@ -134,6 +132,7 @@ class ConfigTracking(QMainWindow):
 		self.collapse_post_proc_btn.clicked.connect(lambda: self.ContentsPostProc.setHidden(not self.ContentsPostProc.isHidden()))
 		# self.collapse_post_proc_btn.clicked.connect(self.collapse_features_advanced)
 		self.ContentsPostProc.hide()
+		self.uncheck_post_proc()
 
 
 	def populate_features_frame(self):
@@ -145,9 +144,6 @@ class ConfigTracking(QMainWindow):
 		grid = QGridLayout(self.features_frame)
 
 		self.select_features_btn = QPushButton()
-		self.select_features_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
-		self.select_features_btn.setIconSize(QSize(20, 20))
-		self.features_ticked = True
 		self.select_features_btn.clicked.connect(self.activate_feature_options)
 		self.select_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		grid.addWidget(self.select_features_btn, 0,0,1,4,alignment=Qt.AlignLeft)
@@ -171,6 +167,7 @@ class ConfigTracking(QMainWindow):
 		self.collapse_features_btn.clicked.connect(lambda: self.ContentsFeatures.setHidden(not self.ContentsFeatures.isHidden()))
 		self.collapse_features_btn.clicked.connect(self.collapse_features_advanced)
 		#self.ContentsFeatures.hide()
+		self.check_features()
 
 	def collapse_features_advanced(self):
 
@@ -323,16 +320,23 @@ class ConfigTracking(QMainWindow):
 
 		self.haralick_percentile_min_le = QLineEdit('0.01')
 		self.haralick_percentile_max_le = QLineEdit('99.9')
+		self.haralick_normalization_mode_btn = QPushButton()
+		self.haralick_normalization_mode_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.haralick_normalization_mode_btn.setIcon(icon(MDI6.percent_circle,color="black"))
+		self.haralick_normalization_mode_btn.setIconSize(QSize(20, 20))		
+		self.haralick_normalization_mode_btn.setToolTip("Switch to absolute normalization values.")
+		self.percentile_mode = True
+
 		self.haralick_percentile_min_lbl = QLabel('Min percentile: ')
 		self.haralick_percentile_max_lbl = QLabel('Max percentile: ')
 
 		self.haralick_hist_btn = QPushButton()
-		#self.haralick_hist_btn.clicked.connect(self.control_haralick_histogram)
+		self.haralick_hist_btn.clicked.connect(self.control_haralick_intensity_histogram)
 		self.haralick_hist_btn.setIcon(icon(MDI6.poll,color="k"))
 		self.haralick_hist_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 
 		self.haralick_digit_btn = QPushButton()
-		#self.haralick_digit_btn.clicked.connect(self.control_haralick_digitalization)
+		self.haralick_digit_btn.clicked.connect(self.control_haralick_digitalization)
 		self.haralick_digit_btn.setIcon(icon(MDI6.image_check,color="k"))
 		self.haralick_digit_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 
@@ -367,7 +371,8 @@ class ConfigTracking(QMainWindow):
 
 		slider_min_percentile_layout = QHBoxLayout()
 		slider_min_percentile_layout.addWidget(self.haralick_percentile_min_lbl,40)
-		slider_min_percentile_layout.addWidget(self.haralick_percentile_min_le,60)
+		slider_min_percentile_layout.addWidget(self.haralick_percentile_min_le,55)
+		slider_min_percentile_layout.addWidget(self.haralick_normalization_mode_btn, 5)
 		self.haralick_layout.addLayout(slider_min_percentile_layout)
 
 		slider_max_percentile_layout = QHBoxLayout()
@@ -378,14 +383,36 @@ class ConfigTracking(QMainWindow):
 		self.haralick_to_hide = [self.haralick_hist_btn, self.haralick_digit_btn, self.haralick_channel_lbl, self.haralick_channel_choice,
 								self.haralick_distance_le, self.haralick_distance_lbl, self.haralick_n_gray_levels_le, self.haralick_n_gray_levels_lbl,
 								self.haralick_scale_lbl, self.haralick_scale_slider, self.haralick_percentile_min_lbl, self.haralick_percentile_min_le,
-								self.haralick_percentile_max_lbl, self.haralick_percentile_max_le]
+								self.haralick_percentile_max_lbl, self.haralick_percentile_max_le, self.haralick_normalization_mode_btn]
 		for element in self.haralick_to_hide:
 			element.hide()
 
 		self.features_to_disable = [self.feature_lbl, self.del_feature_btn, self.add_feature_btn, self.features_list, 
 									self.use_channel_lbl, *self.mask_channels_cb, self.activate_haralick_btn]
 
+		self.haralick_normalization_mode_btn.clicked.connect(self.switch_to_absolute_normalization_mode)
 		layout.addLayout(self.haralick_layout)
+
+	def switch_to_absolute_normalization_mode(self):
+		if self.percentile_mode:
+			self.percentile_mode = False
+			self.haralick_normalization_mode_btn.setIcon(icon(MDI6.percent_circle_outline,color="black"))
+			self.haralick_normalization_mode_btn.setIconSize(QSize(20, 20))		
+			self.haralick_normalization_mode_btn.setToolTip("Switch to percentile normalization values.")			
+			self.haralick_percentile_min_lbl.setText('Min value: ')
+			self.haralick_percentile_max_lbl.setText('Max value: ')
+			self.haralick_percentile_min_le.setText('0')
+			self.haralick_percentile_max_le.setText('10000')
+
+		else:
+			self.percentile_mode = True
+			self.haralick_normalization_mode_btn.setIcon(icon(MDI6.percent_circle,color="black"))
+			self.haralick_normalization_mode_btn.setIconSize(QSize(20, 20))
+			self.haralick_normalization_mode_btn.setToolTip("Switch to absolute normalization values.")			
+			self.haralick_percentile_min_lbl.setText('Min percentile: ')
+			self.haralick_percentile_max_lbl.setText('Max percentile: ')			
+			self.haralick_percentile_min_le.setText('0.01')
+			self.haralick_percentile_max_le.setText('99.99')
 
 	def populate_config_frame(self):
 
@@ -622,9 +649,14 @@ class ConfigTracking(QMainWindow):
 		if self.activate_haralick_btn.isChecked():
 			haralick_options = {"target_channel": self.haralick_channel_choice.currentText(),
 								"scale_factor": float(self.haralick_scale_slider.value()),
-								"percentiles": (float(self.haralick_percentile_min_le.text()), float(self.haralick_percentile_max_le.text())),
 								"n_intensity_bins": int(self.haralick_n_gray_levels_le.text()),
+								"distance" : int(self.haralick_distance_le.text()),
 								}
+			if self.percentile_mode:
+				haralick_options.update({"percentiles": (float(self.haralick_percentile_min_le.text()), float(self.haralick_percentile_max_le.text())), "clip_values": None})
+			else:
+				haralick_options.update({"percentiles": None, "clip_values": (float(self.haralick_percentile_min_le.text()), float(self.haralick_percentile_max_le.text()))})
+
 		else:
 			haralick_options = None
 		tracking_options.update({'haralick_options': haralick_options})
@@ -653,7 +685,35 @@ class ConfigTracking(QMainWindow):
 			f.write(self.config_le.toPlainText())
 		print('Done.')
 		self.close()
-	
+
+	def uncheck_post_proc(self):
+		self.select_post_proc_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
+		self.select_post_proc_btn.setIconSize(QSize(20, 20))
+		self.post_proc_ticked = False
+		for element in self.post_proc_options_to_disable:
+			element.setEnabled(False)
+
+	def check_post_proc(self):
+		self.select_post_proc_btn.setIcon(icon(MDI6.checkbox_outline,color="black"))
+		self.select_post_proc_btn.setIconSize(QSize(20, 20))
+		self.post_proc_ticked = True		
+		for element in self.post_proc_options_to_disable:
+			element.setEnabled(True)
+
+	def uncheck_features(self):
+		self.select_features_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
+		self.select_features_btn.setIconSize(QSize(20, 20))
+		self.features_ticked = False
+		for element in self.features_to_disable:
+			element.setEnabled(False)
+
+	def check_features(self):
+		self.select_features_btn.setIcon(icon(MDI6.checkbox_outline,color="black"))
+		self.select_features_btn.setIconSize(QSize(20, 20))
+		self.features_ticked = True		
+		for element in self.features_to_disable:
+			element.setEnabled(True)
+
 	def load_previous_tracking_instructions(self):
 
 		"""
@@ -661,7 +721,119 @@ class ConfigTracking(QMainWindow):
 		"""
 
 		print('Reading instructions..')
-		# to do
-		pass
+		if os.path.exists(self.track_instructions_write_path):
+			with open(self.track_instructions_write_path, 'r') as f:
+				tracking_instructions = json.load(f)
+				print(tracking_instructions)
+				
+				# Features
+				features = tracking_instructions['features']
+				if (features is not None) and len(features)>0:
+					self.check_features()
+					self.ContentsFeatures.show()
+					self.features_list.list_widget.clear()
+					self.features_list.list_widget.addItems(features)
+				else:
+					self.ContentsFeatures.hide()
+					self.uncheck_features()
+
+				# Uncheck channels that are masked
+				mask_channels = tracking_instructions['mask_channels']
+				if (mask_channels is not None) and len(mask_channels)>0:
+					for ch in mask_channels:
+						for cb in self.mask_channels_cb:
+							if cb.text()==ch:
+								cb.setChecked(False)
+
+				haralick_options = tracking_instructions['haralick_options']
+				if haralick_options is None:
+					self.activate_haralick_btn.setChecked(False)
+					self.show_haralick_options()
+				else:
+					self.activate_haralick_btn.setChecked(True)
+					self.show_haralick_options()
+					if 'target_channel' in haralick_options:
+						text_to_find = haralick_options['target_channel']
+						idx = self.haralick_channel_choice.findText(text_to_find)
+						self.haralick_channel_choice.setCurrentIndex(idx)
+					if 'scale_factor' in haralick_options:
+						self.haralick_scale_slider.setValue(float(haralick_options['scale_factor']))
+					if ('percentiles' in haralick_options) and (haralick_options['percentiles'] is not None):
+						perc = list(haralick_options['percentiles'])
+						self.haralick_percentile_min_le.setText(str(perc[0]))
+						self.haralick_percentile_max_le.setText(str(perc[1]))
+					if ('clip_values' in haralick_options) and (haralick_options['clip_values'] is not None):
+						values = list(haralick_options['clip_values'])
+						self.haralick_percentile_min_le.setText(str(values[0]))
+						self.haralick_percentile_max_le.setText(str(values[1]))
+						self.percentile_mode=True
+						self.switch_to_absolute_normalization_mode()
+					if 'n_intensity_bins' in haralick_options:
+						self.haralick_n_gray_levels_le.setText(str(haralick_options['n_intensity_bins']))
+					if 'distance' in haralick_options:
+						self.haralick_distance_le.setText(str(haralick_options['distance']))
+		
+
+
+				# Post processing options
+				post_processing_options = tracking_instructions['post_processing_options']
+				if post_processing_options is None:
+					self.uncheck_post_proc()
+					self.ContentsPostProc.hide()
+					for element in [self.remove_not_in_last_checkbox, self.remove_not_in_first_checkbox, self.interpolate_gaps_checkbox, 
+									self.extrapolate_post_checkbox, self.extrapolate_pre_checkbox, self.interpolate_na_features_checkbox]:
+						element.setChecked(False)
+					self.min_tracklength_slider.setValue(0)
+
+				else:
+					self.check_post_proc()
+					self.ContentsPostProc.show()
+					if "minimum_tracklength" in post_processing_options:
+						self.min_tracklength_slider.setValue(int(post_processing_options["minimum_tracklength"]))
+					if "remove_not_in_first" in post_processing_options:
+						self.remove_not_in_first_checkbox.setChecked(post_processing_options["remove_not_in_first"])
+					if "remove_not_in_last" in post_processing_options:
+						self.remove_not_in_last_checkbox.setChecked(post_processing_options["remove_not_in_last"])
+					if "interpolate_position_gap" in post_processing_options:
+						self.interpolate_gaps_checkbox.setChecked(post_processing_options["interpolate_position_gap"])
+					if "extrapolate_pre" in post_processing_options:
+						self.extrapolate_pre_checkbox.setChecked(post_processing_options["extrapolate_pre"])
+					if "extrapolate_post" in post_processing_options:
+						self.extrapolate_post_checkbox.setChecked(post_processing_options["extrapolate_post"])
+					if "interpolate_na" in post_processing_options:
+						self.interpolate_na_features_checkbox.setChecked(post_processing_options["interpolate_na"])
+
+	def control_haralick_digitalization(self):
+
+		self.fig, self.ax = plt.subplots()
+		self.imshow_digit_window = FigureCanvas(self.fig, title="Haralick: control digitization")
+
+		self.image_data = np.random.rand(100, 100)
+
+		# Clear previous plot
+		self.ax.clear()
+
+		# Display the image using imshow
+		self.ax.imshow(self.image_data, cmap='gray')
+
+		# Refresh canvas
+		self.imshow_digit_window.canvas.draw()
+		self.imshow_digit_window.show()
+
+	def control_haralick_intensity_histogram(self):
+
+		self.fig, self.ax = plt.subplots()
+		self.hist_window = FigureCanvas(self.fig, title="Haralick: control digitized histogram")
+		self.image_data = np.random.rand(100, 100)
+		# Clear previous plot
+		self.ax.clear()
+		# Display the image using imshow
+		self.ax.hist(self.image_data.flatten(), bins=100)
+		# Refresh canvas
+		self.hist_window.canvas.draw()
+		self.hist_window.show()		
+
+
+
 
 

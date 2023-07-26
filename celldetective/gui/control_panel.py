@@ -327,6 +327,7 @@ class ControlPanel(QMainWindow):
 		if self.position_list.currentText()=="*":
 			for p in panels:
 				p.check_seg_btn.setEnabled(False)
+				p.check_tracking_result_btn.setEnabled(False)
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()
@@ -338,4 +339,13 @@ class ControlPanel(QMainWindow):
 					self.ProcessTargets.check_seg_btn.setEnabled(True)
 				else:
 					self.ProcessTargets.check_seg_btn.setEnabled(False)
+				if os.path.exists(self.pos+'/output/tables/napari_target_trajectories.npy'):
+					self.ProcessTargets.check_tracking_result_btn.setEnabled(True)
+				else:
+					self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
+				if os.path.exists(self.pos+'/output/tables/napari_effector_trajectories.npy'):
+					self.ProcessEffectors.check_tracking_result_btn.setEnabled(True)
+				else:
+					self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
+
 

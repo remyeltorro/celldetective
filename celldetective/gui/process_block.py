@@ -3,10 +3,11 @@ from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
-from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list
-from celldetective.gui import SegmentationModelLoader, ConfigTracking
+from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
+from celldetective.gui import SegmentationModelLoader, ConfigTracking, ConfigMeasurements
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position
+from celldetective.tracking import track_at_position
 import numpy as np
 from glob import glob
 from natsort import natsorted
@@ -102,8 +103,17 @@ class ProcessPanel(QFrame):
 		self.measure_action.setIcon(icon(MDI6.eyedropper,color="black"))
 		self.measure_action.setIconSize(QSize(20, 20))
 		self.measure_action.setToolTip("Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
-		measure_layout.addWidget(self.measure_action)
+		measure_layout.addWidget(self.measure_action, 90)
 		#self.to_disable.append(self.measure_action_tc)
+
+		self.measurements_config_btn = QPushButton()
+		self.measurements_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
+		self.measurements_config_btn.setIconSize(QSize(20, 20))
+		self.measurements_config_btn.setToolTip("Measurements configuration")
+		self.measurements_config_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.measurements_config_btn.clicked.connect(self.open_measurement_configuration_ui)
+		measure_layout.addWidget(self.measurements_config_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
+
 		self.grid_contents.addLayout(measure_layout,5,0,1,4)
 
 	def generate_signal_analysis_options(self):
@@ -172,7 +182,7 @@ class ProcessPanel(QFrame):
 		self.check_tracking_result_btn.setIconSize(QSize(20, 20))
 		self.check_tracking_result_btn.setToolTip("Control dynamically the trajectories.")
 		self.check_tracking_result_btn.setStyleSheet(self.parent.parent.button_select_all)
-		#self.check_tracking_result_btn.clicked.connect(self.check_tracks_anim)
+		self.check_tracking_result_btn.clicked.connect(self.open_napari_tracking)
 		self.check_tracking_result_btn.setEnabled(False)
 		grid_track.addWidget(self.check_tracking_result_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
 
@@ -316,6 +326,11 @@ class ProcessPanel(QFrame):
 		self.ConfigTracking = ConfigTracking(self)
 		self.ConfigTracking.show()
 
+	def open_measurement_configuration_ui(self):
+
+		self.ConfigMeasurements = ConfigMeasurements(self)
+		self.ConfigMeasurements.show()
+
 	def process_population(self):
 		
 		if self.parent.well_list.currentText()=="*":
@@ -363,6 +378,10 @@ class ProcessPanel(QFrame):
 					else:
 						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=True)
 
+				if self.track_action.isChecked():
+					track_at_position(self.pos, self.mode)
+
+
 			# 	if self.track_action_tc.isChecked():
 			# 		self.track_tcs()
 
@@ -379,3 +398,6 @@ class ProcessPanel(QFrame):
 
 		# QApplication.restoreOverrideCursor()
 		# self.unfreeze()
+
+	def open_napari_tracking(self):
+		control_tracking_btrack(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode)

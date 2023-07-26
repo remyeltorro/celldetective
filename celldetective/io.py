@@ -11,6 +11,8 @@ from csbdeep.utils import normalize_mi_ma
 import skimage.io as skio
 from scipy.ndimage import zoom
 from btrack.datasets import cell_config
+from magicgui import magicgui
+from csbdeep.io import save_tiff_imagej_compatible
 
 def locate_stack(position, prefix='Aligned'):
 
@@ -378,61 +380,6 @@ def get_signal_models_list(return_path=False):
 	else:
 		return available_models, modelpath
 
-def view_on_napari_btrack(data,properties,graph,stack=None,labels=None,relabel=True):
-	
-	"""
-
-	Visualize btrack data, including stack, labels, points, and tracks, using the napari viewer.
-
-	Parameters
-	----------
-	data : ndarray
-		The btrack data containing information about tracks.
-	properties : ndarray
-		The properties associated with the btrack data.
-	graph : Graph
-		The btrack graph containing information about track connections.
-	stack : ndarray, optional
-		The stack of images to visualize. The default is None.
-	labels : ndarray, optional
-		The segmentation labels to visualize. The default is None.
-	relabel : bool, optional
-		Specify whether to relabel the segmentation labels using the provided data. The default is True.
-
-	Notes
-	-----
-	This function visualizes btrack data using the napari viewer. It adds the stack, labels, points,
-	and tracks to the viewer for visualization. If `relabel` is True and labels are provided, it calls
-	the `relabel_segmentation` function to relabel the segmentation labels based on the provided data.
-
-	Examples
-	--------
-	>>> view_on_napari_btrack(data, properties, graph, stack=stack, labels=labels, relabel=True)
-	# Visualize btrack data, including stack, labels, points, and tracks, using the napari viewer.
-
-	"""
-
-	if (labels is not None)*relabel:
-		labels = relabel_segmentation(labels, data, properties)
-
-	vertices = data[:, 1:]
-	viewer = napari.Viewer()
-	if stack is not None:
-		viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
-	if labels is not None:
-		viewer.add_labels(labels, name='segmentation',opacity=0.4)
-	viewer.add_points(vertices, size=4, name='points', opacity=0.3)
-	viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
-	viewer.show(block=True)
-	
-	del viewer
-	del stack
-	del labels
-	del vertices
-	del data
-	del properties
-	del graph
-	gc.collect()
 
 def relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}):
 
@@ -491,7 +438,7 @@ def relabel_segmentation(labels, data, properties, column_labels={'track': "trac
 
 	return new_labels
 
-def control_tracking_btrack(position, prefix="Aligned", population="target"):
+def control_tracking_btrack(position, prefix="Aligned", population="target", relabel=True, flush_memory=True):
 
 	"""
 	Load the necessary data for visualization of bTrack trajectories in napari.
@@ -518,7 +465,68 @@ def control_tracking_btrack(position, prefix="Aligned", population="target"):
 	"""
 
 	data,properties,graph,labels,stack = load_napari_data(position, prefix=prefix, population=population)
-	view_on_napari_btrack(data,properties,graph,labels=labels, stack=stack)
+	view_on_napari_btrack(data,properties,graph,labels=labels, stack=stack, relabel=relabel, flush_memory=flush_memory)
+
+def view_on_napari_btrack(data,properties,graph,stack=None,labels=None,relabel=True, flush_memory=True, position=None):
+	
+	"""
+
+	Visualize btrack data, including stack, labels, points, and tracks, using the napari viewer.
+
+	Parameters
+	----------
+	data : ndarray
+		The btrack data containing information about tracks.
+	properties : ndarray
+		The properties associated with the btrack data.
+	graph : Graph
+		The btrack graph containing information about track connections.
+	stack : ndarray, optional
+		The stack of images to visualize. The default is None.
+	labels : ndarray, optional
+		The segmentation labels to visualize. The default is None.
+	relabel : bool, optional
+		Specify whether to relabel the segmentation labels using the provided data. The default is True.
+
+	Notes
+	-----
+	This function visualizes btrack data using the napari viewer. It adds the stack, labels, points,
+	and tracks to the viewer for visualization. If `relabel` is True and labels are provided, it calls
+	the `relabel_segmentation` function to relabel the segmentation labels based on the provided data.
+
+	Examples
+	--------
+	>>> view_on_napari_btrack(data, properties, graph, stack=stack, labels=labels, relabel=True)
+	# Visualize btrack data, including stack, labels, points, and tracks, using the napari viewer.
+
+	"""
+
+	if (labels is not None)*relabel:
+		print('Relabeling the cell masks with the track ID.')
+		labels = relabel_segmentation(labels, data, properties)
+
+	vertices = data[:, 1:]
+	viewer = napari.Viewer()
+	if stack is not None:
+		viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
+	if labels is not None:
+		viewer.add_labels(labels, name='segmentation',opacity=0.4)
+	viewer.add_points(vertices, size=4, name='points', opacity=0.3)
+	viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
+	viewer.show(block=True)
+	
+	if flush_memory:
+		# temporary fix for slight napari memory leak
+		for i in range(10000):
+			try:
+				viewer.layers.pop()
+			except:
+				pass
+
+		del viewer
+		del stack
+		del labels
+		gc.collect()
 
 def load_napari_data(position, prefix="Aligned", population="target"):
 
@@ -586,11 +594,25 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 
 	"""
 
+	def export_labels():
+		labels_layer = viewer.layers['segmentation'].data
+		for t,im in enumerate(tqdm(labels_layer)):
+			save_tiff_imagej_compatible(output_folder+f"{str(t).zfill(4)}.tif", im, axes='YX')
+		print("The labels have been successfully rewritten.")
+
+	@magicgui(call_button='Save the modified labels')
+	def save_widget():
+		return export_labels()
+
 	stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
+	if not population.endswith('s'):
+		population+='s'
+	output_folder = position+f'labels_{population}/'
 
 	viewer = napari.Viewer()
 	viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
 	viewer.add_labels(labels, name='segmentation',opacity=0.4)
+	viewer.window.add_dock_widget(save_widget, area='right')
 	viewer.show(block=True)
 
 	if flush_memory:
@@ -849,6 +871,5 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 		frames = zoom(frames, [scale,scale,1], order=3)
 	return frames
 
-
-
-
+if __name__ == '__main__':
+	control_segmentation_napari("/home/limozin/Documents/Experiments/MinimumJan/W4/401/", prefix='Aligned', population="target", flush_memory=False)

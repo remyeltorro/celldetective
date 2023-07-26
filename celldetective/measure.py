@@ -338,7 +338,7 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	return df_props
 
 def compute_haralick_features(img, labels, channels=None, target_channel=0, scale_factor=1, percentiles=(0.01,99.99), clip_values=None,
-								n_intensity_bins=256, ignore_zero=True, return_mean=True, return_mean_ptp=False, distance=1, disable_progress_bar=False, return_digit_image_only=False):
+								n_intensity_bins=256, ignore_zero=True, return_mean=True, return_mean_ptp=False, distance=1, disable_progress_bar=False, return_norm_image_only=False, return_digit_image_only=False):
 
 	"""
 
@@ -441,6 +441,9 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
 	img /= (max_value-min_value) / n_intensity_bins
 	img[img<=0.] = 0.
 	img[img>=n_intensity_bins] = n_intensity_bins
+
+	if return_norm_image_only:
+		return img
 
 	hist,bins = np.histogram(img.flatten(),bins=n_intensity_bins)
 	centered_bins = [bins[0]] + [bins[i] + (bins[i+1] - bins[i])/2. for i in range(len(bins)-1)]

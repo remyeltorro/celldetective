@@ -17,6 +17,9 @@ import numpy as np
 from skimage.transform import resize
 from csbdeep.io import save_tiff_imagej_compatible
 import gc
+from art import tprint
+
+tprint("Segment")
 
 parser = argparse.ArgumentParser(description="Segment a movie in position with the selected model",
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)

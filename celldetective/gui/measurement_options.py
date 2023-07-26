@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
-from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas
+from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
 
-class ConfigTracking(QMainWindow):
+class ConfigMeasurements(QMainWindow):
 	
 	"""
 	UI to set tracking parameters for bTrack.
@@ -26,7 +26,7 @@ class ConfigTracking(QMainWindow):
 		
 		super().__init__()
 		self.parent = parent
-		self.setWindowTitle("Configure tracking")
+		self.setWindowTitle("Configure measurements")
 		self.mode = self.parent.mode
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":
@@ -48,12 +48,12 @@ class ConfigTracking(QMainWindow):
 		self.setMinimumHeight(800)
 		self.setMaximumHeight(1160)
 		self.populate_widget()
-		self.load_previous_tracking_instructions()
+		#self.load_previous_tracking_instructions()
 
 	def populate_widget(self):
 
 		"""
-		Create the multibox design with collapsable frames.
+		Create the multibox design.
 
 		"""
 		
@@ -64,23 +64,17 @@ class ConfigTracking(QMainWindow):
 		self.button_widget.setLayout(main_layout)
 		main_layout.setContentsMargins(30,30,30,30)
 
-		# First collapsable Frame CONFIG
-		self.config_frame = QFrame()
-		self.config_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-		self.populate_config_frame()
-		main_layout.addWidget(self.config_frame)
-
-		# Second collapsable frame FEATURES
+		# first frame for FEATURES
 		self.features_frame = QFrame()
 		self.features_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_features_frame()
 		main_layout.addWidget(self.features_frame)
 
-		# Third collapsable frame POST-PROCESSING
-		self.post_proc_frame = QFrame()
-		self.post_proc_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-		self.populate_post_proc_frame()
-		main_layout.addWidget(self.post_proc_frame)
+		# second frame for ISOTROPIC MEASUREMENTS
+		self.iso_frame = QFrame()
+		self.iso_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+		self.populate_iso_frame()
+		main_layout.addWidget(self.iso_frame)
 
 		self.submit_btn = QPushButton('Save')
 		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
@@ -103,39 +97,22 @@ class ConfigTracking(QMainWindow):
 		self.adjustScrollArea()
 
 
-	def populate_post_proc_frame(self):
+	def populate_iso_frame(self):
 
 		"""
 		Add widgets and layout in the POST-PROCESSING frame.
 		"""
 
-		grid = QGridLayout(self.post_proc_frame)
+		grid = QGridLayout(self.iso_frame)
 
-		self.select_post_proc_btn = QPushButton()
-		self.select_post_proc_btn.clicked.connect(self.activate_post_proc_options)
-		self.select_post_proc_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		grid.addWidget(self.select_post_proc_btn, 0,0,1,4,alignment=Qt.AlignLeft)
-
-		self.post_proc_lbl = QLabel("POST-PROCESSING")
-		self.post_proc_lbl.setStyleSheet("""
+		self.iso_lbl = QLabel("ISOTROPIC MEASUREMENTS")
+		self.iso_lbl.setStyleSheet("""
 			font-weight: bold;
 			padding: 0px;
 			""")
-		grid.addWidget(self.post_proc_lbl, 0, 0, 1, 4, alignment=Qt.AlignCenter)
-
-		self.collapse_post_proc_btn = QPushButton()
-		self.collapse_post_proc_btn.setIcon(icon(MDI6.chevron_down,color="black"))
-		self.collapse_post_proc_btn.setIconSize(QSize(20, 20))
-		self.collapse_post_proc_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		grid.addWidget(self.collapse_post_proc_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
-
-		self.generate_post_proc_panel_contents()
-		grid.addWidget(self.ContentsPostProc, 1, 0, 1, 4, alignment=Qt.AlignTop)
-		self.collapse_post_proc_btn.clicked.connect(lambda: self.ContentsPostProc.setHidden(not self.ContentsPostProc.isHidden()))
-		# self.collapse_post_proc_btn.clicked.connect(self.collapse_features_advanced)
-		self.ContentsPostProc.hide()
-		self.uncheck_post_proc()
-
+		grid.addWidget(self.iso_lbl, 0, 0, 1, 4, alignment=Qt.AlignCenter)
+		self.generate_iso_contents()
+		grid.addWidget(self.ContentsIso, 1, 0, 1, 4, alignment=Qt.AlignTop)
 
 	def populate_features_frame(self):
 
@@ -145,12 +122,6 @@ class ConfigTracking(QMainWindow):
 
 		grid = QGridLayout(self.features_frame)
 
-		self.select_features_btn = QPushButton()
-		self.select_features_btn.clicked.connect(self.activate_feature_options)
-		self.select_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		grid.addWidget(self.select_features_btn, 0,0,1,4,alignment=Qt.AlignLeft)
-
-
 		self.feature_lbl = QLabel("FEATURES")
 		self.feature_lbl.setStyleSheet("""
 			font-weight: bold;
@@ -158,94 +129,69 @@ class ConfigTracking(QMainWindow):
 			""")
 		grid.addWidget(self.feature_lbl, 0, 0, 1, 4, alignment=Qt.AlignCenter)
 
-		self.collapse_features_btn = QPushButton()
-		self.collapse_features_btn.setIcon(icon(MDI6.chevron_down,color="black"))
-		self.collapse_features_btn.setIconSize(QSize(20, 20))
-		self.collapse_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		grid.addWidget(self.collapse_features_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
-
 		self.generate_feature_panel_contents()
 		grid.addWidget(self.ContentsFeatures, 1, 0, 1, 4, alignment=Qt.AlignTop)
-		self.collapse_features_btn.clicked.connect(lambda: self.ContentsFeatures.setHidden(not self.ContentsFeatures.isHidden()))
-		self.collapse_features_btn.clicked.connect(self.collapse_features_advanced)
-		#self.ContentsFeatures.hide()
-		self.check_features()
 
-	def collapse_features_advanced(self):
 
-		"""
-		Switch the chevron icon and adjust the size for the FEATURES frame.
-		"""
+	def generate_iso_contents(self):
 
-		if self.ContentsFeatures.isHidden():
-			self.collapse_features_btn.setIcon(icon(MDI6.chevron_down,color="black"))
-			self.collapse_features_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()
-		else:
-			self.collapse_features_btn.setIcon(icon(MDI6.chevron_up,color="black"))
-			self.collapse_features_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()	
-
-	def generate_post_proc_panel_contents(self):
-
-		self.ContentsPostProc = QFrame()
-		layout = QVBoxLayout(self.ContentsPostProc)
+		self.ContentsIso = QFrame()
+		layout = QVBoxLayout(self.ContentsIso)
 		layout.setContentsMargins(0,0,0,0)
 
-		post_proc_layout  = QHBoxLayout()
-		self.post_proc_lbl = QLabel("Post processing on the tracks:")
-		post_proc_layout.addWidget(self.post_proc_lbl, 90)
-		layout.addLayout(post_proc_layout)
 
-		clean_traj_sublayout = QVBoxLayout()
-		clean_traj_sublayout.setContentsMargins(15,15,15,15)
+		radii_layout = QHBoxLayout()
+		self.radii_lbl = QLabel('Measurement radii (from center):')
+		self.radii_lbl.setToolTip('Define radii or donughts for intensity measurements.')
+		radii_layout.addWidget(self.radii_lbl, 90)
 
-		tracklength_layout = QHBoxLayout()
-		self.min_tracklength_slider = QLabeledSlider()
-		self.min_tracklength_slider.setSingleStep(1)
-		self.min_tracklength_slider.setTickInterval(1)
-		self.min_tracklength_slider.setSingleStep(1)
-		self.min_tracklength_slider.setOrientation(1)
-		self.min_tracklength_slider.setRange(0,self.parent.parent.len_movie)
-		self.min_tracklength_slider.setValue(0)
-		tracklength_layout.addWidget(QLabel('Min. tracklength: '),40)
-		tracklength_layout.addWidget(self.min_tracklength_slider, 60)
-		clean_traj_sublayout.addLayout(tracklength_layout)
+		self.del_radius_btn = QPushButton("")
+		self.del_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_radius_btn.setIcon(icon(MDI6.trash_can,color="black"))
+		self.del_radius_btn.setToolTip("Remove radius")
+		self.del_radius_btn.setIconSize(QSize(20, 20))
+		radii_layout.addWidget(self.del_radius_btn, 5)
 
-		self.remove_not_in_first_checkbox = QCheckBox('Remove tracks that do not start at the beginning')
-		self.remove_not_in_first_checkbox.setIcon(icon(MDI6.arrow_expand_right,color="k"))
-		clean_traj_sublayout.addWidget(self.remove_not_in_first_checkbox)
+		self.add_radius_btn = QPushButton("")
+		self.add_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.add_radius_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.add_radius_btn.setToolTip("Add radius")
+		self.add_radius_btn.setIconSize(QSize(20, 20))	
+		radii_layout.addWidget(self.add_radius_btn, 5)
+		layout.addLayout(radii_layout)
+		
+		self.radii_list = ListWidget(self, GeometryChoice, initial_features=["10"])
+		layout.addWidget(self.radii_list)
 
-		self.remove_not_in_last_checkbox = QCheckBox('Remove tracks that do not end at the end')
-		self.remove_not_in_last_checkbox.setIcon(icon(MDI6.arrow_expand_left,color="k"))
-		clean_traj_sublayout.addWidget(self.remove_not_in_last_checkbox)
+		self.del_radius_btn.clicked.connect(self.radii_list.removeSel)
+		self.add_radius_btn.clicked.connect(self.radii_list.addItem)
 
-		self.interpolate_gaps_checkbox = QCheckBox('Interpolate missed detections within tracks')
-		self.interpolate_gaps_checkbox.setIcon(icon(MDI6.chart_timeline_variant_shimmer,color="k"))
-		clean_traj_sublayout.addWidget(self.interpolate_gaps_checkbox)
+		# Operation
+		operation_layout = QHBoxLayout()
+		self.op_lbl = QLabel('Operation to perform:')
+		self.op_lbl.setToolTip('Set the operations to perform inside the ROI.')
+		operation_layout.addWidget(self.op_lbl, 90)
 
-		self.extrapolate_post_checkbox = QCheckBox('Sustain last position until the end of the movie')
-		self.extrapolate_post_checkbox.setIcon(icon(MDI6.repeat,color="k"))
+		self.del_op_btn = QPushButton("")
+		self.del_op_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_op_btn.setIcon(icon(MDI6.trash_can,color="black"))
+		self.del_op_btn.setToolTip("Remove operation")
+		self.del_op_btn.setIconSize(QSize(20, 20))
+		operation_layout.addWidget(self.del_op_btn, 5)
 
-		self.extrapolate_pre_checkbox = QCheckBox('Sustain first position from the beginning of the movie')
-		self.extrapolate_pre_checkbox.setIcon(icon(MDI6.repeat,color="k"))
+		self.add_op_btn = QPushButton("")
+		self.add_op_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.add_op_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.add_op_btn.setToolTip("Add operation")
+		self.add_op_btn.setIconSize(QSize(20, 20))	
+		operation_layout.addWidget(self.add_op_btn, 5)
+		layout.addLayout(operation_layout)
+		
+		self.operations_list = ListWidget(self, OperationChoice, initial_features=["mean"])
+		layout.addWidget(self.operations_list)
 
-		clean_traj_sublayout.addWidget(self.extrapolate_post_checkbox)
-		clean_traj_sublayout.addWidget(self.extrapolate_pre_checkbox)
-
-		self.interpolate_na_features_checkbox = QCheckBox('Interpolate features of missed detections')
-		self.interpolate_na_features_checkbox.setIcon(icon(MDI6.format_color_fill,color="k"))
-
-		clean_traj_sublayout.addWidget(self.interpolate_na_features_checkbox)
-		clean_traj_sublayout.addStretch()
-
-		self.post_proc_options_to_disable = [self.post_proc_lbl, self.min_tracklength_slider, self.remove_not_in_first_checkbox,
-											self.remove_not_in_last_checkbox, self.interpolate_gaps_checkbox, self.extrapolate_post_checkbox,
-											self.extrapolate_pre_checkbox, self.interpolate_na_features_checkbox]
-
-		layout.addLayout(clean_traj_sublayout)
+		self.del_op_btn.clicked.connect(self.operations_list.removeSel)
+		self.add_op_btn.clicked.connect(self.operations_list.addItem)
 
 
 	def generate_feature_panel_contents(self):
@@ -256,7 +202,6 @@ class ConfigTracking(QMainWindow):
 
 		feature_layout = QHBoxLayout()
 		feature_layout.setContentsMargins(0,0,0,0)
-
 
 		self.feature_lbl = QLabel("Add features:")
 		self.del_feature_btn = QPushButton("")
@@ -285,20 +230,38 @@ class ConfigTracking(QMainWindow):
 		self.feat_sep2 = QHSeperationLine()
 		layout.addWidget(self.feat_sep2)
 
-		self.use_channel_lbl = QLabel('Use channel:')
-		layout.addWidget(self.use_channel_lbl)
-		self.mask_channels_cb = [QCheckBox() for i in range(len(self.channels))]
-		for cb,chn in zip(self.mask_channels_cb,self.channel_names):
-			cb.setText(chn)
-			cb.setChecked(True)
-			layout.addWidget(cb)
+		contour_layout = QHBoxLayout()
+		self.border_dist_lbl = QLabel('Contour measurements (from edge of mask):')
+		self.border_dist_lbl.setToolTip('Apply the intensity measurements defined above\nto a slice of each cell mask, defined as distance\nfrom the edge.')
+		contour_layout.addWidget(self.border_dist_lbl, 90)
 
-		self.feat_sep1 = QHSeperationLine()
-		layout.addWidget(self.feat_sep1)
+		self.del_contour_btn = QPushButton("")
+		self.del_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_contour_btn.setIcon(icon(MDI6.trash_can,color="black"))
+		self.del_contour_btn.setToolTip("Remove distance")
+		self.del_contour_btn.setIconSize(QSize(20, 20))
+		contour_layout.addWidget(self.del_contour_btn, 5)
 
+		self.add_contour_btn = QPushButton("")
+		self.add_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.add_contour_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.add_contour_btn.setToolTip("Add distance")
+		self.add_contour_btn.setIconSize(QSize(20, 20))	
+		contour_layout.addWidget(self.add_contour_btn, 5)
+		layout.addLayout(contour_layout)
+		
+		self.contours_list = ListWidget(self, GeometryChoice, initial_features=[])
+		layout.addWidget(self.contours_list)
+
+		self.del_contour_btn.clicked.connect(self.contours_list.removeSel)
+		self.add_contour_btn.clicked.connect(self.contours_list.addItem)
+
+		self.feat_sep3 = QHSeperationLine()
+		layout.addWidget(self.feat_sep3)
+
+		# Haralick features parameters
 		self.activate_haralick_btn = QCheckBox('activate Haralick texture features')
 		self.activate_haralick_btn.toggled.connect(self.show_haralick_options)
-		# Haralick features parameters
 
 		self.haralick_channel_choice = QComboBox()
 		self.haralick_channel_choice.addItems(self.channel_names)
@@ -386,12 +349,11 @@ class ConfigTracking(QMainWindow):
 								self.haralick_distance_le, self.haralick_distance_lbl, self.haralick_n_gray_levels_le, self.haralick_n_gray_levels_lbl,
 								self.haralick_scale_lbl, self.haralick_scale_slider, self.haralick_percentile_min_lbl, self.haralick_percentile_min_le,
 								self.haralick_percentile_max_lbl, self.haralick_percentile_max_le, self.haralick_normalization_mode_btn]
-		for element in self.haralick_to_hide:
-			element.hide()
 
 		self.features_to_disable = [self.feature_lbl, self.del_feature_btn, self.add_feature_btn, self.features_list, 
-									self.use_channel_lbl, *self.mask_channels_cb, self.activate_haralick_btn]
+									self.activate_haralick_btn]
 
+		self.activate_haralick_btn.setChecked(True)
 		self.haralick_normalization_mode_btn.clicked.connect(self.switch_to_absolute_normalization_mode)
 		layout.addLayout(self.haralick_layout)
 
@@ -416,82 +378,43 @@ class ConfigTracking(QMainWindow):
 			self.haralick_percentile_min_le.setText('0.01')
 			self.haralick_percentile_max_le.setText('99.99')
 
-	def populate_config_frame(self):
 
-		grid = QGridLayout(self.config_frame)
-		panel_title = QLabel(f"CONFIGURATION")
-		panel_title.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
-
-		grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
-
-		self.collapse_config_btn = QPushButton()
-		self.collapse_config_btn.setIcon(icon(MDI6.chevron_down,color="black"))
-		self.collapse_config_btn.setIconSize(QSize(20, 20))
-		self.collapse_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		grid.addWidget(self.collapse_config_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
-
-		self.generate_config_panel_contents()
-		grid.addWidget(self.ContentsConfig, 1, 0, 1, 4, alignment=Qt.AlignTop)
-		self.collapse_config_btn.clicked.connect(lambda: self.ContentsConfig.setHidden(not self.ContentsConfig.isHidden()))
-		self.collapse_config_btn.clicked.connect(self.collapse_config_advanced)
-		#self.ContentsConfig.hide()
-
-	def collapse_config_advanced(self):
-
-		"""
-		Switch the chevron icon and adjust the size for the CONFIG frame.
-		"""
-
-		if self.ContentsConfig.isHidden():
-			self.collapse_config_btn.setIcon(icon(MDI6.chevron_down,color="black"))
-			self.collapse_config_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()
-		else:
-			self.collapse_config_btn.setIcon(icon(MDI6.chevron_up,color="black"))
-			self.collapse_config_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()	
-
-	def generate_config_panel_contents(self):
+	# def generate_config_panel_contents(self):
 		
-		self.ContentsConfig = QFrame()
-		layout = QVBoxLayout(self.ContentsConfig)
-		layout.setContentsMargins(0,0,0,0)
+	# 	self.ContentsConfig = QFrame()
+	# 	layout = QVBoxLayout(self.ContentsConfig)
+	# 	layout.setContentsMargins(0,0,0,0)
 
-		btrack_config_layout = QHBoxLayout()
-		self.config_lbl = QLabel("bTrack configuration: ")
-		btrack_config_layout.addWidget(self.config_lbl, 90)
+	# 	btrack_config_layout = QHBoxLayout()
+	# 	self.config_lbl = QLabel("bTrack configuration: ")
+	# 	btrack_config_layout.addWidget(self.config_lbl, 90)
 
-		self.upload_btrack_config_btn = QPushButton()
-		self.upload_btrack_config_btn.setIcon(icon(MDI6.plus,color="black"))
-		self.upload_btrack_config_btn.setIconSize(QSize(20, 20))
-		self.upload_btrack_config_btn.setToolTip("Upload a new bTrack configuration.")
-		self.upload_btrack_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.upload_btrack_config_btn.clicked.connect(self.upload_btrack_config)
-		btrack_config_layout.addWidget(self.upload_btrack_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
+	# 	self.upload_btrack_config_btn = QPushButton()
+	# 	self.upload_btrack_config_btn.setIcon(icon(MDI6.plus,color="black"))
+	# 	self.upload_btrack_config_btn.setIconSize(QSize(20, 20))
+	# 	self.upload_btrack_config_btn.setToolTip("Upload a new bTrack configuration.")
+	# 	self.upload_btrack_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+	# 	self.upload_btrack_config_btn.clicked.connect(self.upload_btrack_config)
+	# 	btrack_config_layout.addWidget(self.upload_btrack_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
 
-		self.reset_config_btn = QPushButton()
-		self.reset_config_btn.setIcon(icon(MDI6.arrow_u_right_top,color="black"))
-		self.reset_config_btn.setIconSize(QSize(20, 20))
-		self.reset_config_btn.setToolTip("Reset the configuration to the default bTrack config.")
-		self.reset_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.reset_config_btn.clicked.connect(self.reset_btrack_config)
-		btrack_config_layout.addWidget(self.reset_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
+	# 	self.reset_config_btn = QPushButton()
+	# 	self.reset_config_btn.setIcon(icon(MDI6.arrow_u_right_top,color="black"))
+	# 	self.reset_config_btn.setIconSize(QSize(20, 20))
+	# 	self.reset_config_btn.setToolTip("Reset the configuration to the default bTrack config.")
+	# 	self.reset_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+	# 	self.reset_config_btn.clicked.connect(self.reset_btrack_config)
+	# 	btrack_config_layout.addWidget(self.reset_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
 
-		layout.addLayout(btrack_config_layout)
+	# 	layout.addLayout(btrack_config_layout)
 
-		self.config_le = QTextEdit()
-		self.config_le.setMinimumHeight(150)
-		#self.config_le.setStyleSheet("""
-		#							background: #EEEDEB;
-		#							border: 2px solid black;
-		#							""")
-		layout.addWidget(self.config_le)
-		self.load_cell_config()
+	# 	self.config_le = QTextEdit()
+	# 	self.config_le.setMinimumHeight(150)
+	# 	#self.config_le.setStyleSheet("""
+	# 	#							background: #EEEDEB;
+	# 	#							border: 2px solid black;
+	# 	#							""")
+	# 	layout.addWidget(self.config_le)
+	# 	self.load_cell_config()
 
 
 	def show_haralick_options(self):
@@ -502,10 +425,10 @@ class ConfigTracking(QMainWindow):
 
 		if self.activate_haralick_btn.isChecked():
 			for element in self.haralick_to_hide:
-				element.show()
+				element.setEnabled(True)
 		else:
 			for element in self.haralick_to_hide:
-				element.hide()   		
+				element.setEnabled(False)   		
 
 	def upload_btrack_config(self):
 

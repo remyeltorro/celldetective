@@ -7,7 +7,8 @@ import os
 import json
 from celldetective.io import auto_load_number_of_frames, load_frames, interpret_tracking_configuration
 from celldetective.utils import extract_experiment_channels, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, extract_experiment_channels
-from celldetective.measure import drop_tonal_features
+from celldetective.measure import drop_tonal_features, measure_features
+from celldetective import track
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
@@ -18,6 +19,7 @@ import gc
 import os
 from natsort import natsorted
 from art import tprint
+from tifffile import imread
 
 tprint("Track")
 
@@ -34,9 +36,14 @@ mode = str(process_arguments['mode'])
 if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets"
 	instruction_file = "tracking_instructions_targets.json"
+	napari_name = "napari_target_trajectories.npy"
+	table_name = "trajectories_targets.csv"
+
 elif mode.lower()=="effector" or mode.lower()=="effectors":
 	label_folder = "labels_effectors"
 	instruction_file = "tracking_instructions_effectors.json"
+	napari_name = "napari_effector_trajectories.npy"
+	table_name = "trajectories_effectors.csv"
 
 # Locate experiment config
 parent1 = Path(pos).parent
@@ -53,24 +60,44 @@ len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
 channel_names, channel_indices = extract_experiment_channels(config)
 nbr_channels = len(channel_names)
 
-
 # from tracking instructions, fetch btrack config, features, haralick, clean_traj, idea: fetch custom timeline?
 instr_path = PurePath(expfolder,Path(f"{instruction_file}"))
 if os.path.exists(instr_path):
 	print(f"Tracking instructions for the {mode} population has been successfully located.")
 	with open(instr_path, 'r') as f:
 		instructions = json.load(f)
-		print(instructions)
+		print("Reading the following instructions: ",instructions)
 	btrack_config = interpret_tracking_configuration(instructions['btrack_config_path'])
-	features = instructions['features']
-	haralick_option = instructions['haralick_options']
-	post_processing_options = instructions['post_processing_options']
+
+	if 'features' in instructions:
+		features = instructions['features']
+	else:
+		features = None
+	
+	if 'mask_channels' in instructions:
+		mask_channels = instructions['mask_channels']
+	else:
+		mask_channels = None
+	
+	if 'haralick_options' in instructions:
+		haralick_options = instructions['haralick_options']
+	else:
+		haralick_options = None
+
+	if 'post_processing_options' in instructions:
+		post_processing_options = instructions['post_processing_options']
+	else:
+		post_processing_options = None
 else:
 	print('No tracking instructions found. Use standard bTrack motion model.')
 	btrack_config = interpret_tracking_configuration(None)
 	features = None
-	haralick_option = None
+	mask_channels = None
+	haralick_options = None
 	post_processing_options = None
+
+if features is None:
+	features = []
 
 # from pos fetch labels
 label_path = natsorted(glob(pos+f"{label_folder}/*.tif"))
@@ -93,11 +120,60 @@ len_movie_auto = auto_load_number_of_frames(file)
 if len_movie_auto is not None:
 	len_movie = len_movie_auto
 
-
 img_num_channels = _get_img_num_per_channel(channel_indices, len_movie, nbr_channels)
-for c,cn in zip(channel_names, img_num_channels):
-	print(c, cn)
+
+#######################################
+# Loop over all frames and find objects
+#######################################
+
+timestep_dataframes = []
+for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
+	
+	# Load channels at time t
+	img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
+	lbl = imread(label_path[t])
+
+	df_props = measure_features(img, lbl, features = features+['centroid'], border_dist=None, 
+									channels=channel_names, haralick_options=haralick_options, verbose=False, 
+								)
+	df_props.rename(columns={'centroid-1': 'x', 'centroid-0': 'y'},inplace=True)
+	df_props['t'] = int(t)
+	timestep_dataframes.append(df_props)
+
+df = pd.concat(timestep_dataframes)	
+df.reset_index(inplace=True, drop=True)
+
+if mask_channels is not None:
+	cols_to_drop = []
+	for mc in mask_channels:
+		columns = df.columns
+		col_contains = [mc in c for c in columns]
+		to_remove = np.array(columns)[np.array(col_contains)]
+		cols_to_drop.extend(to_remove)
+	if len(cols_to_drop)>0:
+		df = df.drop(cols_to_drop, axis=1)
 
 # do tracking
+trajectories, napari_data = track(None,
+					configuration=btrack_config,
+					objects=df, 
+					spatial_calibration=spatial_calibration, 
+					channel_names=channel_names,
+					return_napari_data=True,
+		  			optimizer_options = {'tm_lim': int(12e4)}, 
+		  			track_kwargs={'step_size': 100}, 
+		  			clean_trajectories_kwargs=post_processing_options, 
+		  			)
+print(trajectories)
+print(trajectories.columns)
 
 # out trajectory table, create POSITION_X_um, POSITION_Y_um, TIME_min (new ones)
+# Save napari data
+np.save(pos+f"/output/tables/{napari_name}", napari_data, allow_pickle=True)
+print(f"napari data successfully saved in {pos}/output/tables/...")
+
+trajectories.to_csv(pos+f"/output/tables/{table_name}", index=False)
+print(f"Table {table_name} successfully saved in {pos}/output/tables/...")
+
+del trajectories; del napari_data;
+gc.collect()

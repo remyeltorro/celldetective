@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QWidget, QListWidget, QVBoxLayout, QComboBox, QPushButton
+from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, QPushButton, QLabel, QHBoxLayout, QCheckBox
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
@@ -74,7 +74,110 @@ class FeatureChoice(QWidget):
 		self.close()
 
 
+class OperationChoice(QWidget):
+	
+	"""
+	Mini window to select an operation from numpy to apply on the ROI.
+
+	"""
+
+	def __init__(self, parent):
+
+		super().__init__()
+		self.parent = parent
+		self.setWindowTitle("Add feature")
+		# Create the QComboBox and add some items
+		self.combo_box = QComboBox(self)
+		center_window(self)
+
+		self.combo_box.addItems(["mean", "median", "average", "std", "var", 
+								"nanmedian", "nanmean", "nanstd", "nanvar"])
+
+		self.add_btn = QPushButton("Add")
+		self.add_btn.clicked.connect(self.add_current_feature)
+
+		# Create the layout
+		layout = QVBoxLayout(self)
+		layout.addWidget(self.combo_box)
+		layout.addWidget(self.add_btn)
+
+	def add_current_feature(self):
+
+		filtername = self.combo_box.currentText()
+		self.parent.list_widget.addItems([filtername])
+		self.close()
+
+
+class GeometryChoice(QWidget):
+
+	def __init__(self, parent):
+
+		super().__init__()
+		self.parent = parent
+		self.setWindowTitle("Set distances")
+		center_window(self)
+
+		# Create the QComboBox and add some items
+
+		self.dist_label = QLabel('Distance [px]: ')
+		self.dist_le = QLineEdit('10')
+
+		self.dist_outer_label = QLabel('Max distance [px]')
+		self.dist_outer_le = QLineEdit('100')
+		self.outer_to_hide = [self.dist_outer_le, self.dist_outer_label]
+
+		self.outer_btn = QCheckBox('outer distance')
+		self.outer_btn.clicked.connect(self.activate_outer_value)
+
+		self.add_btn = QPushButton("Add")
+		self.add_btn.clicked.connect(self.add_current_feature)
+
+		# Create the layout
+		layout = QVBoxLayout(self)
+		dist_layout = QHBoxLayout()
+		dist_layout.addWidget(self.dist_label, 30)
+		dist_layout.addWidget(self.dist_le, 70)
+
+		self.dist_outer_layout = QHBoxLayout()
+		self.dist_outer_layout.addWidget(self.dist_outer_label, 30)
+		self.dist_outer_layout.addWidget(self.dist_outer_le, 70)
+
+		layout.addLayout(dist_layout)
+		layout.addLayout(self.dist_outer_layout)
+		layout.addWidget(self.outer_btn)
+		layout.addWidget(self.add_btn)
+
+		for el in self.outer_to_hide:
+			el.hide()
+
+
+	def activate_outer_value(self):
+		if self.outer_btn.isChecked():
+			self.dist_label.setText('Min distance [px]: ')
+			for el in self.outer_to_hide:
+				el.show()
+		else:
+			self.dist_label.setText('Distance [px]: ')
+			for el in self.outer_to_hide:
+				el.hide()
+
+	def add_current_feature(self):
+
+		value = self.dist_le.text()
+		if self.outer_btn.isChecked():
+			value2 = self.dist_outer_le.text()
+			values = [value+'-'+value2]
+		else:
+			values = [value]
+		self.parent.list_widget.addItems(values)
+		self.close()
+
+
 class ListWidget(QWidget):
+
+	"""
+	Generic list widget.
+	"""
 
 	def __init__(self, parent, choiceWidget, initial_features):
 		
@@ -127,24 +230,20 @@ class ListWidget(QWidget):
 		for item in listItems:
 			self.list_widget.takeItem(self.list_widget.row(item))
 
-	# def removeAll(self):
-
-	# 	"""
-	# 	Remove all items.
-	# 	"""
-
-	# 	listItems=self.list_widget.Items()
-	# 	for item in listItems:
-	# 		self.list_widget.takeItem(self.list_widget.row(item))
-
 
 class FigureCanvas(QWidget):
+
+	"""
+	Generic figure canvas.
+	"""
+	
 	def __init__(self, fig, title="", interactive=True):
 		super().__init__()
 		self.fig = fig
 		self.setWindowTitle(title)
 		center_window(self)
 		self.canvas = FigureCanvasQTAgg(self.fig)
+		self.canvas.setStyleSheet("background-color: transparent;")
 		if interactive:
 			self.toolbar = NavigationToolbar2QT(self.canvas)
 		layout = QVBoxLayout(self)

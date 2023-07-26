@@ -179,13 +179,14 @@ class ListWidget(QWidget):
 	Generic list widget.
 	"""
 
-	def __init__(self, parent, choiceWidget, initial_features):
+	def __init__(self, parent, choiceWidget, initial_features, dtype=str):
 		
 		super().__init__()
 
 		self.parent = parent
 		self.initial_features = initial_features
 		self.choiceWidget = choiceWidget
+		self.dtype = dtype
 
 		self.setFixedHeight(80)
 
@@ -216,7 +217,12 @@ class ListWidget(QWidget):
 
 		items = []
 		for x in range(self.list_widget.count()):
-			items.append(self.list_widget.item(x).text())
+			if len(self.list_widget.item(x).text().split('-'))==2:
+				minn,maxx = self.list_widget.item(x).text().split('-')
+				to_add = [self.dtype(minn), self.dtype(maxx)]
+				items.append(to_add)
+			else:
+				items.append(self.dtype(self.list_widget.item(x).text()))
 		return items
 
 	def removeSel(self):

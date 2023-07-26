@@ -31,10 +31,10 @@ class ConfigMeasurements(QMainWindow):
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":
 			self.config_name = "btrack_config_targets.json"
-			self.track_instructions_write_path = self.parent.exp_dir + "tracking_instructions_targets.json"
+			self.measure_instructions_path = self.parent.exp_dir + "measurement_instructions_targets.json"
 		elif self.mode=="effectors":
 			self.config_name = "btrack_config_effectors.json"
-			self.track_instructions_write_path = self.parent.exp_dir + "tracking_instructions_effectors.json"
+			self.measure_instructions_path = self.parent.exp_dir + "measurement_instructions_effectors.json"
 		self.soft_path = get_software_location()
 		
 		exp_config = self.exp_dir +"config.ini"
@@ -160,7 +160,7 @@ class ConfigMeasurements(QMainWindow):
 		radii_layout.addWidget(self.add_radius_btn, 5)
 		layout.addLayout(radii_layout)
 		
-		self.radii_list = ListWidget(self, GeometryChoice, initial_features=["10"])
+		self.radii_list = ListWidget(self, GeometryChoice, initial_features=["10"], dtype=int)
 		layout.addWidget(self.radii_list)
 
 		self.del_radius_btn.clicked.connect(self.radii_list.removeSel)
@@ -250,7 +250,7 @@ class ConfigMeasurements(QMainWindow):
 		contour_layout.addWidget(self.add_contour_btn, 5)
 		layout.addLayout(contour_layout)
 		
-		self.contours_list = ListWidget(self, GeometryChoice, initial_features=[])
+		self.contours_list = ListWidget(self, GeometryChoice, initial_features=[], dtype=int)
 		layout.addWidget(self.contours_list)
 
 		self.del_contour_btn.clicked.connect(self.contours_list.removeSel)
@@ -557,45 +557,36 @@ class ConfigMeasurements(QMainWindow):
 		"""
 
 		print('Writing instructions...')
-		tracking_options = {'btrack_config_path': self.config_path}
-		if not self.features_ticked:
+		measurement_options = {}
+		features = self.features_list.getItems()
+		if not features:
 			features = None
-			masked_channels = None
-		else:
-			features = self.features_list.getItems()
-			masked_channels = self.channel_names[np.array([not cb.isChecked() for cb in self.mask_channels_cb])]
-			if len(masked_channels)==0:
-				masked_channels = None
-			else:
-				masked_channels = list(masked_channels)
+		measurement_options.update({'features': features})
 
-		tracking_options.update({'features': features, 'mask_channels': masked_channels})
+		border_distances = self.contours_list.getItems()
+		if not border_distances:
+			border_distances = None
+		measurement_options.update({'border_distances': border_distances})
 		
 		self.extract_haralick_options()
-		tracking_options.update({'haralick_options': self.haralick_options})
+		measurement_options.update({'haralick_options': self.haralick_options})
 
-		if self.post_proc_ticked:
-			post_processing_options = {"minimum_tracklength": int(self.min_tracklength_slider.value()),
-									   "remove_not_in_first": self.remove_not_in_first_checkbox.isChecked(), 
-									   "remove_not_in_last": self.remove_not_in_last_checkbox.isChecked(),
-									   "interpolate_position_gaps": self.interpolate_gaps_checkbox.isChecked(), 
-									   "extrapolate_tracks_pre": self.extrapolate_pre_checkbox.isChecked(),
-									   "extrapolate_tracks_post": self.extrapolate_post_checkbox.isChecked(),
-									   'interpolate_na': self.interpolate_na_features_checkbox.isChecked()
-									   }
-		else:
+		intensity_measurement_radii = self.radii_list.getItems()
+		if not intensity_measurement_radii:
+			intensity_measurement_radii = None
 
-			post_processing_options = None
+		isotropic_operations = self.operations_list.getItems()
+		if not isotropic_operations:
+			isotropic_operations = None
+			intensity_measurement_radii = None
+		measurement_options.update({'intensity_measurement_radii': intensity_measurement_radii,
+									'isotropic_operations': isotropic_operations})
 
-		tracking_options.update({'post_processing_options': post_processing_options})
-		file_name = self.track_instructions_write_path
+		print('Measurement instructions: ', measurement_options)
+		file_name = self.measure_instructions_path
 		with open(file_name, 'w') as f:
-			json.dump(tracking_options, f, indent=4)
+			json.dump(measurement_options, f, indent=4)
 
-		# Save the JSON data to the file
-		file_name = self.config_path
-		with open(file_name, 'w') as f:
-			f.write(self.config_le.toPlainText())
 		print('Done.')
 		self.close()
 

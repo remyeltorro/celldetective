@@ -863,6 +863,10 @@ def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.
 def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
 
 	frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+	if frames.ndim==3:
+		# Systematically move channel axis to the end
+		channel_axis = np.argmin(frames.shape)
+		frames = np.moveaxis(frames, channel_axis, -1)
 	if frames.ndim==2:
 		frames = frames[:,:,np.newaxis]
 	if normalize_input:

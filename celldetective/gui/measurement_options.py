@@ -745,7 +745,6 @@ class ConfigMeasurements(QMainWindow):
 			n_channels = len(self.channels)
 			self.test_frame = load_frames(np.arange(n_channels), stack0, scale=None, normalize_input=False)
 
-
 	def control_haralick_digitalization(self):
 
 		"""

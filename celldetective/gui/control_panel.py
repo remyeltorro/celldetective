@@ -188,8 +188,8 @@ class ControlPanel(QMainWindow):
 		except:
 			self.fluo_channel_2 = None			
 
-		self.search_radius_tc = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_tc"])
-		self.search_radius_nk = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_nk"])
+		self.search_radius_targets = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_targets"])
+		self.search_radius_effectors = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_effectors"])
 		self.time_dilation = int(ConfigSectionMap(self.exp_config,"BinningParameters")["time_dilation"])
 
 		self.intensity_measurement_radius = int(ConfigSectionMap(self.exp_config,"Thresholds")["intensity_measurement_radius"])

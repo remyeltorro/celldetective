@@ -415,7 +415,7 @@ def interpolate_nan_properties(trajectories, track_label="TRACK_ID"):
 
 	"""
 
-	trajectories = trajectories.groupby(track_label).apply(interpolate_per_track)
+	trajectories = trajectories.groupby(track_label,group_keys=False).apply(interpolate_per_track)
 
 	return trajectories
 

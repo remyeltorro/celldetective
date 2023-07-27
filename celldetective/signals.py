@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import subprocess
 import json
 
 from tensorflow.keras.optimizers import Adam
@@ -14,14 +15,18 @@ from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import jaccard_score, balanced_accuracy_score
 from scipy.interpolate import interp1d
 
-from .io import get_signal_models_list
-from .tracking import clean_trajectories
-from .utils import regression_plot, train_test_split, compute_weights
+from celldetective.io import get_signal_models_list
+from celldetective.tracking import clean_trajectories
+from celldetective.utils import regression_plot, train_test_split, compute_weights
+import matplotlib.pyplot as plt
+from natsort import natsorted
 
+abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
 
 def analyze_signals(trajectories, model, interpolate_na=True,
 					selected_signals=None,
-					column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
+					column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
+					plot_outcome=False, output_dir=None):
 
 	"""
 
@@ -88,12 +93,19 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 				selected_signals.append(valid_columns[0])
 			else:
 				#print(test_number_of_nan(trajectories, valid_columns))
-				selected_signals.append(valid_columns[0])
+				print(f'Found several candidate signals: {valid_columns}')
+				for vc in natsorted(valid_columns):
+					if 'circle' in vc:
+						selected_signals.append(vc)
+						break
+				else:
+					selected_signals.append(valid_columns[0])
 				# do something more complicated in case of one to many columns
 				#pass
 	else:
 		assert len(selected_signals)==len(required_signals),f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
 
+	print(f'The following channels will be passed to the model: {selected_signals}')
 	trajectories = clean_trajectories(trajectories, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels)
 
 	max_signal_size = np.amax(trajectories.groupby(column_labels['track']).size().to_numpy())
@@ -116,7 +128,37 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		trajectories.loc[indices,'t0'] = times_recast[i]
 	print('Done.')
 
+	if plot_outcome:
+		fig,ax = plt.subplots(1,len(selected_signals), figsize=(10,5))
+		for i,s in enumerate(selected_signals):
+			for k,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
+				cclass = group['class'].to_numpy()[0]
+				t0 = group['t0'].to_numpy()[0]
+				timeline = group[column_labels['time']].to_numpy()
+				if cclass==0:
+					ax[i].plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
+		for a,s in zip(ax,selected_signals):
+			a.set_title(s)
+			a.set_xlabel(r'time - t$_0$ [frame]')
+			a.spines['top'].set_visible(False)
+			a.spines['right'].set_visible(False)
+		plt.tight_layout()
+		if output_dir is not None:
+			plt.savefig(output_dir+'signal_collapse.png',bbox_inches='tight',dpi=300)
+		plt.pause(3)
+		plt.close()
+
 	return trajectories
+
+def analyze_signals_at_position(pos, model, mode, use_gpu=True):
+	
+	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+	if not pos.endswith('/'):
+		pos += '/'
+	subprocess.call(f"python {abs_path}/scripts/analyze_signals.py --pos {pos} --model {model} --mode {mode} --use_gpu {use_gpu}", shell=True)
+	
+	return None
+
 
 class SignalDetectionModel(object):
 	
@@ -1248,6 +1290,3 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 	model = Model(inputs, x2, name=header) 
 
 	return model
-
-def analyze_signals_at_position(pos, mode, use_gpu=True):
-	pass

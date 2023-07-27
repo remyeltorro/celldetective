@@ -16,7 +16,6 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import gc
-import os
 from natsort import natsorted
 from art import tprint
 from tifffile import imread
@@ -201,10 +200,8 @@ for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 		measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
 	elif do_iso_intensities*(not do_features):
 		measurements_at_t = iso_table
-	elif do_features*(trajectories is not None):
+	elif do_features:
 		measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
-	elif do_features*(trajectories is None):
-		measurements_at_t = positions_at_t
 
 	if measurements_at_t is not None:
 		measurements_at_t[column_labels['time']] = t
@@ -216,7 +213,10 @@ if len(timestep_dataframes)>0:
 
 	if trajectories is None:
 		df['ID'] = np.arange(len(df))
-	df = df.sort_values(by=[column_labels['track'], column_labels['time']])
+
+	if column_labels['track'] in df.columns:
+		df = df.sort_values(by=[column_labels['track'], column_labels['time']])
+	
 	df.to_csv(pos+f"output/tables/{table_name}", index=False)
 	print(f'Measurements successfully written in table {pos+f"output/tables/{table_name}"}...')
 	print('Done.')

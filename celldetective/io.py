@@ -54,7 +54,10 @@ def locate_stack(position, prefix='Aligned'):
 	stack_path = glob(position+f"movie/{prefix}*.tif")
 	assert len(stack_path)>0,f"No movie with prefix {prefix} found..."
 	stack = imread(stack_path[0])
-	stack = np.moveaxis(stack, 1, -1)
+	if stack.ndim==4:
+		stack = np.moveaxis(stack, 1, -1)
+	elif stack.ndim==3:
+		stack = stack[:,:,:,np.newaxis]
 
 	return stack
 
@@ -605,13 +608,14 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		return export_labels()
 
 	stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
+
 	if not population.endswith('s'):
 		population+='s'
 	output_folder = position+f'labels_{population}/'
 
 	viewer = napari.Viewer()
 	viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
-	viewer.add_labels(labels, name='segmentation',opacity=0.4)
+	viewer.add_labels(labels.astype(int), name='segmentation',opacity=0.4)
 	viewer.window.add_dock_widget(save_widget, area='right')
 	viewer.show(block=True)
 

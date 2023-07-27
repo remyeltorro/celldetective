@@ -685,3 +685,19 @@ def extract_experiment_channels(config):
 
 def get_software_location():
 	return os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
+
+def remove_trajectory_measurements(trajectories, column_labels):
+
+	tracks = trajectories.copy()
+
+	columns_to_keep = [column_labels['track'], column_labels['time'], column_labels['x'], column_labels['y'],column_labels['x']+'_um', column_labels['y']+'_um', 'class_id', 
+					  't', 'state', 'generation', 'root', 'parent', 'ID']
+	cols = tracks.columns
+	for c in columns_to_keep:
+		if c not in cols:
+			columns_to_keep.remove(c)
+
+	keep = [x for x in columns_to_keep if x in cols]
+	tracks = tracks[keep]	
+
+	return tracks

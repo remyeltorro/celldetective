@@ -57,6 +57,7 @@ class ControlPanel(QMainWindow):
 		self.grid.setSpacing(5)
 
 		self.setCentralWidget(self.w)
+		self.create_config_dir()
 
 	def init_wells_and_positions(self):
 
@@ -319,6 +320,11 @@ class ControlPanel(QMainWindow):
 
 			for pos_idx in pos_indices:
 				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
+
+	def create_config_dir(self):
+		self.config_folder = self.exp_dir+'configs/'
+		if not os.path.exists(self.config_folder):
+			os.mkdir(self.config_folder)
 
 	def update_position_options(self):
 		

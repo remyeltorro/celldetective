@@ -8,6 +8,7 @@ from celldetective.gui import SegmentationModelLoader, ConfigTracking, ConfigMea
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position
 from celldetective.tracking import track_at_position
+from celldetective.measure import measure_at_position
 import numpy as np
 from glob import glob
 from natsort import natsorted
@@ -381,15 +382,8 @@ class ProcessPanel(QFrame):
 				if self.track_action.isChecked():
 					track_at_position(self.pos, self.mode)
 
-
-			# 	if self.track_action_tc.isChecked():
-			# 		self.track_tcs()
-
-			# 	if self.measure_action_tc.isChecked():
-
-			# 		self.measure_tcs()
-
-			# 	loop_iter+=1
+				if self.measure_action.isChecked():
+					measure_at_position(self.pos, self.mode)
 
 			# self.stack = None
 		self.parent.update_position_options()

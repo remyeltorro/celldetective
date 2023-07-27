@@ -30,11 +30,11 @@ class ConfigTracking(QMainWindow):
 		self.mode = self.parent.mode
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":
-			self.config_name = "btrack_config_targets.json"
-			self.track_instructions_write_path = self.parent.exp_dir + "tracking_instructions_targets.json"
+			self.config_name = "configs/btrack_config_targets.json"
+			self.track_instructions_write_path = self.parent.exp_dir + "configs/tracking_instructions_targets.json"
 		elif self.mode=="effectors":
-			self.config_name = "btrack_config_effectors.json"
-			self.track_instructions_write_path = self.parent.exp_dir + "tracking_instructions_effectors.json"
+			self.config_name = "configs/btrack_config_effectors.json"
+			self.track_instructions_write_path = self.parent.exp_dir + "configs/tracking_instructions_effectors.json"
 		self.soft_path = get_software_location()
 		
 		exp_config = self.exp_dir +"config.ini"

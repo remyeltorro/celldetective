@@ -419,8 +419,8 @@ class ConfigNewExperiment(QMainWindow):
 		config.set('MovieSettings', 'movie_prefix', self.movie_prefix_field.text())
 
 		config.add_section('SearchRadii')
-		config.set('SearchRadii', 'search_radius_tc', "100")
-		config.set('SearchRadii', 'search_radius_nk', "62")
+		config.set('SearchRadii', 'search_radius_targets', "100")
+		config.set('SearchRadii', 'search_radius_effectors', "62")
 
 		config.add_section('BinningParameters')
 		config.set('BinningParameters', 'time_dilation', "1")

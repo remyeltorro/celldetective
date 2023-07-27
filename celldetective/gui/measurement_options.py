@@ -31,10 +31,10 @@ class ConfigMeasurements(QMainWindow):
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":
 			self.config_name = "btrack_config_targets.json"
-			self.measure_instructions_path = self.parent.exp_dir + "measurement_instructions_targets.json"
+			self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_targets.json"
 		elif self.mode=="effectors":
 			self.config_name = "btrack_config_effectors.json"
-			self.measure_instructions_path = self.parent.exp_dir + "measurement_instructions_effectors.json"
+			self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_effectors.json"
 		self.soft_path = get_software_location()
 		
 		exp_config = self.exp_dir +"config.ini"
@@ -77,6 +77,9 @@ class ConfigMeasurements(QMainWindow):
 		self.iso_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_iso_frame()
 		main_layout.addWidget(self.iso_frame)
+
+		self.clear_previous_btn = QCheckBox('clear previous measurements')
+		main_layout.addWidget(self.clear_previous_btn)
 
 		self.submit_btn = QPushButton('Save')
 		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
@@ -440,6 +443,12 @@ class ConfigMeasurements(QMainWindow):
 		measurement_options.update({'intensity_measurement_radii': intensity_measurement_radii,
 									'isotropic_operations': isotropic_operations})
 
+		if self.clear_previous_btn.isChecked():
+			clear_previous = True
+		else:
+			clear_previous = False
+		measurement_options.update({'clear_previous': clear_previous})
+
 		print('Measurement instructions: ', measurement_options)
 		file_name = self.measure_instructions_path
 		with open(file_name, 'w') as f:
@@ -540,7 +549,9 @@ class ConfigMeasurements(QMainWindow):
 								elif isinstance(r, list):
 									radii.append(str(int(r[0]))+'-'+str(int(r[1])))
 						self.radii_list.list_widget.clear()
-						self.radii_list.list_widget.addItems(radii)			
+						self.radii_list.list_widget.addItems(radii)
+					else:
+						self.radii_list.list_widget.clear()	
 
 				if 'isotropic_operations' in measurement_instructions:
 					isotropic_operations = measurement_instructions['isotropic_operations']
@@ -549,6 +560,10 @@ class ConfigMeasurements(QMainWindow):
 						self.operations_list.list_widget.addItems(isotropic_operations)
 					else:
 						self.operations_list.list_widget.clear()
+
+				if 'clear_previous' in measurement_instructions:
+					clear_previous = measurement_instructions['clear_previous']
+					self.clear_previous_btn.setChecked(clear_previous)
 
 		
 	def locate_image(self):

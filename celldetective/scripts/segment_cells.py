@@ -60,6 +60,7 @@ print("Configuration file: ",config)
 ####################################
 
 modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/models"
+print(modelpath)
 model_complete_path = locate_segmentation_model(modelname)
 if model_complete_path is None:
 	print('Model could not be found. Abort.')

@@ -737,6 +737,7 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 
 def locate_segmentation_model(name):
 	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation*/"
+	print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath+'*/')
 
 	match=None

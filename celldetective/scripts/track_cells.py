@@ -35,13 +35,13 @@ mode = str(process_arguments['mode'])
 
 if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets"
-	instruction_file = "tracking_instructions_targets.json"
+	instruction_file = "configs/tracking_instructions_targets.json"
 	napari_name = "napari_target_trajectories.npy"
 	table_name = "trajectories_targets.csv"
 
 elif mode.lower()=="effector" or mode.lower()=="effectors":
 	label_folder = "labels_effectors"
-	instruction_file = "tracking_instructions_effectors.json"
+	instruction_file = "configs/tracking_instructions_effectors.json"
 	napari_name = "napari_effector_trajectories.npy"
 	table_name = "trajectories_effectors.csv"
 

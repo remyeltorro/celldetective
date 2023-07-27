@@ -249,8 +249,6 @@ class SegmentationModelLoader(QWidget):
 				self.modelname = self.filename.split("/")[-1]
 				print(f"Transferring Cellpose model {self.filename}...")
 				self.folder_dest = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+f"/models/{self.target_folder}/"+self.modelname
-				if not os.path.exists(self.folder_dest):
-					os.mkdir(self.folder_dest)
 				self.destination = self.folder_dest+f"/{self.modelname}"
 
 			if self.seg_mode=="threshold":
@@ -317,6 +315,7 @@ class SegmentationModelLoader(QWidget):
 					returnValue = msgBox.exec()
 					if returnValue == QMessageBox.Ok:
 						return None
+
 			elif self.cellpose_button.isChecked():
 				try:
 					shutil.copy(self.filename, self.destination)
@@ -392,10 +391,20 @@ class SegmentationModelLoader(QWidget):
 		json_object = json.dumps(dico, indent=4)
 
 		# Writing to sample.json
-		if not os.path.exists(self.folder_dest):
-			os.mkdir(self.folder_dest)
-			print("Configuration successfully written in ",self.folder_dest+"/config_input.json")
-			with open(self.folder_dest+"/config_input.json", "w") as outfile:
-				outfile.write(json_object)
-		else:
-			print('The folder already exists. The configuration will not be written.')
+		if os.path.exists(self.folder_dest):
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("A model with the same name already exists. Do you want to replace it?")
+			msgBox.setWindowTitle("Confirm")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+			elif returnValue == QMessageBox.Yes:
+				shutil.rmtree(self.folder_dest)
+
+		os.mkdir(self.folder_dest)
+		print("Configuration successfully written in ",self.folder_dest+"/config_input.json")
+		with open(self.folder_dest+"/config_input.json", "w") as outfile:
+			outfile.write(json_object)

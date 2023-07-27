@@ -6,12 +6,15 @@ from scipy.ndimage.morphology import distance_transform_edt
 from functools import reduce
 from mahotas.features import haralick
 from scipy.ndimage import zoom
+import os
+import subprocess
+from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features
 
-from .utils import rename_intensity_column, create_patch_mask, remove_redundant_features
+abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
 
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 			features=None, intensity_measurement_radii=None, isotropic_operations=['mean'], border_distances=None,
-			haralick_options=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
+			haralick_options=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}, clear_previous=False):
 
 	"""
 	
@@ -115,6 +118,17 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 		features = remove_redundant_features(features, trajectories.columns,
 											channel_names=channel_names)
 
+	if features is None:
+		features = []
+
+	# Prep for the case where no trajectory is provided but still want to measure isotropic intensities...
+	if (trajectories is None):
+		do_features = True
+		features += ['centroid']
+	else:
+		if clear_previous:
+			trajectories = remove_trajectory_measurements(trajectories, column_labels)
+
 	timestep_dataframes = []
 
 	for t in tqdm(range(nbr_frames),desc='frame'):
@@ -131,14 +145,22 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 		if trajectories is not None:
 			positions_at_t = trajectories.loc[trajectories[column_labels['time']]==t].copy()
 
+		if do_features:
+			feature_table = measure_features(img, lbl, features = features, border_dist=border_distances, 
+											channels=channel_names, haralick_options=haralick_options, verbose=False)
+			if trajectories is None:
+				# Use the centroids as estimate for the location of the cells, to be passed to the measure_isotropic_intensity function.
+				positions_at_t = feature_table[['centroid-1', 'centroid-0','class_id']].copy()
+				positions_at_t['ID'] = np.arange(len(positions_at_t))	# temporary ID for the cells, that will be reset at the end since they are not tracked
+				positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'},inplace=True)
+				positions_at_t['FRAME'] = int(t)
+				column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'], 'y': column_labels['y']}
+
 		# Isotropic measurements (circle, ring)
 		if do_iso_intensities:
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii,
 													column_labels=column_labels, operations=isotropic_operations, verbose=False)
-		if do_features:
-			feature_table = measure_features(img, lbl, features = features, border_dist=border_distances, 
-											channels=channel_names, haralick_options=haralick_options, verbose=False)
-		
+
 		if do_iso_intensities*do_features:
 			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
 		elif do_iso_intensities*(not do_features):
@@ -146,8 +168,7 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 		elif do_features*(trajectories is not None):
 			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
 		elif do_features*(trajectories is None):
-			measurements_at_t = feature_table
-			measurements_at_t[column_labels['time']] = t
+			measurements_at_t = positions_at_t
 
 		timestep_dataframes.append(measurements_at_t)
 
@@ -155,6 +176,8 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 	if trajectories is not None:
 		measurements = measurements.sort_values(by=[column_labels['track'],column_labels['time']])
 		measurements = measurements.dropna(subset=[column_labels['track']])
+	else:
+		measurements['ID'] = np.arange(len(df))
 
 	measurements = measurements.reset_index(drop=True)
 
@@ -636,5 +659,11 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 	positions['class_id'] = positions['class_id'].astype(float)
 	return positions
 
-def measure_at_position(pos, mode):
-	pass
+def measure_at_position(pos, mode, return_measurements=False):
+	
+	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+	if not pos.endswith('/'):
+		pos += '/'
+	subprocess.call(f"python {abs_path}/scripts/measure_cells.py --pos {pos} --mode {mode}", shell=True)
+	
+	return None

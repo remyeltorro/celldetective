@@ -751,7 +751,7 @@ def locate_segmentation_model(name):
 			return match
 	return match
 
-def normalize(frame, percentiles=(0.0,99.99), values=None, ignore_gray_value=0.):
+def normalize(frame, percentiles=(0.0,99.99), values=None, ignore_gray_value=0., clip=False, amplification=None, dtype=float):
 
 	"""
 	
@@ -816,13 +816,19 @@ def normalize(frame, percentiles=(0.0,99.99), values=None, ignore_gray_value=0.)
 
 	frame0 = frame.copy()
 	frame = normalize_mi_ma(frame0, mi, ma, clip=False, eps=1e-20, dtype=np.float32)
+	if clip:
+		frame[frame>=1.] = 1.
+		frame[frame<=0.] = 0.
+	if amplification is not None:
+		frame *= amplification
 	if ignore_gray_value is not None:
 		frame[np.where(frame0)==ignore_gray_value] = ignore_gray_value
 
-	return frame.copy()
+	return frame.copy().astype(dtype)
 
 def normalize_multichannel(multichannel_frame, percentiles=None,
-						   values=None, ignore_gray_value=0.):
+						   values=None, ignore_gray_value=0., clip=False,
+						   amplification=None, dtype=float):
 	
 	mf = multichannel_frame.copy().astype(float)
 	assert mf.ndim==3,f'Wrong shape for the multichannel frame: {mf.shape}.'
@@ -831,6 +837,8 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 	elif isinstance(percentiles,tuple):
 		percentiles = [percentiles]*mf.shape[-1]
 	if values is not None:
+		if isinstance(values, tuple):
+			values = [values]*mf.shape[-1]
 		assert len(values)==mf.shape[-1],'Mismatch between the normalization values provided and the number of channels.'
 
 	for c in range(mf.shape[-1]):
@@ -842,8 +850,27 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 							  percentiles=percentiles[c],
 							  values=v,
 							  ignore_gray_value=ignore_gray_value,
+							  clip=clip,
+							  amplification=amplification,
+							  dtype=dtype,
 							  )
 	return mf
+
+def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
+
+	frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+	if frames.ndim==3:
+		# Systematically move channel axis to the end
+		channel_axis = np.argmin(frames.shape)
+		frames = np.moveaxis(frames, channel_axis, -1)
+	if frames.ndim==2:
+		frames = frames[:,:,np.newaxis]
+	if normalize_input:
+		frames = normalize_multichannel(frames, **normalize_kwargs)
+	if scale is not None:
+		frames = zoom(frames, [scale,scale,1], order=3)
+	return frames
+
 
 def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.):
 
@@ -864,21 +891,6 @@ def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.
 		gc.collect()
 
 	return values
-
-def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
-
-	frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
-	if frames.ndim==3:
-		# Systematically move channel axis to the end
-		channel_axis = np.argmin(frames.shape)
-		frames = np.moveaxis(frames, channel_axis, -1)
-	if frames.ndim==2:
-		frames = frames[:,:,np.newaxis]
-	if normalize_input:
-		frames = normalize_multichannel(frames, **normalize_kwargs)
-	if scale is not None:
-		frames = zoom(frames, [scale,scale,1], order=3)
-	return frames
 
 if __name__ == '__main__':
 	control_segmentation_napari("/home/limozin/Documents/Experiments/MinimumJan/W4/401/", prefix='Aligned', population="target", flush_memory=False)

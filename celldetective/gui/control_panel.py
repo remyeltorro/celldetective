@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QLabel, QWidget, QGridLayout, QFrame, QTabWidget, QVBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QLabel, QWidget, QGridLayout, QFrame, QTabWidget, QVBoxLayout, QMessageBox
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
 from celldetective.utils import _extract_labels_from_config, ConfigSectionMap
@@ -297,7 +297,7 @@ class ControlPanel(QMainWindow):
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Ok:
-				return None
+				return False
 		else:
 			self.well_index = [self.well_labels.index(str(self.well_list.currentText()))]
 
@@ -312,7 +312,7 @@ class ControlPanel(QMainWindow):
 				msgBox.setStandardButtons(QMessageBox.Ok)
 				returnValue = msgBox.exec()
 				if returnValue == QMessageBox.Ok:
-					return None
+					return False
 			else:
 				pos_indices = natsorted([pos.index(self.position_list.currentText())])
 
@@ -320,6 +320,8 @@ class ControlPanel(QMainWindow):
 
 			for pos_idx in pos_indices:
 				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
+
+		return True
 
 	def create_config_dir(self):
 		self.config_folder = self.exp_dir+'configs/'

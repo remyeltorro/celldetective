@@ -4,7 +4,7 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
-from celldetective.gui import SegmentationModelLoader, ConfigTracking, ConfigMeasurements
+from celldetective.gui import SegmentationModelLoader, ConfigTracking, SignalAnnotator, ConfigMeasurements, ConfigSignalAnnotator
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position
 from celldetective.tracking import track_at_position
@@ -121,6 +121,7 @@ class ProcessPanel(QFrame):
 	def generate_signal_analysis_options(self):
 
 		signal_layout = QVBoxLayout()
+		signal_hlayout = QHBoxLayout()
 		self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
 		self.signal_analysis_action.setStyleSheet("""
 			font-size: 10px;
@@ -131,8 +132,25 @@ class ProcessPanel(QFrame):
 		self.signal_analysis_action.setIconSize(QSize(20, 20))
 		self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
 		self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
-		signal_layout.addWidget(self.signal_analysis_action)
+		signal_hlayout.addWidget(self.signal_analysis_action, 90)
+
+		self.check_signals_btn = QPushButton()
+		self.check_signals_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
+		self.check_signals_btn.setIconSize(QSize(20, 20))
+		self.check_signals_btn.clicked.connect(self.check_signals)
+		self.check_signals_btn.setStyleSheet(self.parent.parent.button_select_all)
+		signal_hlayout.addWidget(self.check_signals_btn, 6)
+
+		self.config_signal_annotator_btn = QPushButton()
+		self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline,color="black"))
+		self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
+		self.config_signal_annotator_btn.setToolTip("Configure the signal annotator app.")
+		self.config_signal_annotator_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
+		signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
+
 		#self.to_disable.append(self.measure_action_tc)
+		signal_layout.addLayout(signal_hlayout)
 		
 		model_zoo_layout = QHBoxLayout()
 		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
@@ -260,9 +278,18 @@ class ProcessPanel(QFrame):
 
 		#self.freeze()
 		#QApplication.setOverrideCursor(Qt.WaitCursor)
-		self.parent.locate_selected_position()
-		control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode,flush_memory=True)
-		gc.collect()
+		test = self.parent.locate_selected_position()
+		if test:
+			control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode,flush_memory=True)
+			gc.collect()
+
+	def check_signals(self):
+
+		test = self.parent.locate_selected_position()
+		if test:
+			self.SignalAnnotator = SignalAnnotator(self)
+			self.SignalAnnotator.show()		
+
 
 	def enable_segmentation_model_list(self):
 		if self.segment_action.isChecked():
@@ -332,6 +359,10 @@ class ProcessPanel(QFrame):
 
 		self.ConfigMeasurements = ConfigMeasurements(self)
 		self.ConfigMeasurements.show()
+
+	def open_signal_annotator_configuration_ui(self):
+		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
+		self.ConfigSignalAnnotator.show()
 
 	def process_population(self):
 		

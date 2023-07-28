@@ -256,3 +256,23 @@ class FigureCanvas(QWidget):
 		layout.addWidget(self.canvas)
 		if interactive:
 			layout.addWidget(self.toolbar)
+
+def color_from_status(status):
+	if status==0:
+		return 'tab:blue'
+	elif status==1:
+		return 'tab:red'
+	elif status==2:
+		return 'yellow'
+	else:
+		return 'k'
+
+def color_from_class(cclass):
+	if cclass==0:
+		return 'tab:red'
+	elif cclass==1:
+		return 'tab:blue'
+	elif cclass==2:
+		return 'yellow'
+	else:
+		return 'k'

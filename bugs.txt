@@ -1,0 +1,12 @@
+On old CPU:
+Tensorflow: Illegal instruction (core dumped)
+The TensorFlow library was compiled to use AVX instructions, but these aren't available on your machine.
+Solution: 
+conda remove tensorflow
+mamba remove tensorflow
+mamba install tensorflow
+
+Pytorch: [W NNPACK.cpp:64] Could not initialize NNPACK! Reason: Unsupported hardware.
+Solution: 
+mamba remove pytorch
+mamba install pytorch

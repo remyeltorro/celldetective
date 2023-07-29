@@ -189,9 +189,13 @@ class SignalAnnotator(QMainWindow):
 
 		self.positions = []
 		self.colors = []
-		for k,group in self.df_tracks.groupby('FRAME'):
-			self.positions.append(group[['x_anim', 'y_anim']].to_numpy())
-			self.colors.append(group[['class_color', 'status_color']].to_numpy())
+		# for k,group in self.df_tracks.groupby('FRAME'):
+		# 	self.positions.append(group[['x_anim', 'y_anim']].to_numpy())
+		# 	self.colors.append(group[['class_color', 'status_color']].to_numpy())
+		for t in np.arange(0,self.df_tracks['FRAME'].max()):
+			self.positions.append(self.df_tracks.loc[self.df_tracks['FRAME']==t,['x_anim', 'y_anim']].to_numpy())
+			self.colors.append(self.df_tracks.loc[self.df_tracks['FRAME']==t,['class_color', 'status_color']].to_numpy())			
+
 
 	def load_annotator_config(self):
 
@@ -285,7 +289,7 @@ class SignalAnnotator(QMainWindow):
 		self.ax.clear()
 
 		self.im = self.ax.imshow(self.stack[0], cmap='gray')
-		self.status_scatter = self.ax.scatter(self.positions[0][:,0], self.positions[0][:,1], marker="x", c=self.colors[0][:,1], s=50)
+		self.status_scatter = self.ax.scatter(self.positions[0][:,0], self.positions[0][:,1], marker="x", c=self.colors[0][:,1], s=50, picker=True, pickradius=5)
 		self.class_scatter = self.ax.scatter(self.positions[0][:,0], self.positions[0][:,1], marker='o', facecolors='none',edgecolors=self.colors[0][:,0], s=200)
 		
 		self.ax.set_xticks([])
@@ -303,9 +307,17 @@ class SignalAnnotator(QMainWindow):
 							   blit=True,
 							   )
 
+		self.fig.canvas.mpl_connect('pick_event', self.on_scatter_pick)
 		self.fcanvas.canvas.draw()
 
 		self.right_panel.addWidget(self.fcanvas)
+
+	def on_scatter_pick(self, event):
+		
+		ind = event.ind
+		print(ind)
+		#print('onpick3 scatter:', ind, x[ind], y[ind])		
+
 
 	def draw_frame(self, framedata):
 		

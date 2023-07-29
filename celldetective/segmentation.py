@@ -131,7 +131,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 			frame = normalize_multichannel(frame, values=normalization_values)
 
 		if scale is not None:
-			frame = zoom(frame, [scale,scale,1], order=3)		
+			frame = ndi.zoom(frame, [scale,scale,1], order=3)		
 
 		if model_type=="stardist":
 
@@ -149,7 +149,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 			Y_pred = Y_pred[0].astype(np.uint16)
 
 		if scale is not None:
-			Y_pred = zoom(Y_pred, [1./scale,1./scale],order=0)
+			Y_pred = ndi.zoom(Y_pred, [1./scale,1./scale],order=0)
 
 
 		if Y_pred.shape != stack[0].shape[:2]:

@@ -18,6 +18,7 @@ from skimage.transform import resize
 from csbdeep.io import save_tiff_imagej_compatible
 import gc
 from art import tprint
+from scipy.ndimage import zoom
 
 tprint("Segment")
 
@@ -155,7 +156,7 @@ for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 		Y_pred = Y_pred[0].astype(np.uint16)
 
 	if scale is not None:
-		Y_pred = zoom(Y_pred, [1./scale,1./scale, 1],order=0)
+		Y_pred = zoom(Y_pred, [1./scale,1./scale],order=0)
 
 	template = load_frames(0,file,scale=1,normalize_input=False)
 	if Y_pred.shape != template.shape[:2]:

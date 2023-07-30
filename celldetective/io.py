@@ -53,7 +53,7 @@ def locate_stack(position, prefix='Aligned'):
 
 	stack_path = glob(position+f"movie/{prefix}*.tif")
 	assert len(stack_path)>0,f"No movie with prefix {prefix} found..."
-	stack = imread(stack_path[0])
+	stack = imread(stack_path[0].replace('\\','/'))
 	if stack.ndim==4:
 		stack = np.moveaxis(stack, 1, -1)
 	elif stack.ndim==3:
@@ -100,7 +100,7 @@ def locate_labels(position, population='target'):
 		label_path = natsorted(glob(position+"labels_targets/*.tif"))
 	elif population.lower()=="effector" or population.lower()=="effectors":
 		label_path = natsorted(glob(position+"labels_effectors/*.tif"))
-	labels = np.array([imread(i) for i in label_path])
+	labels = np.array([imread(i.replace('\\','/')) for i in label_path])
 
 	return labels
 
@@ -146,6 +146,7 @@ def locate_stack_and_labels(position, prefix='Aligned', population="target"):
 	
 	"""
 
+	position = position.replace('\\','/')
 	labels = locate_labels(position, population=population)
 	stack = locate_stack(position, prefix=prefix)
 	assert len(stack)==len(labels),f"The shape of the stack {stack.shape} does not match with the shape of the labels {labels.shape}"
@@ -190,6 +191,7 @@ def load_tracking_data(position, prefix="Aligned", population="target"):
 
 	"""
 
+	position = position.replace('\\','/')
 	if population.lower()=="target" or population.lower()=="targets":
 		trajectories = pd.read_csv(position+'output/tables/trajectories_targets.csv')
 	elif population.lower()=="effector" or population.lower()=="effectors":
@@ -232,6 +234,8 @@ def auto_load_number_of_frames(stack_path):
 	"""
 
 	# Try to estimate automatically # frames
+	stack_path = stack_path.replace('\\','/')
+
 	with TiffFile(stack_path) as tif:
 		try:
 			tif_tags = {}
@@ -313,10 +317,10 @@ def get_tracking_configs_list(return_path=False):
 
 	"""
 
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/"
+	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/".replace('\\','/')
 	available_models = glob(modelpath+'*.json')
-	available_models = [m.split('/')[-1] for m in available_models]
-	available_models = [m.split('.')[0] for m in available_models]
+	available_models = [m.replace('\\','/').split('/')[-1] for m in available_models]
+	available_models = [m.replace('\\','/').split('.')[0] for m in available_models]
 
 
 	if not return_path:
@@ -330,7 +334,7 @@ def interpret_tracking_configuration(config):
 		if os.path.exists(config):
 			return config
 		else:
-			modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/"
+			modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/".replace('\\','/')
 			if os.path.exists(modelpath+config+'.json'):
 				return modelpath+config+'.json'
 			else:
@@ -374,9 +378,9 @@ def get_signal_models_list(return_path=False):
 
 	"""
 
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/signal_detection/"
+	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/signal_detection/".replace('\\','/')
 	available_models = glob(modelpath+'*/')
-	available_models = [m.split('/')[-2] for m in available_models]
+	available_models = [m.replace('\\','/').split('/')[-2] for m in available_models]
 
 	if not return_path:
 		return available_models
@@ -556,7 +560,7 @@ def load_napari_data(position, prefix="Aligned", population="target"):
 	# Load the necessary data for visualization of target trajectories.
 	
 	"""
-
+	position = position.replace('\\','/')
 	if population.lower()=="target" or population.lower()=="targets":
 		napari_data = np.load(position+"output/tables/napari_target_trajectories.npy",allow_pickle=True)
 	elif population.lower()=="effector" or population.lower()=="effectors":
@@ -718,6 +722,7 @@ def control_tracking_table(position, calibration=1, prefix="Aligned", population
 
 	"""
 
+	position = position.replace('\\','/')
 	tracks,labels,stack = load_tracking_data(position, prefix=prefix, population=population)
 	tracks = tracks.loc[:, [column_labels['track'], column_labels['frame'], column_labels['y'], column_labels['x']]].to_numpy()
 	tracks[:,-2:] /= calibration
@@ -727,12 +732,12 @@ def control_tracking_table(position, calibration=1, prefix="Aligned", population
 def get_segmentation_models_list(mode='targets', return_path=False):
 	
 	if mode=='targets':
-		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_targets/"
+		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_targets/".replace('\\','/')
 	elif mode=='effectors':
-		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_effectors/"
+		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_effectors/".replace('\\','/')
 
 	available_models = glob(modelpath+'*/')
-	available_models = [m.split('/')[-2] for m in available_models]
+	available_models = [m.replace('\\','/').split('/')[-2] for m in available_models]
 
 	if not return_path:
 		return available_models
@@ -740,13 +745,13 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 		return available_models, modelpath
 
 def locate_segmentation_model(name):
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation*/"
+	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation*/".replace('\\','/')
 	print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath+'*/')
 
 	match=None
 	for m in models:
-		if name==m.split('/')[-2]:
+		if name==m.replace('\\','/').split('/')[-2]:
 			match = m
 			return match
 	return match

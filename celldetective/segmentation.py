@@ -412,6 +412,7 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 
 	"""
 	
+	pos = pos.replace('\\','/')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	subprocess.call(f"python {abs_path}/scripts/segment_cells.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
 	if return_labels or view_on_napari:

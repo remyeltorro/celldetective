@@ -851,6 +851,7 @@ def compute_instantaneous_diffusion(trajectories, column_labels={'track': "TRACK
 
 def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 	
+	pos = pos.replace('\\','/')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'

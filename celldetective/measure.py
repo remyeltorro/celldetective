@@ -661,6 +661,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
 def measure_at_position(pos, mode, return_measurements=False):
 	
+	pos = pos.replace('\\','/')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'

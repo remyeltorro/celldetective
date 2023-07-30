@@ -302,8 +302,9 @@ class SegmentationModelLoader(QWidget):
 				return None
 
 		if not self.threshold_button.isChecked():
-			self.generate_input_config()
+			
 			if self.stardist_button.isChecked():
+				
 				try:
 					shutil.copytree(self.filename, self.destination)
 				except FileExistsError:
@@ -318,6 +319,8 @@ class SegmentationModelLoader(QWidget):
 
 			elif self.cellpose_button.isChecked():
 				try:
+					if not os.path.exists(self.folder_dest):
+						os.mkdir(self.folder_dest)
 					shutil.copy(self.filename, self.destination)
 				except FileExistsError:
 					msgBox = QMessageBox()
@@ -327,7 +330,9 @@ class SegmentationModelLoader(QWidget):
 					msgBox.setStandardButtons(QMessageBox.Ok)
 					returnValue = msgBox.exec()
 					if returnValue == QMessageBox.Ok:
-						return None				
+						return None
+
+			self.generate_input_config()
 			self.parent.init_seg_model_list()
 			self.close()
 		else:
@@ -391,20 +396,20 @@ class SegmentationModelLoader(QWidget):
 		json_object = json.dumps(dico, indent=4)
 
 		# Writing to sample.json
-		if os.path.exists(self.folder_dest):
+		# if os.path.exists(self.folder_dest):
 
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("A model with the same name already exists. Do you want to replace it?")
-			msgBox.setWindowTitle("Confirm")
-			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.No:
-				return None
-			elif returnValue == QMessageBox.Yes:
-				shutil.rmtree(self.folder_dest)
+		# 	msgBox = QMessageBox()
+		# 	msgBox.setIcon(QMessageBox.Warning)
+		# 	msgBox.setText("A model with the same name already exists. Do you want to replace it?")
+		# 	msgBox.setWindowTitle("Confirm")
+		# 	msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		# 	returnValue = msgBox.exec()
+		# 	if returnValue == QMessageBox.No:
+		# 		return None
+		# 	elif returnValue == QMessageBox.Yes:
+		# 		shutil.rmtree(self.folder_dest)
+		#os.mkdir(self.folder_dest)
 
-		os.mkdir(self.folder_dest)
 		print("Configuration successfully written in ",self.folder_dest+"/config_input.json")
 		with open(self.folder_dest+"/config_input.json", "w") as outfile:
 			outfile.write(json_object)

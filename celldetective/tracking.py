@@ -415,7 +415,7 @@ def interpolate_nan_properties(trajectories, track_label="TRACK_ID"):
 
 	"""
 
-	trajectories = trajectories.groupby(track_label,group_keys=False).apply(interpolate_per_track)
+	trajectories = trajectories.groupby(track_label).apply(interpolate_per_track)
 
 	return trajectories
 
@@ -574,7 +574,7 @@ def interpolate_time_gaps(trajectories, column_labels={'track': "TRACK_ID", 'tim
 	trajectories[column_labels['time']] = pd.to_datetime(trajectories[column_labels['time']], unit='s')
 	trajectories.set_index(column_labels['track'], inplace=True)
 	trajectories = trajectories.groupby(column_labels['track']).apply(lambda x: x.set_index(column_labels['time']).resample('1S').asfreq()).reset_index()
-	trajectories[[column_labels['x'], column_labels['y']]] = trajectories.groupby(column_labels['track'], group_keys=False)[[column_labels['x'], column_labels['y']]].apply(lambda x: x.interpolate(method='linear'))
+	trajectories[[column_labels['x'], column_labels['y']]] = trajectories.groupby(column_labels['track'])[[column_labels['x'], column_labels['y']]].apply(lambda x: x.interpolate(method='linear'))
 	trajectories.reset_index(drop=True, inplace=True)
 	trajectories[column_labels['time']] = trajectories[column_labels['time']].astype(int) / 10**9
 	trajectories.sort_values(by=[column_labels['track'],column_labels['time']],inplace=True)

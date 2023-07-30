@@ -189,12 +189,13 @@ class SignalAnnotator(QMainWindow):
 
 		self.positions = []
 		self.colors = []
-		# for k,group in self.df_tracks.groupby('FRAME'):
-		# 	self.positions.append(group[['x_anim', 'y_anim']].to_numpy())
-		# 	self.colors.append(group[['class_color', 'status_color']].to_numpy())
-		for t in np.arange(0,self.df_tracks['FRAME'].max()):
+		self.tracks = []
+
+		for t in np.arange(self.len_movie):
+
 			self.positions.append(self.df_tracks.loc[self.df_tracks['FRAME']==t,['x_anim', 'y_anim']].to_numpy())
-			self.colors.append(self.df_tracks.loc[self.df_tracks['FRAME']==t,['class_color', 'status_color']].to_numpy())			
+			self.colors.append(self.df_tracks.loc[self.df_tracks['FRAME']==t,['class_color', 'status_color']].to_numpy())
+			self.tracks.append(self.df_tracks.loc[self.df_tracks['FRAME']==t, 'TRACK_ID'].to_numpy())
 
 
 	def load_annotator_config(self):
@@ -282,14 +283,14 @@ class SignalAnnotator(QMainWindow):
 		"""
 
 		self.speed = 1
-		self.iter_val = 0
+		self.framedata = 0
 
 		self.fig, self.ax = plt.subplots()
 		self.fcanvas = FigureCanvas(self.fig, interactive=True)
 		self.ax.clear()
 
 		self.im = self.ax.imshow(self.stack[0], cmap='gray')
-		self.status_scatter = self.ax.scatter(self.positions[0][:,0], self.positions[0][:,1], marker="x", c=self.colors[0][:,1], s=50, picker=True, pickradius=5)
+		self.status_scatter = self.ax.scatter(self.positions[0][:,0], self.positions[0][:,1], marker="x", c=self.colors[0][:,1], s=50, picker=True, pickradius=100)
 		self.class_scatter = self.ax.scatter(self.positions[0][:,0], self.positions[0][:,1], marker='o', facecolors='none',edgecolors=self.colors[0][:,0], s=200)
 		
 		self.ax.set_xticks([])
@@ -302,7 +303,7 @@ class SignalAnnotator(QMainWindow):
 		self.anim = FuncAnimation(
 							   self.fig, 
 							   self.draw_frame, 
-							   frames = self.len_movie,
+							   frames = self.len_movie, # better would be to cast np.arange(len(movie)) in case frame column is incomplete
 							   interval = self.speed, # in ms
 							   blit=True,
 							   )
@@ -316,6 +317,7 @@ class SignalAnnotator(QMainWindow):
 		
 		ind = event.ind
 		print(ind)
+		print(self.tracks[self.framedata][ind[0]])
 		#print('onpick3 scatter:', ind, x[ind], y[ind])		
 
 
@@ -325,13 +327,13 @@ class SignalAnnotator(QMainWindow):
 		Update plot elements at each timestep of the loop.
 		"""
 
-		self.iter_val = framedata
-		self.im.set_array(self.stack[framedata])
-		self.status_scatter.set_offsets(self.positions[framedata])
-		self.status_scatter.set_color(self.colors[framedata][:,1])
+		self.framedata = framedata
+		self.im.set_array(self.stack[self.framedata])
+		self.status_scatter.set_offsets(self.positions[self.framedata])
+		self.status_scatter.set_color(self.colors[self.framedata][:,1])
 
-		self.class_scatter.set_offsets(self.positions[framedata])
-		self.class_scatter.set_edgecolor(self.colors[framedata][:,0])
+		self.class_scatter.set_offsets(self.positions[self.framedata])
+		self.class_scatter.set_edgecolor(self.colors[self.framedata][:,0])
 
 		return (self.im,self.status_scatter,self.class_scatter,)
 

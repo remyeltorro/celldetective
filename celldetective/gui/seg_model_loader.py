@@ -200,7 +200,7 @@ class SegmentationModelLoader(QWidget):
 
 		self.threshold_config_button = QPushButton("Threshold Config Wizard")
 		self.threshold_config_button.setIcon(icon(MDI6.auto_fix,color="#1565c0"))
-		self.threshold_config_button.setIconSize(QSize(25, 25))
+		self.threshold_config_button.setIconSize(QSize(20, 20))
 		self.threshold_config_button.setVisible(False)
 		self.threshold_config_button.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
 		#self.threshold_config_button.clicked.connect(self.open_threshold_config_wizard)

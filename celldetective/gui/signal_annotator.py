@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
 from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
 from superqt import QLabeledDoubleSlider
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
@@ -13,6 +14,7 @@ import os
 from glob import glob
 from natsort import natsorted
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 from tqdm import tqdm
 import gc
 from matplotlib.animation import FuncAnimation
@@ -33,7 +35,9 @@ class SignalAnnotator(QMainWindow):
 		self.mode = self.parent.mode
 		self.pos = self.parent.parent.pos
 		self.exp_dir = self.parent.exp_dir
+		self.n_signals = 3
 		self.soft_path = get_software_location()
+		self.selection = []
 		if self.mode=="targets":
 			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
 			self.trajectories_path = self.pos+'output/tables/trajectories_targets.csv'
@@ -51,8 +55,12 @@ class SignalAnnotator(QMainWindow):
 		self.locate_tracks()
 		self.prepare_stack()
 
-		self.populate_widget()
+		self.generate_signal_choices()
 		self.looped_animation()
+		self.create_cell_signal_canvas()
+
+
+		self.populate_widget()
 
 		self.setMinimumWidth(int(0.8*self.screen_width))
 		# self.setMaximumHeight(int(0.8*self.screen_height))
@@ -74,24 +82,147 @@ class SignalAnnotator(QMainWindow):
 		
 		main_layout.setContentsMargins(30,30,30,30)
 		self.left_panel = QVBoxLayout()
+		self.left_panel.setContentsMargins(30,30,30,30)
+		self.left_panel.setSpacing(10)
+
 		self.right_panel = QVBoxLayout()
 
-		self.submit_btn = QPushButton('Save')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		# Annotation buttons
+		options_hbox = QHBoxLayout()
+		options_hbox.setContentsMargins(150,30,50,0)
+		self.event_btn = QRadioButton('event')
+		self.event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.event_btn.toggled.connect(self.enable_time_of_interest)
+
+		self.no_event_btn = QRadioButton('no event')
+		self.no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.no_event_btn.toggled.connect(self.enable_time_of_interest)
+
+		self.else_btn = QRadioButton('else')
+		self.else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.else_btn.toggled.connect(self.enable_time_of_interest)
+
+		options_hbox.addWidget(self.event_btn, 33)
+		options_hbox.addWidget(self.no_event_btn, 33)
+		options_hbox.addWidget(self.else_btn, 33)
+		self.left_panel.addLayout(options_hbox)
+
+		time_option_hbox = QHBoxLayout()
+		time_option_hbox.setContentsMargins(100,30,100,30)
+		self.time_of_interest_label = QLabel('time of interest: ')
+		time_option_hbox.addWidget(self.time_of_interest_label, 30)
+		self.time_of_interest_le = QLineEdit()
+		time_option_hbox.addWidget(self.time_of_interest_le, 70)
+		self.left_panel.addLayout(time_option_hbox)
+
+		main_action_hbox = QHBoxLayout()
+		self.correct_btn = QPushButton('correct')
+		self.correct_btn.setIcon(icon(MDI6.redo_variant,color="white"))
+		self.correct_btn.setIconSize(QSize(20, 20))
+		self.correct_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.correct_btn.clicked.connect(self.show_annotation_buttons)
+		self.correct_btn.setEnabled(False)
+		main_action_hbox.addWidget(self.correct_btn)
+
+		self.cancel_btn = QPushButton('cancel')
+		self.cancel_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.cancel_btn.setShortcut(QKeySequence("Esc"))
+		self.cancel_btn.setEnabled(False)
+		self.cancel_btn.clicked.connect(self.cancel_selection)
+		main_action_hbox.addWidget(self.cancel_btn)
+		self.left_panel.addLayout(main_action_hbox)
+
+		self.annotation_btns_to_hide = [self.event_btn, self.no_event_btn, 
+										self.else_btn, self.time_of_interest_label, 
+										self.time_of_interest_le]
+		self.hide_annotation_buttons()
+		#### End of annotation buttons
+
+
+		# Cell signals
+		self.left_panel.addWidget(self.cell_fcanvas)
+
+		signal_choice_vbox = QVBoxLayout()
+		signal_choice_vbox.setContentsMargins(30,30,30,50)
+		for i in range(len(self.signal_choice_cb)):
+			
+			hlayout = QHBoxLayout()
+			hlayout.addWidget(self.signal_choice_label[i], 20)
+			hlayout.addWidget(self.signal_choice_cb[i], 80)
+			signal_choice_vbox.addLayout(hlayout)
+
+		self.left_panel.addLayout(signal_choice_vbox)
+
+		self.save_btn = QPushButton('Save')
+		self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
 		#self.submit_btn.clicked.connect(self.write_instructions)
-		self.left_panel.addWidget(self.submit_btn)
+		self.left_panel.addWidget(self.save_btn)
+
+		# Animation
+		self.right_panel.addWidget(self.fcanvas)
 
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
 
-		main_layout.addLayout(self.left_panel, 25)
-		main_layout.addLayout(self.right_panel, 75)
+		main_layout.addLayout(self.left_panel, 35)
+		main_layout.addLayout(self.right_panel, 65)
 		self.button_widget.adjustSize()
 
 		self.setCentralWidget(self.button_widget)
 		self.show()
 
 		QApplication.processEvents()
+
+	def cancel_selection(self):
+
+		self.hide_annotation_buttons()
+		self.correct_btn.setEnabled(False)
+		self.correct_btn.setText('correct')
+		self.cancel_btn.setEnabled(False)
+		self.selection.pop(0)
+
+		for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):
+			self.colors[t][idx,0] = self.previous_color[k][0]
+			self.colors[t][idx,1] = self.previous_color[k][1]
+
+	def hide_annotation_buttons(self):
+		
+		for a in self.annotation_btns_to_hide:
+			a.hide()
+		for b in [self.event_btn, self.no_event_btn, self.else_btn]:
+			b.setChecked(False)
+		self.time_of_interest_label.setEnabled(False)
+		self.time_of_interest_le.setText('')
+		self.time_of_interest_le.setEnabled(False)
+
+	def enable_time_of_interest(self):
+
+		if self.event_btn.isChecked():
+			self.time_of_interest_label.setEnabled(True)
+			self.time_of_interest_le.setEnabled(True)
+		else:
+			self.time_of_interest_label.setEnabled(False)
+			self.time_of_interest_le.setEnabled(False)					
+
+	def show_annotation_buttons(self):
+		
+		for a in self.annotation_btns_to_hide:
+			a.show()
+
+		cclass = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'].to_numpy()[0]
+		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]
+
+		if cclass==0:
+			self.event_btn.setChecked(True)
+			self.time_of_interest_le.setText(str(t0))
+		elif cclass==1:
+			self.no_event_btn.setChecked(True)
+		elif cclass==2:
+			self.else_btn.setChecked(True)
+
+		self.enable_time_of_interest()
+		self.correct_btn.setText('submit')
+
 
 	def locate_stack(self):
 		
@@ -163,6 +294,7 @@ class SignalAnnotator(QMainWindow):
 			self.df_tracks['y_anim'] = self.df_tracks['y_anim'].astype(int)
 
 			self.extract_scatter_from_trajectories()
+			self.track_of_interest = self.df_tracks['TRACK_ID'].min()
 
 	def make_status_column(self):
 
@@ -184,6 +316,51 @@ class SignalAnnotator(QMainWindow):
 
 		print(self.df_tracks)
 
+	def generate_signal_choices(self):
+		
+		self.signal_choice_cb = [QComboBox() for i in range(self.n_signals)]
+		self.signal_choice_label = [QLabel(f'signal {i+1}: ') for i in range(self.n_signals)]
+
+		signals = list(self.df_tracks.columns)
+		print(signals)
+		to_remove = ['TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y']
+		for c in to_remove:
+			if c in signals:
+				signals.remove(c)
+
+		for i in range(len(self.signal_choice_cb)):
+			self.signal_choice_cb[i].addItems(['--']+signals)
+			self.signal_choice_cb[i].setCurrentIndex(i+1)
+			self.signal_choice_cb[i].currentIndexChanged.connect(self.plot_signals)
+
+	def plot_signals(self):
+		
+		yvalues = []
+		for i in range(len(self.signal_choice_cb)):
+			
+			signal_choice = self.signal_choice_cb[i].currentText()
+			self.lines[i].set_label(signal_choice)
+
+			if signal_choice=="--":
+				self.lines[i].set_xdata([])
+				self.lines[i].set_ydata([])
+			else:
+				print(f'plot signal {signal_choice} for cell {self.track_of_interest}')
+				xdata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'FRAME'].to_numpy()
+				ydata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, signal_choice].to_numpy()
+				yvalues.extend(ydata)
+				self.lines[i].set_xdata(xdata)
+				self.lines[i].set_ydata(ydata)
+		
+		self.configure_ylims()
+
+		min_val,max_val = self.cell_ax.get_ylim()
+		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]
+		self.line_dt.set_xdata([t0, t0])
+		self.line_dt.set_ydata([min_val,max_val])
+
+		self.cell_ax.legend()
+		self.cell_fcanvas.canvas.draw()
 
 	def extract_scatter_from_trajectories(self):
 
@@ -285,7 +462,7 @@ class SignalAnnotator(QMainWindow):
 		self.speed = 1
 		self.framedata = 0
 
-		self.fig, self.ax = plt.subplots()
+		self.fig, self.ax = plt.subplots(tight_layout=True)
 		self.fcanvas = FigureCanvas(self.fig, interactive=True)
 		self.ax.clear()
 
@@ -311,15 +488,86 @@ class SignalAnnotator(QMainWindow):
 		self.fig.canvas.mpl_connect('pick_event', self.on_scatter_pick)
 		self.fcanvas.canvas.draw()
 
-		self.right_panel.addWidget(self.fcanvas)
+
+	def create_cell_signal_canvas(self):
+		
+		self.cell_fig, self.cell_ax = plt.subplots()
+		self.cell_fcanvas = FigureCanvas(self.cell_fig, interactive=False)
+		self.cell_ax.clear()
+
+		spacing = 0.5 
+		minorLocator = MultipleLocator(1)
+		self.cell_ax.xaxis.set_minor_locator(minorLocator)
+		self.cell_ax.xaxis.set_major_locator(MultipleLocator(5))
+		self.cell_ax.grid(which = 'major')
+		self.cell_ax.set_xlabel("time [frame]")
+		self.cell_ax.set_ylabel("signal")
+
+		self.cell_fig.set_facecolor('none')  # or 'None'
+		self.cell_fig.canvas.setStyleSheet("background-color: transparent;")
+
+		self.lines = [self.cell_ax.plot([np.linspace(0,self.len_movie-1,self.len_movie)],[np.zeros((self.len_movie))])[0] for i in range(len(self.signal_choice_cb))]
+		for i in range(len(self.lines)):
+			self.lines[i].set_label(f'signal {i}')
+
+		min_val,max_val = self.cell_ax.get_ylim()
+		self.line_dt, = self.cell_ax.plot([-1,-1],[min_val,max_val],c="k",linestyle="--")
+
+		self.cell_ax.set_xlim(0,self.len_movie)
+		self.cell_ax.legend()
+		self.cell_fcanvas.canvas.draw()
+
+		self.plot_signals()
+
 
 	def on_scatter_pick(self, event):
 		
 		ind = event.ind
-		print(ind)
-		print(self.tracks[self.framedata][ind[0]])
-		#print('onpick3 scatter:', ind, x[ind], y[ind])		
+		if len(ind)>1:
+			# More than one point in vicinity
+			datax,datay = [self.positions[self.framedata][i,0] for i in ind],[self.positions[self.framedata][i,1] for i in ind]
+			msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
+			dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
+			ind = [ind[np.argmin(dist)]]
+		
 
+		if ind and (len(self.selection))==0:
+			ind = ind[0]
+			self.selection.append(ind)
+			self.correct_btn.setEnabled(True)
+			self.cancel_btn.setEnabled(True)
+
+			self.track_of_interest = self.tracks[self.framedata][ind]
+			print(f'You selected track {self.track_of_interest}.')
+			self.plot_signals()
+
+			self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
+			self.previous_color = []
+			for t,idx in zip(self.loc_t,self.loc_idx):
+				self.previous_color.append(self.colors[t][idx].copy())
+				self.colors[t][idx] = 'lime'
+
+		elif ind and len(self.selection)==1:
+			self.cancel_btn.click()
+		else:
+			pass
+			
+	def configure_ylims(self):
+
+		min_values = []
+		max_values = []
+		for i in range(len(self.signal_choice_cb)):
+			signal = self.signal_choice_cb[i].currentText()
+			if signal=='--':
+				continue
+			else:
+				maxx = np.nanpercentile(self.df_tracks.loc[:,signal].to_numpy().flatten(),99)
+				minn = np.nanpercentile(self.df_tracks.loc[:,signal].to_numpy().flatten(),1)
+				min_values.append(minn)
+				max_values.append(maxx)
+
+		if len(min_values)>0:
+			self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
 
 	def draw_frame(self, framedata):
 		

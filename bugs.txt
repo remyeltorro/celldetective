@@ -10,3 +10,5 @@ Pytorch: [W NNPACK.cpp:64] Could not initialize NNPACK! Reason: Unsupported hard
 Solution: 
 mamba remove pytorch
 mamba install pytorch
+
+tess

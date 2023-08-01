@@ -36,6 +36,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.screen_width = self.parent.parent.parent.parent.screen_width
 
 		self.locate_stack()
+		self.initialize_histogram()
 		self.show_image()
 		self.populate_widget()
 
@@ -174,7 +175,6 @@ class ThresholdConfigWizard(QMainWindow):
 		self.threshold_contrast_range.setRange(np.amin(self.img), np.amax(self.img))
 		self.threshold_contrast_range.setValue([np.percentile(self.img.flatten(), 90), np.amax(self.img)])
 		#self.threshold_contrast_range.valueChanged.connect(self.threshold_changed)
-		self.make_histogram()
 
 
 		grid_threshold.addWidget(self.canvas_hist, idx,0,1,3)
@@ -306,26 +306,44 @@ class ThresholdConfigWizard(QMainWindow):
 
 		self.fcanvas.canvas.draw()
 
-	def make_histogram(self):
-
+	def initialize_histogram(self):
+		
 		self.fig_hist, self.ax_hist = plt.subplots(tight_layout=True)
 		self.canvas_hist = FigureCanvas(self.fig_hist, interactive=False)
-		self.ax_hist.clear()
-		self.ax_hist.patch.set_facecolor('none')
-		self.ax_hist.hist(self.img.flatten(),density=True,bins=300,color="k")
 		self.fig_hist.set_facecolor('none')
 		self.fig_hist.canvas.setStyleSheet("background-color: transparent;")
 
+		#self.ax_hist.clear()
+		self.ax_hist.patch.set_facecolor('none')
+		self.ax_hist.hist(self.img.flatten(),density=True,bins=300,color="k")
+		self.ax_hist.set_xlim(np.amin(self.img),np.amax(self.img))
 		self.ax_hist.set_xlabel('intensity [a.u.]')
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
 		self.ax_hist.set_yticks([])
-		
+		self.canvas_hist.canvas.draw()	
+
+
+
+	# def make_histogram(self):
+	# 	print('make histo invoked', self.img.shape)
+
+	# 	self.ax_hist.clear()
+	# 	self.ax_hist.patch.set_facecolor('none')
+	# 	self.ax_hist.hist(self.img.flatten(),density=True,bins=300,color="k")
+	# 	self.ax_hist.set_xlim(np.amin(self.img),np.amax(self.img))
+	# 	self.ax_hist.set_xlabel('intensity [a.u.]')
+	# 	self.ax_hist.spines['top'].set_visible(False)
+	# 	self.ax_hist.spines['right'].set_visible(False)
+	# 	self.ax_hist.set_yticks([])
+	# 	self.canvas_hist.canvas.draw()	
+
+	def add_hist_threshold(self):
+
 		ymin,ymax = self.ax_hist.get_ylim()
 		self.min_intensity_line, = self.ax_hist.plot([self.threshold_contrast_range.value()[0],self.threshold_contrast_range.value()[0]],[ymin,ymax],c="k")
 		self.max_intensity_line, = self.ax_hist.plot([self.threshold_contrast_range.value()[1],self.threshold_contrast_range.value()[1]],[ymin,ymax],c="k")
-
-		self.canvas_hist.canvas.draw()		
+		self.canvas_hist.canvas.draw()	
 
 	def reload_frame(self):
 		
@@ -368,13 +386,14 @@ class ThresholdConfigWizard(QMainWindow):
 		self.im.set_clim(vmin=self.vmin, vmax=self.vmax)
 		self.fcanvas.canvas.draw_idle()
 
+		self.initialize_histogram()
+
 	def preprocess_image(self):
 
 		self.reload_frame()
 		filters = self.filters_qlist.items
 		self.img = filter_image(self.img, filters)
 		self.refresh_imshow()
-		#self.make_histogram()
 
 	# def threshold_changed(self):
 

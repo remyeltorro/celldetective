@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QCheckBox, QLineEdit, QHBoxLayout, QRadioButton, QComboBox, QFileDialog, QPushButton, QMessageBox
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import center_window
+from celldetective.gui import ThresholdConfigWizard
 from PyQt5.QtGui import QDoubleValidator
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
@@ -203,7 +204,7 @@ class SegmentationModelLoader(QWidget):
 		self.threshold_config_button.setIconSize(QSize(20, 20))
 		self.threshold_config_button.setVisible(False)
 		self.threshold_config_button.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-		#self.threshold_config_button.clicked.connect(self.open_threshold_config_wizard)
+		self.threshold_config_button.clicked.connect(self.open_threshold_config_wizard)
 		self.layout.addWidget(self.threshold_config_button,3,0,1,2)
 		self.threshold_config_button.hide()
 
@@ -413,3 +414,8 @@ class SegmentationModelLoader(QWidget):
 		print("Configuration successfully written in ",self.folder_dest+"/config_input.json")
 		with open(self.folder_dest+"/config_input.json", "w") as outfile:
 			outfile.write(json_object)
+
+	def open_threshold_config_wizard(self):
+		
+		self.ThreshWizard = ThresholdConfigWizard(self)
+		self.ThreshWizard.show()

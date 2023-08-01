@@ -152,6 +152,8 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 	
+	pos = pos.replace('\\','/')
+	pos = pos.replace(' ','\\')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'

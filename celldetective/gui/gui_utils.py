@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, QPushButton, QLabel, QHBoxLayout, QCheckBox
+from PyQt5.QtCore import QEvent
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
@@ -72,6 +73,97 @@ class FeatureChoice(QWidget):
 		filtername = self.combo_box.currentText()
 		self.parent.list_widget.addItems([filtername])
 		self.close()
+
+class FilterChoice(QWidget):
+
+	def __init__(self, parent):
+
+		super().__init__()
+		self.parent = parent
+		self.setWindowTitle("Add filter")
+		# Create the QComboBox and add some items
+		center_window(self)
+
+		self.default_params = {
+						  'gauss_filter': {'sigma': 2},
+						  'median_filter': {'size': 4}, 
+						  'maximum_filter': {'size': 4},
+						  'minimum_filter': {'size': 4},
+						  'percentile_filter': {'percentile': 99, 'size': 4},
+						  'variance_filter': {'size': 4},
+						  'std_filter': {'size': 4},
+						  'laplace_filter': None,
+						  'dog_filter': {'sigma_low': 0.8, 'sigma_high': 1.6},
+						  'log_filter': {'sigma': 2},
+						  'tophat_filter': {'size': 4, 'connectivity': 4}
+						  }
+
+		
+		layout = QVBoxLayout(self)
+		self.combo_box = QComboBox(self)
+		self.combo_box.addItems(list(self.default_params.keys()))
+		self.combo_box.currentTextChanged.connect(self.update_arguments)
+		layout.addWidget(self.combo_box)
+
+		self.arguments_le = [QLineEdit() for i in range(3)]
+		self.arguments_labels = [QLabel('') for i in range(3)]
+		for i in range(2):
+			hbox = QHBoxLayout()
+			hbox.addWidget(self.arguments_labels[i], 20)
+			hbox.addWidget(self.arguments_le[i], 80)
+			layout.addLayout(hbox)
+
+		self.add_btn = QPushButton("Add")
+		self.add_btn.clicked.connect(self.add_current_feature)
+		layout.addWidget(self.add_btn)
+
+		self.combo_box.setCurrentIndex(0)
+		self.update_arguments()
+
+
+	def add_current_feature(self):
+
+		filtername = self.combo_box.currentText()
+		self.parent.list_widget.addItems([filtername])
+
+		filter_instructions = [filtername.split('_')[0]]
+		for a in self.arguments_le:
+			arg = a.text()
+			if (arg!=''):
+				filter_instructions.append(float(arg))
+		
+		print(f'You added filter {filter_instructions}.')
+
+		self.parent.items.append(filter_instructions)
+		self.close()
+
+	def update_arguments(self):
+
+		selected_filter = self.combo_box.currentText()
+		arguments = self.default_params[selected_filter]
+		if arguments is not None:
+			args = list(arguments.keys())
+			for i in range(len(args)):
+				
+				self.arguments_labels[i].setEnabled(True)
+				self.arguments_le[i].setEnabled(True)
+
+				self.arguments_labels[i].setText(args[i])
+				self.arguments_le[i].setText(str(arguments[args[i]]))
+
+			if len(args)<2:
+				for i in range(len(args), 2):
+					self.arguments_labels[i].setEnabled(False)
+					self.arguments_labels[i].setText('')					
+					self.arguments_le[i].setEnabled(False)
+		else:
+			for i in range(2):
+				self.arguments_labels[i].setEnabled(False)
+				self.arguments_le[i].setEnabled(False)				
+				self.arguments_labels[i].setText('')
+
+
+
 
 
 class OperationChoice(QWidget):
@@ -182,11 +274,11 @@ class ListWidget(QWidget):
 	def __init__(self, parent, choiceWidget, initial_features, dtype=str):
 		
 		super().__init__()
-
 		self.parent = parent
 		self.initial_features = initial_features
 		self.choiceWidget = choiceWidget
 		self.dtype = dtype
+		self.items = []
 
 		self.setFixedHeight(80)
 
@@ -198,7 +290,6 @@ class ListWidget(QWidget):
 		main_layout = QVBoxLayout()
 		main_layout.addWidget(self.list_widget)
 		self.setLayout(main_layout)
-
 
 	def addItem(self):
 
@@ -234,7 +325,11 @@ class ListWidget(QWidget):
 		listItems=self.list_widget.selectedItems()
 		if not listItems: return
 		for item in listItems:
-			self.list_widget.takeItem(self.list_widget.row(item))
+			idx = self.list_widget.row(item)
+			self.list_widget.takeItem(idx)
+			if self.items:
+				del self.items[idx]
+
 
 
 class FigureCanvas(QWidget):

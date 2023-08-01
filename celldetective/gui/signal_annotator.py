@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
-from celldetective.gui.gui_utils import center_window, QHSeperationLine
+from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
 from superqt import QLabeledDoubleSlider
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
 from celldetective.io import auto_load_number_of_frames, load_frames

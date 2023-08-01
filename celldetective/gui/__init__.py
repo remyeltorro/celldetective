@@ -4,6 +4,7 @@ from .json_readers import ConfigEditor
 from .measurement_options import ConfigMeasurements
 from .signal_annotator_options import ConfigSignalAnnotator
 from .signal_annotator import SignalAnnotator
+from .thresholds_gui import ThresholdConfigWizard
 from .seg_model_loader import SegmentationModelLoader
 from .process_block import ProcessPanel
 from .control_panel import ControlPanel

@@ -371,11 +371,15 @@ def filter_image(img, filters=None):
 
 	if filters is None:
 		return img
-	else:
-		for f in filters:
-			func = eval(f[0]+'_filter')
-			img = func(img, *f[1:])	
-		return img
+
+	if img.ndim==3:
+		img = np.squeeze(img)
+
+	for f in filters:
+		func = eval(f[0]+'_filter')
+		print(f, f[0], f[1:])
+		img = func(img, *f[1:])	
+	return img
 
 
 def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, return_labels=False, view_on_napari=False):
@@ -413,6 +417,7 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	"""
 	
 	pos = pos.replace('\\','/')
+	pos = pos.replace(' ','\\')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	subprocess.call(f"python {abs_path}/scripts/segment_cells.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
 	if return_labels or view_on_napari:

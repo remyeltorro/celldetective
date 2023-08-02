@@ -11,8 +11,9 @@ import numpy as np
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 from skimage.transform import resize
-from .io import _view_on_napari, locate_labels, locate_stack, _view_on_napari
-from .filters import * #rework this to give a name
+from celldetective.io import _view_on_napari, locate_labels, locate_stack, _view_on_napari
+from celldetective.filters import * #rework this to give a name
+from celldetective.utils import rename_intensity_column
 import scipy.ndimage as ndi
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
@@ -181,7 +182,7 @@ def segment_from_thresholds(stack, target_channel=0, thresholds=None, view_on_na
 	return masks
 
 def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equalize_reference=None,
-								  filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None):
+								  filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None, channel_names=None):
 	
 	img = frame[:,:,target_channel]
 	if equalize_reference is not None:
@@ -191,12 +192,12 @@ def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equa
 	binary_image = threshold_image(img, thresholds[0], thresholds[1])
 	coords,distance = identify_markers_from_binary(binary_image, marker_min_distance, footprint_size=marker_footprint_size, footprint=marker_footprint, return_edt=True)
 	instance_seg = apply_watershed(binary_image, coords, distance)
-	instance_seg = filter_on_property(instance_seg, intensity_image=img_mc, queries=feature_queries)
+	instance_seg = filter_on_property(instance_seg, intensity_image=img_mc, queries=feature_queries, channel_names=channel_names)
 
 	return instance_seg
 
 
-def filter_on_property(labels, intensity_image=None, queries=None):
+def filter_on_property(labels, intensity_image=None, queries=None, channel_names=None):
 
 	if queries is None:
 		return labels
@@ -215,7 +216,8 @@ def filter_on_property(labels, intensity_image=None, queries=None):
 		props.extend(intensity_props)
 
 	properties = pd.DataFrame(regionprops_table(labels, intensity_image=intensity_image, properties=props))
-
+	if channel_names is not None:
+		properties = rename_intensity_column(properties, channel_names)
 	for query in queries:
 		try:
 			properties = properties.query(f'not ({query})')

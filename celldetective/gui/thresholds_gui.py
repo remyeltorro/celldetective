@@ -27,7 +27,14 @@ class ThresholdConfigWizard(QMainWindow):
 		
 		super().__init__()
 		self.parent = parent
+
+		self.screen_height = self.parent.parent.parent.parent.screen_height
+		self.screen_width = self.parent.parent.parent.parent.screen_width
+		self.setMinimumWidth(int(0.8*self.screen_width))
+		self.setMinimumHeight(int(0.8*self.screen_height))
 		self.setWindowTitle("Threshold configuration wizard")
+		center_window(self)
+
 		self.mode = self.parent.mode
 		self.pos = self.parent.parent.parent.pos
 		self.exp_dir = self.parent.parent.exp_dir
@@ -41,9 +48,6 @@ class ThresholdConfigWizard(QMainWindow):
 		elif self.mode=="effectors":
 			self.config_out_name = "threshold_effectors.json"
 
-		self.screen_height = self.parent.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.parent.screen_width
-
 		self.locate_stack()
 		self.threshold_slider = QLabeledDoubleRangeSlider()
 		self.initialize_histogram()
@@ -52,10 +56,6 @@ class ThresholdConfigWizard(QMainWindow):
 		self.prep_cell_properties()
 		self.populate_widget()
 
-		self.setMinimumWidth(int(0.8*self.screen_width))
-		self.setMinimumHeight(int(0.8*self.screen_height))
-
-		center_window(self)
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def populate_widget(self):
@@ -199,7 +199,7 @@ class ThresholdConfigWizard(QMainWindow):
 	#self.threshold_contrast_range.valueChanged.connect(self.set_clim_thresh)
 
 		grid_threshold.addWidget(self.threshold_slider,idx,1,1,1)
-		self.canvas_hist.setMinimumHeight(self.screen_height//8)
+		self.canvas_hist.setMinimumHeight(self.screen_height//6)
 		self.left_panel.addLayout(grid_threshold)
 
 		self.generate_marker_contents()
@@ -213,6 +213,11 @@ class ThresholdConfigWizard(QMainWindow):
 		self.save_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
 		self.save_btn.clicked.connect(self.write_instructions)
 		self.left_panel.addWidget(self.save_btn)
+
+		self.properties_box_widgets = [self.propscanvas, *self.features_cb, 
+									   self.property_query_le, self.submit_query_btn, self.save_btn]
+		for p in self.properties_box_widgets:
+			p.setEnabled(False)
 
 	def generate_marker_contents(self):
 
@@ -292,11 +297,6 @@ class ThresholdConfigWizard(QMainWindow):
 		self.submit_query_btn.clicked.connect(self.apply_property_query)
 		hbox_classify.addWidget(self.submit_query_btn, 20)
 		properties_box.addLayout(hbox_classify)
-
-		self.properties_box_widgets = [self.propscanvas, *self.features_cb, 
-									   self.property_query_le, self.submit_query_btn]
-		for p in self.properties_box_widgets:
-			p.setEnabled(False)
 
 		self.left_panel.addLayout(properties_box)
 
@@ -648,15 +648,17 @@ class ThresholdConfigWizard(QMainWindow):
 
 	def update_props_scatter(self):
 
-		self.scat_props.set_offsets(self.props[[self.features_cb[0].currentText(),self.features_cb[1].currentText()]].to_numpy())
+		self.scat_props.set_offsets(self.props[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
 		self.scat_props.set_facecolor([color_from_class(c) for c in self.props['class'].to_numpy()])
+		self.ax_props.set_xlabel(self.features_cb[1].currentText())
+		self.ax_props.set_ylabel(self.features_cb[0].currentText())
 		
 		self.scat_markers.set_offsets(self.props[['centroid-1','centroid-0']].to_numpy())
 		self.scat_markers.set_color(['k']*len(self.props))
 		self.scat_markers.set_facecolor([color_from_class(c) for c in self.props['class'].to_numpy()])
 		
-		self.ax_props.set_xlim(0.75*self.props[self.features_cb[0].currentText()].min(),1.05*self.props[self.features_cb[0].currentText()].max())
-		self.ax_props.set_ylim(0.75*self.props[self.features_cb[1].currentText()].min(),1.05*self.props[self.features_cb[1].currentText()].max())
+		self.ax_props.set_xlim(0.75*self.props[self.features_cb[1].currentText()].min(),1.05*self.props[self.features_cb[1].currentText()].max())
+		self.ax_props.set_ylim(0.75*self.props[self.features_cb[0].currentText()].min(),1.05*self.props[self.features_cb[0].currentText()].max())
 		self.propscanvas.canvas.draw_idle()
 		self.fcanvas.canvas.draw_idle()
 

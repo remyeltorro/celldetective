@@ -6,7 +6,7 @@ import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
 from celldetective.gui import SegmentationModelLoader, ConfigTracking, SignalAnnotator, ConfigMeasurements, ConfigSignalAnnotator
 from celldetective.gui.gui_utils import QHSeperationLine
-from celldetective.segmentation import segment_at_position
+from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
 from celldetective.measure import measure_at_position
 from celldetective.signals import analyze_signals_at_position
@@ -22,7 +22,8 @@ class ProcessPanel(QFrame):
 		self.mode = mode
 		self.exp_channels = self.parent.exp_channels
 		self.exp_dir = self.parent.exp_dir
-		self.threshold_config = None
+		self.threshold_config_targets = None
+		self.threshold_config_effectors = None
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -374,6 +375,11 @@ class ProcessPanel(QFrame):
 
 		# self.freeze()
 		# QApplication.setOverrideCursor(Qt.WaitCursor)
+
+		if self.mode=="targets":
+			self.threshold_config = self.threshold_config_targets
+		elif self.mode=="effectors":
+			self.threshold_config = self.threshold_config_effectors
 		
 		loop_iter=0
 		for w_idx in self.well_index:
@@ -407,7 +413,7 @@ class ProcessPanel(QFrame):
 								return None					
 						else:
 							print(f"Segmentation from threshold config: {self.threshold_config}")
-							#self.segment_from_threshold()
+							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config)
 					else:
 						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=True)
 

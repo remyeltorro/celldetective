@@ -337,9 +337,14 @@ class SegmentationModelLoader(QWidget):
 			self.parent.init_seg_model_list()
 			self.close()
 		else:
-			self.parent.threshold_config = self.filename
-			print('Path to threshold configuration successfully set in the software')
-			self.close()
+			if self.mode=="targets":	
+				self.parent.threshold_config_targets = self.filename
+				print('Path to threshold configuration successfully set in the software')
+				self.close()
+			elif self.mode=="effectors":
+				self.parent.threshold_config_effectors = self.filename
+				print('Path to threshold configuration successfully set in the software')
+				self.close()	
 
 	def generate_input_config(self):
 

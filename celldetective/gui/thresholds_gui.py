@@ -1,7 +1,9 @@
-from PyQt5.QtWidgets import QMainWindow, QLabel, QWidget, QHBoxLayout, QGridLayout, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
-from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice
-from celldetective.utils import get_software_location, extract_experiment_channels
+from PyQt5.QtWidgets import QMainWindow, QLabel, QWidget,QFileDialog, QHBoxLayout, QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
+from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class
+from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column
 from celldetective.io import auto_load_number_of_frames, load_frames
+from celldetective.segmentation import threshold_image, identify_markers_from_binary, apply_watershed, segment_frame_from_thresholds
+from scipy.ndimage import binary_fill_holes
 from PyQt5.QtCore import Qt, QSize
 from glob import glob
 from superqt.fonticon import icon
@@ -10,6 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from superqt import QLabeledSlider, QLabeledDoubleRangeSlider
 from celldetective.segmentation import filter_image
+import pandas as pd
+from skimage.measure import regionprops_table
+import json
 
 class ThresholdConfigWizard(QMainWindow):
 	
@@ -27,6 +32,10 @@ class ThresholdConfigWizard(QMainWindow):
 		self.pos = self.parent.parent.parent.pos
 		self.exp_dir = self.parent.parent.exp_dir
 		self.soft_path = get_software_location()
+		self.footprint = 30
+		self.min_dist = 30
+		self.cell_properties = ['centroid','area', 'perimeter', 'eccentricity','intensity_mean']
+
 		if self.mode=="targets":
 			self.config_out_name = "threshold_targets.json"
 		elif self.mode=="effectors":
@@ -36,8 +45,11 @@ class ThresholdConfigWizard(QMainWindow):
 		self.screen_width = self.parent.parent.parent.parent.screen_width
 
 		self.locate_stack()
+		self.threshold_slider = QLabeledDoubleRangeSlider()
 		self.initialize_histogram()
 		self.show_image()
+		self.initalize_props_scatter()
+		self.prep_cell_properties()
 		self.populate_widget()
 
 		self.setMinimumWidth(int(0.8*self.screen_width))
@@ -57,8 +69,13 @@ class ThresholdConfigWizard(QMainWindow):
 		self.button_widget.setLayout(main_layout)
 		
 		main_layout.setContentsMargins(30,30,30,30)
+
 		self.scroll_area = QScrollArea()
-		self.left_panel = QVBoxLayout()
+		self.scroll_container = QWidget()
+		self.scroll_area.setWidgetResizable(True)
+		self.scroll_area.setWidget(self.scroll_container)
+
+		self.left_panel = QVBoxLayout(self.scroll_container)
 		self.left_panel.setContentsMargins(30,30,30,30)
 		self.left_panel.setSpacing(10)
 		self.populate_left_panel()
@@ -76,11 +93,11 @@ class ThresholdConfigWizard(QMainWindow):
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
 
-		self.scroll_area.setAlignment(Qt.AlignCenter)
-		self.scroll_area.setLayout(self.left_panel)
-		self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-		self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-		self.scroll_area.setWidgetResizable(True)
+		# self.scroll_area.setAlignment(Qt.AlignCenter)
+		# self.scroll_area.setLayout(self.left_panel)
+		# self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+		# self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+		# self.scroll_area.setWidgetResizable(True)
 
 		main_layout.addWidget(self.scroll_area, 35)
 		main_layout.addLayout(self.right_panel, 65)
@@ -147,10 +164,9 @@ class ThresholdConfigWizard(QMainWindow):
 		threshold_title_grid.addWidget(section_threshold,90,alignment=Qt.AlignCenter)
 
 		self.ylog_check = QPushButton("")
-		#self.ylog_check.setIcon(QIcon_from_svg("/home/limozin/Documents/GitHub/ADCCFactory/adccfactory/icons/log.svg", color='black'))
+		self.ylog_check.setIcon(icon(MDI6.math_log,color="black"))
 		self.ylog_check.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
-		#self.ylog_check.clicked.connect(self.switch_to_log)
-		self.log_hist = False
+		self.ylog_check.clicked.connect(self.switch_to_log)
 		threshold_title_grid.addWidget(self.ylog_check, 5)
 		
 		self.equalize_option_btn = QPushButton("")
@@ -168,39 +184,26 @@ class ThresholdConfigWizard(QMainWindow):
 		idx+=1
 
 		# Slider to set vmin & vmax
-		self.threshold_contrast_range = QLabeledDoubleRangeSlider()
-		self.threshold_contrast_range.setSingleStep(0.00001)
-		self.threshold_contrast_range.setTickInterval(0.00001)
-		self.threshold_contrast_range.setOrientation(1)
-		self.threshold_contrast_range.setRange(np.amin(self.img), np.amax(self.img))
-		self.threshold_contrast_range.setValue([np.percentile(self.img.flatten(), 90), np.amax(self.img)])
-		#self.threshold_contrast_range.valueChanged.connect(self.threshold_changed)
+		self.threshold_slider.setSingleStep(0.00001)
+		self.threshold_slider.setTickInterval(0.00001)
+		self.threshold_slider.setOrientation(1)
+		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setValue([np.percentile(self.img.flatten(), 90), np.amax(self.img)])
+		self.threshold_slider.valueChanged.connect(self.threshold_changed)
 
-
+		#self.initialize_histogram()
 		grid_threshold.addWidget(self.canvas_hist, idx,0,1,3)
 
 		idx+=1
 
 	#self.threshold_contrast_range.valueChanged.connect(self.set_clim_thresh)
 
-		grid_threshold.addWidget(self.threshold_contrast_range,idx,1,1,1)
-
-		self.set_max_intensity = QPushButton("")
-		self.set_max_intensity.setIcon(icon(MDI6.page_last,color="black"))
-		self.set_max_intensity.setIconSize(QSize(20,20))
-		self.set_max_intensity.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
-		#self.set_max_intensity.clicked.connect(self.set_upper_threshold_to_max)
-		grid_threshold.addWidget(self.set_max_intensity, idx,2,1,1,alignment=Qt.AlignRight)
-
-		self.set_min_intensity = QPushButton("")
-		self.set_min_intensity.setIcon(icon(MDI6.page_first,color="black"))
-		self.set_min_intensity.setIconSize(QSize(20,20))
-		self.set_min_intensity.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
-		#self.set_min_intensity.clicked.connect(self.set_lower_threshold_to_min)
-		grid_threshold.addWidget(self.set_min_intensity, idx,0,1,1,alignment=Qt.AlignRight)
-
+		grid_threshold.addWidget(self.threshold_slider,idx,1,1,1)
 		self.canvas_hist.setMinimumHeight(self.screen_height//8)
 		self.left_panel.addLayout(grid_threshold)
+
+		self.generate_marker_contents()
+		self.generate_props_contents()
 
 		#################
 		# FINAL SAVE BTN#
@@ -208,9 +211,94 @@ class ThresholdConfigWizard(QMainWindow):
 
 		self.save_btn = QPushButton('Save')
 		self.save_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
-		#self.submit_btn.clicked.connect(self.write_instructions)
+		self.save_btn.clicked.connect(self.write_instructions)
 		self.left_panel.addWidget(self.save_btn)
 
+	def generate_marker_contents(self):
+
+		marker_box = QVBoxLayout()
+		marker_box.setContentsMargins(30,30,30,30)
+
+		marker_lbl = QLabel('Markers')
+		marker_lbl.setStyleSheet("font-weight: bold;")
+		marker_box.addWidget(marker_lbl, alignment=Qt.AlignCenter)
+
+		hbox_footprint = QHBoxLayout()
+		hbox_footprint.addWidget(QLabel('Footprint: '), 20)
+		self.footprint_slider = QLabeledSlider()
+		self.footprint_slider.setSingleStep(1)
+		self.footprint_slider.setOrientation(1)
+		self.footprint_slider.setRange(1,self.binary.shape[0]//4)
+		self.footprint_slider.setValue(self.footprint)
+		self.footprint_slider.valueChanged.connect(self.set_footprint)	
+		hbox_footprint.addWidget(self.footprint_slider, 80)	
+		marker_box.addLayout(hbox_footprint)
+
+		hbox_distance = QHBoxLayout()
+		hbox_distance.addWidget(QLabel('Min distance: '), 20)
+		self.min_dist_slider = QLabeledSlider()
+		self.min_dist_slider.setSingleStep(1)
+		self.min_dist_slider.setOrientation(1)
+		self.min_dist_slider.setRange(0,self.binary.shape[0]//4)
+		self.min_dist_slider.setValue(self.min_dist)
+		self.min_dist_slider.valueChanged.connect(self.set_min_dist)
+		hbox_distance.addWidget(self.min_dist_slider, 80)	
+		marker_box.addLayout(hbox_distance)
+
+
+		hbox_marker_btns = QHBoxLayout()
+
+		self.markers_btn = QPushButton("Run")
+		self.markers_btn.clicked.connect(self.detect_markers)
+		self.markers_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)		
+		hbox_marker_btns.addWidget(self.markers_btn)
+
+		self.watershed_btn = QPushButton("Watershed")
+		self.watershed_btn.setIcon(icon(MDI6.waves_arrow_up,color="white"))
+		self.watershed_btn.setIconSize(QSize(20,20))
+		self.watershed_btn.clicked.connect(self.apply_watershed_to_selection)
+		self.watershed_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
+		self.watershed_btn.setEnabled(False)
+		hbox_marker_btns.addWidget(self.watershed_btn)
+		marker_box.addLayout(hbox_marker_btns)
+
+		self.left_panel.addLayout(marker_box)
+
+	def generate_props_contents(self):
+
+
+		properties_box = QVBoxLayout()
+		properties_box.setContentsMargins(30,30,30,30)
+		
+		properties_lbl = QLabel('Filter on properties')
+		properties_lbl.setStyleSheet('font-weight: bold;')
+		properties_box.addWidget(properties_lbl, alignment=Qt.AlignCenter)
+
+		properties_box.addWidget(self.propscanvas)
+
+		self.features_cb = [QComboBox() for i in range(2)]
+		for i in range(2):
+			hbox_feat = QHBoxLayout()
+			hbox_feat.addWidget(QLabel(f'feature {i}: '), 20)
+			hbox_feat.addWidget(self.features_cb[i], 80)
+			properties_box.addLayout(hbox_feat)
+
+		hbox_classify = QHBoxLayout()
+		hbox_classify.addWidget(QLabel('classify: '), 10)
+		self.property_query_le = QLineEdit()
+		self.property_query_le.setPlaceholderText('eliminate points using a query such as: area > 100 or eccentricity > 0.95')
+		hbox_classify.addWidget(self.property_query_le, 70)
+		self.submit_query_btn = QPushButton('Submit...')
+		self.submit_query_btn.clicked.connect(self.apply_property_query)
+		hbox_classify.addWidget(self.submit_query_btn, 20)
+		properties_box.addLayout(hbox_classify)
+
+		self.properties_box_widgets = [self.propscanvas, *self.features_cb, 
+									   self.property_query_le, self.submit_query_btn]
+		for p in self.properties_box_widgets:
+			p.setEnabled(False)
+
+		self.left_panel.addLayout(properties_box)
 
 	def populate_right_panel(self):
 
@@ -297,14 +385,35 @@ class ThresholdConfigWizard(QMainWindow):
 
 		self.im = self.ax.imshow(self.img, cmap='gray')
 
+		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1], foreground_value=255., fill_holes=False)
+		self.thresholded_image = np.ma.masked_where(self.binary==0.,self.binary)
+		self.image_thresholded = self.ax.imshow(self.thresholded_image, cmap="viridis",alpha=0.5)
+
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
 		self.ax.set_aspect('equal')
 
 		self.fig.set_facecolor('none')  # or 'None'
 		self.fig.canvas.setStyleSheet("background-color: black;")
+		self.scat_markers = self.ax.scatter([],[],color="tab:red")
 
 		self.fcanvas.canvas.draw()
+
+	def initalize_props_scatter(self):
+
+		"""
+		Define properties scatter.
+		"""
+
+		self.fig_props, self.ax_props = plt.subplots(tight_layout=True)
+		self.propscanvas = FigureCanvas(self.fig_props, interactive=True)
+		self.fig_props.set_facecolor('none')
+		self.fig_props.canvas.setStyleSheet("background-color: transparent;")
+		self.scat_props = self.ax_props.scatter([],[], color='k', alpha=0.75)
+		self.propscanvas.canvas.draw_idle()
+		self.propscanvas.canvas.setMinimumHeight(self.screen_height//5)
+
+
 
 	def initialize_histogram(self):
 		
@@ -314,52 +423,81 @@ class ThresholdConfigWizard(QMainWindow):
 		self.fig_hist.canvas.setStyleSheet("background-color: transparent;")
 
 		#self.ax_hist.clear()
+		#self.ax_hist.cla()
 		self.ax_hist.patch.set_facecolor('none')
-		self.ax_hist.hist(self.img.flatten(),density=True,bins=300,color="k")
-		self.ax_hist.set_xlim(np.amin(self.img),np.amax(self.img))
+		self.hist_y, x, _ = self.ax_hist.hist(self.img.flatten(),density=True,bins=300,color="k")
+		#self.ax_hist.set_xlim(np.amin(self.img),np.amax(self.img))
 		self.ax_hist.set_xlabel('intensity [a.u.]')
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
-		self.ax_hist.set_yticks([])
-		self.canvas_hist.canvas.draw()	
+		#self.ax_hist.set_yticks([])
+		self.ax_hist.set_xlim(np.amin(self.img),np.amax(self.img))
+		self.ax_hist.set_ylim(0, self.hist_y.max())
 
+		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setValue([np.nanpercentile(self.img.flatten(), 90), np.amax(self.img)])
+		self.add_hist_threshold()
 
+		self.canvas_hist.canvas.draw_idle()	
+		self.canvas_hist.canvas.setMinimumHeight(self.screen_height//8)
 
-	# def make_histogram(self):
-	# 	print('make histo invoked', self.img.shape)
+	def update_histogram(self):
+		
+		"""
+		Redraw the histogram after an update on the image. 
+		Move the threshold slider accordingly.
 
-	# 	self.ax_hist.clear()
-	# 	self.ax_hist.patch.set_facecolor('none')
-	# 	self.ax_hist.hist(self.img.flatten(),density=True,bins=300,color="k")
-	# 	self.ax_hist.set_xlim(np.amin(self.img),np.amax(self.img))
-	# 	self.ax_hist.set_xlabel('intensity [a.u.]')
-	# 	self.ax_hist.spines['top'].set_visible(False)
-	# 	self.ax_hist.spines['right'].set_visible(False)
-	# 	self.ax_hist.set_yticks([])
-	# 	self.canvas_hist.canvas.draw()	
+		"""
+
+		self.ax_hist.clear()
+		self.ax_hist.patch.set_facecolor('none')
+		self.hist_y, x, _ = self.ax_hist.hist(self.img.flatten(),density=True,bins=300,color="k")
+		self.ax_hist.set_xlabel('intensity [a.u.]')
+		self.ax_hist.spines['top'].set_visible(False)
+		self.ax_hist.spines['right'].set_visible(False)
+		#self.ax_hist.set_yticks([])
+		self.ax_hist.set_xlim(np.amin(self.img),np.amax(self.img))
+		self.ax_hist.set_ylim(0, self.hist_y.max())
+		self.add_hist_threshold()
+		self.canvas_hist.canvas.draw()
+		
+		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setValue([np.nanpercentile(self.img.flatten(), 90), np.amax(self.img)])
+		self.threshold_changed(self.threshold_slider.value())
 
 	def add_hist_threshold(self):
 
 		ymin,ymax = self.ax_hist.get_ylim()
-		self.min_intensity_line, = self.ax_hist.plot([self.threshold_contrast_range.value()[0],self.threshold_contrast_range.value()[0]],[ymin,ymax],c="k")
-		self.max_intensity_line, = self.ax_hist.plot([self.threshold_contrast_range.value()[1],self.threshold_contrast_range.value()[1]],[ymin,ymax],c="k")
-		self.canvas_hist.canvas.draw()	
+		self.min_intensity_line, = self.ax_hist.plot([self.threshold_slider.value()[0],self.threshold_slider.value()[0]],[0,ymax],c="tab:purple")
+		self.max_intensity_line, = self.ax_hist.plot([self.threshold_slider.value()[1],self.threshold_slider.value()[1]],[0,ymax],c="tab:purple")
+		#self.canvas_hist.canvas.draw_idle()
 
 	def reload_frame(self):
+
+		"""
+		Load the frame from the current channel and time choice. Show imshow, update histogram.
+		"""
 		
+		self.clear_post_threshold_options()
+
 		self.current_channel = self.channels_cb.currentIndex()
 		t = int(self.frame_slider.value())
 		idx = t*self.nbr_channels + self.current_channel
 		self.img = load_frames(idx, self.stack_path, normalize_input=False)
 		self.refresh_imshow()
-		self.redo_histogram()
+		self.update_histogram()
+		#self.redo_histogram()
 
-	def redo_histogram(self):
-		self.ax_hist.clear()
-		self.canvas_hist.canvas.draw()
+	# def redo_histogram(self):
+	# 	self.ax_hist.clear()
+	# 	self.canvas_hist.canvas.draw()
 
 
 	def contrast_slider_action(self):
+
+		"""
+		Recontrast the imshow as the contrast slider is moved.
+		"""
 
 		self.vmin = self.contrast_slider.value()[0]
 		self.vmax = self.contrast_slider.value()[1]
@@ -368,38 +506,231 @@ class ThresholdConfigWizard(QMainWindow):
 
 	def refresh_imshow(self):
 
+		"""
+		
+		Update the imshow based on the current frame selection.
+
+		"""
+
 		self.vmin = np.nanpercentile(self.img.flatten(), 1)
-		self.vmax = np.nanpercentile(self.img.flatten(), 99.99)
+		self.vmax = np.nanpercentile(self.img.flatten(), 99.)
 
 		self.contrast_slider.disconnect()
 		self.contrast_slider.setRange(np.amin(self.img), np.amax(self.img))
 		self.contrast_slider.setValue([self.vmin, self.vmax])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
 
-		#self.threshold_contrast_range.disconnect()
-		self.threshold_contrast_range.setRange(np.amin(self.img), np.amax(self.img))
-		self.threshold_contrast_range.setValue([np.nanpercentile(self.img.flatten(), 90), np.amax(self.img)])
-		#self.threshold_contrast_range.valueChanged.connect(self.threshold_changed)
-		#self.threshold_changed()
-
 		self.im.set_data(self.img)
 		self.im.set_clim(vmin=self.vmin, vmax=self.vmax)
 		self.fcanvas.canvas.draw_idle()
 
-		self.initialize_histogram()
+		#self.initialize_histogram()
 
 	def preprocess_image(self):
+
+		"""
+		Reload the frame, apply the filters, update imshow and histogram.
+
+		"""
 
 		self.reload_frame()
 		filters = self.filters_qlist.items
 		self.img = filter_image(self.img, filters)
 		self.refresh_imshow()
+		self.update_histogram()
 
-	# def threshold_changed(self):
 
-	# 	min_value = self.threshold_contrast_range.value()[0]
-	# 	max_value = self.threshold_contrast_range.value()[1]
-	# 	self.min_intensity_line.set_xdata([min_value, min_value])
-	# 	self.max_intensity_line.set_xdata([max_value,max_value])
-	# 	self.canvas_hist.canvas.draw()
+	def threshold_changed(self, value):
+
+		"""
+		Move the threshold values on histogram, when slider is moved.
+		"""
+
+		self.clear_post_threshold_options()
+
+		self.thresh_min = value[0]
+		self.thresh_max = value[1]
+		ymin,ymax = self.ax_hist.get_ylim()
+		self.min_intensity_line.set_data([self.thresh_min, self.thresh_min],[0,ymax])
+		self.max_intensity_line.set_data([self.thresh_max, self.thresh_max], [0,ymax])
+		self.canvas_hist.canvas.draw_idle()
+		# update imshow threshold
+		self.update_threshold()
+
+	def switch_to_log(self):
+
+		"""
+		Switch threshold histogram to log scale. Auto adjust.
+		"""
+
+		if self.ax_hist.get_yscale()=='linear':
+			self.ax_hist.set_yscale('log')
+		else:
+			self.ax_hist.set_yscale('linear')
+
+		#self.ax_hist.autoscale()
+		self.ax_hist.set_ylim(0, self.hist_y.max())
+		self.canvas_hist.canvas.draw_idle()		
+
+	def update_threshold(self):
+
+		"""
+		
+		Threshold and binarize the image based on the min/max threshold values
+		and display on imshow.
+
+		"""
+
+		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1], foreground_value=255., fill_holes=False)
+		self.thresholded_image = np.ma.masked_where(self.binary==0.,self.binary)
+		self.image_thresholded.set_data(self.thresholded_image)
+		self.fcanvas.canvas.draw_idle()
+
+	def set_footprint(self):
+		self.footprint = self.footprint_slider.value()
+		#print(f"Setting footprint to {self.footprint}")
+
+	def set_min_dist(self):
+		self.min_dist = self.min_dist_slider.value()
+		#print(f"Setting min distance to {self.min_dist}")
+
+	def detect_markers(self):
+		
+		self.clear_post_threshold_options()
+
+		if self.binary.ndim==3:
+			self.binary = np.squeeze(self.binary)
+		self.binary = binary_fill_holes(self.binary)
+		self.coords, self.edt_map = identify_markers_from_binary(self.binary, self.min_dist, footprint_size=self.footprint, footprint=None, return_edt=True)
+		if len(self.coords)>0:
+			self.scat_markers.set_offsets(self.coords[:,[1,0]])
+			self.scat_markers.set_visible(True)
+			self.fcanvas.canvas.draw()
+			self.scat_props.set_visible(True)
+			self.watershed_btn.setEnabled(True)
+		else:
+			self.watershed_btn.setEnabled(False)
+
+	def apply_watershed_to_selection(self):
+
+		self.labels = apply_watershed(self.binary, self.coords, self.edt_map)
+		self.image_thresholded.set_cmap('tab20c')
+		self.image_thresholded.set_data(np.ma.masked_where(self.labels==0.,self.labels))
+		self.image_thresholded.autoscale()
+		self.fcanvas.canvas.draw_idle()
+
+		self.compute_features()
+		for p in self.properties_box_widgets:
+			p.setEnabled(True)
+
+		for i in range(2):
+			self.features_cb[i].currentTextChanged.connect(self.update_props_scatter)
+
+	def compute_features(self):
+
+		# Run regionprops to have properties for filtering
+		intensity_image_idx = [self.nbr_channels*self.frame_slider.value()]
+		for i in range(self.nbr_channels-1):
+			intensity_image_idx += [intensity_image_idx[-1]+1]
+
+
+		# Load channels at time t
+		multichannel = load_frames(intensity_image_idx, self.stack_path, normalize_input=False)
+		self.props = pd.DataFrame(regionprops_table(self.labels, intensity_image=multichannel, properties=self.cell_properties))
+		self.props = rename_intensity_column(self.props, self.channel_names)
+		for i in range(2):
+			self.features_cb[i].clear()
+			self.features_cb[i].addItems(list(self.props.columns))
+			self.features_cb[i].setCurrentIndex(i)
+		self.props["class"] = 1
+		
+		self.update_props_scatter()
+
+	def update_props_scatter(self):
+
+		self.scat_props.set_offsets(self.props[[self.features_cb[0].currentText(),self.features_cb[1].currentText()]].to_numpy())
+		self.scat_props.set_facecolor([color_from_class(c) for c in self.props['class'].to_numpy()])
+		
+		self.scat_markers.set_offsets(self.props[['centroid-1','centroid-0']].to_numpy())
+		self.scat_markers.set_color(['k']*len(self.props))
+		self.scat_markers.set_facecolor([color_from_class(c) for c in self.props['class'].to_numpy()])
+		
+		self.ax_props.set_xlim(0.75*self.props[self.features_cb[0].currentText()].min(),1.05*self.props[self.features_cb[0].currentText()].max())
+		self.ax_props.set_ylim(0.75*self.props[self.features_cb[1].currentText()].min(),1.05*self.props[self.features_cb[1].currentText()].max())
+		self.propscanvas.canvas.draw_idle()
+		self.fcanvas.canvas.draw_idle()
+
+	def prep_cell_properties(self):
+
+		self.cell_properties_options = list(np.copy(self.cell_properties))
+		self.cell_properties_options.remove("centroid")
+		for k in range(self.nbr_channels):
+			self.cell_properties_options.append(f'intensity_mean-{k}')
+		self.cell_properties_options.remove('intensity_mean')
+
+	def apply_property_query(self):
+		query = self.property_query_le.text()
+		self.props['class'] = 1
+
+		if query=='':
+			print('empty query')
+		else:
+			try:
+				self.selection = self.props.query(query).index
+				print(self.selection)
+				self.props.loc[self.selection,'class'] = 0
+			except Exception as e:
+				print(e)
+				print('query could not be applied')
+
+		self.update_props_scatter()
+
+	def clear_post_threshold_options(self):
+		
+		self.watershed_btn.setEnabled(False)
+
+		for p in self.properties_box_widgets:
+			p.setEnabled(False)
+
+
+		for i in range(2):
+			try:
+				self.features_cb[i].disconnect()
+			except:
+				pass
+			self.features_cb[i].clear()
+
+		self.property_query_le.setText('')
+
+		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1], foreground_value=255., fill_holes=False)
+		self.thresholded_image = np.ma.masked_where(self.binary==0.,self.binary)
+
+		self.scat_markers.set_color('tab:red')
+		self.scat_markers.set_visible(False)
+		self.image_thresholded.set_data(self.thresholded_image)
+		self.image_thresholded.set_cmap('viridis')
+		self.image_thresholded.autoscale()
+
+	def write_instructions(self):
+		
+		instructions = {
+						"target_channel": self.channels_cb.currentText(), #for now index but would be more universal to use name
+						"thresholds": self.threshold_slider.value(),
+						"filters": self.filters_qlist.items,
+						"marker_min_distance": self.min_dist,
+						"marker_footprint_size": self.footprint,
+						"feature_queries": [self.property_query_le.text()],
+						}
+
+		print('The following instructions will be written: ', instructions)
+		self.instruction_file = QFileDialog.getSaveFileName(self, "Save File", self.exp_dir+f'configs/threshold_config_{self.mode}.json', '.json')[0]
+		json_object = json.dumps(instructions, indent=4)
+		with open(self.instruction_file, "w") as outfile:
+			outfile.write(json_object)
+		print("Configuration successfully written in ",self.instruction_file)
+
+		self.parent.filename = self.instruction_file
+		self.parent.file_label.setText(self.instruction_file)
+
+		self.close()
 

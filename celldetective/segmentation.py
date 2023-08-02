@@ -218,7 +218,7 @@ def filter_on_property(labels, intensity_image=None, queries=None):
 
 	for query in queries:
 		try:
-			properties = properties.query(query)
+			properties = properties.query(f'not ({query})')
 		except Exception as e:
 			print(f'Query {query} could not be applied. Ensure that the feature exists. {e}')
 
@@ -431,6 +431,19 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 		return labels
 	else:
 		return None
+
+def segment_from_threshold_at_position(pos, mode, config):
+
+	pos = pos.replace('\\','/')
+	pos = pos.replace(' ','\\')
+	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+
+	config = config.replace('\\','/')
+	config = config.replace(' ','\\')
+	assert os.path.exists(config),f'Config {config} is not a valid path.'
+
+	subprocess.call(f"python {abs_path}/scripts/segment_cells_thresholds.py --pos {pos} --config {config} --mode {mode}", shell=True)
+
 
 if __name__ == "__main__":
 	print(segment(None,'test'))

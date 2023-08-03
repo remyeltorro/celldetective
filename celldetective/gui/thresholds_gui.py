@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QLabel, QWidget,QFileDialog, QHBoxLayout, QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QLabel, QWidget,QFileDialog, QHBoxLayout, QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class
 from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column
 from celldetective.io import auto_load_number_of_frames, load_frames
@@ -174,7 +174,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.equalize_option_btn.setIconSize(QSize(20,20))
 		self.equalize_option_btn.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
 		self.equalize_option_btn.setToolTip("Enable histogram matching")
-		#self.equalize_option_btn.clicked.connect(self.activate_histogram_equalizer)
+		self.equalize_option_btn.clicked.connect(self.activate_histogram_equalizer)
 		self.equalize_option = False
 		threshold_title_grid.addWidget(self.equalize_option_btn, 5)
 		
@@ -683,7 +683,14 @@ class ThresholdConfigWizard(QMainWindow):
 				self.props.loc[self.selection,'class'] = 0
 			except Exception as e:
 				print(e)
-				print('query could not be applied')
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Warning)
+				msgBox.setText("The query could not be understood. No filtering was applied.")
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Ok)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Yes:
+					return None
 
 		self.update_props_scatter()
 
@@ -722,6 +729,7 @@ class ThresholdConfigWizard(QMainWindow):
 						"marker_min_distance": self.min_dist,
 						"marker_footprint_size": self.footprint,
 						"feature_queries": [self.property_query_le.text()],
+						"equalize_reference": [self.equalize_option, self.frame_slider.value()],
 						}
 
 		print('The following instructions will be written: ', instructions)
@@ -735,4 +743,16 @@ class ThresholdConfigWizard(QMainWindow):
 		self.parent.file_label.setText(self.instruction_file)
 
 		self.close()
+
+	def activate_histogram_equalizer(self):
+
+		if not self.equalize_option:
+			self.equalize_option = True
+			self.equalize_option_btn.setIcon(icon(MDI6.equalizer,color="#1f77b4"))
+			self.equalize_option_btn.setIconSize(QSize(20,20))
+		else:
+			self.equalize_option = False
+			self.equalize_option_btn.setIcon(icon(MDI6.equalizer,color="black"))
+			self.equalize_option_btn.setIconSize(QSize(20,20))
+
 

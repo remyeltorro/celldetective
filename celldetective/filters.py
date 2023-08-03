@@ -34,6 +34,7 @@ def std_filter(img, size):
 	img = img.astype(float)
 	win_mean = snd.uniform_filter(img, (size,size))
 	win_sqr_mean = snd.uniform_filter(img**2, (size, size))
+	win_sqr_mean[win_sqr_mean<=0.] = 0. # add this to prevent sqrt from breaking
 	img = np.sqrt(win_sqr_mean - win_mean**2)
 
 	return img

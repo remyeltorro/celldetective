@@ -87,6 +87,9 @@ class SignalAnnotator(QMainWindow):
 
 		self.right_panel = QVBoxLayout()
 
+		self.cell_info = QLabel('')
+		self.left_panel.addWidget(self.cell_info)
+
 		# Annotation buttons
 		options_hbox = QHBoxLayout()
 		options_hbox.setContentsMargins(150,30,50,0)
@@ -295,6 +298,17 @@ class SignalAnnotator(QMainWindow):
 
 			self.extract_scatter_from_trajectories()
 			self.track_of_interest = self.df_tracks['TRACK_ID'].min()
+
+			self.loc_t = []
+			self.loc_idx = []
+			for t in range(len(self.tracks)):
+				indices = np.where(self.tracks[t]==self.track_of_interest)[0]
+				if len(indices)>0:
+					self.loc_t.append(t)
+					self.loc_idx.append(indices[0])
+
+			#self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
+
 
 	def make_status_column(self):
 
@@ -539,9 +553,18 @@ class SignalAnnotator(QMainWindow):
 
 			self.track_of_interest = self.tracks[self.framedata][ind]
 			print(f'You selected track {self.track_of_interest}.')
+			self.give_cell_information()
 			self.plot_signals()
 
-			self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
+			self.loc_t = []
+			self.loc_idx = []
+			for t in range(len(self.tracks)):
+				indices = np.where(self.tracks[t]==self.track_of_interest)[0]
+				if len(indices)>0:
+					self.loc_t.append(t)
+					self.loc_idx.append(indices[0])
+
+
 			self.previous_color = []
 			for t,idx in zip(self.loc_t,self.loc_idx):
 				self.previous_color.append(self.colors[t][idx].copy())
@@ -596,4 +619,12 @@ class SignalAnnotator(QMainWindow):
 		handler, calls show to start the event loop.
 		'''
 		self.anim.event_source.start()
+
+	def give_cell_information(self):
+
+		cell_selected = f"cell: {self.track_of_interest}\n"
+		cell_class = f"class: {df_tracks.loc[df_tracks['TRACK_ID']==self.track_of_interest, 'class'].to_numpy()[0]}\n"
+		cell_time = f"time of interest: {df_tracks.loc[df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]}\n"
+		self.cell_info.setText(cell_selected+cell_class+cell_time)
+
 

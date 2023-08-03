@@ -186,7 +186,7 @@ def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equa
 	
 	img = frame[:,:,target_channel]
 	if equalize_reference is not None:
-		img = match_histogram(img, equalize_reference, channel_axis=-1)
+		img = match_histograms(img, equalize_reference)
 	img_mc = frame.copy()
 	img = filter_image(img, filters=filters)
 	binary_image = threshold_image(img, thresholds[0], thresholds[1])

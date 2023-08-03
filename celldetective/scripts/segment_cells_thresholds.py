@@ -30,12 +30,17 @@ process_arguments = vars(args)
 pos = str(process_arguments['position'])
 mode = str(process_arguments['mode'])
 threshold_instructions = str(process_arguments['config'])
-
+equalize = False
 
 if os.path.exists(threshold_instructions):
 	with open(threshold_instructions, 'r') as f:
 		threshold_instructions = json.load(f)
 		required_channels = [threshold_instructions['target_channel']]
+		if 'equalize_reference' in threshold_instructions:
+			equalize_info = threshold_instructions['equalize_reference']
+			equalize = equalize_info[0]
+			equalize_time = equalize_info[1]
+
 else:
 	print('The configuration path is not valid. Abort.')
 	os.abort()
@@ -88,6 +93,14 @@ if os.path.exists(pos+label_folder):
 os.mkdir(pos+label_folder)
 print(f'Folder {pos+label_folder} successfully generated.')
 
+if equalize:
+	f_reference = load_frames(img_num_channels[:,equalize_time], file, scale=None, normalize_input=False)
+	f_reference = f_reference[:,:,threshold_instructions['target_channel']]
+else:
+	f_reference = None
+
+threshold_instructions.update({'equalize_reference': f_reference})
+print(threshold_instructions)
 
 # Loop over all frames and segment
 for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
@@ -95,7 +108,7 @@ for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 	# Load channels at time t
 	f = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
 	mask = segment_frame_from_thresholds(f, **threshold_instructions)
-	save_tiff_imagej_compatible(pos+label_folder+f"{str(t).zfill(4)}.tif", mask, axes='YX')
+	save_tiff_imagej_compatible(pos+label_folder+f"{str(t).zfill(4)}.tif", mask.astype(np.uint16), axes='YX')
 
 	del f;
 	del mask;

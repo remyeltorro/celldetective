@@ -325,6 +325,10 @@ class ControlPanel(QMainWindow):
 
 			for pos_idx in pos_indices:
 				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
+				if not os.path.exists(self.pos + 'output/'):
+					os.mkdir(self.pos + 'output/')
+				if not os.path.exists(self.pos + 'output/tables/'):
+					os.mkdir(self.pos + 'output/tables/')
 
 		return True
 

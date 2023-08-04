@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineE
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
-from superqt import QLabeledDoubleSlider
+from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QLabeledSlider
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
@@ -18,6 +18,7 @@ from matplotlib.ticker import MultipleLocator
 from tqdm import tqdm
 import gc
 from matplotlib.animation import FuncAnimation
+from matplotlib.cm import tab10
 import pandas as pd
 
 class SignalAnnotator(QMainWindow):
@@ -158,11 +159,65 @@ class SignalAnnotator(QMainWindow):
 
 		self.save_btn = QPushButton('Save')
 		self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
-		#self.submit_btn.clicked.connect(self.write_instructions)
+		self.save_btn.clicked.connect(self.save_trajectories)
 		self.left_panel.addWidget(self.save_btn)
 
 		# Animation
-		self.right_panel.addWidget(self.fcanvas)
+		animation_buttons_box = QHBoxLayout()
+		self.last_frame_btn = QPushButton()
+		self.last_frame_btn.clicked.connect(self.set_last_frame)
+		self.last_frame_btn.setShortcut(QKeySequence('l'))
+		self.last_frame_btn.setIcon(icon(MDI6.page_last,color="black"))
+		self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.last_frame_btn.setFixedSize(QSize(60, 60))
+		animation_buttons_box.addWidget(self.last_frame_btn)
+
+		self.stop_btn = QPushButton()
+		self.stop_btn.clicked.connect(self.stop)
+		self.stop_btn.setIcon(icon(MDI6.stop,color="black"))
+		self.stop_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.stop_btn.setFixedSize(QSize(60, 60))
+		animation_buttons_box.addWidget(self.stop_btn)
+
+		self.start_btn = QPushButton()
+		self.start_btn.clicked.connect(self.start)
+		self.start_btn.setIcon(icon(MDI6.play,color="black"))
+		self.start_btn.setFixedSize(QSize(60, 60))
+		self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		animation_buttons_box.addWidget(self.start_btn)
+		self.start_btn.hide()
+
+		self.right_panel.addLayout(animation_buttons_box, 5)
+
+
+		self.right_panel.addWidget(self.fcanvas, 90)
+
+		if not self.rgb_mode:
+			contrast_hbox = QHBoxLayout()
+			contrast_hbox.setContentsMargins(150,5,150,5)
+			self.contrast_slider = QLabeledDoubleRangeSlider()
+			self.contrast_slider.setSingleStep(0.00001)
+			self.contrast_slider.setTickInterval(0.00001)		
+			self.contrast_slider.setOrientation(1)
+			self.contrast_slider.setRange(np.amin(self.stack[0]),np.amax(self.stack[0]))
+			self.contrast_slider.setValue([np.percentile(self.stack[0].flatten(), 1), np.percentile(self.stack[0].flatten(), 99.99)])
+			self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
+			contrast_hbox.addWidget(QLabel('contrast: '))
+			contrast_hbox.addWidget(self.contrast_slider,90)
+			self.right_panel.addLayout(contrast_hbox, 5)
+
+		# speed_hbox = QHBoxLayout()
+		# speed_hbox.setContentsMargins(150,5,150,5)
+		# self.interval_slider = QLabeledSlider()
+		# self.interval_slider.setSingleStep(1)
+		# self.interval_slider.setTickInterval(1)		
+		# self.interval_slider.setOrientation(1)
+		# self.interval_slider.setRange(1, 10000)
+		# self.interval_slider.setValue(self.speed)
+		# self.interval_slider.valueChanged.connect(self.interval_slider_action)
+		# speed_hbox.addWidget(QLabel('interval (ms): '))
+		# speed_hbox.addWidget(self.interval_slider,90)
+		# self.right_panel.addLayout(speed_hbox, 10)
 
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
@@ -175,6 +230,17 @@ class SignalAnnotator(QMainWindow):
 		self.show()
 
 		QApplication.processEvents()
+
+	def contrast_slider_action(self):
+
+		"""
+		Recontrast the imshow as the contrast slider is moved.
+		"""
+
+		self.vmin = self.contrast_slider.value()[0]
+		self.vmax = self.contrast_slider.value()[1]
+		self.im.set_clim(vmin=self.vmin, vmax=self.vmax)
+		self.fcanvas.canvas.draw_idle()
 
 	def cancel_selection(self):
 
@@ -225,6 +291,45 @@ class SignalAnnotator(QMainWindow):
 
 		self.enable_time_of_interest()
 		self.correct_btn.setText('submit')
+
+		self.correct_btn.disconnect()
+		self.correct_btn.clicked.connect(self.apply_modification)
+
+	def apply_modification(self):
+
+		t0 = -1
+		if self.event_btn.isChecked():
+			cclass = 0
+			try:
+				t0 = float(self.time_of_interest_le.text().replace(',','.'))
+				self.line_dt.set_xdata([t0,t0])
+				self.cell_fcanvas.canvas.draw_idle()
+			except Exception as e:
+				print(e)
+				t0 = -1
+				cclass = 2
+		elif self.no_event_btn.isChecked():
+			cclass = 1
+		elif self.else_btn.isChecked():
+			cclass = 2
+
+		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'] = cclass
+		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'] = t0
+		self.make_status_column()
+		self.extract_scatter_from_trajectories()
+		self.give_cell_information()
+
+		self.correct_btn.disconnect()
+		self.correct_btn.clicked.connect(self.show_annotation_buttons)
+		#self.cancel_btn.click()
+
+		self.hide_annotation_buttons()
+		self.correct_btn.setEnabled(False)
+		self.correct_btn.setText('correct')
+		self.cancel_btn.setEnabled(False)
+		self.selection.pop(0)
+
+		#self.fcanvas.canvas.draw()
 
 
 	def locate_stack(self):
@@ -321,6 +426,8 @@ class SignalAnnotator(QMainWindow):
 			status = np.zeros_like(timeline)
 			if t0 > 0:
 				status[timeline>=t0] = 1.
+			if cclass==2:
+				status[:] = 2
 			status_color = [color_from_status(s) for s in status]
 			class_color = [color_from_class(cclass) for i in range(len(status))]
 
@@ -362,9 +469,14 @@ class SignalAnnotator(QMainWindow):
 				print(f'plot signal {signal_choice} for cell {self.track_of_interest}')
 				xdata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'FRAME'].to_numpy()
 				ydata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, signal_choice].to_numpy()
+
+				xdata = xdata[ydata==ydata] # remove nan
+				ydata = ydata[ydata==ydata]
+
 				yvalues.extend(ydata)
 				self.lines[i].set_xdata(xdata)
 				self.lines[i].set_ydata(ydata)
+				self.lines[i].set_color(tab10(i/3.))
 		
 		self.configure_ylims()
 
@@ -611,20 +723,63 @@ class SignalAnnotator(QMainWindow):
 
 	def stop(self):
 		# # On stop we disconnect all of our events.
-		self.anim.event_source.stop()
+		self.stop_btn.hide()
+		self.start_btn.show()
+		self.anim.pause()
+		self.stop_btn.clicked.connect(self.start)
+
 
 	def start(self):
 		'''
 		Starts interactive animation. Adds the draw frame command to the GUI
 		handler, calls show to start the event loop.
 		'''
+		self.start_btn.setShortcut(QKeySequence(""))
+
+		self.last_frame_btn.setEnabled(True)
+		self.last_frame_btn.clicked.connect(self.set_last_frame)
+		
+		self.start_btn.hide()
+		self.stop_btn.show()
+
 		self.anim.event_source.start()
+		self.stop_btn.clicked.connect(self.stop)
+
 
 	def give_cell_information(self):
 
 		cell_selected = f"cell: {self.track_of_interest}\n"
-		cell_class = f"class: {df_tracks.loc[df_tracks['TRACK_ID']==self.track_of_interest, 'class'].to_numpy()[0]}\n"
-		cell_time = f"time of interest: {df_tracks.loc[df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]}\n"
+		cell_class = f"class: {self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'].to_numpy()[0]}\n"
+		cell_time = f"time of interest: {self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]}\n"
 		self.cell_info.setText(cell_selected+cell_class+cell_time)
 
+	def save_trajectories(self):
+		self.df_tracks.to_csv(self.trajectories_path, index=False)
+		print('table saved.')
 
+
+	# def interval_slider_action(self):
+
+	# 	print(dir(self.anim.event_source))
+
+	# 	self.anim.event_source.interval = self.interval_slider.value()
+	# 	self.anim.event_source._timer_set_interval()
+
+	def set_last_frame(self):
+
+		self.last_frame_btn.setEnabled(False)
+		self.last_frame_btn.disconnect()
+
+		self.anim._drawn_artists = self.draw_frame(len(self.stack)-1)
+		self.anim._drawn_artists = sorted(self.anim._drawn_artists, key=lambda x: x.get_zorder())
+		for a in self.anim._drawn_artists:
+			a.set_visible(True)
+
+		self.fig.canvas.draw()
+		self.anim.event_source.stop()
+
+		#self.cell_plot.draw()
+		self.stop_btn.hide()
+		self.start_btn.show()
+		self.stop_btn.clicked.connect(self.start)
+		self.start_btn.setShortcut(QKeySequence("l"))

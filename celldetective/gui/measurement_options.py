@@ -6,7 +6,7 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location
 from celldetective.io import interpret_tracking_configuration, load_frames
-from celldetective.measure import compute_haralick_features
+from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
 import numpy as np
 import json
 from shutil import copyfile
@@ -14,6 +14,9 @@ import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
+from natsort import natsorted
+from tifffile import imread
+from pathlib import Path, PurePath
 
 class ConfigMeasurements(QMainWindow):
 	
@@ -253,6 +256,14 @@ class ConfigMeasurements(QMainWindow):
 		self.add_contour_btn.setToolTip("Add distance")
 		self.add_contour_btn.setIconSize(QSize(20, 20))	
 		contour_layout.addWidget(self.add_contour_btn, 5)
+
+		self.view_contour_btn = QPushButton("")
+		self.view_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.view_contour_btn.setIcon(icon(MDI6.eye_outline,color="black"))
+		self.view_contour_btn.setToolTip("View contour")
+		self.view_contour_btn.setIconSize(QSize(20, 20))	
+		contour_layout.addWidget(self.view_contour_btn, 5)
+
 		layout.addLayout(contour_layout)
 		
 		self.contours_list = ListWidget(self, GeometryChoice, initial_features=[], dtype=int)
@@ -260,6 +271,7 @@ class ConfigMeasurements(QMainWindow):
 
 		self.del_contour_btn.clicked.connect(self.contours_list.removeSel)
 		self.add_contour_btn.clicked.connect(self.contours_list.addItem)
+		self.view_contour_btn.clicked.connect(self.view_selected_contour)
 
 		self.feat_sep3 = QHSeperationLine()
 		layout.addWidget(self.feat_sep3)
@@ -584,9 +596,9 @@ class ConfigMeasurements(QMainWindow):
 				self.test_frame = None
 				return None
 		else:
-			stack0 = movies[0]
+			self.stack0 = movies[0]
 			n_channels = len(self.channels)
-			self.test_frame = load_frames(np.arange(n_channels), stack0, scale=None, normalize_input=False)
+			self.test_frame = load_frames(np.arange(n_channels), self.stack0, scale=None, normalize_input=False)
 
 	def control_haralick_digitalization(self):
 
@@ -628,6 +640,7 @@ class ConfigMeasurements(QMainWindow):
 		"""
 
 		self.locate_image()
+
 		self.extract_haralick_options()
 		if self.test_frame is not None:
 			norm_img = compute_haralick_features(self.test_frame, np.zeros(self.test_frame.shape[:2]), 
@@ -646,7 +659,65 @@ class ConfigMeasurements(QMainWindow):
 			self.hist_window.canvas.draw()
 			self.hist_window.show()
 
+	def view_selected_contour(self):
 
+		self.locate_image()
+		self.locate_mask()
 
+		# plt.imshow(self.test_frame[:,:,0])
+		# plt.pause(2)
+		# plt.close()
 
+		# plt.imshow(self.test_mask)
+		# plt.pause(2)
+		# plt.close()
+
+		values = self.contours_list.list_widget.selectedItems()
+		if len(values)>0:
+			distance = values[0].text()
+			if '-' in distance:
+				border_dist = distance.split('-')
+				border_dist = [float(d) for d in border_dist]
+			elif distance.isnumeric():
+				border_dist = float(distance)
+
+			print(border_dist)
+			border_label = contour_of_instance_segmentation(self.test_mask, border_dist)
+			
+			self.fig_contour, self.ax_contour = plt.subplots()
+			self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
+			self.ax_contour.clear()
+			im = self.ax_contour.imshow(self.test_frame[:,:,0], cmap='gray')
+			im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label==0, border_label), cmap='viridis')
+			self.ax_contour.set_xticks([])
+			self.ax_contour.set_yticks([])
+			self.ax_contour.set_title(border_dist)
+			self.fig_contour.set_facecolor('none')  # or 'None'
+			self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
+			self.imshow_contour.canvas.draw()
+			self.imshow_contour.show()
+
+		else:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No contour was selected. Please first add a contour to the list.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Yes:
+				return None
+
+	def locate_mask(self):
+		
+		"""
+		Load the first mask of the detected movie.
+		"""
+
+		labels_path = str(Path(self.stack0).parent.parent) + f'/labels_{self.mode}/'
+		masks = natsorted(glob(labels_path+'*.tif'))
+		if len(masks)==0:
+			print('no mask found')
+			self.test_mask = None
+		else:
+			self.test_mask = imread(masks[0])
 

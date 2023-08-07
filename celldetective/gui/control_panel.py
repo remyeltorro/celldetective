@@ -195,16 +195,16 @@ class ControlPanel(QMainWindow):
 			self.search_radius_targets = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_tc"])
 			self.search_radius_effectors = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_nk"])
 
-		self.time_dilation = int(ConfigSectionMap(self.exp_config,"BinningParameters")["time_dilation"])
+		# self.time_dilation = int(ConfigSectionMap(self.exp_config,"BinningParameters")["time_dilation"])
 
-		self.intensity_measurement_radius = int(ConfigSectionMap(self.exp_config,"Thresholds")["intensity_measurement_radius"])
-		self.intensity_measurement_radius_nk = int(ConfigSectionMap(self.exp_config,"Thresholds")["intensity_measurement_radius_nk"])
-		self.model_signal_length = int(ConfigSectionMap(self.exp_config,"Thresholds")["model_signal_length"])
+		# self.intensity_measurement_radius = int(ConfigSectionMap(self.exp_config,"Thresholds")["intensity_measurement_radius"])
+		# self.intensity_measurement_radius_nk = int(ConfigSectionMap(self.exp_config,"Thresholds")["intensity_measurement_radius_nk"])
+		# self.model_signal_length = int(ConfigSectionMap(self.exp_config,"Thresholds")["model_signal_length"])
 
-		try:
-			self.hide_frames_for_tracking = np.array([int(s) for s in ConfigSectionMap(config,"Thresholds")["hide_frames_for_tracking"].split(",")])
-		except:
-			self.hide_frames_for_tracking = np.array([])
+		# try:
+		# 	self.hide_frames_for_tracking = np.array([int(s) for s in ConfigSectionMap(config,"Thresholds")["hide_frames_for_tracking"].split(",")])
+		# except:
+		# 	self.hide_frames_for_tracking = np.array([])
 
 		number_of_wells = len(self.wells)
 		self.well_labels = _extract_labels_from_config(self.exp_config,number_of_wells)

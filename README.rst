@@ -1,3 +1,5 @@
+[![Contributors](https://img.shields.io/github/contributors-anon/remyeltorro/celldetective)](https://github.com/remyeltorro/celldetective/graphs/contributors)
+
 CellDetective
 =============
 

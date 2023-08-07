@@ -387,7 +387,7 @@ class ThresholdConfigWizard(QMainWindow):
 
 		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1], foreground_value=255., fill_holes=False)
 		self.thresholded_image = np.ma.masked_where(self.binary==0.,self.binary)
-		self.image_thresholded = self.ax.imshow(self.thresholded_image, cmap="viridis",alpha=0.5)
+		self.image_thresholded = self.ax.imshow(self.thresholded_image, cmap="viridis",alpha=0.5, interpolation='none')
 
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
@@ -614,6 +614,13 @@ class ThresholdConfigWizard(QMainWindow):
 	def apply_watershed_to_selection(self):
 
 		self.labels = apply_watershed(self.binary, self.coords, self.edt_map)
+
+		self.current_channel = self.channels_cb.currentIndex()
+		t = int(self.frame_slider.value())
+		idx = t*self.nbr_channels + self.current_channel
+		self.img = load_frames(idx, self.stack_path, normalize_input=False)
+		self.refresh_imshow()
+
 		self.image_thresholded.set_cmap('tab20c')
 		self.image_thresholded.set_data(np.ma.masked_where(self.labels==0.,self.labels))
 		self.image_thresholded.autoscale()

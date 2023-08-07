@@ -1,5 +1,3 @@
-[![repo size](https://img.shields.io/github/repo-size/remyeltorro/celldetective)](https://github.com/remyeltorro/celldetective/)
-
 CellDetective
 =============
 

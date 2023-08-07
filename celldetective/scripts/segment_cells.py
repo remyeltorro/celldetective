@@ -131,6 +131,7 @@ if model_type=='stardist':
 	print(f"StarDist model {modelname} successfully loaded.")
 
 elif model_type=='cellpose':
+	
 	model = CellposeModel(gpu=use_gpu, pretrained_model=model_complete_path+modelname, diam_mean=30.0)
 	print(f'Cellpose model {modelname} successfully loaded.')
 

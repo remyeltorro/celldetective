@@ -5,8 +5,21 @@
 \usepackage{amsfonts}
 \usepackage{amssymb}
 \usepackage{graphicx}
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue,
+	filecolor=magenta,      
+	urlcolor=cyan,
+	pdftitle={Overleaf Example},
+	pdfpagemode=FullScreen,
+}
+
+\urlstyle{same}
+
 \title{CellDetective: User Manual}
 \author{Rémy Torro}
+
 \begin{document}
 	\maketitle
 	\section{Scope}
@@ -24,5 +37,15 @@
 	\subsubsection{Image normalization}
 	
 	\par{Adhesion study: } exploit the multiposition information to reconstruct a background from each experimental condition. Use provided macros (Fiji or python, but propose a macro that runs through the position/well structure).
+	
+	\section{Segmentation}
+	\subsection{Import a segmentation model}
+	\subsubsection{Cellpose}
+	
+	The training of a Cellpose model can be carried using a command line interface or a GUI. By convention the user should provide a channel showing the cell membrane and an optional nucleus channel, to be used as anchor for segmentation. Obviously, as a Deep Learning model, it is also possible to pass an combination of channel as the input to the network (we will just not use the nucleus anchor technique). The Cellpose CLI provides an \textit{--all\_channels} key that relaxes the input condition on the model. 
+	
+	CellDetective allows the user to import a custom-trained Cellpose model directly into the interface. We account for the variety of possible Cellpose models by allowing the user to clearly define the input parameters. The pretrained model name (using the CLI, python API or the Cellpose GUI) is parsed to set the residual, style and concatenation settings. The CLI naming convention automatically accounts for this, we recommend not to rename the models if you intended to deviate from the \textit{res=on}, \textit{style=on}, \textit{concatenate=off} setting. 
+	
+	If you use the \textit{--all\_channels} tag during training, it is important that when reloading the pretrained model, Cellpose reads the relevant channels. According to the source code, this mode is triggered when \textit{model\_type=None} in the CellposeModel instance and \textit{channels=None} in the eval function. This condition will trigger the automatic detection of the number of channels from the shape of the image to predict. Currently, setting \textit{channels=None} breaks Cellpose. We opened a \href{https://github.com/MouseLand/cellpose/issues/762}{request} to fix this bug. Otherwise, the eval method of CellposeModel triggers the eval method of the UnetModel. Replace channels=channels[i] if (len(channels)==len(x) and (isinstance(channels[i], list) or isinstance(channels[i], np.ndarray)) and len(channels[i])==2) else channels with channels.
 	
 \end{document}

@@ -821,11 +821,13 @@ def normalize(frame, percentiles=(0.0,99.99), values=None, ignore_gray_value=0.,
 
 	frame0 = frame.copy()
 	frame = normalize_mi_ma(frame0, mi, ma, clip=False, eps=1e-20, dtype=np.float32)
-	if clip:
-		frame[frame>=1.] = 1.
-		frame[frame<=0.] = 0.
 	if amplification is not None:
 		frame *= amplification
+	if clip:
+		if amplification is None:
+			amplification = 1.
+		frame[frame>=amplification] = amplification
+		frame[frame<=0.] = 0.
 	if ignore_gray_value is not None:
 		frame[np.where(frame0)==ignore_gray_value] = ignore_gray_value
 
@@ -874,7 +876,7 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 		frames = normalize_multichannel(frames, **normalize_kwargs)
 	if scale is not None:
 		frames = zoom(frames, [scale,scale,1], order=3)
-	return frames
+	return frames.astype(dtype)
 
 
 def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.):

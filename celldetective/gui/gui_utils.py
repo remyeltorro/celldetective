@@ -347,10 +347,10 @@ class FigureCanvas(QWidget):
 		self.canvas.setStyleSheet("background-color: transparent;")
 		if interactive:
 			self.toolbar = NavigationToolbar2QT(self.canvas)
-		layout = QVBoxLayout(self)
-		layout.addWidget(self.canvas)
+		self.layout = QVBoxLayout(self)
+		self.layout.addWidget(self.canvas)
 		if interactive:
-			layout.addWidget(self.toolbar)
+			self.layout.addWidget(self.toolbar)
 
 def color_from_status(status):
 	if status==0:

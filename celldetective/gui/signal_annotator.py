@@ -57,6 +57,7 @@ class SignalAnnotator(QMainWindow):
 		self.prepare_stack()
 
 		self.generate_signal_choices()
+		self.frame_lbl = QLabel('frame: ')
 		self.looped_animation()
 		self.create_cell_signal_canvas()
 
@@ -164,27 +165,31 @@ class SignalAnnotator(QMainWindow):
 
 		# Animation
 		animation_buttons_box = QHBoxLayout()
+
+
+		animation_buttons_box.addWidget(self.frame_lbl, 20, alignment=Qt.AlignLeft)
+
 		self.last_frame_btn = QPushButton()
 		self.last_frame_btn.clicked.connect(self.set_last_frame)
 		self.last_frame_btn.setShortcut(QKeySequence('l'))
 		self.last_frame_btn.setIcon(icon(MDI6.page_last,color="black"))
 		self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.last_frame_btn.setFixedSize(QSize(60, 60))
-		animation_buttons_box.addWidget(self.last_frame_btn)
+		animation_buttons_box.addWidget(self.last_frame_btn, 5, alignment=Qt.AlignRight)
 
 		self.stop_btn = QPushButton()
 		self.stop_btn.clicked.connect(self.stop)
 		self.stop_btn.setIcon(icon(MDI6.stop,color="black"))
 		self.stop_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.stop_btn.setFixedSize(QSize(60, 60))
-		animation_buttons_box.addWidget(self.stop_btn)
+		animation_buttons_box.addWidget(self.stop_btn,5, alignment=Qt.AlignRight)
 
 		self.start_btn = QPushButton()
 		self.start_btn.clicked.connect(self.start)
 		self.start_btn.setIcon(icon(MDI6.play,color="black"))
 		self.start_btn.setFixedSize(QSize(60, 60))
 		self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		animation_buttons_box.addWidget(self.start_btn)
+		animation_buttons_box.addWidget(self.start_btn,5, alignment=Qt.AlignRight)
 		self.start_btn.hide()
 
 		self.right_panel.addLayout(animation_buttons_box, 5)
@@ -533,11 +538,17 @@ class SignalAnnotator(QMainWindow):
 					self.fraction = float(instructions['fraction'])
 				else:
 					self.fraction = 0.25
+
+				if 'interval' in instructions:
+					self.anim_interval = int(instructions['interval'])
+				else:
+					self.anim_interval = 1
 		else:
 			self.rgb_mode = False
 			self.percentile_mode = True
 			self.target_channels = [[self.channel_names[0], 0.01, 99.99]]
 			self.fraction = 0.25
+			self.anim_interval = 1
 
 	def prepare_stack(self):
 
@@ -549,11 +560,17 @@ class SignalAnnotator(QMainWindow):
 				normalize_kwargs = {"percentiles": (ch[1], ch[2]), "values": None}
 			else:
 				normalize_kwargs = {"values": (ch[1], ch[2]), "percentiles": None}
+
+			if self.rgb_mode:
+				normalize_kwargs.update({'amplification': 255., 'clip': True})
+
 			chan = []
 			indices = self.img_num_channels[self.channels[np.where(self.channel_names==target_ch_name)][0]]
 			for t in tqdm(range(len(indices)),desc='frame'):
 				
 				f = load_frames(indices[t], self.stack_path, scale=self.fraction, normalize_input=True, normalize_kwargs=normalize_kwargs)
+				if self.rgb_mode:
+					f = f.astype(np.uint8)
 				chan.append(f[:,:,0])
 
 			self.stack.append(chan)
@@ -585,7 +602,6 @@ class SignalAnnotator(QMainWindow):
 
 		"""
 
-		self.speed = 1
 		self.framedata = 0
 
 		self.fig, self.ax = plt.subplots(tight_layout=True)
@@ -607,7 +623,7 @@ class SignalAnnotator(QMainWindow):
 							   self.fig, 
 							   self.draw_frame, 
 							   frames = self.len_movie, # better would be to cast np.arange(len(movie)) in case frame column is incomplete
-							   interval = self.speed, # in ms
+							   interval = self.anim_interval, # in ms
 							   blit=True,
 							   )
 
@@ -711,6 +727,7 @@ class SignalAnnotator(QMainWindow):
 		"""
 
 		self.framedata = framedata
+		self.frame_lbl.setText(f'frame: {self.framedata}')
 		self.im.set_array(self.stack[self.framedata])
 		self.status_scatter.set_offsets(self.positions[self.framedata])
 		self.status_scatter.set_color(self.colors[self.framedata][:,1])

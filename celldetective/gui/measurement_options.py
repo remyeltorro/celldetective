@@ -21,7 +21,7 @@ from pathlib import Path, PurePath
 class ConfigMeasurements(QMainWindow):
 	
 	"""
-	UI to set tracking parameters for bTrack.
+	UI to set measurement instructions.
 
 	"""
 
@@ -661,6 +661,11 @@ class ConfigMeasurements(QMainWindow):
 
 	def view_selected_contour(self):
 
+		"""
+		Show the ROI for the selected contour measurement on experimental data.
+
+		"""
+
 		self.locate_image()
 		self.locate_mask()
 
@@ -684,17 +689,52 @@ class ConfigMeasurements(QMainWindow):
 			print(border_dist)
 			border_label = contour_of_instance_segmentation(self.test_mask, border_dist)
 			
-			self.fig_contour, self.ax_contour = plt.subplots()
+			self.fig_contour, self.ax_contour = plt.subplots(figsize=(5,5))
 			self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
 			self.ax_contour.clear()
-			im = self.ax_contour.imshow(self.test_frame[:,:,0], cmap='gray')
-			im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label==0, border_label), cmap='viridis')
+			self.im_contour = self.ax_contour.imshow(self.test_frame[:,:,0], cmap='gray')
+			self.im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label==0, border_label), cmap='viridis', interpolation='none')
 			self.ax_contour.set_xticks([])
 			self.ax_contour.set_yticks([])
 			self.ax_contour.set_title(border_dist)
 			self.fig_contour.set_facecolor('none')  # or 'None'
 			self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
 			self.imshow_contour.canvas.draw()
+
+			self.imshow_contour.layout.setContentsMargins(30,30,30,30)
+			self.channel_hbox_contour = QHBoxLayout()
+			self.channel_hbox_contour.addWidget(QLabel('channel: '), 10)
+			self.channel_cb_contour = QComboBox()
+			self.channel_cb_contour.addItems(self.channel_names)
+			self.channel_cb_contour.currentIndexChanged.connect(self.switch_channel_contour)
+			self.channel_hbox_contour.addWidget(self.channel_cb_contour, 90)
+			self.imshow_contour.layout.addLayout(self.channel_hbox_contour)
+
+			self.contrast_hbox_contour = QHBoxLayout()
+			self.contrast_hbox_contour.addWidget(QLabel('contrast: '), 10)
+			self.contrast_slider_contour = QLabeledDoubleRangeSlider()
+			self.contrast_slider_contour.setSingleStep(0.00001)
+			self.contrast_slider_contour.setTickInterval(0.00001)		
+			self.contrast_slider_contour.setOrientation(1)
+			self.contrast_slider_contour.setRange(np.amin(self.test_frame[:,:,0]),np.amax(self.test_frame[:,:,0]))
+			self.contrast_slider_contour.setValue([np.percentile(self.test_frame[:,:,0].flatten(), 1), np.percentile(self.test_frame[:,:,0].flatten(), 99.99)])
+			self.im_contour.set_clim(vmin=np.percentile(self.test_frame[:,:,0].flatten(), 1), vmax=np.percentile(self.test_frame[:,:,0].flatten(), 99.99))
+			self.contrast_slider_contour.valueChanged.connect(self.contrast_im_contour)
+			self.contrast_hbox_contour.addWidget(self.contrast_slider_contour, 90)
+			self.imshow_contour.layout.addLayout(self.contrast_hbox_contour)
+
+			self.alpha_mask_hbox_contour = QHBoxLayout()
+			self.alpha_mask_hbox_contour.addWidget(QLabel('mask transparency: '), 10)
+			self.transparency_slider = QLabeledDoubleSlider()
+			self.transparency_slider.setSingleStep(0.001)
+			self.transparency_slider.setTickInterval(0.001)		
+			self.transparency_slider.setOrientation(1)
+			self.transparency_slider.setRange(0,1)
+			self.transparency_slider.setValue(0.5)
+			self.transparency_slider.valueChanged.connect(self.make_contour_transparent)
+			self.alpha_mask_hbox_contour.addWidget(self.transparency_slider, 90)
+			self.imshow_contour.layout.addLayout(self.alpha_mask_hbox_contour)
+
 			self.imshow_contour.show()
 
 		else:
@@ -720,4 +760,28 @@ class ConfigMeasurements(QMainWindow):
 			self.test_mask = None
 		else:
 			self.test_mask = imread(masks[0])
+
+	def switch_channel_contour(self, value):
+		
+		"""
+		Adjust intensity values when changing channels in the contour visualizer. 
+		
+		"""
+
+		self.im_contour.set_array(self.test_frame[:,:,value])
+		self.im_contour.set_clim(vmin=np.percentile(self.test_frame[:,:,value].flatten(), 1), vmax=np.percentile(self.test_frame[:,:,value].flatten(), 99.99))
+		self.contrast_slider_contour.setRange(np.amin(self.test_frame[:,:,value]),np.amax(self.test_frame[:,:,value]))
+		self.contrast_slider_contour.setValue([np.percentile(self.test_frame[:,:,value].flatten(), 1), np.percentile(self.test_frame[:,:,value].flatten(), 99.99)])
+		self.fig_contour.canvas.draw_idle()
+
+	def contrast_im_contour(self, value):
+		vmin = value[0]; vmax = value[1]
+		self.im_contour.set_clim(vmin=vmin, vmax=vmax)
+		self.fig_contour.canvas.draw_idle()
+
+	def make_contour_transparent(self, value):
+
+		self.im_mask.set_alpha(value)
+		self.fig_contour.canvas.draw_idle()
+		
 

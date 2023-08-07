@@ -1,4 +1,4 @@
-[![Contributors](https://img.shields.io/github/contributors-anon/remyeltorro/celldetective)](https://github.com/remyeltorro/celldetective/graphs/contributors)
+[![repo size](https://img.shields.io/github/repo-size/remyeltorro/celldetective)](https://github.com/remyeltorro/celldetective/)
 
 CellDetective
 =============

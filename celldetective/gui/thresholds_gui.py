@@ -15,6 +15,7 @@ from celldetective.segmentation import filter_image
 import pandas as pd
 from skimage.measure import regionprops_table
 import json
+import os
 
 class ThresholdConfigWizard(QMainWindow):
 	

@@ -741,15 +741,16 @@ class ThresholdConfigWizard(QMainWindow):
 
 		print('The following instructions will be written: ', instructions)
 		self.instruction_file = QFileDialog.getSaveFileName(self, "Save File", self.exp_dir+f'configs/threshold_config_{self.mode}.json', '.json')[0]
-		json_object = json.dumps(instructions, indent=4)
-		with open(self.instruction_file, "w") as outfile:
-			outfile.write(json_object)
-		print("Configuration successfully written in ",self.instruction_file)
+		if os.path.exists(self.instruction_file) and self.instruction_file!='':
+			json_object = json.dumps(instructions, indent=4)
+			with open(self.instruction_file, "w") as outfile:
+				outfile.write(json_object)
+			print("Configuration successfully written in ",self.instruction_file)
 
-		self.parent.filename = self.instruction_file
-		self.parent.file_label.setText(self.instruction_file)
+			self.parent.filename = self.instruction_file
+			self.parent.file_label.setText(self.instruction_file)
 
-		self.close()
+			self.close()
 
 	def activate_histogram_equalizer(self):
 

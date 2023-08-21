@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit,QFileDialog, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
@@ -158,10 +158,19 @@ class SignalAnnotator(QMainWindow):
 
 		self.left_panel.addLayout(signal_choice_vbox)
 
+		btn_hbox = QHBoxLayout()
 		self.save_btn = QPushButton('Save')
 		self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
 		self.save_btn.clicked.connect(self.save_trajectories)
-		self.left_panel.addWidget(self.save_btn)
+		btn_hbox.addWidget(self.save_btn, 90)
+
+		self.export_btn = QPushButton('')
+		self.export_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.export_btn.clicked.connect(self.export_signals)
+		self.export_btn.setIcon(icon(MDI6.export,color="black"))
+		self.export_btn.setIconSize(QSize(25, 25))
+		btn_hbox.addWidget(self.export_btn, 10)
+		self.left_panel.addLayout(btn_hbox)
 
 		# Animation
 		animation_buttons_box = QHBoxLayout()
@@ -235,6 +244,7 @@ class SignalAnnotator(QMainWindow):
 		self.show()
 
 		QApplication.processEvents()
+
 
 	def contrast_slider_action(self):
 
@@ -801,3 +811,34 @@ class SignalAnnotator(QMainWindow):
 		self.start_btn.show()
 		self.stop_btn.clicked.connect(self.start)
 		self.start_btn.setShortcut(QKeySequence("l"))
+
+	def export_signals(self):
+		
+		auto_dataset_name = self.pos.split('/')[-4]+'_'+self.pos.split('/')[-2]+'.npy'
+
+		training_set = []
+		cols = self.df_tracks.columns
+		tracks = np.unique(self.df_tracks["TRACK_ID"].to_numpy())
+
+		for track in tracks:
+			# Add all signals at given track
+			signals = {}
+			for c in cols:
+				signals.update({c: self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, c].to_numpy()})
+			time_of_interest = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, "t0"].to_numpy()[0]
+			cclass = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, "class"].to_numpy()[0]
+			signals.update({"time_of_interest": time_of_interest,"class": cclass})
+			# Here auto add all available channels
+			training_set.append(signals)
+
+		print(training_set)
+
+		pathsave = QFileDialog.getSaveFileName(self, "Select file name", self.exp_dir+auto_dataset_name, ".npy")[0]
+		if pathsave!='':
+			if not pathsave.endswith(".npy"):
+				pathsave += ".npy"
+			try:
+				np.save(pathsave,training_set)
+				print(f'File successfully written in {pathsave}.')
+			except Exception as e:
+				print(f"Error {e}...")

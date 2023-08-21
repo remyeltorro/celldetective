@@ -7,6 +7,7 @@ os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow.config import list_physical_devices
 import configparser
+from sklearn.utils.class_weight import compute_class_weight
 
 def create_patch_mask(h, w, center=None, radius=None):
 

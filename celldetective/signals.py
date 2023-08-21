@@ -10,16 +10,22 @@ from tensorflow.keras.metrics import Precision
 from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras import Input, Model
+from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D
 
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import jaccard_score, balanced_accuracy_score
 from scipy.interpolate import interp1d
+from scipy.ndimage import shift
 
 from celldetective.io import get_signal_models_list
 from celldetective.tracking import clean_trajectories
 from celldetective.utils import regression_plot, train_test_split, compute_weights
 import matplotlib.pyplot as plt
 from natsort import natsorted
+from glob import glob
+import shutil
+import random
 
 abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
 
@@ -116,6 +122,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		frames = group[column_labels['time']].to_numpy().astype(int)
 		for j,col in enumerate(selected_signals):
 			signal = group[col].to_numpy()
+			print(col, frames, len(frames), len(col))
 			signals[i,frames,j] = signal
 	
 	model = SignalDetectionModel(pretrained=complete_path)
@@ -844,42 +851,64 @@ class SignalDetectionModel(object):
 		"""
 		
 		set_k = np.load(subset,allow_pickle=True)
-		key_to_check = self.channel_option[0]
-		if key_to_check in set_k[0]:
+		### here do a mapping between channel option and existing signals
 
-			signal_lengths = [len(l[key_to_check]) for l in set_k]
-			max_length = np.amax(signal_lengths)
+		required_signals = self.channel_option
+		available_signals = list(set_k[0].keys())
 
-			fluo = np.zeros((len(set_k),max_length,self.n_channels))
-			classes = np.zeros(len(set_k))
-			times_of_interest = np.zeros(len(set_k))
+		selected_signals = []
+		for s in required_signals:
+			pattern_test = [s in a for a in available_signals]
+			if np.any(pattern_test):
+				valid_columns = np.array(available_signals)[np.array(pattern_test)]
+				if len(valid_columns)==1:
+					selected_signals.append(valid_columns[0])
+				else:
+					print(f'Found several candidate signals: {valid_columns}')
+					for vc in natsorted(valid_columns):
+						if 'circle' in vc:
+							selected_signals.append(vc)
+							break
+					else:
+						selected_signals.append(valid_columns[0])
+			else:
+				return None	
+		
+
+		key_to_check = selected_signals[0] #self.channel_option[0]
+		signal_lengths = [len(l[key_to_check]) for l in set_k]
+		max_length = np.amax(signal_lengths)
+
+		fluo = np.zeros((len(set_k),max_length,self.n_channels))
+		classes = np.zeros(len(set_k))
+		times_of_interest = np.zeros(len(set_k))
+		
+		for k in range(len(set_k)):
 			
-			for k in range(len(set_k)):
-				
-				for i in range(self.n_channels):
-					try:
-						fluo[k,:,i] = set_k[k][self.channel_option[i]]
-					except:
-						print(f"Attribute {self.channel_option[i]} not found in annotation...")
-						pass
+			for i in range(self.n_channels):
+				try:
+					fluo[k,:,i] = set_k[k][selected_signals[i]]
+				except:
+					print(f"Attribute {selected_signals[i]} matched to {self.channel_option[i]} not found in annotation...")
+					pass
 
-				classes[k] = set_k[k]["class"]
-				times_of_interest[k] = set_k[k]["time_of_interest"]
+			classes[k] = set_k[k]["class"]
+			times_of_interest[k] = set_k[k]["time_of_interest"]
 
-			# Correct absurd times of interest
-			times_of_interest[np.nonzero(classes)] = -1
-			times_of_interest[(times_of_interest<=0.0)] = -1
+		# Correct absurd times of interest
+		times_of_interest[np.nonzero(classes)] = -1
+		times_of_interest[(times_of_interest<=0.0)] = -1
 
-			# Attempt per-set normalization
-			fluo = normalize_signal_set(fluo, self.channel_option)
-			fluo = pad_to_model_length(fluo, self.model_signal_length)
-			# Trivial normalization for time of interest
-			times_of_interest /= self.model_signal_length
-			
-			# Add to global dataset
-			self.x_set.extend(fluo)
-			self.y_time_set.extend(times_of_interest)
-			self.y_class_set.extend(classes)
+		# Attempt per-set normalization
+		fluo = normalize_signal_set(fluo, self.channel_option)
+		fluo = pad_to_model_length(fluo, self.model_signal_length)
+		# Trivial normalization for time of interest
+		times_of_interest /= self.model_signal_length
+		
+		# Add to global dataset
+		self.x_set.extend(fluo)
+		self.y_time_set.extend(times_of_interest)
+		self.y_class_set.extend(classes)
 
 def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.99], percentile_dead=[0.5,99.99], percentile_generic=[0.01,99.99]):
 
@@ -1136,7 +1165,7 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 		time_of_interest *= model_signal_length
 
 	# augment with a certain probability
-	r = random()
+	r = random.random()
 	if r<= probability:
 
 		if time_shift:

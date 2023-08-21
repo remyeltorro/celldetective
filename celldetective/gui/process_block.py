@@ -13,6 +13,7 @@ from celldetective.signals import analyze_signals_at_position
 import numpy as np
 from glob import glob
 from natsort import natsorted
+import os
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -399,6 +400,11 @@ class ProcessPanel(QFrame):
 				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
 				print(f"Position {self.pos}...\nLoading stack movie...")
 				model_name = self.seg_model_list.currentText()
+
+				if not os.path.exists(self.pos + 'output/'):
+					os.mkdir(self.pos + 'output/')
+				if not os.path.exists(self.pos + 'output/tables/'):
+					os.mkdir(self.pos + 'output/tables/')
 
 				if self.segment_action.isChecked():
 					if (self.seg_model_list.currentText()=="Threshold"):

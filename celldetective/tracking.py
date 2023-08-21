@@ -655,7 +655,7 @@ def extrapolate_tracks(trajectories, post=False, pre=False, column_labels={'trac
 	if pre:
 		
 		# get the maximum time T in the dataframe
-		min_time = trajectories[column_labels['time']].min()
+		min_time = 0 #trajectories[column_labels['time']].min()
 
 		# extrapolate the position until time T by repeating the last known position
 		df_extrapolated = pd.DataFrame()

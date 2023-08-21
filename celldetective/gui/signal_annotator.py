@@ -204,8 +204,8 @@ class SignalAnnotator(QMainWindow):
 			self.contrast_slider.setSingleStep(0.00001)
 			self.contrast_slider.setTickInterval(0.00001)		
 			self.contrast_slider.setOrientation(1)
-			self.contrast_slider.setRange(np.amin(self.stack[0]),np.amax(self.stack[0]))
-			self.contrast_slider.setValue([np.percentile(self.stack[0].flatten(), 1), np.percentile(self.stack[0].flatten(), 99.99)])
+			self.contrast_slider.setRange(np.amin(self.stack),np.amax(self.stack))
+			self.contrast_slider.setValue([np.percentile(self.stack.flatten(), 1), np.percentile(self.stack.flatten(), 99.99)])
 			self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
 			contrast_hbox.addWidget(QLabel('contrast: '))
 			contrast_hbox.addWidget(self.contrast_slider,90)
@@ -665,6 +665,7 @@ class SignalAnnotator(QMainWindow):
 	def on_scatter_pick(self, event):
 		
 		ind = event.ind
+
 		if len(ind)>1:
 			# More than one point in vicinity
 			datax,datay = [self.positions[self.framedata][i,0] for i in ind],[self.positions[self.framedata][i,1] for i in ind]
@@ -673,7 +674,7 @@ class SignalAnnotator(QMainWindow):
 			ind = [ind[np.argmin(dist)]]
 		
 
-		if ind and (len(self.selection))==0:
+		if len(ind)>0 and (len(self.selection)==0):
 			ind = ind[0]
 			self.selection.append(ind)
 			self.correct_btn.setEnabled(True)
@@ -698,7 +699,7 @@ class SignalAnnotator(QMainWindow):
 				self.previous_color.append(self.colors[t][idx].copy())
 				self.colors[t][idx] = 'lime'
 
-		elif ind and len(self.selection)==1:
+		elif len(ind)>0 and len(self.selection)==1:
 			self.cancel_btn.click()
 		else:
 			pass

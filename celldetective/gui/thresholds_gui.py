@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QLabel, QWidget,QFileDialog, QHBoxLayout, QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
+from PyQt5.QtWidgets import QAction, QMenu, QMainWindow, QMessageBox, QLabel, QWidget,QFileDialog, QHBoxLayout, QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class
 from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column
 from celldetective.io import auto_load_number_of_frames, load_frames
@@ -35,6 +35,8 @@ class ThresholdConfigWizard(QMainWindow):
 		self.setMinimumHeight(int(0.8*self.screen_height))
 		self.setWindowTitle("Threshold configuration wizard")
 		center_window(self)
+		self._createActions()
+		self._createMenuBar()
 
 		self.mode = self.parent.mode
 		self.pos = self.parent.parent.parent.pos
@@ -58,6 +60,25 @@ class ThresholdConfigWizard(QMainWindow):
 		self.populate_widget()
 
 		self.setAttribute(Qt.WA_DeleteOnClose)
+
+	def _createMenuBar(self):
+		menuBar = self.menuBar()
+		# Creating menus using a QMenu object
+		fileMenu = QMenu("&File", self)
+		fileMenu.addAction(self.openAction)
+		menuBar.addMenu(fileMenu)
+		# Creating menus using a title
+		#editMenu = menuBar.addMenu("&Edit")
+		#helpMenu = menuBar.addMenu("&Help")
+
+	def _createActions(self):
+		# Creating action using the first constructor
+		#self.newAction = QAction(self)
+		#self.newAction.setText("&New")
+		# Creating actions using the second constructor
+		self.openAction = QAction(icon(MDI6.folder),"&Open...", self)
+		self.openAction.triggered.connect(self.load_previous_config)
+
 
 	def populate_widget(self):
 
@@ -290,7 +311,7 @@ class ThresholdConfigWizard(QMainWindow):
 			properties_box.addLayout(hbox_feat)
 
 		hbox_classify = QHBoxLayout()
-		hbox_classify.addWidget(QLabel('classify: '), 10)
+		hbox_classify.addWidget(QLabel('remove: '), 10)
 		self.property_query_le = QLineEdit()
 		self.property_query_le.setPlaceholderText('eliminate points using a query such as: area > 100 or eccentricity > 0.95')
 		hbox_classify.addWidget(self.property_query_le, 70)
@@ -749,7 +770,8 @@ class ThresholdConfigWizard(QMainWindow):
 			print("Configuration successfully written in ",self.instruction_file)
 
 			self.parent.filename = self.instruction_file
-			self.parent.file_label.setText(self.instruction_file)
+			self.parent.file_label.setText(self.instruction_file[:16]+'...')
+			self.parent.file_label.setToolTip(self.instruction_file)
 
 			self.close()
 		else:
@@ -766,5 +788,44 @@ class ThresholdConfigWizard(QMainWindow):
 			self.equalize_option = False
 			self.equalize_option_btn.setIcon(icon(MDI6.equalizer,color="black"))
 			self.equalize_option_btn.setIconSize(QSize(20,20))
+
+	def load_previous_config(self):
+		self.previous_instruction_file = QFileDialog.getOpenFileName(self, "Load config", self.exp_dir+f'configs/threshold_config_{self.mode}.json', "JSON (*.json)")[0]
+		with open(self.previous_instruction_file, 'r') as f:
+			threshold_instructions = json.load(f)
+		
+		target_channel = threshold_instructions['target_channel']
+		index = self.channels_cb.findText(target_channel)
+		self.channels_cb.setCurrentIndex(index)
+
+		filters = threshold_instructions['filters']
+		items_to_add = [f[0]+'_filter' for f in filters]
+		self.filters_qlist.list_widget.addItems(items_to_add)
+		self.filters_qlist.items = filters
+
+		self.apply_filters_btn.click()
+
+		thresholds = threshold_instructions['thresholds']
+		self.threshold_slider.setValue(thresholds)
+
+		marker_footprint_size = threshold_instructions['marker_footprint_size']
+		self.footprint_slider.setValue(marker_footprint_size)
+
+		marker_min_dist = threshold_instructions['marker_min_distance']
+		self.min_dist_slider.setValue(marker_min_dist)
+
+		self.markers_btn.click()
+		self.watershed_btn.click()
+
+		feature_queries = threshold_instructions['feature_queries']
+		self.property_query_le.setText(feature_queries[0])
+		self.submit_query_btn.click()
+
+
+
+
+
+
+
 
 

@@ -4,7 +4,7 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
-from celldetective.gui import SegmentationModelLoader, ConfigTracking, SignalAnnotator, ConfigMeasurements, ConfigSignalAnnotator
+from celldetective.gui import SegmentationModelLoader, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
@@ -169,7 +169,7 @@ class ProcessPanel(QFrame):
 		self.train_signal_model_btn.setIconSize(QSize(20, 20)) 
 		self.train_signal_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
 		model_zoo_layout.addWidget(self.train_signal_model_btn, 5)
-		#self.train_button_cell.clicked.connect(self.train_cell_model)
+		self.train_signal_model_btn.clicked.connect(self.open_signal_model_config_ui)
 		signal_layout.addLayout(model_zoo_layout)
 		signal_layout.addWidget(self.signal_models_list)
 
@@ -356,6 +356,11 @@ class ProcessPanel(QFrame):
 
 		self.ConfigTracking = ConfigTracking(self)
 		self.ConfigTracking.show()
+
+	def open_signal_model_config_ui(self):
+
+		self.ConfigSignalTrain = ConfigSignalModelTraining(self)
+		self.ConfigSignalTrain.show()
 
 	def open_measurement_configuration_ui(self):
 

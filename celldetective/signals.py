@@ -267,7 +267,7 @@ class SignalDetectionModel(object):
 		except:
 			pass
 	
-	def fit_from_directory(self, ds_folders, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, target_directory=None, augment=True, augmentation_factor=2, 
+	def fit_from_directory(self, ds_folders, normalize=True, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, target_directory=None, augment=True, augmentation_factor=2, 
 						  validation_split=0.25, test_split=0.0, batch_size = 64, epochs=300, recompile_pretrained=False, learning_rate=0.01,
 						  loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
 		"""
@@ -276,6 +276,7 @@ class SignalDetectionModel(object):
 		
 		"""
 		
+		self.normalize = normalize
 		self.ds_folders = ds_folders
 		self.batch_size = batch_size
 		self.epochs = epochs
@@ -290,6 +291,7 @@ class SignalDetectionModel(object):
 		self.learning_rate = learning_rate
 		self.loss_reg = loss_reg
 		self.loss_class = loss_class
+
 
 		if os.path.exists(self.model_folder):
 			shutil.rmtree(self.model_folder)
@@ -887,7 +889,9 @@ class SignalDetectionModel(object):
 			
 			for i in range(self.n_channels):
 				try:
-					fluo[k,:,i] = set_k[k][selected_signals[i]]
+					# take into account timeline for accurate time regression
+					timeline = set_k[k]['FRAME'].astype(int)
+					fluo[k,timeline,i] = set_k[k][selected_signals[i]]
 				except:
 					print(f"Attribute {selected_signals[i]} matched to {self.channel_option[i]} not found in annotation...")
 					pass
@@ -900,7 +904,8 @@ class SignalDetectionModel(object):
 		times_of_interest[(times_of_interest<=0.0)] = -1
 
 		# Attempt per-set normalization
-		fluo = normalize_signal_set(fluo, self.channel_option)
+		if self.normalize:
+			fluo = normalize_signal_set(fluo, self.channel_option)
 		fluo = pad_to_model_length(fluo, self.model_signal_length)
 		# Trivial normalization for time of interest
 		times_of_interest /= self.model_signal_length
@@ -964,7 +969,7 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 	for k,channel in enumerate(channel_option):
 
 
-		if ("dead_nuclei_channel" in channel) or ("RED" in channel):
+		if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
 
 			min_percentile_dead, max_percentile_dead = percentile_dead
 			min_set = signal_set[:,0,k]
@@ -974,12 +979,19 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 			signal_set[:,:,k] -= min_fluo_dead
 			signal_set[:,:,k] /= (max_fluo_dead - min_fluo_dead)
 
-		if ("live_nuclei_channel" in channel) or ("BLUE" in channel):
+		elif ("live_nuclei_channel" in channel and 'haralick' not in channel) or ("BLUE" in channel):
 		
 			min_percentile_alive, max_percentile_alive = percentile_alive
 			values = signal_set[:,0,k]
 			min_fluo_alive = np.nanpercentile(values[np.nonzero(values)], min_percentile_alive) # safe 0.5% of Hoescht on initial frame
 			max_fluo_alive = np.nanpercentile(values[np.nonzero(values)], max_percentile_alive)
+			signal_set[:,:,k] -= min_fluo_alive
+			signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
+
+		elif 0.8<np.mean(signal_set[:,:,k])<1.2:
+			print('detected normalized signal; assume min max in 0.5-1.5 range')
+			min_fluo_alive = 0.5
+			max_fluo_alive = 1.5
 			signal_set[:,:,k] -= min_fluo_alive
 			signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
 

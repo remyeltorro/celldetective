@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
@@ -7,6 +8,7 @@ from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location
 from celldetective.io import interpret_tracking_configuration, load_frames
 from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
+from celldetective.signals import train_signal_model
 import numpy as np
 import json
 from shutil import copyfile
@@ -34,6 +36,12 @@ class ConfigSignalModelTraining(QMainWindow):
 		self.mode = self.parent.mode
 		self.exp_dir = self.parent.exp_dir
 		self.soft_path = get_software_location()
+		self.pretrained_model = None 
+		self.dataset_folder = None
+		self.signal_models_dir = self.soft_path+'/celldetective/models/signal_detection/'
+
+		self.onlyFloat = QDoubleValidator()
+		self.onlyInt = QIntValidator()
 
 		self.screen_height = self.parent.parent.parent.screen_height
 		center_window(self)
@@ -76,8 +84,9 @@ class ConfigSignalModelTraining(QMainWindow):
 
 		self.submit_btn = QPushButton('Train')
 		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
-		#self.submit_btn.clicked.connect(self.write_instructions)
+		self.submit_btn.clicked.connect(self.prep_model)
 		main_layout.addWidget(self.submit_btn)
+		self.submit_btn.setEnabled(False)
 
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
@@ -121,13 +130,15 @@ class ConfigSignalModelTraining(QMainWindow):
 
 		lr_layout = QHBoxLayout()
 		lr_layout.addWidget(QLabel('learning rate: '),30)
-		self.lr_le = QLineEdit('0.001')
+		self.lr_le = QLineEdit('0,01')
+		self.lr_le.setValidator(self.onlyFloat)
 		lr_layout.addWidget(self.lr_le, 70)
 		layout.addLayout(lr_layout)
 
 		bs_layout = QHBoxLayout()
 		bs_layout.addWidget(QLabel('batch size: '),30)
-		self.bs_le = QLineEdit('4')
+		self.bs_le = QLineEdit('64')
+		self.bs_le.setValidator(self.onlyInt)
 		bs_layout.addWidget(self.bs_le, 70)
 		layout.addLayout(bs_layout)
 
@@ -141,7 +152,6 @@ class ConfigSignalModelTraining(QMainWindow):
 		self.epochs_slider.setValue(300)
 		epochs_layout.addWidget(self.epochs_slider, 70)
 		layout.addLayout(epochs_layout)
-
 
 
 	def populate_data_frame(self):
@@ -311,13 +321,16 @@ class ConfigSignalModelTraining(QMainWindow):
 							"difference_entropy",
 							"information_measure_of_correlation_1",
 							"information_measure_of_correlation_2",
-							"maximal_correlation_coefficient"
+							"maximal_correlation_coefficient",
+							"POSITION_X",
+							"POSITION_Y",
 							]
 
 		for i in range(len(self.channel_cbs)):
 			ch_layout = QHBoxLayout()
 			ch_layout.addWidget(QLabel(f'channel {i}: '), 30)
 			self.channel_cbs[i].addItems(self.channel_items)
+			self.channel_cbs[i].currentIndexChanged.connect(self.check_valid_channels)
 			ch_layout.addWidget(self.channel_cbs[i], 70)
 			layout.addLayout(ch_layout)
 
@@ -426,4 +439,69 @@ class ConfigSignalModelTraining(QMainWindow):
 		step = 5
 		while self.scroll_area.verticalScrollBar().isVisible() and self.height() < self.maximumHeight():
 			self.resize(self.width(), self.height() + step)
+
+	def prep_model(self):
+
+		model_name = self.modelname_le.text()
+		pretrained_model = self.pretrained_model
+		signal_length = self.model_length_slider.value()
+		recompile_op = self.recompile_option.isChecked()
+		channels = []
+		for i in range(len(self.channel_cbs)):
+			channels.append(self.channel_cbs[i].currentText())
+		while '--' in channels:
+			channels.remove('--')
+
+		data_folders = []
+		if self.dataset_folder is not None:
+			data_folders.append(self.dataset_folder)
+		if self.dataset_cb.currentText()!='--':
+			previous_dataset = glob(self.soft_path+'/celldetective/datasets/signals/*/')[self.dataset_cb.currentIndex()-1]
+			data_folders.append(previous_dataset)
+
+		aug_factor = self.augmentation_slider.value()
+		val_split = self.validation_slider.value()
+
+		try:
+			lr = float(self.lr_le.text().replace(',','.'))
+		except:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Invalid value encountered for the learning rate.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None			
+		
+		bs = int(self.bs_le.text())
+		epochs = self.epochs_slider.value()
+
+		training_instructions = {'model_name': model_name,'pretrained': pretrained_model, 'channel_option': channels, 'model_signal_length': signal_length,
+		'recompile_pretrained': recompile_op, 'ds': data_folders, 'augmentation_factor': aug_factor, 'validation_split': val_split,
+		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs}
+
+		model_folder = self.signal_models_dir + model_name + '/'
+		if not os.path.exists(model_folder):
+			os.mkdir(model_folder)
+
+		training_instructions.update({'target_directory': self.signal_models_dir})
+
+		print(f"Set of instructions: {training_instructions}")
+		with open(model_folder+"training_instructions.json", 'w') as f:
+			json.dump(training_instructions, f, indent=4)
+		
+		train_signal_model(model_folder+"training_instructions.json")
+
+		self.parent.refresh_signal_models()
+
+
+	def check_valid_channels(self):
+
+		if np.all([cb.currentText()=='--' for cb in self.channel_cbs]):
+			self.submit_btn.setEnabled(False)
+		else:
+			self.submit_btn.setEnabled(True)
+
+
 

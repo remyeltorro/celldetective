@@ -157,10 +157,9 @@ class ProcessPanel(QFrame):
 		model_zoo_layout = QHBoxLayout()
 		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
 
-		signal_models = get_signal_models_list()
 		self.signal_models_list = QComboBox()
-		self.signal_models_list.addItems(signal_models)
 		self.signal_models_list.setEnabled(False)
+		self.refresh_signal_models()
 		#self.to_disable.append(self.cell_models_list)
 
 		self.train_signal_model_btn = QPushButton("TRAIN")
@@ -174,6 +173,11 @@ class ProcessPanel(QFrame):
 		signal_layout.addWidget(self.signal_models_list)
 
 		self.grid_contents.addLayout(signal_layout,6,0,1,4)
+
+	def refresh_signal_models(self):
+		signal_models = get_signal_models_list()
+		self.signal_models_list.clear()
+		self.signal_models_list.addItems(signal_models)
 
 	def generate_tracking_options(self):
 		grid_track = QHBoxLayout()
@@ -308,9 +312,12 @@ class ProcessPanel(QFrame):
 	def init_seg_model_list(self):
 
 		self.seg_model_list.clear()
-		seg_models = get_segmentation_models_list(mode=self.mode, return_path=False)
-		self.seg_model_list.addItems(["Threshold"])
-		self.seg_model_list.addItems(seg_models)
+		self.seg_models = get_segmentation_models_list(mode=self.mode, return_path=False)
+		self.seg_models.insert(0,'Threshold')
+		self.seg_model_list.addItems([s[:32] for s in self.seg_models])
+		for i in range(len(self.seg_models)):
+			self.seg_model_list.setItemData(i, self.seg_models[i], Qt.ToolTipRole)
+
 		
 		#if ("live_nuclei_channel" in self.exp_channels)*("dead_nuclei_channel" in self.exp_channels):
 		# 	print("both channels found")
@@ -404,7 +411,7 @@ class ProcessPanel(QFrame):
 				
 				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
 				print(f"Position {self.pos}...\nLoading stack movie...")
-				model_name = self.seg_model_list.currentText()
+				model_name = self.seg_models[self.seg_model_list.currentIndex()]
 
 				if not os.path.exists(self.pos + 'output/'):
 					os.mkdir(self.pos + 'output/')

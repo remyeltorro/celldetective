@@ -666,9 +666,32 @@ class ConfigMeasurements(QMainWindow):
 
 		"""
 
-		self.locate_image()
-		self.locate_mask()
+		if self.parent.parent.position_list.currentText()=='*':
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a single position to visualize the border selection.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+			else:
+				return None
 
+		self.locate_image()
+
+		self.locate_mask()
+		if self.test_mask is None:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("The segmentation results could not be found for this position.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Yes:
+				return None			
+			else:
+				return None
 		# plt.imshow(self.test_frame[:,:,0])
 		# plt.pause(2)
 		# plt.close()

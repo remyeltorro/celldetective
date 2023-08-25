@@ -57,6 +57,9 @@ movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]
 spatial_calibration = float(ConfigSectionMap(config,"MovieSettings")["pxtoum"])
 time_calibration = float(ConfigSectionMap(config,"MovieSettings")["frametomin"])
 len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
+shape_x = int(ConfigSectionMap(config,"MovieSettings")["shape_x"])
+shape_y = int(ConfigSectionMap(config,"MovieSettings")["shape_y"])
+
 channel_names, channel_indices = extract_experiment_channels(config)
 nbr_channels = len(channel_names)
 
@@ -163,6 +166,7 @@ trajectories, napari_data = track(None,
 		  			optimizer_options = {'tm_lim': int(12e4)}, 
 		  			track_kwargs={'step_size': 100}, 
 		  			clean_trajectories_kwargs=post_processing_options, 
+		  			volume=(shape_x, shape_y),
 		  			)
 print(trajectories)
 print(trajectories.columns)

@@ -41,6 +41,7 @@ class ConfigMeasurements(QMainWindow):
 			self.config_name = "btrack_config_effectors.json"
 			self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_effectors.json"
 		self.soft_path = get_software_location()
+		self.clear_previous = False
 		
 		exp_config = self.exp_dir +"config.ini"
 		self.config_path = self.exp_dir + self.config_name
@@ -458,10 +459,10 @@ class ConfigMeasurements(QMainWindow):
 									'isotropic_operations': isotropic_operations})
 
 		if self.clear_previous_btn.isChecked():
-			clear_previous = True
+			self.clear_previous = True
 		else:
-			clear_previous = False
-		measurement_options.update({'clear_previous': clear_previous})
+			self.clear_previous = False
+		measurement_options.update({'clear_previous': self.clear_previous})
 
 		print('Measurement instructions: ', measurement_options)
 		file_name = self.measure_instructions_path
@@ -576,8 +577,8 @@ class ConfigMeasurements(QMainWindow):
 						self.operations_list.list_widget.clear()
 
 				if 'clear_previous' in measurement_instructions:
-					clear_previous = measurement_instructions['clear_previous']
-					self.clear_previous_btn.setChecked(clear_previous)
+					self.clear_previous = measurement_instructions['clear_previous']
+					self.clear_previous_btn.setChecked(self.clear_previous)
 
 		
 	def locate_image(self):

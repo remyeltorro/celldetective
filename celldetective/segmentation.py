@@ -437,7 +437,7 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 def segment_from_threshold_at_position(pos, mode, config):
 
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\')
+	pos = pos.replace(' ','\\ ')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 
 	config = config.replace('\\','/')

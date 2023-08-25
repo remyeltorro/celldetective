@@ -1346,7 +1346,7 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 def train_signal_model(config):
 
 	config = config.replace('\\','/')
-	config = config.replace(' ','\\')
+	config = config.replace(' ','\\ ')
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
 	subprocess.call(f"python {abs_path}/scripts/train_signal_model.py --config {config}", shell=True)

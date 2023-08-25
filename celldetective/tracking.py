@@ -17,7 +17,7 @@ import subprocess
 abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
 
 def track(labels, configuration=None, stack=None, spatial_calibration=1, features=None, channel_names=None,
-		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None,
+		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None, volume=(2048,2048),
 		  optimizer_options = {'tm_lim': int(12e4)}, track_kwargs={'step_size': 100}, objects=None,
 		  clean_trajectories_kwargs=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
 		  ):
@@ -127,6 +127,8 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 			tracker.features = columns
 		
 		tracker.append(new_btrack_objects)
+		tracker.volume = ((0,volume[0]), (0,volume[1]), None) #(-1e5, 1e5)
+		#print(tracker.volume)
 		tracker.track(**track_kwargs)
 		tracker.optimize(options=optimizer_options)
 
@@ -854,7 +856,7 @@ def compute_instantaneous_diffusion(trajectories, column_labels={'track': "TRACK
 def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 	
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\')
+	pos = pos.replace(' ','\\ ')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'

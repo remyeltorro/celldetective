@@ -20,6 +20,7 @@ import gc
 from matplotlib.animation import FuncAnimation
 from matplotlib.cm import tab10
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 class SignalAnnotator(QMainWindow):
 	
@@ -38,6 +39,7 @@ class SignalAnnotator(QMainWindow):
 		self.exp_dir = self.parent.exp_dir
 		self.n_signals = 3
 		self.soft_path = get_software_location()
+		self.recently_modified = False
 		self.selection = []
 		if self.mode=="targets":
 			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
@@ -107,9 +109,14 @@ class SignalAnnotator(QMainWindow):
 		self.else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
 		self.else_btn.toggled.connect(self.enable_time_of_interest)
 
-		options_hbox.addWidget(self.event_btn, 33)
-		options_hbox.addWidget(self.no_event_btn, 33)
-		options_hbox.addWidget(self.else_btn, 33)
+		self.suppr_btn = QRadioButton('mark for\nsuppression')
+		self.suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.suppr_btn.toggled.connect(self.enable_time_of_interest)
+
+		options_hbox.addWidget(self.event_btn, 25)
+		options_hbox.addWidget(self.no_event_btn, 25)
+		options_hbox.addWidget(self.else_btn, 25)
+		options_hbox.addWidget(self.suppr_btn, 25)
 		self.left_panel.addLayout(options_hbox)
 
 		time_option_hbox = QHBoxLayout()
@@ -139,7 +146,7 @@ class SignalAnnotator(QMainWindow):
 
 		self.annotation_btns_to_hide = [self.event_btn, self.no_event_btn, 
 										self.else_btn, self.time_of_interest_label, 
-										self.time_of_interest_le]
+										self.time_of_interest_le, self.suppr_btn]
 		self.hide_annotation_buttons()
 		#### End of annotation buttons
 
@@ -273,7 +280,7 @@ class SignalAnnotator(QMainWindow):
 		
 		for a in self.annotation_btns_to_hide:
 			a.hide()
-		for b in [self.event_btn, self.no_event_btn, self.else_btn]:
+		for b in [self.event_btn, self.no_event_btn, self.else_btn, self.suppr_btn]:
 			b.setChecked(False)
 		self.time_of_interest_label.setEnabled(False)
 		self.time_of_interest_le.setText('')
@@ -303,6 +310,8 @@ class SignalAnnotator(QMainWindow):
 			self.no_event_btn.setChecked(True)
 		elif cclass==2:
 			self.else_btn.setChecked(True)
+		elif cclass>2:
+			self.suppr_btn.setChecked(True)
 
 		self.enable_time_of_interest()
 		self.correct_btn.setText('submit')
@@ -327,10 +336,29 @@ class SignalAnnotator(QMainWindow):
 			cclass = 1
 		elif self.else_btn.isChecked():
 			cclass = 2
+		elif self.suppr_btn.isChecked():
+			cclass = 42
 
 		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'] = cclass
 		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'] = t0
-		self.make_status_column()
+
+		indices = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'].index
+		timeline = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'FRAME'].to_numpy()
+		status = np.zeros_like(timeline)
+		if t0 > 0:
+			status[timeline>=t0] = 1.
+		if cclass==2:
+			status[:] = 2
+		if cclass>2:
+			status[:] = 42
+		status_color = [color_from_status(s, recently_modified=True) for s in status]
+		class_color = [color_from_class(cclass, recently_modified=True) for i in range(len(status))]
+
+		self.df_tracks.loc[indices, 'status'] = status
+		self.df_tracks.loc[indices, 'status_color'] = status_color
+		self.df_tracks.loc[indices, 'class_color'] = class_color
+
+		#self.make_status_column()
 		self.extract_scatter_from_trajectories()
 		self.give_cell_information()
 
@@ -427,6 +455,18 @@ class SignalAnnotator(QMainWindow):
 					self.loc_t.append(t)
 					self.loc_idx.append(indices[0])
 
+			self.MinMaxScaler = MinMaxScaler()
+			self.columns_to_rescale = list(self.df_tracks.columns)
+			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y']
+			for tr in cols_to_remove:
+				try:
+					self.columns_to_rescale.remove(tr)
+				except:
+					print(f'column {tr} could not be found...')
+			x = self.df_tracks[self.columns_to_rescale].values
+			self.MinMaxScaler.fit(x)
+			print(self.MinMaxScaler.data_max_)
+
 			#self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
 
@@ -443,6 +483,8 @@ class SignalAnnotator(QMainWindow):
 				status[timeline>=t0] = 1.
 			if cclass==2:
 				status[:] = 2
+			if cclass>2:
+				status[:] = 42
 			status_color = [color_from_status(s) for s in status]
 			class_color = [color_from_class(cclass) for i in range(len(status))]
 
@@ -468,6 +510,7 @@ class SignalAnnotator(QMainWindow):
 			self.signal_choice_cb[i].addItems(['--']+signals)
 			self.signal_choice_cb[i].setCurrentIndex(i+1)
 			self.signal_choice_cb[i].currentIndexChanged.connect(self.plot_signals)
+
 
 	def plot_signals(self):
 		
@@ -782,8 +825,11 @@ class SignalAnnotator(QMainWindow):
 		self.cell_info.setText(cell_selected+cell_class+cell_time)
 
 	def save_trajectories(self):
+		self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks['class']>2].index)
 		self.df_tracks.to_csv(self.trajectories_path, index=False)
 		print('table saved.')
+		self.extract_scatter_from_trajectories()
+		#self.give_cell_information()
 
 
 	# def interval_slider_action(self):

@@ -101,7 +101,11 @@ class ControlPanel(QMainWindow):
 		self.grid.addWidget(self.edit_config_button, 0,0,1,3, alignment=Qt.AlignRight)
 
 		self.well_list = QComboBox()
-		self.well_list.addItems(self.well_labels)
+		thresh = 40
+		self.well_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.well_labels]		
+		self.well_list.addItems(self.well_truncated) #self.well_labels
+		for i in range(len(self.well_labels)):
+			self.well_list.setItemData(i, self.well_labels[i], Qt.ToolTipRole)
 		self.well_list.addItems(["*"])
 		self.well_list.activated.connect(self.display_positions)
 		self.to_disable.append(self.well_list)
@@ -277,7 +281,7 @@ class ControlPanel(QMainWindow):
 			position_linspace = [str(s) for s in position_linspace]
 			self.position_list.addItems(position_linspace)
 		else:
-			pos_index = self.well_labels.index(str(self.well_list.currentText()))
+			pos_index = self.well_list.currentIndex()
 			self.position_list.clear()
 			self.position_list.addItems(["*"])
 			self.position_list.addItems(self.positions[pos_index])
@@ -304,7 +308,7 @@ class ControlPanel(QMainWindow):
 			if returnValue == QMessageBox.Ok:
 				return False
 		else:
-			self.well_index = [self.well_labels.index(str(self.well_list.currentText()))]
+			self.well_index = [self.well_list.currentIndex()]
 
 		for w_idx in self.well_index:
 

@@ -5,9 +5,10 @@ from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlid
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location
-from celldetective.io import interpret_tracking_configuration, load_frames
+from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
 from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
 import numpy as np
+from tifffile import imread
 import json
 from shutil import copyfile
 import os
@@ -17,6 +18,7 @@ from glob import glob
 from natsort import natsorted
 from tifffile import imread
 from pathlib import Path, PurePath
+import gc
 
 class ConfigMeasurements(QMainWindow):
 	
@@ -599,7 +601,14 @@ class ConfigMeasurements(QMainWindow):
 		else:
 			self.stack0 = movies[0]
 			n_channels = len(self.channels)
-			self.test_frame = load_frames(np.arange(n_channels), self.stack0, scale=None, normalize_input=False)
+			len_movie_auto = auto_load_number_of_frames(self.stack0)
+			if len_movie_auto is None:
+				stack = imread(self.stack0)
+				len_movie_auto = len(stack)
+				del stack
+				gc.collect()
+			self.mid_time = len_movie_auto//2
+			self.test_frame = load_frames(n_channels*self.mid_time + np.arange(n_channels), self.stack0, scale=None, normalize_input=False)
 
 	def control_haralick_digitalization(self):
 
@@ -784,7 +793,7 @@ class ConfigMeasurements(QMainWindow):
 			print('no mask found')
 			self.test_mask = None
 		else:
-			self.test_mask = imread(masks[0])
+			self.test_mask = imread(masks[self.mid_time])
 
 	def switch_channel_contour(self, value):
 		

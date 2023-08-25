@@ -113,7 +113,7 @@ class ProcessPanel(QFrame):
 		self.measurements_config_btn = QPushButton()
 		self.measurements_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.measurements_config_btn.setIconSize(QSize(20, 20))
-		self.measurements_config_btn.setToolTip("Measurements configuration")
+		self.measurements_config_btn.setToolTip("Configure measurements.")
 		self.measurements_config_btn.setStyleSheet(self.parent.parent.button_select_all)
 		self.measurements_config_btn.clicked.connect(self.open_measurement_configuration_ui)
 		measure_layout.addWidget(self.measurements_config_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
@@ -146,7 +146,7 @@ class ProcessPanel(QFrame):
 		self.config_signal_annotator_btn = QPushButton()
 		self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
-		self.config_signal_annotator_btn.setToolTip("Configure the signal annotator app.")
+		self.config_signal_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
 		self.config_signal_annotator_btn.setStyleSheet(self.parent.parent.button_select_all)
 		self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
 		signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
@@ -215,7 +215,7 @@ class ProcessPanel(QFrame):
 		self.track_config_btn = QPushButton()
 		self.track_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.track_config_btn.setIconSize(QSize(20, 20))
-		self.track_config_btn.setToolTip("Tracking configuration")
+		self.track_config_btn.setToolTip("Configure tracking.")
 		self.track_config_btn.setStyleSheet(self.parent.parent.button_select_all)
 		self.track_config_btn.clicked.connect(self.open_tracking_configuration_ui)
 		grid_track.addWidget(self.track_config_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
@@ -262,13 +262,13 @@ class ProcessPanel(QFrame):
 		self.upload_model_btn.setIcon(icon(MDI6.upload,color="black"))
 		self.upload_model_btn.setIconSize(QSize(20, 20))
 		self.upload_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
-		self.upload_model_btn.setToolTip("Upload a new segmentation model.")
+		self.upload_model_btn.setToolTip("Upload a new segmentation model (Deep learning or threshold-based).")
 		model_zoo_layout.addWidget(self.upload_model_btn, 5)
 		self.upload_model_btn.clicked.connect(self.upload_segmentation_model)
 		# self.to_disable.append(self.upload_tc_model)
 
 		self.train_btn = QPushButton("TRAIN")
-		self.train_btn.setToolTip("Train or retrain a segmentation model on new annotated data.")
+		self.train_btn.setToolTip("Train or retrain a segmentation model on newly annotated data.")
 		self.train_btn.setIcon(icon(MDI6.redo_variant,color='black'))
 		self.train_btn.setIconSize(QSize(20, 20))
 		self.train_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
@@ -314,7 +314,9 @@ class ProcessPanel(QFrame):
 		self.seg_model_list.clear()
 		self.seg_models = get_segmentation_models_list(mode=self.mode, return_path=False)
 		self.seg_models.insert(0,'Threshold')
-		self.seg_model_list.addItems([s[:32] for s in self.seg_models])
+		thresh = 40
+		models_truncated = [m[:thresh - 3]+'...' if len(m)>thresh else m for m in self.seg_models]
+		self.seg_model_list.addItems(models_truncated)
 		for i in range(len(self.seg_models)):
 			self.seg_model_list.setItemData(i, self.seg_models[i], Qt.ToolTipRole)
 
@@ -383,7 +385,7 @@ class ProcessPanel(QFrame):
 		if self.parent.well_list.currentText()=="*":
 			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
 		else:
-			self.well_index = [self.parent.well_labels.index(str(self.parent.well_list.currentText()))]
+			self.well_index = [self.parent.well_list.currentIndex()]
 			print(f"Processing well {self.parent.well_list.currentText()}...")
 
 		# self.freeze()

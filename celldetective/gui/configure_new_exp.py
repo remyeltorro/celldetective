@@ -463,7 +463,7 @@ class SetupConditionLabels(QWidget):
 		for i in range(self.n_wells):
 			hbox = QHBoxLayout()
 			hbox.setContentsMargins(15,5,15,5)
-			hbox.addWidget(QLabel(f'well {i}'), 5, alignment=Qt.AlignLeft)
+			hbox.addWidget(QLabel(f'well {i+1}'), 5, alignment=Qt.AlignLeft)
 			hbox.addWidget(QLabel('cell type: '), 5)
 			hbox.addWidget(self.cell_type_cbs[i], 10)
 			self.cell_type_cbs[i].setPlaceholderText('e.g. T-cell, NK')

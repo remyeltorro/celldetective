@@ -712,9 +712,10 @@ class ThresholdConfigWizard(QMainWindow):
 				self.props.loc[self.selection,'class'] = 0
 			except Exception as e:
 				print(e)
+				print(self.props.columns)
 				msgBox = QMessageBox()
 				msgBox.setIcon(QMessageBox.Warning)
-				msgBox.setText("The query could not be understood. No filtering was applied.")
+				msgBox.setText(f"The query could not be understood. No filtering was applied. {e}")
 				msgBox.setWindowTitle("Warning")
 				msgBox.setStandardButtons(QMessageBox.Ok)
 				returnValue = msgBox.exec()

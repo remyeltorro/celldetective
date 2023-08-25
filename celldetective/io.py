@@ -865,7 +865,10 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 
 def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
 
-	frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+	try:
+		frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+	except Exception as e:
+		print(f'Error in loading the frame {e}. Please check that the experiment channel information is consistent with the movie being read.')
 	if frames.ndim==3:
 		# Systematically move channel axis to the end
 		channel_axis = np.argmin(frames.shape)

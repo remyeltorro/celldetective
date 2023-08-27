@@ -27,7 +27,7 @@ from glob import glob
 import shutil
 import random
 
-abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def analyze_signals(trajectories, model, interpolate_na=True,
 					selected_signals=None,
@@ -79,7 +79,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 	_,model_path = get_signal_models_list(return_path=True)
 	complete_path = model_path+model
-	model_config_path = complete_path+'/config_input.json'
+	model_config_path = os.sep.join([complete_path,'config_input.json'])
 	assert os.path.exists(complete_path),f'Model {model} could not be located in folder {model_path}... Abort.'
 	assert os.path.exists(model_config_path),f'Model configuration could not be located in folder {model_path}... Abort.'
 
@@ -173,7 +173,9 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
-	subprocess.call(f"python {abs_path}/scripts/analyze_signals.py --pos {pos} --model {model} --mode {mode} --use_gpu {use_gpu}", shell=True)
+
+	script_path = os.sep.join([abs_path, 'scripts', 'analyze_signals.py'])
+	subprocess.call(rf"python {script_path} --pos {pos} --model {model} --mode {mode} --use_gpu {use_gpu}", shell=True)
 	
 	return None
 
@@ -295,7 +297,7 @@ class SignalDetectionModel(object):
 		self.augmentation_factor = augmentation_factor
 		self.model_name = model_name
 		self.target_directory = target_directory
-		self.model_folder = self.target_directory + "/" + self.model_name
+		self.model_folder = os.sep.join([self.target_directory,self.model_name])
 		self.recompile_pretrained = recompile_pretrained
 		self.learning_rate = learning_rate
 		self.loss_reg = loss_reg
@@ -312,7 +314,7 @@ class SignalDetectionModel(object):
 		self.list_of_sets = []
 		print(self.ds_folders)
 		for f in self.ds_folders:
-			self.list_of_sets.extend(glob(f+"/*.npy"))
+			self.list_of_sets.extend(glob(os.sep.join([f,"*.npy"])))
 		print(f"Found {len(self.list_of_sets)} annotation files...")
 		self.generate_sets()
 
@@ -321,7 +323,7 @@ class SignalDetectionModel(object):
 
 		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length}
 		json_string = json.dumps(config_input)
-		with open(self.model_folder+f"/config_input.json", 'w') as outfile:
+		with open(os.sep.join([self.model_folder,"config_input.json"]), 'w') as outfile:
 			outfile.write(json_string)
 
 	def fit(self, x_train, y_time_train, y_class_train, normalize=True, pad=True, validation_data=None, test_data=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, 
@@ -524,8 +526,8 @@ class SignalDetectionModel(object):
 		self.plot_model_history(mode="classifier")
 
 		# Set current classification model as the best model
-		self.model_class = load_model(self.model_folder+"/classifier.h5")
-		self.model_class.load_weights(self.model_folder+"/classifier.h5")
+		self.model_class = load_model(os.sep.join([self.model_folder,"classifier.h5"]))
+		self.model_class.load_weights(os.sep.join([self.model_folder,"classifier.h5"]))
 		
 		if hasattr(self, 'x_test'):
 			
@@ -626,8 +628,8 @@ class SignalDetectionModel(object):
 		
 
 		# Evaluate best model 
-		self.model_reg = load_model(self.model_folder+"/regressor.h5")
-		self.model_reg.load_weights(self.model_folder+"/regressor.h5")
+		self.model_reg = load_model(os.sep.join([self.model_folder,"regressor.h5"]))
+		self.model_reg.load_weights(os.sep.join([self.model_folder,"regressor.h5"]))
 		self.evaluate_regression_model()
 		
 
@@ -658,7 +660,7 @@ class SignalDetectionModel(object):
 				plt.yscale('log')
 				plt.legend(['train', 'val'], loc='upper left')
 				plt.pause(3)
-				plt.savefig(self.model_folder+"/regression_loss.png",bbox_inches="tight",dpi=300)
+				plt.savefig(os.sep.join([self.model_folder,"regression_loss.png"]),bbox_inches="tight",dpi=300)
 				plt.close()
 			except Exception as e:
 				print(f"Error {e}; could not generate plot...")
@@ -671,7 +673,7 @@ class SignalDetectionModel(object):
 				plt.xlabel('epoch')
 				plt.legend(['train', 'val'], loc='upper left')
 				plt.pause(3)
-				plt.savefig(self.model_folder+"/classification_loss.png",bbox_inches="tight",dpi=300)
+				plt.savefig(os.sep.join([self.model_folder,"classification_loss.png"]),bbox_inches="tight",dpi=300)
 				plt.close()
 			except Exception as e:
 				print(f"Error {e}; could not generate plot...")
@@ -701,7 +703,7 @@ class SignalDetectionModel(object):
 			assert predictions.shape==ground_truth.shape,"Shape mismatch between predictions and ground truths..."
 			test_error = mse(ground_truth, predictions).numpy()
 			print(f"MSE on test set: {test_error}...")
-			regression_plot(predictions, ground_truth, savepath=self.model_folder+"/test_regression.png")
+			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"test_regression.png"]))
 
 		if hasattr(self, 'x_val'):
 			# Validation set
@@ -709,7 +711,7 @@ class SignalDetectionModel(object):
 			ground_truth = self.y_time_val[np.argmax(self.y_class_val,axis=1)==0]
 			assert predictions.shape==ground_truth.shape,"Shape mismatch between predictions and ground truths..."
 			val_error = mse(ground_truth, predictions).numpy()
-			regression_plot(predictions, ground_truth, savepath=self.model_folder+"/validation_regression.png")
+			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"validation_regression.png"]))
 			print(f"MSE on validation set: {val_error}...")
 
 
@@ -733,9 +735,9 @@ class SignalDetectionModel(object):
 										  cooldown=10, min_lr=5e-10, min_delta=1.0E-10,
 										  verbose=1,mode="max")
 			self.cb.append(reduce_lr)
-			csv_logger = CSVLogger(self.model_folder+'/log_classifier.csv', append=True, separator=';')
+			csv_logger = CSVLogger(os.sep.join([self.model_folder,'log_classifier.csv']), append=True, separator=';')
 			self.cb.append(csv_logger)
-			checkpoint_path = self.model_folder+"/classifier.h5"
+			checkpoint_path = os.sep.join([self.model_folder,"classifier.h5"])
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_precision",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
@@ -749,17 +751,17 @@ class SignalDetectionModel(object):
 										  verbose=1,mode="min")
 			self.cb.append(reduce_lr)
 
-			csv_logger = CSVLogger(self.model_folder+'/log_regressor.csv', append=True, separator=';')
+			csv_logger = CSVLogger(os.sep.join([self.model_folder,'log_regressor.csv']), append=True, separator=';')
 			self.cb.append(csv_logger)
 			
-			checkpoint_path = self.model_folder+"/regressor.h5"
+			checkpoint_path = os.sep.join([self.model_folder,"regressor.h5"])
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_loss",mode="min",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
 			callback_stop = EarlyStopping(monitor='val_loss', patience=1000)
 			self.cb.append(callback_stop)            
 		
-		log_dir = self.model_folder+"/"
+		log_dir = self.model_folder+os.sep
 		cb_tb = TensorBoard(log_dir=log_dir, update_freq='batch')
 		self.cb.append(cb_tb)
 		
@@ -1349,4 +1351,5 @@ def train_signal_model(config):
 	config = config.replace(' ','\\ ')
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
-	subprocess.call(f"python {abs_path}/scripts/train_signal_model.py --config {config}", shell=True)
+	script_path = os.sep.join([abs_path, 'scripts', 'train_signal_model.py'])
+	subprocess.call(rf"python {script_path} --config {config}", shell=True)

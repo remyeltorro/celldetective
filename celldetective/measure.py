@@ -10,7 +10,7 @@ import os
 import subprocess
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features
 
-abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 			features=None, intensity_measurement_radii=None, isotropic_operations=['mean'], border_distances=None,
@@ -666,6 +666,7 @@ def measure_at_position(pos, mode, return_measurements=False):
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
-	subprocess.call(f"python {abs_path}/scripts/measure_cells.py --pos {pos} --mode {mode}", shell=True)
+	script_path = os.sep.join([abs_path, 'scripts', 'measure_cells.py'])
+	subprocess.call(rf"python {script_path} --pos {pos} --mode {mode}", shell=True)
 	
 	return None

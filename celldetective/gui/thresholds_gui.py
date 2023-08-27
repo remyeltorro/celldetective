@@ -367,7 +367,7 @@ class ThresholdConfigWizard(QMainWindow):
 		Locate the target movie.
 
 		"""
-		print(self.pos)
+		print("this is the loaded position: ", self.pos)
 		movies = glob(self.pos + f"movie/{self.parent.parent.parent.movie_prefix}*.tif")
 
 		if len(movies)==0:
@@ -719,7 +719,7 @@ class ThresholdConfigWizard(QMainWindow):
 				msgBox.setWindowTitle("Warning")
 				msgBox.setStandardButtons(QMessageBox.Ok)
 				returnValue = msgBox.exec()
-				if returnValue == QMessageBox.Yes:
+				if returnValue == QMessageBox.Ok:
 					return None
 
 		self.update_props_scatter()

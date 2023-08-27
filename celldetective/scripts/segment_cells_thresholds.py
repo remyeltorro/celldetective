@@ -48,9 +48,9 @@ else:
 print('The following instructions were successfully loaded: ', threshold_instructions)
 
 if mode.lower()=="target" or mode.lower()=="targets":
-	label_folder = "labels_targets/"
+	label_folder = "labels_targets"
 elif mode.lower()=="effector" or mode.lower()=="effectors":
-	label_folder = "labels_effectors/"
+	label_folder = "labels_effectors"
 
 # Locate experiment config
 parent1 = Path(pos).parent
@@ -88,10 +88,10 @@ img_num_channels = _get_img_num_per_channel(np.arange(nbr_channels), len_movie, 
 
 # If everything OK, prepare output, load models
 print('Erasing previous segmentation folder.')
-if os.path.exists(pos+label_folder):
-	rmtree(pos+label_folder)
-os.mkdir(pos+label_folder)
-print(f'Folder {pos+label_folder} successfully generated.')
+if os.path.exists(os.sep.join([pos,label_folder])):
+	rmtree(os.sep.join([pos,label_folder]))
+os.mkdir(os.sep.join([pos,label_folder]))
+print(f'Folder {os.sep.join([pos,label_folder])} successfully generated.')
 
 if equalize:
 	f_reference = load_frames(img_num_channels[:,equalize_time], file, scale=None, normalize_input=False)
@@ -108,7 +108,7 @@ for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 	# Load channels at time t
 	f = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
 	mask = segment_frame_from_thresholds(f, **threshold_instructions)
-	save_tiff_imagej_compatible(pos+label_folder+f"{str(t).zfill(4)}.tif", mask.astype(np.uint16), axes='YX')
+	save_tiff_imagej_compatible(os.sep.join([pos, label_folder, f"{str(t).zfill(4)}.tif"]), mask.astype(np.uint16), axes='YX')
 
 	del f;
 	del mask;

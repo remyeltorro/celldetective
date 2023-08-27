@@ -4,6 +4,7 @@ import sys
 import os
 from PyQt5.QtWidgets import QMainWindow, QApplication,QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from glob import glob
 from celldetective.gui import Styles, ControlPanel, ConfigNewExperiment
 from celldetective.gui.gui_utils import center_window
@@ -23,6 +24,8 @@ class AppInitWindow(QMainWindow):
 		self.Styles = Styles()
 		self.init_styles()
 		self.setWindowTitle("celldetective")
+		print(os.getcwd())
+		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 		center_window(self)
 
 		app = QApplication.instance()
@@ -85,7 +88,7 @@ class AppInitWindow(QMainWindow):
 		"""
 
 		text = self.experiment_path_selection.text()
-		if (os.path.exists(text)) and os.path.exists(text+"/config.ini"):
+		if (os.path.exists(text)) and os.path.exists(os.sep.join([text,"config.ini"])):
 			self.validate_button.setEnabled(True)
 		else:
 			self.validate_button.setEnabled(False)
@@ -114,10 +117,10 @@ class AppInitWindow(QMainWindow):
 
 	def open_directory(self):
 
-		self.exp_dir = self.experiment_path_selection.text()
+		self.exp_dir = self.experiment_path_selection.text().replace('/', os.sep)
 		print(f"Setting current directory to {self.exp_dir}...")
 
-		wells = glob(self.exp_dir+"/W*/")
+		wells = glob(os.sep.join([self.exp_dir,"W*"]))
 		self.number_of_wells = len(wells)
 		if self.number_of_wells==0:
 			msgBox = QMessageBox()
@@ -135,7 +138,7 @@ class AppInitWindow(QMainWindow):
 				print(f"Found {self.number_of_wells} wells...")
 			number_pos = []
 			for w in wells:
-				position_folders = glob(w+f"{w.split('/')[-2][1]}*/")
+				position_folders = glob(os.sep.join([w,f"{w.split(os.sep)[-2][1]}*", os.sep]))
 				number_pos.append(len(position_folders))
 			print(f"Number of positions per well: {number_pos}")
 
@@ -180,6 +183,11 @@ class AppInitWindow(QMainWindow):
 		gc.collect()
 
 if __name__ == "__main__":
+	# import ctypes
+	# myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
+	# ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+	
 	App = QApplication(sys.argv)
 	App.setStyle("Fusion")
 	window = AppInitWindow()

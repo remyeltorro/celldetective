@@ -38,7 +38,7 @@ elif mode.lower()=="effector" or mode.lower()=="effectors":
 	table_name = "trajectories_effectors.csv"
 
 # Load trajectories, add centroid if not in trajectory
-trajectories = pos+f'output/tables/{table_name}'
+trajectories = pos+os.sep.join(['output','tables', table_name])
 if os.path.exists(trajectories):
 	trajectories = pd.read_csv(trajectories)
 else:
@@ -47,5 +47,5 @@ else:
 
 trajectories = analyze_signals(trajectories.copy(), model, interpolate_na=True, selected_signals=None, column_labels = column_labels, plot_outcome=True,output_dir=pos+'output/')
 trajectories = trajectories.sort_values(by=[column_labels['track'], column_labels['time']])
-trajectories.to_csv(pos+f"output/tables/{table_name}", index=False)
+trajectories.to_csv(pos+os.sep.join(['output','tables', table_name]), index=False)
 

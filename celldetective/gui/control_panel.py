@@ -17,8 +17,8 @@ class ControlPanel(QMainWindow):
 		
 		super().__init__()
 		self.exp_dir = exp_dir
-		if not self.exp_dir.endswith('/'):
-			self.exp_dir = self.exp_dir+'/'
+		if not self.exp_dir.endswith(os.sep):
+			self.exp_dir = self.exp_dir+os.sep
 		self.setWindowTitle("celldetective")
 		self.parent = parent
 		center_window(self)
@@ -65,13 +65,13 @@ class ControlPanel(QMainWindow):
 		Detect the wells in the experiment folder and the associated positions.
 		"""
 		
-		self.wells = natsorted(glob(self.exp_dir + "W*/"))
+		self.wells = natsorted(glob(self.exp_dir + "W*" + os.sep))
 		self.positions = []
 		for w in self.wells:
 			w = os.path.split(w[:-1])
 			root = w[0]
 			w = w[1]
-			positions_path = natsorted(glob(root+os.sep+w+os.sep+f"{w[1]}*/"))
+			positions_path = natsorted(glob(os.sep.join([root, w, f"{w[-1]}*{os.sep}"])))
 			self.positions.append([os.path.split(pos[:-1])[1] for pos in positions_path])
 
 	def generate_header(self):
@@ -84,7 +84,7 @@ class ControlPanel(QMainWindow):
 		condition_label = QLabel("condition: ")
 		position_label = QLabel("position: ")
 
-		name = self.exp_dir.split("/")[-2]
+		name = self.exp_dir.split(os.sep)[-2]
 		experiment_label = QLabel(f"Experiment:")
 		experiment_label.setStyleSheet("""
 			font-weight: bold;
@@ -115,7 +115,7 @@ class ControlPanel(QMainWindow):
 		self.position_list.addItems(self.positions[0])
 		self.position_list.activated.connect(self.update_position_options)
 		self.to_disable.append(self.position_list)
-
+		#self.locate_selected_position()
 
 		self.grid.addWidget(QLabel("Well:"), 1, 0, 1,1, alignment=Qt.AlignRight)
 		self.grid.addWidget(self.well_list, 1, 1, 1, 2)
@@ -265,6 +265,54 @@ class ControlPanel(QMainWindow):
 		except:
 			pass
 
+		try:
+			if self.ProcessTargets.ConfigTracking:
+				self.ProcessTargets.ConfigTracking.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessEffectors.ConfigTracking:
+				self.ProcessEffectors.ConfigTracking.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessTargets.ConfigSignalTrain:
+				self.ProcessTargets.ConfigSignalTrain.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessEffectors.ConfigSignalTrain:
+				self.ProcessEffectors.ConfigSignalTrain.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessTargets.ConfigMeasurements:
+				self.ProcessTargets.ConfigMeasurements.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessEffectors.ConfigMeasurements:
+				self.ProcessEffectors.ConfigMeasurements.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessTargets.ConfigSignalAnnotator:
+				self.ProcessTargets.ConfigSignalAnnotator.close()
+		except:
+			pass
+
+		try:
+			if self.ProcessEffectors.ConfigSignalAnnotator:
+				self.ProcessEffectors.ConfigSignalAnnotator.close()
+		except:
+			pass
+
 		gc.collect()
 
 
@@ -328,16 +376,16 @@ class ControlPanel(QMainWindow):
 			well = self.wells[w_idx]
 
 			for pos_idx in pos_indices:
-				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
-				if not os.path.exists(self.pos + 'output/'):
-					os.mkdir(self.pos + 'output/')
-				if not os.path.exists(self.pos + 'output/tables/'):
-					os.mkdir(self.pos + 'output/tables/')
+				self.pos = natsorted(glob(well+f"{well[-2]}*{os.sep}"))[pos_idx]
+				if not os.path.exists(self.pos + 'output'):
+					os.mkdir(self.pos + 'output')
+				if not os.path.exists(self.pos + os.sep.join(['output','tables'])):
+					os.mkdir(self.pos + os.sep.join(['output','tables']))
 
 		return True
 
 	def create_config_dir(self):
-		self.config_folder = self.exp_dir+'configs/'
+		self.config_folder = self.exp_dir+'configs'+os.sep
 		if not os.path.exists(self.config_folder):
 			os.mkdir(self.config_folder)
 
@@ -352,19 +400,19 @@ class ControlPanel(QMainWindow):
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()
-				if os.path.exists(self.pos+'/labels_effectors/'):
+				if os.path.exists(os.sep.join([self.pos,'labels_effectors', os.sep])):
 					self.ProcessEffectors.check_seg_btn.setEnabled(True)
 				else:
 					self.ProcessEffectors.check_seg_btn.setEnabled(False)
-				if os.path.exists(self.pos+'/labels_targets/'):
+				if os.path.exists(os.sep.join([self.pos,'labels_targets', os.sep])):
 					self.ProcessTargets.check_seg_btn.setEnabled(True)
 				else:
 					self.ProcessTargets.check_seg_btn.setEnabled(False)
-				if os.path.exists(self.pos+'/output/tables/napari_target_trajectories.npy'):
+				if os.path.exists(os.sep.join([self.pos,'output','tables','napari_target_trajectories.npy'])):
 					self.ProcessTargets.check_tracking_result_btn.setEnabled(True)
 				else:
 					self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
-				if os.path.exists(self.pos+'/output/tables/napari_effector_trajectories.npy'):
+				if os.path.exists(os.sep.join([self.pos,'output','tables','napari_effector_trajectories.npy'])):
 					self.ProcessEffectors.check_tracking_result_btn.setEnabled(True)
 				else:
 					self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)

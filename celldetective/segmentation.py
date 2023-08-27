@@ -23,7 +23,7 @@ import pandas as pd
 import subprocess
 
 
-abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_napari=False,
 			use_gpu=True, time_flat_normalization=False, time_flat_percentiles=(0.0,99.99)):
@@ -421,7 +421,10 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	pos = pos.replace('\\','/')
 	pos = pos.replace(' ','\\')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
-	subprocess.call(f"python {abs_path}/scripts/segment_cells.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
+	
+	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells.py'])
+	subprocess.call(rf"python {script_path} --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
+
 	if return_labels or view_on_napari:
 		labels = locate_labels(pos, population=mode)
 	if view_on_napari:
@@ -444,7 +447,8 @@ def segment_from_threshold_at_position(pos, mode, config):
 	config = config.replace(' ','\\')
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
-	subprocess.call(f"python {abs_path}/scripts/segment_cells_thresholds.py --pos {pos} --config {config} --mode {mode}", shell=True)
+	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells_thresholds.py'])
+	subprocess.call(rf"python {script_path} --pos {pos} --config {config} --mode {mode}", shell=True)
 
 
 if __name__ == "__main__":

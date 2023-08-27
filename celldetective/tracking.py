@@ -14,7 +14,7 @@ from btrack.datasets import cell_config
 import os
 import subprocess
 
-abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def track(labels, configuration=None, stack=None, spatial_calibration=1, features=None, channel_names=None,
 		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None, volume=(2048,2048),
@@ -860,7 +860,10 @@ def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
-	subprocess.call(f"python {abs_path}/scripts/track_cells.py --pos {pos} --mode {mode}", shell=True)
+
+	script_path = os.sep.join([abs_path, 'scripts', 'track_cells.py'])	
+	subprocess.call(rf"python {script_path} --pos {pos} --mode {mode}", shell=True)
+	
 	# if return_labels or view_on_napari:
 	# 	labels = locate_labels(pos, population=mode)
 	# if view_on_napari:

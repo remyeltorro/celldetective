@@ -127,12 +127,12 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 			tracker.features = columns
 		
 		tracker.append(new_btrack_objects)
-		tracker.volume = ((0,volume[0]), (0,volume[1]), None) #(-1e5, 1e5)
+		tracker.volume = ((0,volume[0]), (0,volume[1])) #(-1e5, 1e5)
 		#print(tracker.volume)
 		tracker.track(**track_kwargs)
 		tracker.optimize(options=optimizer_options)
 
-		data, properties, graph = tracker.to_napari(ndim=2)
+		data, properties, graph = tracker.to_napari() #ndim=2
 
 	# do the table post processing and napari options
 	df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])

@@ -1,0 +1,51 @@
+\begin{thebibliography}{1}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\burl{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\providecommand{\bibinfo}[2]{#2}
+\providecommand{\eprint}[2][]{\url{#2}}
+\providecommand{\doi}[1]{\url{https://doi.org/#1}}
+\bibcommenthead
+
+\bibitem{weigert2020}
+\bibinfo{author}{Weigert, M.}, \bibinfo{author}{Schmidt, U.},
+  \bibinfo{author}{Haase, R.}, \bibinfo{author}{Sugawara, K.} \&
+  \bibinfo{author}{Myers, G.}
+\newblock \emph{\bibinfo{title}{Star-convex {{Polyhedra}} for {{3D Object
+  Detection}} and {{Segmentation}} in {{Microscopy}}}},
+  \bibinfo{pages}{3655--3662} (\bibinfo{publisher}{{IEEE}},
+  \bibinfo{address}{{Snowmass Village, CO, USA}}, \bibinfo{year}{2020}).
+
+\bibitem{pachitariu2022}
+\bibinfo{author}{Pachitariu, M.} \& \bibinfo{author}{Stringer, C.}
+\newblock \bibinfo{title}{Cellpose 2.0: How to train your own model}.
+\newblock \emph{\bibinfo{journal}{Nature Methods}}
+  \textbf{\bibinfo{volume}{19}}, \bibinfo{pages}{1634--1641}
+  (\bibinfo{year}{2022}).
+
+\bibitem{stringer2021}
+\bibinfo{author}{Stringer, C.}, \bibinfo{author}{Wang, T.},
+  \bibinfo{author}{Michaelos, M.} \& \bibinfo{author}{Pachitariu, M.}
+\newblock \bibinfo{title}{Cellpose: A generalist algorithm for cellular
+  segmentation}.
+\newblock \emph{\bibinfo{journal}{Nature Methods}}
+  \textbf{\bibinfo{volume}{18}}, \bibinfo{pages}{100--106}
+  (\bibinfo{year}{2021}).
+
+\bibitem{mcquin2018}
+\bibinfo{author}{McQuin, C.} \emph{et~al.}
+\newblock \bibinfo{title}{{{CellProfiler}} 3.0: {{Next-generation}} image
+  processing for biology}.
+\newblock \emph{\bibinfo{journal}{PLOS Biology}} \textbf{\bibinfo{volume}{16}},
+  \bibinfo{pages}{e2005970} (\bibinfo{year}{2018}).
+
+\bibitem{padovani2022}
+\bibinfo{author}{Padovani, F.}, \bibinfo{author}{Mairh{\"o}rmann, B.},
+  \bibinfo{author}{{Falter-Braun}, P.}, \bibinfo{author}{Lengefeld, J.} \&
+  \bibinfo{author}{Schmoller, K.~M.}
+\newblock \bibinfo{title}{Segmentation, tracking and cell cycle analysis of
+  live-cell imaging data with {{Cell-ACDC}}}.
+\newblock \emph{\bibinfo{journal}{BMC Biology}} \textbf{\bibinfo{volume}{20}},
+  \bibinfo{pages}{174} (\bibinfo{year}{2022}).
+
+\end{thebibliography}

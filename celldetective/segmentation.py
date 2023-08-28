@@ -4,7 +4,7 @@ Segmentation module
 import json
 import os
 from .io import locate_segmentation_model, get_stack_normalization_values, normalize_multichannel
-from .utils import _estimate_scale_factor, _extract_channel_indices
+from .utils import _estimate_scale_factor, _extract_channel_indices, rename_intensity_columns
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
@@ -196,7 +196,7 @@ def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equa
 	return instance_seg
 
 
-def filter_on_property(labels, intensity_image=None, queries=None):
+def filter_on_property(labels, intensity_image=None, queries=None, channel_names=None):
 
 	if queries is None:
 		return labels
@@ -215,7 +215,7 @@ def filter_on_property(labels, intensity_image=None, queries=None):
 		props.extend(intensity_props)
 
 	properties = pd.DataFrame(regionprops_table(labels, intensity_image=intensity_image, properties=props))
-
+	properties = rename_intensity_columns(properties, channel_names)
 	for query in queries:
 		try:
 			properties = properties.query(f'not ({query})')

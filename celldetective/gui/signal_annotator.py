@@ -880,7 +880,7 @@ class SignalAnnotator(QMainWindow):
 
 	def export_signals(self):
 		
-		auto_dataset_name = self.pos.split('/')[-4]+'_'+self.pos.split('/')[-2]+'.npy'
+		auto_dataset_name = self.pos.split(os.sep)[-4]+'_'+self.pos.split(os.sep)[-2]+'.npy'
 
 		if self.normalized_signals:
 			self.normalize_features_btn.click()

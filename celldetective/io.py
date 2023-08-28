@@ -51,7 +51,7 @@ def locate_stack(position, prefix='Aligned'):
 
 	"""
 
-	stack_path = glob(position+f"movie/{prefix}*.tif")
+	stack_path = glob(position+os.sep.join(['movie', f'{prefix}*.tif']))
 	assert len(stack_path)>0,f"No movie with prefix {prefix} found..."
 	stack = imread(stack_path[0].replace('\\','/'))
 	if stack.ndim==4:
@@ -97,9 +97,9 @@ def locate_labels(position, population='target'):
 
 
 	if population.lower()=="target" or population.lower()=="targets":
-		label_path = natsorted(glob(position+"labels_targets/*.tif"))
+		label_path = natsorted(glob(position+os.sep.join(["labels_targets", "*.tif"])))
 	elif population.lower()=="effector" or population.lower()=="effectors":
-		label_path = natsorted(glob(position+"labels_effectors/*.tif"))
+		label_path = natsorted(glob(position+os.sep.join(["labels_effectors", "*.tif"])))
 	labels = np.array([imread(i.replace('\\','/')) for i in label_path])
 
 	return labels
@@ -193,9 +193,9 @@ def load_tracking_data(position, prefix="Aligned", population="target"):
 
 	position = position.replace('\\','/')
 	if population.lower()=="target" or population.lower()=="targets":
-		trajectories = pd.read_csv(position+'output/tables/trajectories_targets.csv')
+		trajectories = pd.read_csv(position+os.sep.join(['output', 'tables', 'trajectories_targets.csv']))
 	elif population.lower()=="effector" or population.lower()=="effectors":
-		trajectories = pd.read_csv(position+'output/tables/trajectories_effectors.csv')
+		trajectories = pd.read_csv(position+os.sep.join(['output', 'tables', 'trajectories_effectors.csv']))
 
 	stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
 
@@ -317,7 +317,7 @@ def get_tracking_configs_list(return_path=False):
 
 	"""
 
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/".replace('\\','/')
+	modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "tracking_configs", os.sep])
 	available_models = glob(modelpath+'*.json')
 	available_models = [m.replace('\\','/').split('/')[-1] for m in available_models]
 	available_models = [m.replace('\\','/').split('.')[0] for m in available_models]
@@ -334,7 +334,7 @@ def interpret_tracking_configuration(config):
 		if os.path.exists(config):
 			return config
 		else:
-			modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/tracking_configs/".replace('\\','/')
+			modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "tracking_configs", os.sep])
 			if os.path.exists(modelpath+config+'.json'):
 				return modelpath+config+'.json'
 			else:
@@ -378,8 +378,8 @@ def get_signal_models_list(return_path=False):
 
 	"""
 
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/signal_detection/".replace('\\','/')
-	available_models = glob(modelpath+'*/')
+	modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "signal_detection", os.sep])
+	available_models = glob(modelpath+f'*{os.sep}')
 	available_models = [m.replace('\\','/').split('/')[-2] for m in available_models]
 
 	if not return_path:
@@ -562,9 +562,9 @@ def load_napari_data(position, prefix="Aligned", population="target"):
 	"""
 	position = position.replace('\\','/')
 	if population.lower()=="target" or population.lower()=="targets":
-		napari_data = np.load(position+"output/tables/napari_target_trajectories.npy",allow_pickle=True)
+		napari_data = np.load(position+os.sep.join(['output','tables','napari_target_trajectories.npy']), allow_pickle=True)
 	elif population.lower()=="effector" or population.lower()=="effectors":
-		napari_data = np.load(position+"output/tables/napari_effector_trajectories.npy",allow_pickle=True)
+		napari_data = np.load(position+os.sep.join(['output', 'tables', 'napari_effector_trajectories.npy']), allow_pickle=True)
 	data = napari_data.item()['data']
 	properties = napari_data.item()['properties']
 	graph = napari_data.item()['graph']
@@ -615,7 +615,7 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 
 	if not population.endswith('s'):
 		population+='s'
-	output_folder = position+f'labels_{population}/'
+	output_folder = position+f'labels_{population}{os.sep}'
 
 	viewer = napari.Viewer()
 	viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
@@ -732,9 +732,9 @@ def control_tracking_table(position, calibration=1, prefix="Aligned", population
 def get_segmentation_models_list(mode='targets', return_path=False):
 	
 	if mode=='targets':
-		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_targets/".replace('\\','/')
+		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_targets", os.sep])
 	elif mode=='effectors':
-		modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation_effectors/".replace('\\','/')
+		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_effectors", os.sep])
 
 	available_models = glob(modelpath+'*/')
 	available_models = [m.replace('\\','/').split('/')[-2] for m in available_models]
@@ -745,7 +745,8 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 		return available_models, modelpath
 
 def locate_segmentation_model(name):
-	modelpath = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+"/celldetective/models/segmentation*/".replace('\\','/')
+	
+	modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation*", os.sep])
 	print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath+'*/')
 
@@ -821,11 +822,13 @@ def normalize(frame, percentiles=(0.0,99.99), values=None, ignore_gray_value=0.,
 
 	frame0 = frame.copy()
 	frame = normalize_mi_ma(frame0, mi, ma, clip=False, eps=1e-20, dtype=np.float32)
-	if clip:
-		frame[frame>=1.] = 1.
-		frame[frame<=0.] = 0.
 	if amplification is not None:
 		frame *= amplification
+	if clip:
+		if amplification is None:
+			amplification = 1.
+		frame[frame>=amplification] = amplification
+		frame[frame<=0.] = 0.
 	if ignore_gray_value is not None:
 		frame[np.where(frame0)==ignore_gray_value] = ignore_gray_value
 
@@ -863,7 +866,10 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 
 def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
 
-	frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+	try:
+		frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+	except Exception as e:
+		print(f'Error in loading the frame {e}. Please check that the experiment channel information is consistent with the movie being read.')
 	if frames.ndim==3:
 		# Systematically move channel axis to the end
 		channel_axis = np.argmin(frames.shape)
@@ -874,7 +880,7 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 		frames = normalize_multichannel(frames, **normalize_kwargs)
 	if scale is not None:
 		frames = zoom(frames, [scale,scale,1], order=3)
-	return frames
+	return frames.astype(dtype)
 
 
 def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.):

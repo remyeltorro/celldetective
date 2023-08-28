@@ -10,18 +10,24 @@ from tensorflow.keras.metrics import Precision
 from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras import Input, Model
+from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D
 
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import jaccard_score, balanced_accuracy_score
 from scipy.interpolate import interp1d
+from scipy.ndimage import shift
 
 from celldetective.io import get_signal_models_list
 from celldetective.tracking import clean_trajectories
 from celldetective.utils import regression_plot, train_test_split, compute_weights
 import matplotlib.pyplot as plt
 from natsort import natsorted
+from glob import glob
+import shutil
+import random
 
-abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def analyze_signals(trajectories, model, interpolate_na=True,
 					selected_signals=None,
@@ -73,7 +79,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 	_,model_path = get_signal_models_list(return_path=True)
 	complete_path = model_path+model
-	model_config_path = complete_path+'/config_input.json'
+	model_config_path = os.sep.join([complete_path,'config_input.json'])
 	assert os.path.exists(complete_path),f'Model {model} could not be located in folder {model_path}... Abort.'
 	assert os.path.exists(model_config_path),f'Model configuration could not be located in folder {model_path}... Abort.'
 
@@ -108,7 +114,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	print(f'The following channels will be passed to the model: {selected_signals}')
 	trajectories = clean_trajectories(trajectories, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels)
 
-	max_signal_size = np.amax(trajectories.groupby(column_labels['track']).size().to_numpy())
+	max_signal_size = int(trajectories[column_labels['time']].max()) + 2
 	tracks = trajectories[column_labels['track']].unique()
 	signals = np.zeros((len(tracks),max_signal_size, len(selected_signals)))
 
@@ -116,6 +122,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		frames = group[column_labels['time']].to_numpy().astype(int)
 		for j,col in enumerate(selected_signals):
 			signal = group[col].to_numpy()
+			print(col, frames, len(frames), len(col))
 			signals[i,frames,j] = signal
 	
 	model = SignalDetectionModel(pretrained=complete_path)
@@ -136,12 +143,21 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 				t0 = group['t0'].to_numpy()[0]
 				timeline = group[column_labels['time']].to_numpy()
 				if cclass==0:
-					ax[i].plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
-		for a,s in zip(ax,selected_signals):
-			a.set_title(s)
-			a.set_xlabel(r'time - t$_0$ [frame]')
-			a.spines['top'].set_visible(False)
-			a.spines['right'].set_visible(False)
+					if len(selected_signals)>1:
+						ax[i].plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
+					else:
+						ax.plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
+		if len(selected_signals)>1:				
+			for a,s in zip(ax,selected_signals):
+				a.set_title(s)
+				a.set_xlabel(r'time - t$_0$ [frame]')
+				a.spines['top'].set_visible(False)
+				a.spines['right'].set_visible(False)
+		else:
+			ax.set_title(s)
+			ax.set_xlabel(r'time - t$_0$ [frame]')
+			ax.spines['top'].set_visible(False)
+			ax.spines['right'].set_visible(False)			
 		plt.tight_layout()
 		if output_dir is not None:
 			plt.savefig(output_dir+'signal_collapse.png',bbox_inches='tight',dpi=300)
@@ -157,7 +173,9 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
-	subprocess.call(f"python {abs_path}/scripts/analyze_signals.py --pos {pos} --model {model} --mode {mode} --use_gpu {use_gpu}", shell=True)
+
+	script_path = os.sep.join([abs_path, 'scripts', 'analyze_signals.py'])
+	subprocess.call(rf"python {script_path} --pos {pos} --model {model} --mode {mode} --use_gpu {use_gpu}", shell=True)
 	
 	return None
 
@@ -260,7 +278,7 @@ class SignalDetectionModel(object):
 		except:
 			pass
 	
-	def fit_from_directory(self, ds_folders, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, target_directory=None, augment=True, augmentation_factor=2, 
+	def fit_from_directory(self, ds_folders, normalize=True, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, target_directory=None, augment=True, augmentation_factor=2, 
 						  validation_split=0.25, test_split=0.0, batch_size = 64, epochs=300, recompile_pretrained=False, learning_rate=0.01,
 						  loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
 		"""
@@ -269,6 +287,7 @@ class SignalDetectionModel(object):
 		
 		"""
 		
+		self.normalize = normalize
 		self.ds_folders = ds_folders
 		self.batch_size = batch_size
 		self.epochs = epochs
@@ -278,15 +297,16 @@ class SignalDetectionModel(object):
 		self.augmentation_factor = augmentation_factor
 		self.model_name = model_name
 		self.target_directory = target_directory
-		self.model_folder = self.target_directory + "/" + self.model_name
+		self.model_folder = os.sep.join([self.target_directory,self.model_name])
 		self.recompile_pretrained = recompile_pretrained
 		self.learning_rate = learning_rate
 		self.loss_reg = loss_reg
 		self.loss_class = loss_class
 
-		if os.path.exists(self.model_folder):
-			shutil.rmtree(self.model_folder)
-		os.mkdir(self.model_folder)
+
+		if not os.path.exists(self.model_folder):
+			#shutil.rmtree(self.model_folder)
+			os.mkdir(self.model_folder)
 
 		self.channel_option = channel_option
 		assert self.n_channels==len(self.channel_option), f'Mismatch between the channel option and the number of channels of the model...'
@@ -294,7 +314,7 @@ class SignalDetectionModel(object):
 		self.list_of_sets = []
 		print(self.ds_folders)
 		for f in self.ds_folders:
-			self.list_of_sets.extend(glob(f+"/*.npy"))
+			self.list_of_sets.extend(glob(os.sep.join([f,"*.npy"])))
 		print(f"Found {len(self.list_of_sets)} annotation files...")
 		self.generate_sets()
 
@@ -303,7 +323,7 @@ class SignalDetectionModel(object):
 
 		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length}
 		json_string = json.dumps(config_input)
-		with open(self.model_folder+f"/config_input.json", 'w') as outfile:
+		with open(os.sep.join([self.model_folder,"config_input.json"]), 'w') as outfile:
 			outfile.write(json_string)
 
 	def fit(self, x_train, y_time_train, y_class_train, normalize=True, pad=True, validation_data=None, test_data=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, 
@@ -506,8 +526,8 @@ class SignalDetectionModel(object):
 		self.plot_model_history(mode="classifier")
 
 		# Set current classification model as the best model
-		self.model_class = load_model(self.model_folder+"/classifier.h5")
-		self.model_class.load_weights(self.model_folder+"/classifier.h5")
+		self.model_class = load_model(os.sep.join([self.model_folder,"classifier.h5"]))
+		self.model_class.load_weights(os.sep.join([self.model_folder,"classifier.h5"]))
 		
 		if hasattr(self, 'x_test'):
 			
@@ -608,8 +628,8 @@ class SignalDetectionModel(object):
 		
 
 		# Evaluate best model 
-		self.model_reg = load_model(self.model_folder+"/regressor.h5")
-		self.model_reg.load_weights(self.model_folder+"/regressor.h5")
+		self.model_reg = load_model(os.sep.join([self.model_folder,"regressor.h5"]))
+		self.model_reg.load_weights(os.sep.join([self.model_folder,"regressor.h5"]))
 		self.evaluate_regression_model()
 		
 
@@ -640,7 +660,7 @@ class SignalDetectionModel(object):
 				plt.yscale('log')
 				plt.legend(['train', 'val'], loc='upper left')
 				plt.pause(3)
-				plt.savefig(self.model_folder+"/regression_loss.png",bbox_inches="tight",dpi=300)
+				plt.savefig(os.sep.join([self.model_folder,"regression_loss.png"]),bbox_inches="tight",dpi=300)
 				plt.close()
 			except Exception as e:
 				print(f"Error {e}; could not generate plot...")
@@ -653,7 +673,7 @@ class SignalDetectionModel(object):
 				plt.xlabel('epoch')
 				plt.legend(['train', 'val'], loc='upper left')
 				plt.pause(3)
-				plt.savefig(self.model_folder+"/classification_loss.png",bbox_inches="tight",dpi=300)
+				plt.savefig(os.sep.join([self.model_folder,"classification_loss.png"]),bbox_inches="tight",dpi=300)
 				plt.close()
 			except Exception as e:
 				print(f"Error {e}; could not generate plot...")
@@ -683,7 +703,7 @@ class SignalDetectionModel(object):
 			assert predictions.shape==ground_truth.shape,"Shape mismatch between predictions and ground truths..."
 			test_error = mse(ground_truth, predictions).numpy()
 			print(f"MSE on test set: {test_error}...")
-			regression_plot(predictions, ground_truth, savepath=self.model_folder+"/test_regression.png")
+			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"test_regression.png"]))
 
 		if hasattr(self, 'x_val'):
 			# Validation set
@@ -691,7 +711,7 @@ class SignalDetectionModel(object):
 			ground_truth = self.y_time_val[np.argmax(self.y_class_val,axis=1)==0]
 			assert predictions.shape==ground_truth.shape,"Shape mismatch between predictions and ground truths..."
 			val_error = mse(ground_truth, predictions).numpy()
-			regression_plot(predictions, ground_truth, savepath=self.model_folder+"/validation_regression.png")
+			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"validation_regression.png"]))
 			print(f"MSE on validation set: {val_error}...")
 
 
@@ -715,9 +735,9 @@ class SignalDetectionModel(object):
 										  cooldown=10, min_lr=5e-10, min_delta=1.0E-10,
 										  verbose=1,mode="max")
 			self.cb.append(reduce_lr)
-			csv_logger = CSVLogger(self.model_folder+'/log_classifier.csv', append=True, separator=';')
+			csv_logger = CSVLogger(os.sep.join([self.model_folder,'log_classifier.csv']), append=True, separator=';')
 			self.cb.append(csv_logger)
-			checkpoint_path = self.model_folder+"/classifier.h5"
+			checkpoint_path = os.sep.join([self.model_folder,"classifier.h5"])
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_precision",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
@@ -731,17 +751,17 @@ class SignalDetectionModel(object):
 										  verbose=1,mode="min")
 			self.cb.append(reduce_lr)
 
-			csv_logger = CSVLogger(self.model_folder+'/log_regressor.csv', append=True, separator=';')
+			csv_logger = CSVLogger(os.sep.join([self.model_folder,'log_regressor.csv']), append=True, separator=';')
 			self.cb.append(csv_logger)
 			
-			checkpoint_path = self.model_folder+"/regressor.h5"
+			checkpoint_path = os.sep.join([self.model_folder,"regressor.h5"])
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_loss",mode="min",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
 			callback_stop = EarlyStopping(monitor='val_loss', patience=1000)
 			self.cb.append(callback_stop)            
 		
-		log_dir = self.model_folder+"/"
+		log_dir = self.model_folder+os.sep
 		cb_tb = TensorBoard(log_dir=log_dir, update_freq='batch')
 		self.cb.append(cb_tb)
 		
@@ -844,42 +864,67 @@ class SignalDetectionModel(object):
 		"""
 		
 		set_k = np.load(subset,allow_pickle=True)
-		key_to_check = self.channel_option[0]
-		if key_to_check in set_k[0]:
+		### here do a mapping between channel option and existing signals
 
-			signal_lengths = [len(l[key_to_check]) for l in set_k]
-			max_length = np.amax(signal_lengths)
+		required_signals = self.channel_option
+		available_signals = list(set_k[0].keys())
 
-			fluo = np.zeros((len(set_k),max_length,self.n_channels))
-			classes = np.zeros(len(set_k))
-			times_of_interest = np.zeros(len(set_k))
+		selected_signals = []
+		for s in required_signals:
+			pattern_test = [s in a for a in available_signals]
+			if np.any(pattern_test):
+				valid_columns = np.array(available_signals)[np.array(pattern_test)]
+				if len(valid_columns)==1:
+					selected_signals.append(valid_columns[0])
+				else:
+					print(f'Found several candidate signals: {valid_columns}')
+					for vc in natsorted(valid_columns):
+						if 'circle' in vc:
+							selected_signals.append(vc)
+							break
+					else:
+						selected_signals.append(valid_columns[0])
+			else:
+				return None	
+		
+
+		key_to_check = selected_signals[0] #self.channel_option[0]
+		signal_lengths = [len(l[key_to_check]) for l in set_k]
+		max_length = np.amax(signal_lengths)
+
+		fluo = np.zeros((len(set_k),max_length,self.n_channels))
+		classes = np.zeros(len(set_k))
+		times_of_interest = np.zeros(len(set_k))
+		
+		for k in range(len(set_k)):
 			
-			for k in range(len(set_k)):
-				
-				for i in range(self.n_channels):
-					try:
-						fluo[k,:,i] = set_k[k][self.channel_option[i]]
-					except:
-						print(f"Attribute {self.channel_option[i]} not found in annotation...")
-						pass
+			for i in range(self.n_channels):
+				try:
+					# take into account timeline for accurate time regression
+					timeline = set_k[k]['FRAME'].astype(int)
+					fluo[k,timeline,i] = set_k[k][selected_signals[i]]
+				except:
+					print(f"Attribute {selected_signals[i]} matched to {self.channel_option[i]} not found in annotation...")
+					pass
 
-				classes[k] = set_k[k]["class"]
-				times_of_interest[k] = set_k[k]["time_of_interest"]
+			classes[k] = set_k[k]["class"]
+			times_of_interest[k] = set_k[k]["time_of_interest"]
 
-			# Correct absurd times of interest
-			times_of_interest[np.nonzero(classes)] = -1
-			times_of_interest[(times_of_interest<=0.0)] = -1
+		# Correct absurd times of interest
+		times_of_interest[np.nonzero(classes)] = -1
+		times_of_interest[(times_of_interest<=0.0)] = -1
 
-			# Attempt per-set normalization
+		# Attempt per-set normalization
+		if self.normalize:
 			fluo = normalize_signal_set(fluo, self.channel_option)
-			fluo = pad_to_model_length(fluo, self.model_signal_length)
-			# Trivial normalization for time of interest
-			times_of_interest /= self.model_signal_length
-			
-			# Add to global dataset
-			self.x_set.extend(fluo)
-			self.y_time_set.extend(times_of_interest)
-			self.y_class_set.extend(classes)
+		fluo = pad_to_model_length(fluo, self.model_signal_length)
+		# Trivial normalization for time of interest
+		times_of_interest /= self.model_signal_length
+		
+		# Add to global dataset
+		self.x_set.extend(fluo)
+		self.y_time_set.extend(times_of_interest)
+		self.y_class_set.extend(classes)
 
 def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.99], percentile_dead=[0.5,99.99], percentile_generic=[0.01,99.99]):
 
@@ -935,7 +980,7 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 	for k,channel in enumerate(channel_option):
 
 
-		if ("dead_nuclei_channel" in channel) or ("RED" in channel):
+		if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
 
 			min_percentile_dead, max_percentile_dead = percentile_dead
 			min_set = signal_set[:,0,k]
@@ -945,12 +990,19 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 			signal_set[:,:,k] -= min_fluo_dead
 			signal_set[:,:,k] /= (max_fluo_dead - min_fluo_dead)
 
-		if ("live_nuclei_channel" in channel) or ("BLUE" in channel):
+		elif ("live_nuclei_channel" in channel and 'haralick' not in channel) or ("BLUE" in channel):
 		
 			min_percentile_alive, max_percentile_alive = percentile_alive
 			values = signal_set[:,0,k]
 			min_fluo_alive = np.nanpercentile(values[np.nonzero(values)], min_percentile_alive) # safe 0.5% of Hoescht on initial frame
 			max_fluo_alive = np.nanpercentile(values[np.nonzero(values)], max_percentile_alive)
+			signal_set[:,:,k] -= min_fluo_alive
+			signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
+
+		elif 0.8<np.mean(signal_set[:,:,k])<1.2:
+			print('detected normalized signal; assume min max in 0.5-1.5 range')
+			min_fluo_alive = 0.5
+			max_fluo_alive = 1.5
 			signal_set[:,:,k] -= min_fluo_alive
 			signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
 
@@ -1136,7 +1188,7 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 		time_of_interest *= model_signal_length
 
 	# augment with a certain probability
-	r = random()
+	r = random.random()
 	if r<= probability:
 
 		if time_shift:
@@ -1292,3 +1344,12 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 	model = Model(inputs, x2, name=header) 
 
 	return model
+
+def train_signal_model(config):
+
+	config = config.replace('\\','/')
+	config = config.replace(' ','\\ ')
+	assert os.path.exists(config),f'Config {config} is not a valid path.'
+
+	script_path = os.sep.join([abs_path, 'scripts', 'train_signal_model.py'])
+	subprocess.call(rf"python {script_path} --config {config}", shell=True)

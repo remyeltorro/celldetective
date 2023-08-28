@@ -7,7 +7,7 @@ import os
 import json
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.segmentation import segment_frame_from_thresholds
-from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
+from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, extract_experiment_channels
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
@@ -30,12 +30,17 @@ process_arguments = vars(args)
 pos = str(process_arguments['position'])
 mode = str(process_arguments['mode'])
 threshold_instructions = str(process_arguments['config'])
-
+equalize = False
 
 if os.path.exists(threshold_instructions):
 	with open(threshold_instructions, 'r') as f:
 		threshold_instructions = json.load(f)
 		required_channels = [threshold_instructions['target_channel']]
+		if 'equalize_reference' in threshold_instructions:
+			equalize_info = threshold_instructions['equalize_reference']
+			equalize = equalize_info[0]
+			equalize_time = equalize_info[1]
+
 else:
 	print('The configuration path is not valid. Abort.')
 	os.abort()
@@ -43,9 +48,9 @@ else:
 print('The following instructions were successfully loaded: ', threshold_instructions)
 
 if mode.lower()=="target" or mode.lower()=="targets":
-	label_folder = "labels_targets/"
+	label_folder = "labels_targets"
 elif mode.lower()=="effector" or mode.lower()=="effectors":
-	label_folder = "labels_effectors/"
+	label_folder = "labels_effectors"
 
 # Locate experiment config
 parent1 = Path(pos).parent
@@ -63,6 +68,8 @@ threshold_instructions.update({'target_channel': channel_indices[0]})
 
 movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]
 len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
+channel_names, channel_indices = extract_experiment_channels(config)
+threshold_instructions.update({'channel_names': channel_names})
 
 # Try to find the file
 try:
@@ -81,11 +88,19 @@ img_num_channels = _get_img_num_per_channel(np.arange(nbr_channels), len_movie, 
 
 # If everything OK, prepare output, load models
 print('Erasing previous segmentation folder.')
-if os.path.exists(pos+label_folder):
-	rmtree(pos+label_folder)
-os.mkdir(pos+label_folder)
-print(f'Folder {pos+label_folder} successfully generated.')
+if os.path.exists(os.sep.join([pos,label_folder])):
+	rmtree(os.sep.join([pos,label_folder]))
+os.mkdir(os.sep.join([pos,label_folder]))
+print(f'Folder {os.sep.join([pos,label_folder])} successfully generated.')
 
+if equalize:
+	f_reference = load_frames(img_num_channels[:,equalize_time], file, scale=None, normalize_input=False)
+	f_reference = f_reference[:,:,threshold_instructions['target_channel']]
+else:
+	f_reference = None
+
+threshold_instructions.update({'equalize_reference': f_reference})
+print(threshold_instructions)
 
 # Loop over all frames and segment
 for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
@@ -93,7 +108,7 @@ for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 	# Load channels at time t
 	f = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
 	mask = segment_frame_from_thresholds(f, **threshold_instructions)
-	save_tiff_imagej_compatible(pos+label_folder+f"{str(t).zfill(4)}.tif", mask, axes='YX')
+	save_tiff_imagej_compatible(os.sep.join([pos, label_folder, f"{str(t).zfill(4)}.tif"]), mask.astype(np.uint16), axes='YX')
 
 	del f;
 	del mask;

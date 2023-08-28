@@ -1,0 +1,12 @@
+{
+    "channels": [
+        "brightfield_channel",
+        "adhesion_channel"
+    ],
+    "diameter": 30.0,
+    "cellprob_threshold": 0.0,
+    "flow_threshold": 0.4,
+    "normalize": false,
+    "spatial_calibration": 0.12,
+    "model_type": "cellpose"
+}

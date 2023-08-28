@@ -4,15 +4,16 @@ Segmentation module
 import json
 import os
 from .io import locate_segmentation_model, get_stack_normalization_values, normalize_multichannel
-from .utils import _estimate_scale_factor, _extract_channel_indices, rename_intensity_columns
+from .utils import _estimate_scale_factor, _extract_channel_indices
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 from skimage.transform import resize
-from .io import _view_on_napari, locate_labels, locate_stack, _view_on_napari
-from .filters import * #rework this to give a name
+from celldetective.io import _view_on_napari, locate_labels, locate_stack, _view_on_napari
+from celldetective.filters import * #rework this to give a name
+from celldetective.utils import rename_intensity_column
 import scipy.ndimage as ndi
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
@@ -22,7 +23,7 @@ import pandas as pd
 import subprocess
 
 
-abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_napari=False,
 			use_gpu=True, time_flat_normalization=False, time_flat_percentiles=(0.0,99.99)):
@@ -181,17 +182,17 @@ def segment_from_thresholds(stack, target_channel=0, thresholds=None, view_on_na
 	return masks
 
 def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equalize_reference=None,
-								  filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None):
+								  filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None, channel_names=None):
 	
 	img = frame[:,:,target_channel]
 	if equalize_reference is not None:
-		img = match_histogram(img, equalize_reference, channel_axis=-1)
+		img = match_histograms(img, equalize_reference)
 	img_mc = frame.copy()
 	img = filter_image(img, filters=filters)
 	binary_image = threshold_image(img, thresholds[0], thresholds[1])
 	coords,distance = identify_markers_from_binary(binary_image, marker_min_distance, footprint_size=marker_footprint_size, footprint=marker_footprint, return_edt=True)
 	instance_seg = apply_watershed(binary_image, coords, distance)
-	instance_seg = filter_on_property(instance_seg, intensity_image=img_mc, queries=feature_queries)
+	instance_seg = filter_on_property(instance_seg, intensity_image=img_mc, queries=feature_queries, channel_names=channel_names)
 
 	return instance_seg
 
@@ -215,7 +216,8 @@ def filter_on_property(labels, intensity_image=None, queries=None, channel_names
 		props.extend(intensity_props)
 
 	properties = pd.DataFrame(regionprops_table(labels, intensity_image=intensity_image, properties=props))
-	properties = rename_intensity_columns(properties, channel_names)
+	if channel_names is not None:
+		properties = rename_intensity_column(properties, channel_names)
 	for query in queries:
 		try:
 			properties = properties.query(f'not ({query})')
@@ -419,7 +421,10 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	pos = pos.replace('\\','/')
 	pos = pos.replace(' ','\\')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
-	subprocess.call(f"python {abs_path}/scripts/segment_cells.py --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
+	
+	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells.py'])
+	subprocess.call(rf"python {script_path} --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
+
 	if return_labels or view_on_napari:
 		labels = locate_labels(pos, population=mode)
 	if view_on_napari:
@@ -435,14 +440,15 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 def segment_from_threshold_at_position(pos, mode, config):
 
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\')
+	pos = pos.replace(' ','\\ ')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 
 	config = config.replace('\\','/')
 	config = config.replace(' ','\\')
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
-	subprocess.call(f"python {abs_path}/scripts/segment_cells_thresholds.py --pos {pos} --config {config} --mode {mode}", shell=True)
+	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells_thresholds.py'])
+	subprocess.call(rf"python {script_path} --pos {pos} --config {config} --mode {mode}", shell=True)
 
 
 if __name__ == "__main__":

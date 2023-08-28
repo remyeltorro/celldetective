@@ -14,10 +14,10 @@ from btrack.datasets import cell_config
 import os
 import subprocess
 
-abs_path = os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]+'/celldetective'
+abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def track(labels, configuration=None, stack=None, spatial_calibration=1, features=None, channel_names=None,
-		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None,
+		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None, volume=(2048,2048),
 		  optimizer_options = {'tm_lim': int(12e4)}, track_kwargs={'step_size': 100}, objects=None,
 		  clean_trajectories_kwargs=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
 		  ):
@@ -127,10 +127,12 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 			tracker.features = columns
 		
 		tracker.append(new_btrack_objects)
+		tracker.volume = ((0,volume[0]), (0,volume[1])) #(-1e5, 1e5)
+		#print(tracker.volume)
 		tracker.track(**track_kwargs)
 		tracker.optimize(options=optimizer_options)
 
-		data, properties, graph = tracker.to_napari(ndim=2)
+		data, properties, graph = tracker.to_napari() #ndim=2
 
 	# do the table post processing and napari options
 	df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])
@@ -415,7 +417,7 @@ def interpolate_nan_properties(trajectories, track_label="TRACK_ID"):
 
 	"""
 
-	trajectories = trajectories.groupby(track_label).apply(interpolate_per_track)
+	trajectories = trajectories.groupby(track_label, group_keys=False).apply(interpolate_per_track)
 
 	return trajectories
 
@@ -524,8 +526,10 @@ def filter_by_tracklength(trajectories, minimum_tracklength, track_label="TRACK_
 	
 	if minimum_tracklength>0:
 		
-		leftover_tracks = trajectories.groupby(track_label).size().index[trajectories.groupby(track_label).size() > minimum_tracklength]
+		leftover_tracks = trajectories.groupby(track_label, group_keys=False).size().index[trajectories.groupby(track_label, group_keys=False).size() > minimum_tracklength]
 		trajectories = trajectories.loc[trajectories[track_label].isin(leftover_tracks)]
+	
+	trajectories = trajectories.reset_index(drop=True)
 	
 	return trajectories
 	
@@ -573,10 +577,12 @@ def interpolate_time_gaps(trajectories, column_labels={'track': "TRACK_ID", 'tim
 
 	trajectories[column_labels['time']] = pd.to_datetime(trajectories[column_labels['time']], unit='s')
 	trajectories.set_index(column_labels['track'], inplace=True)
-	trajectories = trajectories.groupby(column_labels['track']).apply(lambda x: x.set_index(column_labels['time']).resample('1S').asfreq()).reset_index()
-	trajectories[[column_labels['x'], column_labels['y']]] = trajectories.groupby(column_labels['track'])[[column_labels['x'], column_labels['y']]].apply(lambda x: x.interpolate(method='linear'))
+	trajectories = trajectories.groupby(column_labels['track'], group_keys=True).apply(lambda x: x.set_index(column_labels['time']).resample('1S').asfreq()).reset_index()
+	trajectories[[column_labels['x'], column_labels['y']]] = trajectories.groupby(column_labels['track'], group_keys=False)[[column_labels['x'], column_labels['y']]].apply(lambda x: x.interpolate(method='linear'))
 	trajectories.reset_index(drop=True, inplace=True)
-	trajectories[column_labels['time']] = trajectories[column_labels['time']].astype(int) / 10**9
+	trajectories[column_labels['time']] = trajectories[column_labels['time']].astype('int64').astype(float) / 10**9
+	#trajectories[column_labels['time']] = trajectories[column_labels['time']].astype('int64')
+	print(trajectories[column_labels['time']])
 	trajectories.sort_values(by=[column_labels['track'],column_labels['time']],inplace=True)
 	
 	return trajectories
@@ -653,7 +659,7 @@ def extrapolate_tracks(trajectories, post=False, pre=False, column_labels={'trac
 	if pre:
 		
 		# get the maximum time T in the dataframe
-		min_time = trajectories[column_labels['time']].min()
+		min_time = 0 #trajectories[column_labels['time']].min()
 
 		# extrapolate the position until time T by repeating the last known position
 		df_extrapolated = pd.DataFrame()
@@ -852,11 +858,14 @@ def compute_instantaneous_diffusion(trajectories, column_labels={'track': "TRACK
 def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 	
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\')
+	pos = pos.replace(' ','\\ ')
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
-	subprocess.call(f"python {abs_path}/scripts/track_cells.py --pos {pos} --mode {mode}", shell=True)
+
+	script_path = os.sep.join([abs_path, 'scripts', 'track_cells.py'])	
+	subprocess.call(rf"python {script_path} --pos {pos} --mode {mode}", shell=True)
+	
 	# if return_labels or view_on_napari:
 	# 	labels = locate_labels(pos, population=mode)
 	# if view_on_napari:

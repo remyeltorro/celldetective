@@ -35,13 +35,13 @@ mode = str(process_arguments['mode'])
 
 if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets"
-	instruction_file = "configs/tracking_instructions_targets.json"
+	instruction_file = os.sep.join(["configs", "tracking_instructions_targets.json"])
 	napari_name = "napari_target_trajectories.npy"
 	table_name = "trajectories_targets.csv"
 
 elif mode.lower()=="effector" or mode.lower()=="effectors":
 	label_folder = "labels_effectors"
-	instruction_file = "configs/tracking_instructions_effectors.json"
+	instruction_file = os.sep.join(["configs","tracking_instructions_effectors.json"])
 	napari_name = "napari_effector_trajectories.npy"
 	table_name = "trajectories_effectors.csv"
 
@@ -57,6 +57,9 @@ movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]
 spatial_calibration = float(ConfigSectionMap(config,"MovieSettings")["pxtoum"])
 time_calibration = float(ConfigSectionMap(config,"MovieSettings")["frametomin"])
 len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
+shape_x = int(ConfigSectionMap(config,"MovieSettings")["shape_x"])
+shape_y = int(ConfigSectionMap(config,"MovieSettings")["shape_y"])
+
 channel_names, channel_indices = extract_experiment_channels(config)
 nbr_channels = len(channel_names)
 
@@ -109,7 +112,7 @@ else:
 
 # Do this if features or Haralick is not None, else don't need stack
 try:
-	file = glob(pos+f"movie/{movie_prefix}*.tif")[0]
+	file = glob(pos+os.sep.join(["movie", f"{movie_prefix}*.tif"]))[0]
 except IndexError:
 	print('Movie could not be found. Check the prefix. If you intended to measure texture or tone, this will not be performed.')
 	file = None
@@ -163,17 +166,18 @@ trajectories, napari_data = track(None,
 		  			optimizer_options = {'tm_lim': int(12e4)}, 
 		  			track_kwargs={'step_size': 100}, 
 		  			clean_trajectories_kwargs=post_processing_options, 
+		  			volume=(shape_x, shape_y),
 		  			)
 print(trajectories)
 print(trajectories.columns)
 
 # out trajectory table, create POSITION_X_um, POSITION_Y_um, TIME_min (new ones)
 # Save napari data
-np.save(pos+f"/output/tables/{napari_name}", napari_data, allow_pickle=True)
-print(f"napari data successfully saved in {pos}/output/tables/...")
+np.save(pos+os.sep.join(['output', 'tables', napari_name]), napari_data, allow_pickle=True)
+print(f"napari data successfully saved in {pos+os.sep.join(['output', 'tables'])}")
 
-trajectories.to_csv(pos+f"/output/tables/{table_name}", index=False)
-print(f"Table {table_name} successfully saved in {pos}/output/tables/...")
+trajectories.to_csv(pos+os.sep.join(['output', 'tables', table_name]), index=False)
+print(f"Table {table_name} successfully saved in {os.sep.join(['output', 'tables'])}")
 
 del trajectories; del napari_data;
 gc.collect()

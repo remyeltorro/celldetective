@@ -4,5 +4,13 @@ nbsphinx_link
 sphinx==2.2.0
 jinja2<3.1
 ipykernel
-pandas
-numpy
+PyQt5
+stardist
+cellpose
+scikit-learn
+btrack
+tensorflow
+napari
+tqdm
+mahotas
+fonticon-materialdesignicons6

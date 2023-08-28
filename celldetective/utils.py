@@ -7,6 +7,7 @@ os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow.config import list_physical_devices
 import configparser
+from sklearn.utils.class_weight import compute_class_weight
 
 def create_patch_mask(h, w, center=None, radius=None):
 
@@ -121,7 +122,7 @@ def rename_intensity_column(df, channels):
 				new_name = np.delete(sections, np.where(test_digit)[0])
 				new_name = '_'.join(list(new_name))
 				new_name = new_name.replace('intensity', channel_name)
-				to_rename.update({intensity_columns[k]: new_name})
+				to_rename.update({intensity_columns[k]: new_name.replace('-','_')})
 		else:
 			to_rename = {}
 			for k in range(len(intensity_columns)):
@@ -130,7 +131,8 @@ def rename_intensity_column(df, channels):
 				channel_name = channel_names[0]
 				new_name = '_'.join(list(sections))
 				new_name = new_name.replace('intensity', channel_name)
-				to_rename.update({intensity_columns[k]: new_name})            
+				to_rename.update({intensity_columns[k]: new_name.replace('-','_')})    
+
 
 		df = df.rename(columns=to_rename)
 
@@ -607,10 +609,11 @@ def _extract_labels_from_config(config,number_of_wells):
 		cell_types = ConfigSectionMap(config,"Labels")["cell_types"].split(",")
 		antibodies = ConfigSectionMap(config,"Labels")["antibodies"].split(",")
 		pharmaceutical_agents = ConfigSectionMap(config,"Labels")["pharmaceutical_agents"].split(",")
+		index = np.arange(len(concentrations)).astype(int) + 1
 		if not np.all(pharmaceutical_agents=="None"):
-			labels = ["[CT] "+a+"; [Ab] "+b+" @ "+c+" pM "+d for a,b,c,d in zip(cell_types,antibodies,concentrations,pharmaceutical_agents)]
+			labels = [f"W{idx}: [CT] "+a+"; [Ab] "+b+" @ "+c+" pM "+d for idx,a,b,c,d in zip(index,cell_types,antibodies,concentrations,pharmaceutical_agents)]
 		else:
-			labels = ["[CT] "+a+"; [Ab] "+b+" @ "+c+" pM " for a,b,c in zip(cell_types,antibodies,concentrations)]
+			labels = [f"W{idx}: [CT] "+a+"; [Ab] "+b+" @ "+c+" pM " for idx,a,b,c in zip(index,cell_types,antibodies,concentrations)]
 
 
 	except Exception as e:

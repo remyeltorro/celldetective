@@ -11,4 +11,12 @@ Solution:
 mamba remove pytorch
 mamba install pytorch
 
-tess
+PyQt5/QtWidgets.abi3.so: undefined symbol: _ZdlPvm, version Qt_5
+pip uninstall pyqt5
+conda install pyqt
+Not working yet
+
+ImportError: cannot import name 'version' from 'packaging' (unknown location)
+
+
+

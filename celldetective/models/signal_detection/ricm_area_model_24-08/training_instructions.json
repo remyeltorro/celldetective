@@ -1,0 +1,19 @@
+{
+    "model_name": "ricm_area_model_24-08",
+    "pretrained": null,
+    "channel_option": [
+        "adhesion_channel",
+        "area"
+    ],
+    "model_signal_length": 128,
+    "recompile_pretrained": false,
+    "ds": [
+        "/home/limozin/Desktop/Dalia_data/RICM_adhesion_Dalia/signals"
+    ],
+    "augmentation_factor": 2.0,
+    "validation_split": 0.20412371134020618,
+    "learning_rate": 0.01,
+    "batch_size": 64,
+    "epochs": 503,
+    "target_directory": "/home/limozin/Documents/GitHub/celldetective/celldetective/models/signal_detection/"
+}

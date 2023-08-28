@@ -45,9 +45,9 @@ if not use_gpu:
 modelname = str(process_arguments['model'])
 
 if mode.lower()=="target" or mode.lower()=="targets":
-	label_folder = "labels_targets/"
+	label_folder = "labels_targets"
 elif mode.lower()=="effector" or mode.lower()=="effectors":
-	label_folder = "labels_effectors/"
+	label_folder = "labels_effectors"
 
 # Locate experiment config
 parent1 = Path(pos).parent
@@ -119,10 +119,10 @@ img_num_channels = _get_img_num_per_channel(channel_indices, len_movie, nbr_chan
 
 # If everything OK, prepare output, load models
 print('Erasing previous segmentation folder.')
-if os.path.exists(pos+label_folder):
-	rmtree(pos+label_folder)
-os.mkdir(pos+label_folder)
-print(f'Folder {pos+label_folder} successfully generated.')
+if os.path.exists(os.sep.join([pos,label_folder])):
+	rmtree(os.sep.join([pos,label_folder]))
+os.mkdir(os.sep.join([pos,label_folder]))
+print(f'Folder {os.sep.join([pos,label_folder])} successfully generated.')
 
 if model_type=='stardist':
 	model = StarDist2D(None, name=modelname, basedir=Path(model_complete_path).parent)
@@ -131,6 +131,7 @@ if model_type=='stardist':
 	print(f"StarDist model {modelname} successfully loaded.")
 
 elif model_type=='cellpose':
+	
 	model = CellposeModel(gpu=use_gpu, pretrained_model=model_complete_path+modelname, diam_mean=30.0)
 	print(f'Cellpose model {modelname} successfully loaded.')
 
@@ -162,7 +163,7 @@ for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 	if Y_pred.shape != template.shape[:2]:
 		Y_pred = resize(Y_pred, template.shape[:2], order=0)
 
-	save_tiff_imagej_compatible(pos+label_folder+f"{str(t).zfill(4)}.tif", Y_pred, axes='YX')
+	save_tiff_imagej_compatible(os.sep.join([pos,label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
 
 	del f;
 	del template;

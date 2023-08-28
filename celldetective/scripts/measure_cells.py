@@ -37,12 +37,12 @@ column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': '
 if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets"
 	table_name = "trajectories_targets.csv"
-	instruction_file = "configs/measurement_instructions_targets.json"
+	instruction_file = os.sep.join(["configs","measurement_instructions_targets.json"])
 
 elif mode.lower()=="effector" or mode.lower()=="effectors":
 	label_folder = "labels_effectors"
 	table_name = "trajectories_effectors.csv"
-	instruction_file = "configs/measurement_instructions_effectors.json"
+	instruction_file = os.sep.join(["configs","measurement_instructions_effectors.json"])
 
 # Locate experiment config
 parent1 = Path(pos).parent
@@ -109,7 +109,7 @@ if features is None:
 	features = []
 
 # from pos fetch labels
-label_path = natsorted(glob(pos+f"{label_folder}/*.tif"))
+label_path = natsorted(glob(os.sep.join([pos, label_folder, '*.tif'])))
 if len(label_path)>0:
 	print(f"Found {len(label_path)} segmented frames...")
 else:
@@ -121,7 +121,7 @@ else:
 
 # Do this if features or Haralick is not None, else don't need stack
 try:
-	file = glob(pos+f"movie/{movie_prefix}*.tif")[0]
+	file = glob(pos+os.sep.join(["movie", f"{movie_prefix}*.tif"]))[0]
 except IndexError:
 	print('Movie could not be found. Check the prefix. If you intended to measure texture or tone, this will not be performed.')
 	file = None
@@ -129,7 +129,7 @@ except IndexError:
 	features = drop_tonal_features(features)
 
 # Load trajectories, add centroid if not in trajectory
-trajectories = pos+f'output/tables/{table_name}'
+trajectories = pos+os.sep.join(['output','tables', table_name])
 if os.path.exists(trajectories):
 	trajectories = pd.read_csv(trajectories)
 	if clear_previous:
@@ -217,8 +217,8 @@ if len(timestep_dataframes)>0:
 	if column_labels['track'] in df.columns:
 		df = df.sort_values(by=[column_labels['track'], column_labels['time']])
 	
-	df.to_csv(pos+f"output/tables/{table_name}", index=False)
-	print(f'Measurements successfully written in table {pos+f"output/tables/{table_name}"}...')
+	df.to_csv(pos+os.sep.join(["output", "tables", table_name]), index=False)
+	print(f'Measurements successfully written in table {pos+os.sep.join(["output", "tables", table_name])}')
 	print('Done.')
 else:
 	print('No measurement could be performed. Check your inputs.')

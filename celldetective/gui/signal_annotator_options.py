@@ -1,7 +1,11 @@
+"""
+Copright © 2023 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
+"""
+
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QApplication, QPushButton, QScrollArea, QWidget, QVBoxLayout, QHBoxLayout
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
-from superqt import QLabeledDoubleSlider
+from superqt import QLabeledDoubleSlider, QLabeledSlider
 from celldetective.utils import extract_experiment_channels, get_software_location
 import json
 import numpy as np
@@ -12,7 +16,7 @@ import os
 class ConfigSignalAnnotator(QMainWindow):
 	
 	"""
-	UI to set tracking parameters for bTrack.
+	UI to set normalization and animation parameters for the annotator tool. 
 
 	"""
 
@@ -45,6 +49,11 @@ class ConfigSignalAnnotator(QMainWindow):
 		#self.load_previous_measurement_instructions()
 
 	def populate_widget(self):
+		
+		"""
+		Create the widgets.
+		
+		"""
 
 		self.scroll_area = QScrollArea(self)
 		self.button_widget = QWidget()
@@ -118,7 +127,7 @@ class ConfigSignalAnnotator(QMainWindow):
 		sub_layout.addWidget(self.hsep)
 
 		hbox_frac = QHBoxLayout()
-		hbox_frac.addWidget(QLabel('Fraction: '), 20)
+		hbox_frac.addWidget(QLabel('fraction: '), 20)
 
 		self.fraction_slider = QLabeledDoubleSlider()
 		self.fraction_slider.setSingleStep(0.05)
@@ -130,6 +139,20 @@ class ConfigSignalAnnotator(QMainWindow):
 
 		hbox_frac.addWidget(self.fraction_slider, 80)
 		sub_layout.addLayout(hbox_frac)
+
+
+		hbox_interval = QHBoxLayout()
+		hbox_interval.addWidget(QLabel('interval [ms]: '), 20)
+
+		self.interval_slider = QLabeledSlider()
+		self.interval_slider.setSingleStep(1)
+		self.interval_slider.setTickInterval(1)
+		self.interval_slider.setSingleStep(1)
+		self.interval_slider.setOrientation(1)
+		self.interval_slider.setRange(1,1000)
+		self.interval_slider.setValue(1)
+		hbox_interval.addWidget(self.interval_slider, 80)
+		sub_layout.addLayout(hbox_interval)
 
 		main_layout.addLayout(sub_layout)
 
@@ -153,6 +176,12 @@ class ConfigSignalAnnotator(QMainWindow):
 		QApplication.processEvents()
 
 	def enable_channels(self):
+
+		"""
+		Enable three channels when RGB mode is checked.
+		
+		"""
+
 		if self.gs_btn.isChecked():
 			for k in range(1,3):
 				self.channel_cbs[k].setEnabled(False)
@@ -176,6 +205,11 @@ class ConfigSignalAnnotator(QMainWindow):
 
 	def switch_to_absolute_normalization_mode(self):
 
+		"""
+		Use absolute or percentile values for the normalization of each individual channel.
+		
+		"""
+
 		if self.percentile_mode:
 			self.percentile_mode = False
 			self.percentile_btn.setIcon(icon(MDI6.percent_circle_outline,color="black"))
@@ -198,7 +232,13 @@ class ConfigSignalAnnotator(QMainWindow):
 				self.max_val_les[k].setText('99.99')
 
 	def write_instructions(self):
-		instructions = {'rgb_mode': self.rgb_btn.isChecked(), 'percentile_mode': self.percentile_mode, 'fraction': float(self.fraction_slider.value())}
+
+		"""
+		Save the current configuration.
+		
+		"""
+
+		instructions = {'rgb_mode': self.rgb_btn.isChecked(), 'percentile_mode': self.percentile_mode, 'fraction': float(self.fraction_slider.value()), 'interval': int(self.interval_slider.value())}
 		max_i = 3 if self.rgb_btn.isChecked() else 1
 		channels = []
 		for i in range(max_i):
@@ -213,6 +253,11 @@ class ConfigSignalAnnotator(QMainWindow):
 		self.close()
 
 	def read_instructions(self):
+		
+		"""
+		Read and set the widgets to the last configuration.
+
+		"""
 
 		print('Reading instructions..')
 		if os.path.exists(self.instructions_path):
@@ -248,3 +293,7 @@ class ConfigSignalAnnotator(QMainWindow):
 				if 'fraction' in instructions:
 					fraction = instructions['fraction']
 					self.fraction_slider.setValue(fraction)
+
+				if 'interval' in instructions:
+					interval = instructions['interval']
+					self.interval_slider.setValue(interval)

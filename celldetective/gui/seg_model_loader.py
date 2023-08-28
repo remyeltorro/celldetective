@@ -230,6 +230,7 @@ class SegmentationModelLoader(QWidget):
 			self.filename = self.file_dialog.selectedFiles()[0]
 			if self.seg_mode=="stardist":
 				subfiles = glob(self.filename+"/*")
+				subfiles = [s.replace('\\','/') for s in subfiles]
 				if self.filename+"/thresholds.json" in subfiles:
 					self.file_label.setText(self.filename.split("/")[-1])
 					self.modelname = self.filename.split("/")[-1]

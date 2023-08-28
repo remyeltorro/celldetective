@@ -1,24 +1,30 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location
-from celldetective.io import interpret_tracking_configuration, load_frames
-from celldetective.measure import compute_haralick_features
+from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
+from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
 import numpy as np
+from tifffile import imread
 import json
 from shutil import copyfile
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
+from natsort import natsorted
+from tifffile import imread
+from pathlib import Path, PurePath
+import gc
 
 class ConfigMeasurements(QMainWindow):
 	
 	"""
-	UI to set tracking parameters for bTrack.
+	UI to set measurement instructions.
 
 	"""
 
@@ -27,6 +33,7 @@ class ConfigMeasurements(QMainWindow):
 		super().__init__()
 		self.parent = parent
 		self.setWindowTitle("Configure measurements")
+		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 		self.mode = self.parent.mode
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":
@@ -36,6 +43,7 @@ class ConfigMeasurements(QMainWindow):
 			self.config_name = "btrack_config_effectors.json"
 			self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_effectors.json"
 		self.soft_path = get_software_location()
+		self.clear_previous = False
 		
 		exp_config = self.exp_dir +"config.ini"
 		self.config_path = self.exp_dir + self.config_name
@@ -253,6 +261,14 @@ class ConfigMeasurements(QMainWindow):
 		self.add_contour_btn.setToolTip("Add distance")
 		self.add_contour_btn.setIconSize(QSize(20, 20))	
 		contour_layout.addWidget(self.add_contour_btn, 5)
+
+		self.view_contour_btn = QPushButton("")
+		self.view_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.view_contour_btn.setIcon(icon(MDI6.eye_outline,color="black"))
+		self.view_contour_btn.setToolTip("View contour")
+		self.view_contour_btn.setIconSize(QSize(20, 20))	
+		contour_layout.addWidget(self.view_contour_btn, 5)
+
 		layout.addLayout(contour_layout)
 		
 		self.contours_list = ListWidget(self, GeometryChoice, initial_features=[], dtype=int)
@@ -260,6 +276,7 @@ class ConfigMeasurements(QMainWindow):
 
 		self.del_contour_btn.clicked.connect(self.contours_list.removeSel)
 		self.add_contour_btn.clicked.connect(self.contours_list.addItem)
+		self.view_contour_btn.clicked.connect(self.view_selected_contour)
 
 		self.feat_sep3 = QHSeperationLine()
 		layout.addWidget(self.feat_sep3)
@@ -444,10 +461,10 @@ class ConfigMeasurements(QMainWindow):
 									'isotropic_operations': isotropic_operations})
 
 		if self.clear_previous_btn.isChecked():
-			clear_previous = True
+			self.clear_previous = True
 		else:
-			clear_previous = False
-		measurement_options.update({'clear_previous': clear_previous})
+			self.clear_previous = False
+		measurement_options.update({'clear_previous': self.clear_previous})
 
 		print('Measurement instructions: ', measurement_options)
 		file_name = self.measure_instructions_path
@@ -562,8 +579,8 @@ class ConfigMeasurements(QMainWindow):
 						self.operations_list.list_widget.clear()
 
 				if 'clear_previous' in measurement_instructions:
-					clear_previous = measurement_instructions['clear_previous']
-					self.clear_previous_btn.setChecked(clear_previous)
+					self.clear_previous = measurement_instructions['clear_previous']
+					self.clear_previous_btn.setChecked(self.clear_previous)
 
 		
 	def locate_image(self):
@@ -572,7 +589,8 @@ class ConfigMeasurements(QMainWindow):
 		Load the first frame of the first movie found in the experiment folder as a sample.
 		"""
 
-		movies = glob(self.parent.parent.exp_dir + f"*/*/movie/{self.parent.parent.movie_prefix}*.tif")
+		movies = glob(self.parent.parent.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
+		print(movies)
 		if len(movies)==0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
@@ -580,13 +598,20 @@ class ConfigMeasurements(QMainWindow):
 			msgBox.setWindowTitle("Warning")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Yes:
+			if returnValue == QMessageBox.Ok:
 				self.test_frame = None
 				return None
 		else:
-			stack0 = movies[0]
+			self.stack0 = movies[0]
 			n_channels = len(self.channels)
-			self.test_frame = load_frames(np.arange(n_channels), stack0, scale=None, normalize_input=False)
+			len_movie_auto = auto_load_number_of_frames(self.stack0)
+			if len_movie_auto is None:
+				stack = imread(self.stack0)
+				len_movie_auto = len(stack)
+				del stack
+				gc.collect()
+			self.mid_time = len_movie_auto//2
+			self.test_frame = load_frames(n_channels*self.mid_time + np.arange(n_channels), self.stack0, scale=None, normalize_input=False)
 
 	def control_haralick_digitalization(self):
 
@@ -646,7 +671,154 @@ class ConfigMeasurements(QMainWindow):
 			self.hist_window.canvas.draw()
 			self.hist_window.show()
 
+	def view_selected_contour(self):
 
+		"""
+		Show the ROI for the selected contour measurement on experimental data.
 
+		"""
 
+		if self.parent.parent.position_list.currentText()=='*':
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a single position to visualize the border selection.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+			else:
+				return None
+
+		self.locate_image()
+
+		self.locate_mask()
+		if self.test_mask is None:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("The segmentation results could not be found for this position.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Yes:
+				return None			
+			else:
+				return None
+		# plt.imshow(self.test_frame[:,:,0])
+		# plt.pause(2)
+		# plt.close()
+
+		# plt.imshow(self.test_mask)
+		# plt.pause(2)
+		# plt.close()
+
+		if (self.test_frame is not None) and (self.test_mask is not None):
+
+			values = self.contours_list.list_widget.selectedItems()
+			if len(values)>0:
+				distance = values[0].text()
+				if '-' in distance:
+					border_dist = distance.split('-')
+					border_dist = [float(d) for d in border_dist]
+				elif distance.isnumeric():
+					border_dist = float(distance)
+
+				print(border_dist)
+				border_label = contour_of_instance_segmentation(self.test_mask, border_dist)
+				
+				self.fig_contour, self.ax_contour = plt.subplots(figsize=(5,5))
+				self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
+				self.ax_contour.clear()
+				self.im_contour = self.ax_contour.imshow(self.test_frame[:,:,0], cmap='gray')
+				self.im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label==0, border_label), cmap='viridis', interpolation='none')
+				self.ax_contour.set_xticks([])
+				self.ax_contour.set_yticks([])
+				self.ax_contour.set_title(border_dist)
+				self.fig_contour.set_facecolor('none')  # or 'None'
+				self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
+				self.imshow_contour.canvas.draw()
+
+				self.imshow_contour.layout.setContentsMargins(30,30,30,30)
+				self.channel_hbox_contour = QHBoxLayout()
+				self.channel_hbox_contour.addWidget(QLabel('channel: '), 10)
+				self.channel_cb_contour = QComboBox()
+				self.channel_cb_contour.addItems(self.channel_names)
+				self.channel_cb_contour.currentIndexChanged.connect(self.switch_channel_contour)
+				self.channel_hbox_contour.addWidget(self.channel_cb_contour, 90)
+				self.imshow_contour.layout.addLayout(self.channel_hbox_contour)
+
+				self.contrast_hbox_contour = QHBoxLayout()
+				self.contrast_hbox_contour.addWidget(QLabel('contrast: '), 10)
+				self.contrast_slider_contour = QLabeledDoubleRangeSlider()
+				self.contrast_slider_contour.setSingleStep(0.00001)
+				self.contrast_slider_contour.setTickInterval(0.00001)		
+				self.contrast_slider_contour.setOrientation(1)
+				self.contrast_slider_contour.setRange(np.amin(self.test_frame[:,:,0]),np.amax(self.test_frame[:,:,0]))
+				self.contrast_slider_contour.setValue([np.percentile(self.test_frame[:,:,0].flatten(), 1), np.percentile(self.test_frame[:,:,0].flatten(), 99.99)])
+				self.im_contour.set_clim(vmin=np.percentile(self.test_frame[:,:,0].flatten(), 1), vmax=np.percentile(self.test_frame[:,:,0].flatten(), 99.99))
+				self.contrast_slider_contour.valueChanged.connect(self.contrast_im_contour)
+				self.contrast_hbox_contour.addWidget(self.contrast_slider_contour, 90)
+				self.imshow_contour.layout.addLayout(self.contrast_hbox_contour)
+
+				self.alpha_mask_hbox_contour = QHBoxLayout()
+				self.alpha_mask_hbox_contour.addWidget(QLabel('mask transparency: '), 10)
+				self.transparency_slider = QLabeledDoubleSlider()
+				self.transparency_slider.setSingleStep(0.001)
+				self.transparency_slider.setTickInterval(0.001)		
+				self.transparency_slider.setOrientation(1)
+				self.transparency_slider.setRange(0,1)
+				self.transparency_slider.setValue(0.5)
+				self.transparency_slider.valueChanged.connect(self.make_contour_transparent)
+				self.alpha_mask_hbox_contour.addWidget(self.transparency_slider, 90)
+				self.imshow_contour.layout.addLayout(self.alpha_mask_hbox_contour)
+
+				self.imshow_contour.show()
+
+		else:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No contour was selected. Please first add a contour to the list.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Yes:
+				return None
+
+	def locate_mask(self):
+		
+		"""
+		Load the first mask of the detected movie.
+		"""
+
+		labels_path = str(Path(self.stack0).parent.parent) + f'/labels_{self.mode}/'
+		masks = natsorted(glob(labels_path+'*.tif'))
+		if len(masks)==0:
+			print('no mask found')
+			self.test_mask = None
+		else:
+			self.test_mask = imread(masks[self.mid_time])
+
+	def switch_channel_contour(self, value):
+		
+		"""
+		Adjust intensity values when changing channels in the contour visualizer. 
+		
+		"""
+
+		self.im_contour.set_array(self.test_frame[:,:,value])
+		self.im_contour.set_clim(vmin=np.percentile(self.test_frame[:,:,value].flatten(), 1), vmax=np.percentile(self.test_frame[:,:,value].flatten(), 99.99))
+		self.contrast_slider_contour.setRange(np.amin(self.test_frame[:,:,value]),np.amax(self.test_frame[:,:,value]))
+		self.contrast_slider_contour.setValue([np.percentile(self.test_frame[:,:,value].flatten(), 1), np.percentile(self.test_frame[:,:,value].flatten(), 99.99)])
+		self.fig_contour.canvas.draw_idle()
+
+	def contrast_im_contour(self, value):
+		vmin = value[0]; vmax = value[1]
+		self.im_contour.set_clim(vmin=vmin, vmax=vmax)
+		self.fig_contour.canvas.draw_idle()
+
+	def make_contour_transparent(self, value):
+
+		self.im_mask.set_alpha(value)
+		self.fig_contour.canvas.draw_idle()
+		
 

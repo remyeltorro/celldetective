@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QDialog, QFileDialog, QScrollArea, QCheckBox, QSlider, QGridLayout, QLabel, QLineEdit, QPushButton, QWidget
+from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QDialog, QHBoxLayout, QFileDialog, QVBoxLayout, QScrollArea, QCheckBox, QSlider, QGridLayout, QLabel, QLineEdit, QPushButton, QWidget
 from PyQt5.QtGui import QIntValidator, QDoubleValidator
 from celldetective.gui.gui_utils import center_window
 from superqt import QLabeledSlider
@@ -330,7 +330,7 @@ class ConfigNewExperiment(QMainWindow):
 			os.mkdir(self.directory)
 			os.chdir(self.directory)
 			self.create_subfolders()
-			self.create_config_file()
+			self.annotate_wells()
 		except FileExistsError:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
@@ -356,6 +356,11 @@ class ConfigNewExperiment(QMainWindow):
 				position_name = well_name+f"{k+1}0{p}/"
 				os.mkdir(position_name)
 				os.mkdir(position_name+"/movie/")
+
+	def annotate_wells(self):
+		self.w = SetupConditionLabels(self, self.nbr_wells)
+		self.w.show()
+
 
 	def create_config_file(self):
 
@@ -422,32 +427,11 @@ class ConfigNewExperiment(QMainWindow):
 		config.set('SearchRadii', 'search_radius_targets', "100")
 		config.set('SearchRadii', 'search_radius_effectors', "62")
 
-		config.add_section('BinningParameters')
-		config.set('BinningParameters', 'time_dilation', "1")
-
-		config.add_section('Thresholds')
-		config.set('Thresholds', 'cell_nbr_threshold', "10")
-		config.set('Thresholds', 'intensity_measurement_radius', "21")
-		config.set('Thresholds', 'intensity_measurement_radius_nk', "3")
-		config.set('Thresholds', 'model_signal_length', "128")
-		config.set('Thresholds', 'hide_frames_for_tracking', "")
-		config.set('Thresholds', 'minimum_tracklength', "0")
-		config.set('Thresholds', 'filter_first_frame', "True")
-
 		config.add_section('Labels')
-		label_str=""
-		for k in range(self.nbr_wells):
-			label_str+=str(k)+","
-		config.set('Labels', 'concentrations', label_str[:-1])
-		config.set('Labels', 'cell_types', label_str[:-1])
-		config.set('Labels', 'antibodies', label_str[:-1])
-		config.set('Labels', 'pharmaceutical_agents',label_str[:-1])
-
-		config.add_section('Display')
-		config.set('Display', 'blue_percentiles', "1,99.99")
-		config.set('Display', 'red_percentiles', "1,99.99")
-		config.set('Display', 'green_percentiles', "1,99.99")
-		config.set('Display', 'fraction', "4")
+		config.set('Labels', 'cell_types', self.cell_types)
+		config.set('Labels', 'antibodies', self.antibodies)
+		config.set('Labels', 'concentrations', self.concentrations)
+		config.set('Labels', 'pharmaceutical_agents', self.pharmaceutical_agents)
 
 		# save to a file
 		with open('config.ini', 'w') as configfile:
@@ -455,4 +439,102 @@ class ConfigNewExperiment(QMainWindow):
 
 		self.parent.set_experiment_path(self.directory)
 		print(f'New experiment successfully configured in folder {self.directory}...')
-		self.close()	
+		self.close()
+
+class SetupConditionLabels(QWidget):
+	def __init__(self, parent, n_wells):
+		super().__init__()
+		self.parent = parent
+		self.n_wells = n_wells
+		self.setWindowTitle("Label the wells")
+		self.layout = QVBoxLayout()
+		self.layout.setContentsMargins(30,30,30,30)
+		self.setLayout(self.layout)
+		self.populate()
+		center_window(self)
+
+	def populate(self):
+
+		self.cell_type_cbs = [QLineEdit() for i in range(self.n_wells)]
+		self.antibodies_cbs = [QLineEdit() for i in range(self.n_wells)]
+		self.concentrations_cbs = [QLineEdit() for i in range(self.n_wells)]
+		self.pharmaceutical_agents_cbs = [QLineEdit() for i in range(self.n_wells)]
+
+		for i in range(self.n_wells):
+			hbox = QHBoxLayout()
+			hbox.setContentsMargins(15,5,15,5)
+			hbox.addWidget(QLabel(f'well {i+1}'), 5, alignment=Qt.AlignLeft)
+			hbox.addWidget(QLabel('cell type: '), 5)
+			hbox.addWidget(self.cell_type_cbs[i], 10)
+			self.cell_type_cbs[i].setPlaceholderText('e.g. T-cell, NK')
+
+			hbox.addWidget(QLabel('antibody: '), 5)
+			hbox.addWidget(self.antibodies_cbs[i], 10)
+			self.antibodies_cbs[i].setPlaceholderText('e.g. anti-CD4')
+			
+			hbox.addWidget(QLabel('concentration: '), 5)
+			hbox.addWidget(self.concentrations_cbs[i], 10)
+			self.concentrations_cbs[i].setPlaceholderText('e.g. 100 (pM)')
+			
+			hbox.addWidget(QLabel('pharmaceutical agents: '), 5)
+			hbox.addWidget(self.pharmaceutical_agents_cbs[i], 10)
+			self.pharmaceutical_agents_cbs[i].setPlaceholderText('e.g. dextran')
+
+			self.layout.addLayout(hbox)
+
+		btn_hbox = QHBoxLayout()
+		btn_hbox.setContentsMargins(0,20,0,0)
+		self.skip_btn = QPushButton('Skip')
+		self.skip_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.skip_btn.clicked.connect(self.set_default_values)
+		btn_hbox.addWidget(self.skip_btn)
+
+		self.submit_btn = QPushButton('Submit')
+		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+		self.submit_btn.clicked.connect(self.set_user_values)
+		btn_hbox.addWidget(self.submit_btn)
+		self.layout.addLayout(btn_hbox)
+
+	def set_default_values(self):
+		
+		for i in range(self.n_wells):
+			self.cell_type_cbs[i].setText(str(i))
+			self.antibodies_cbs[i].setText(str(i))
+			self.concentrations_cbs[i].setText(str(i))
+			self.pharmaceutical_agents_cbs[i].setText(str(i))
+		self.set_attributes()
+		self.parent.create_config_file()
+		self.close()
+
+	def set_user_values(self):
+		for i in range(self.n_wells):
+			if self.cell_type_cbs[i].text()=='':
+				self.cell_type_cbs[i].setText(str(i))
+			if self.antibodies_cbs[i].text()=='':
+				self.antibodies_cbs[i].setText(str(i))
+			if self.concentrations_cbs[i].text()=='':
+				self.concentrations_cbs[i].setText(str(i))
+			if self.pharmaceutical_agents_cbs[i].text()=='':
+				self.pharmaceutical_agents_cbs[i].setText(str(i))
+		self.set_attributes()
+		self.parent.create_config_file()
+		self.close()
+
+	def set_attributes(self):
+
+		cell_type_text = [c.text() for c in self.cell_type_cbs]
+		self.parent.cell_types = ','.join(cell_type_text)
+
+		antibodies_text = [c.text() for c in self.antibodies_cbs]
+		self.parent.antibodies = ','.join(antibodies_text)
+
+		concentrations_text = [c.text() for c in self.concentrations_cbs]
+		self.parent.concentrations = ','.join(concentrations_text)
+
+		pharamaceutical_text = [c.text() for c in self.pharmaceutical_agents_cbs]
+		self.parent.pharmaceutical_agents = ','.join(pharamaceutical_text)
+
+
+
+
+

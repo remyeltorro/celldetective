@@ -1,0 +1,10 @@
+{
+    "channels": [
+        "dead_nuclei_channel",
+        "effector_fluo_channel",
+        "live_nuclei_channel"
+    ],
+    "spatial_calibration": 0.3112,
+    "normalize": true,
+    "model_type": "stardist"
+}

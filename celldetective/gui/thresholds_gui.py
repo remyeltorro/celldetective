@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QLabel, QWidget,QFileDialog, QHBoxLayout, QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
+from PyQt5.QtWidgets import QAction, QMenu, QMainWindow, QMessageBox, QLabel, QWidget,QFileDialog, QHBoxLayout, QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class
 from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column
 from celldetective.io import auto_load_number_of_frames, load_frames
@@ -15,6 +15,7 @@ from celldetective.segmentation import filter_image
 import pandas as pd
 from skimage.measure import regionprops_table
 import json
+import os
 
 class ThresholdConfigWizard(QMainWindow):
 	
@@ -27,7 +28,16 @@ class ThresholdConfigWizard(QMainWindow):
 		
 		super().__init__()
 		self.parent = parent
+
+		self.screen_height = self.parent.parent.parent.parent.screen_height
+		self.screen_width = self.parent.parent.parent.parent.screen_width
+		self.setMinimumWidth(int(0.8*self.screen_width))
+		self.setMinimumHeight(int(0.8*self.screen_height))
 		self.setWindowTitle("Threshold configuration wizard")
+		center_window(self)
+		self._createActions()
+		self._createMenuBar()
+
 		self.mode = self.parent.mode
 		self.pos = self.parent.parent.parent.pos
 		self.exp_dir = self.parent.parent.exp_dir
@@ -41,9 +51,6 @@ class ThresholdConfigWizard(QMainWindow):
 		elif self.mode=="effectors":
 			self.config_out_name = "threshold_effectors.json"
 
-		self.screen_height = self.parent.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.parent.screen_width
-
 		self.locate_stack()
 		self.threshold_slider = QLabeledDoubleRangeSlider()
 		self.initialize_histogram()
@@ -52,11 +59,26 @@ class ThresholdConfigWizard(QMainWindow):
 		self.prep_cell_properties()
 		self.populate_widget()
 
-		self.setMinimumWidth(int(0.8*self.screen_width))
-		self.setMinimumHeight(int(0.8*self.screen_height))
-
-		center_window(self)
 		self.setAttribute(Qt.WA_DeleteOnClose)
+
+	def _createMenuBar(self):
+		menuBar = self.menuBar()
+		# Creating menus using a QMenu object
+		fileMenu = QMenu("&File", self)
+		fileMenu.addAction(self.openAction)
+		menuBar.addMenu(fileMenu)
+		# Creating menus using a title
+		#editMenu = menuBar.addMenu("&Edit")
+		#helpMenu = menuBar.addMenu("&Help")
+
+	def _createActions(self):
+		# Creating action using the first constructor
+		#self.newAction = QAction(self)
+		#self.newAction.setText("&New")
+		# Creating actions using the second constructor
+		self.openAction = QAction(icon(MDI6.folder),"&Open...", self)
+		self.openAction.triggered.connect(self.load_previous_config)
+
 
 	def populate_widget(self):
 
@@ -174,7 +196,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.equalize_option_btn.setIconSize(QSize(20,20))
 		self.equalize_option_btn.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
 		self.equalize_option_btn.setToolTip("Enable histogram matching")
-		#self.equalize_option_btn.clicked.connect(self.activate_histogram_equalizer)
+		self.equalize_option_btn.clicked.connect(self.activate_histogram_equalizer)
 		self.equalize_option = False
 		threshold_title_grid.addWidget(self.equalize_option_btn, 5)
 		
@@ -199,7 +221,7 @@ class ThresholdConfigWizard(QMainWindow):
 	#self.threshold_contrast_range.valueChanged.connect(self.set_clim_thresh)
 
 		grid_threshold.addWidget(self.threshold_slider,idx,1,1,1)
-		self.canvas_hist.setMinimumHeight(self.screen_height//8)
+		self.canvas_hist.setMinimumHeight(self.screen_height//6)
 		self.left_panel.addLayout(grid_threshold)
 
 		self.generate_marker_contents()
@@ -213,6 +235,11 @@ class ThresholdConfigWizard(QMainWindow):
 		self.save_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
 		self.save_btn.clicked.connect(self.write_instructions)
 		self.left_panel.addWidget(self.save_btn)
+
+		self.properties_box_widgets = [self.propscanvas, *self.features_cb, 
+									   self.property_query_le, self.submit_query_btn, self.save_btn]
+		for p in self.properties_box_widgets:
+			p.setEnabled(False)
 
 	def generate_marker_contents(self):
 
@@ -284,7 +311,7 @@ class ThresholdConfigWizard(QMainWindow):
 			properties_box.addLayout(hbox_feat)
 
 		hbox_classify = QHBoxLayout()
-		hbox_classify.addWidget(QLabel('classify: '), 10)
+		hbox_classify.addWidget(QLabel('remove: '), 10)
 		self.property_query_le = QLineEdit()
 		self.property_query_le.setPlaceholderText('eliminate points using a query such as: area > 100 or eccentricity > 0.95')
 		hbox_classify.addWidget(self.property_query_le, 70)
@@ -292,11 +319,6 @@ class ThresholdConfigWizard(QMainWindow):
 		self.submit_query_btn.clicked.connect(self.apply_property_query)
 		hbox_classify.addWidget(self.submit_query_btn, 20)
 		properties_box.addLayout(hbox_classify)
-
-		self.properties_box_widgets = [self.propscanvas, *self.features_cb, 
-									   self.property_query_le, self.submit_query_btn]
-		for p in self.properties_box_widgets:
-			p.setEnabled(False)
 
 		self.left_panel.addLayout(properties_box)
 
@@ -345,7 +367,7 @@ class ThresholdConfigWizard(QMainWindow):
 		Locate the target movie.
 
 		"""
-		print(self.pos)
+		print("this is the loaded position: ", self.pos)
 		movies = glob(self.pos + f"movie/{self.parent.parent.parent.movie_prefix}*.tif")
 
 		if len(movies)==0:
@@ -387,7 +409,7 @@ class ThresholdConfigWizard(QMainWindow):
 
 		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1], foreground_value=255., fill_holes=False)
 		self.thresholded_image = np.ma.masked_where(self.binary==0.,self.binary)
-		self.image_thresholded = self.ax.imshow(self.thresholded_image, cmap="viridis",alpha=0.5)
+		self.image_thresholded = self.ax.imshow(self.thresholded_image, cmap="viridis",alpha=0.5, interpolation='none')
 
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
@@ -614,6 +636,13 @@ class ThresholdConfigWizard(QMainWindow):
 	def apply_watershed_to_selection(self):
 
 		self.labels = apply_watershed(self.binary, self.coords, self.edt_map)
+
+		self.current_channel = self.channels_cb.currentIndex()
+		t = int(self.frame_slider.value())
+		idx = t*self.nbr_channels + self.current_channel
+		self.img = load_frames(idx, self.stack_path, normalize_input=False)
+		self.refresh_imshow()
+
 		self.image_thresholded.set_cmap('tab20c')
 		self.image_thresholded.set_data(np.ma.masked_where(self.labels==0.,self.labels))
 		self.image_thresholded.autoscale()
@@ -648,15 +677,17 @@ class ThresholdConfigWizard(QMainWindow):
 
 	def update_props_scatter(self):
 
-		self.scat_props.set_offsets(self.props[[self.features_cb[0].currentText(),self.features_cb[1].currentText()]].to_numpy())
+		self.scat_props.set_offsets(self.props[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
 		self.scat_props.set_facecolor([color_from_class(c) for c in self.props['class'].to_numpy()])
+		self.ax_props.set_xlabel(self.features_cb[1].currentText())
+		self.ax_props.set_ylabel(self.features_cb[0].currentText())
 		
 		self.scat_markers.set_offsets(self.props[['centroid-1','centroid-0']].to_numpy())
 		self.scat_markers.set_color(['k']*len(self.props))
 		self.scat_markers.set_facecolor([color_from_class(c) for c in self.props['class'].to_numpy()])
 		
-		self.ax_props.set_xlim(0.75*self.props[self.features_cb[0].currentText()].min(),1.05*self.props[self.features_cb[0].currentText()].max())
-		self.ax_props.set_ylim(0.75*self.props[self.features_cb[1].currentText()].min(),1.05*self.props[self.features_cb[1].currentText()].max())
+		self.ax_props.set_xlim(0.75*self.props[self.features_cb[1].currentText()].min(),1.05*self.props[self.features_cb[1].currentText()].max())
+		self.ax_props.set_ylim(0.75*self.props[self.features_cb[0].currentText()].min(),1.05*self.props[self.features_cb[0].currentText()].max())
 		self.propscanvas.canvas.draw_idle()
 		self.fcanvas.canvas.draw_idle()
 
@@ -681,7 +712,15 @@ class ThresholdConfigWizard(QMainWindow):
 				self.props.loc[self.selection,'class'] = 0
 			except Exception as e:
 				print(e)
-				print('query could not be applied')
+				print(self.props.columns)
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Warning)
+				msgBox.setText(f"The query could not be understood. No filtering was applied. {e}")
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Ok)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Ok:
+					return None
 
 		self.update_props_scatter()
 
@@ -720,17 +759,74 @@ class ThresholdConfigWizard(QMainWindow):
 						"marker_min_distance": self.min_dist,
 						"marker_footprint_size": self.footprint,
 						"feature_queries": [self.property_query_le.text()],
+						"equalize_reference": [self.equalize_option, self.frame_slider.value()],
 						}
 
 		print('The following instructions will be written: ', instructions)
 		self.instruction_file = QFileDialog.getSaveFileName(self, "Save File", self.exp_dir+f'configs/threshold_config_{self.mode}.json', '.json')[0]
-		json_object = json.dumps(instructions, indent=4)
-		with open(self.instruction_file, "w") as outfile:
-			outfile.write(json_object)
-		print("Configuration successfully written in ",self.instruction_file)
+		if self.instruction_file!='':
+			json_object = json.dumps(instructions, indent=4)
+			with open(self.instruction_file, "w") as outfile:
+				outfile.write(json_object)
+			print("Configuration successfully written in ",self.instruction_file)
 
-		self.parent.filename = self.instruction_file
-		self.parent.file_label.setText(self.instruction_file)
+			self.parent.filename = self.instruction_file
+			self.parent.file_label.setText(self.instruction_file[:16]+'...')
+			self.parent.file_label.setToolTip(self.instruction_file)
 
-		self.close()
+			self.close()
+		else:
+			print('The instruction file could not be written...')
+
+
+	def activate_histogram_equalizer(self):
+
+		if not self.equalize_option:
+			self.equalize_option = True
+			self.equalize_option_btn.setIcon(icon(MDI6.equalizer,color="#1f77b4"))
+			self.equalize_option_btn.setIconSize(QSize(20,20))
+		else:
+			self.equalize_option = False
+			self.equalize_option_btn.setIcon(icon(MDI6.equalizer,color="black"))
+			self.equalize_option_btn.setIconSize(QSize(20,20))
+
+	def load_previous_config(self):
+		self.previous_instruction_file = QFileDialog.getOpenFileName(self, "Load config", self.exp_dir+f'configs/threshold_config_{self.mode}.json', "JSON (*.json)")[0]
+		with open(self.previous_instruction_file, 'r') as f:
+			threshold_instructions = json.load(f)
+		
+		target_channel = threshold_instructions['target_channel']
+		index = self.channels_cb.findText(target_channel)
+		self.channels_cb.setCurrentIndex(index)
+
+		filters = threshold_instructions['filters']
+		items_to_add = [f[0]+'_filter' for f in filters]
+		self.filters_qlist.list_widget.addItems(items_to_add)
+		self.filters_qlist.items = filters
+
+		self.apply_filters_btn.click()
+
+		thresholds = threshold_instructions['thresholds']
+		self.threshold_slider.setValue(thresholds)
+
+		marker_footprint_size = threshold_instructions['marker_footprint_size']
+		self.footprint_slider.setValue(marker_footprint_size)
+
+		marker_min_dist = threshold_instructions['marker_min_distance']
+		self.min_dist_slider.setValue(marker_min_dist)
+
+		self.markers_btn.click()
+		self.watershed_btn.click()
+
+		feature_queries = threshold_instructions['feature_queries']
+		self.property_query_le.setText(feature_queries[0])
+		self.submit_query_btn.click()
+
+
+
+
+
+
+
+
 

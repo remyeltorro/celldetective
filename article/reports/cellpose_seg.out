@@ -1,0 +1,5 @@
+\BOOKMARK [1][-]{section.1}{Introduction}{}% 1
+\BOOKMARK [2][-]{subsection.1.1}{Data preparation}{section.1}% 2
+\BOOKMARK [3][-]{subsubsection.1.1.1}{Dataset splitting}{subsection.1.1}% 3
+\BOOKMARK [3][-]{subsubsection.1.1.2}{Train Cellpose model}{subsection.1.1}% 4
+\BOOKMARK [2][-]{subsection.1.2}{Quality control: selecting the best model}{section.1}% 5

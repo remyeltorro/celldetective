@@ -46,7 +46,8 @@
 	
 	If you use the \textit{--all\_channels} tag during training, it is important that when reloading the pretrained model, Cellpose reads the relevant channels. According to the source code, this mode is triggered when \textit{model\_type=None} in the CellposeModel instance and \textit{channels=None} in the eval function. This condition will trigger the automatic detection of the number of channels from the shape of the image to predict. Currently, setting \textit{channels=None} breaks Cellpose. We opened a \href{https://github.com/MouseLand/cellpose/issues/762}{request} to fix this bug. Otherwise, the eval method of CellposeModel triggers the eval method of the UnetModel. Replace channels=channels[i] if (len(channels)==len(x) and (isinstance(channels[i], list) or isinstance(channels[i], np.ndarray)) and len(channels[i])==2) else channels with channels.
 	
-	\par{}Update: in order to truly activate the \textit{--all\_channels} mode, one must also pass \textit{--pretrained\_model None} to not take \textit{cyto} as a starting point. The number of input channels should be automatically detected (I tested it on ADCC MCF7 nuclei data with 3 channels: BF, PI, H). The following line:  \textit{>>>> training network with 3 channel input <<<<} should be displayed. The model can then be reloaded as follows:
+	\par{}Update: in order to truly
+ activate the \textit{--all\_channels} mode, one must also pass \textit{--pretrained\_model None} to not take \textit{cyto} as a starting point. The number of input channels should be automatically detected (I tested it on ADCC MCF7 nuclei data with 3 channels: BF, PI, H). The following line:  \textit{>>>> training network with 3 channel input <<<<} should be displayed. The model can then be reloaded as follows:
 	
 	\begin{minted}{python}
 	model = CellposeModel(gpu=True, 

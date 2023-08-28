@@ -580,7 +580,9 @@ def interpolate_time_gaps(trajectories, column_labels={'track': "TRACK_ID", 'tim
 	trajectories = trajectories.groupby(column_labels['track'], group_keys=True).apply(lambda x: x.set_index(column_labels['time']).resample('1S').asfreq()).reset_index()
 	trajectories[[column_labels['x'], column_labels['y']]] = trajectories.groupby(column_labels['track'], group_keys=False)[[column_labels['x'], column_labels['y']]].apply(lambda x: x.interpolate(method='linear'))
 	trajectories.reset_index(drop=True, inplace=True)
-	trajectories[column_labels['time']] = trajectories[column_labels['time']].astype(int) / 10**9
+	trajectories[column_labels['time']] = trajectories[column_labels['time']].astype('int64').astype(float) / 10**9
+	#trajectories[column_labels['time']] = trajectories[column_labels['time']].astype('int64')
+	print(trajectories[column_labels['time']])
 	trajectories.sort_values(by=[column_labels['track'],column_labels['time']],inplace=True)
 	
 	return trajectories

@@ -154,8 +154,21 @@ class SignalAnnotator(QMainWindow):
 		# Cell signals
 		self.left_panel.addWidget(self.cell_fcanvas)
 
+		plot_buttons_hbox = QHBoxLayout()
+		plot_buttons_hbox.setContentsMargins(0,0,0,0)
+		self.normalize_features_btn = QPushButton('')
+		self.normalize_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
+		self.normalize_features_btn.setIconSize(QSize(25, 25))
+		self.normalize_features_btn.setFixedSize(QSize(30, 30))
+		self.normalize_features_btn.setShortcut(QKeySequence('n'))
+		self.normalize_features_btn.clicked.connect(self.normalize_features)
+		plot_buttons_hbox.addWidget(self.normalize_features_btn, alignment=Qt.AlignRight)
+		self.normalized_signals = False
+		self.left_panel.addLayout(plot_buttons_hbox)
+
 		signal_choice_vbox = QVBoxLayout()
-		signal_choice_vbox.setContentsMargins(30,30,30,50)
+		signal_choice_vbox.setContentsMargins(30,0,30,50)
 		for i in range(len(self.signal_choice_cb)):
 			
 			hlayout = QHBoxLayout()
@@ -191,6 +204,7 @@ class SignalAnnotator(QMainWindow):
 		self.last_frame_btn.setIcon(icon(MDI6.page_last,color="black"))
 		self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.last_frame_btn.setFixedSize(QSize(60, 60))
+		self.last_frame_btn.setIconSize(QSize(30, 30))		
 		animation_buttons_box.addWidget(self.last_frame_btn, 5, alignment=Qt.AlignRight)
 
 		self.stop_btn = QPushButton()
@@ -198,6 +212,7 @@ class SignalAnnotator(QMainWindow):
 		self.stop_btn.setIcon(icon(MDI6.stop,color="black"))
 		self.stop_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.stop_btn.setFixedSize(QSize(60, 60))
+		self.stop_btn.setIconSize(QSize(30, 30))
 		animation_buttons_box.addWidget(self.stop_btn,5, alignment=Qt.AlignRight)
 
 		self.start_btn = QPushButton()
@@ -205,6 +220,7 @@ class SignalAnnotator(QMainWindow):
 		self.start_btn.setIcon(icon(MDI6.play,color="black"))
 		self.start_btn.setFixedSize(QSize(60, 60))
 		self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.start_btn.setIconSize(QSize(30, 30))
 		animation_buttons_box.addWidget(self.start_btn,5, alignment=Qt.AlignRight)
 		self.start_btn.hide()
 
@@ -463,9 +479,9 @@ class SignalAnnotator(QMainWindow):
 					self.columns_to_rescale.remove(tr)
 				except:
 					print(f'column {tr} could not be found...')
+
 			x = self.df_tracks[self.columns_to_rescale].values
 			self.MinMaxScaler.fit(x)
-			print(self.MinMaxScaler.data_max_)
 
 			#self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
@@ -825,6 +841,10 @@ class SignalAnnotator(QMainWindow):
 		self.cell_info.setText(cell_selected+cell_class+cell_time)
 
 	def save_trajectories(self):
+
+		if self.normalized_signals:
+			self.normalize_features_btn.click()
+
 		self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks['class']>2].index)
 		self.df_tracks.to_csv(self.trajectories_path, index=False)
 		print('table saved.')
@@ -862,6 +882,9 @@ class SignalAnnotator(QMainWindow):
 		
 		auto_dataset_name = self.pos.split('/')[-4]+'_'+self.pos.split('/')[-2]+'.npy'
 
+		if self.normalized_signals:
+			self.normalize_features_btn.click()
+
 		training_set = []
 		cols = self.df_tracks.columns
 		tracks = np.unique(self.df_tracks["TRACK_ID"].to_numpy())
@@ -888,3 +911,22 @@ class SignalAnnotator(QMainWindow):
 				print(f'File successfully written in {pathsave}.')
 			except Exception as e:
 				print(f"Error {e}...")
+
+	def normalize_features(self):
+
+		x = self.df_tracks[self.columns_to_rescale].values
+
+		if not self.normalized_signals:
+			x = self.MinMaxScaler.transform(x)
+			self.df_tracks[self.columns_to_rescale] = x
+			self.plot_signals()
+			self.normalized_signals = True
+			self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="#1565c0"))
+			self.normalize_features_btn.setIconSize(QSize(25, 25))
+		else:
+			x = self.MinMaxScaler.inverse_transform(x)
+			self.df_tracks[self.columns_to_rescale] = x
+			self.plot_signals()
+			self.normalized_signals = False			
+			self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
+			self.normalize_features_btn.setIconSize(QSize(25, 25))

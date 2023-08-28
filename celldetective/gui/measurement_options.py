@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
@@ -32,6 +33,7 @@ class ConfigMeasurements(QMainWindow):
 		super().__init__()
 		self.parent = parent
 		self.setWindowTitle("Configure measurements")
+		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 		self.mode = self.parent.mode
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":

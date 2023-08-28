@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QDoubleValidator, QIntValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QIcon
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
@@ -33,6 +33,7 @@ class ConfigSignalModelTraining(QMainWindow):
 		super().__init__()
 		self.parent = parent
 		self.setWindowTitle("Train signal model")
+		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 		self.mode = self.parent.mode
 		self.exp_dir = self.parent.exp_dir
 		self.soft_path = get_software_location()

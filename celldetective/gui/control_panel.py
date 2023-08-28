@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QLabel, QWidget, QGridLayout, QFrame, QTabWidget, QVBoxLayout, QMessageBox
 from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
 from celldetective.utils import _extract_labels_from_config, ConfigSectionMap
 from celldetective.gui import ConfigEditor, ProcessPanel
@@ -20,6 +21,7 @@ class ControlPanel(QMainWindow):
 		if not self.exp_dir.endswith(os.sep):
 			self.exp_dir = self.exp_dir+os.sep
 		self.setWindowTitle("celldetective")
+		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 		self.parent = parent
 		center_window(self)
 

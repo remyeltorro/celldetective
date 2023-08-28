@@ -656,11 +656,11 @@ class SignalAnnotator(QMainWindow):
 	def closeEvent(self, event):
 
 		self.stop()
-		result = QMessageBox.question(self,
-					  "Confirm Exit...",
-					  "Are you sure you want to exit ?",
-					  QMessageBox.Yes| QMessageBox.No,
-					  )
+		# result = QMessageBox.question(self,
+		# 			  "Confirm Exit...",
+		# 			  "Are you sure you want to exit ?",
+		# 			  QMessageBox.Yes| QMessageBox.No,
+		# 			  )
 		del self.stack
 		gc.collect()
 

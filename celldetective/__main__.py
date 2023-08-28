@@ -8,6 +8,7 @@ from PyQt5.QtGui import QIcon
 from glob import glob
 from celldetective.gui import Styles, ControlPanel, ConfigNewExperiment
 from celldetective.gui.gui_utils import center_window
+from celldetective.utils import get_software_location
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
@@ -25,7 +26,10 @@ class AppInitWindow(QMainWindow):
 		self.init_styles()
 		self.setWindowTitle("celldetective")
 		print(os.getcwd())
-		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
+		self.soft_path = get_software_location()
+		print(self.soft_path)
+		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','mexican-hat.png'])))
+		print(os.sep.join([self.soft_path,'celldetective','icons','mexican-hat.png']))
 		center_window(self)
 
 		app = QApplication.instance()

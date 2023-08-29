@@ -122,10 +122,11 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		frames = group[column_labels['time']].to_numpy().astype(int)
 		for j,col in enumerate(selected_signals):
 			signal = group[col].to_numpy()
-			print(col, frames, len(frames), len(col))
 			signals[i,frames,j] = signal
 	
 	model = SignalDetectionModel(pretrained=complete_path)
+	print('signal shape: ', signals.shape)
+
 	classes = model.predict_class(signals)
 	times_recast = model.predict_time_of_interest(signals)
 
@@ -981,21 +982,23 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 
 
 		if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
+			print('red normalization')
 
 			min_percentile_dead, max_percentile_dead = percentile_dead
-			min_set = signal_set[:,0,k]
-			max_set = signal_set[:,-1,k]
-			min_fluo_dead = np.nanpercentile(min_set[np.nonzero(min_set)], min_percentile_dead) # 5 % on initial frame where barely any dead are expected
-			max_fluo_dead = np.nanpercentile(max_set[np.nonzero(max_set)], max_percentile_dead) # 99th percentile on last fluo frame
+			min_set = signal_set[:,:5,k]
+			max_set = signal_set[:,-5:,k]
+			min_fluo_dead = np.nanpercentile(min_set[min_set!=0.], min_percentile_dead) # 5 % on initial frame where barely any dead are expected
+			max_fluo_dead = np.nanpercentile(max_set[max_set!=0.], max_percentile_dead) # 99th percentile on last fluo frame
 			signal_set[:,:,k] -= min_fluo_dead
 			signal_set[:,:,k] /= (max_fluo_dead - min_fluo_dead)
 
 		elif ("live_nuclei_channel" in channel and 'haralick' not in channel) or ("BLUE" in channel):
 		
+			print('blue normalization')
 			min_percentile_alive, max_percentile_alive = percentile_alive
-			values = signal_set[:,0,k]
-			min_fluo_alive = np.nanpercentile(values[np.nonzero(values)], min_percentile_alive) # safe 0.5% of Hoescht on initial frame
-			max_fluo_alive = np.nanpercentile(values[np.nonzero(values)], max_percentile_alive)
+			values = signal_set[:,:5,k]
+			min_fluo_alive = np.nanpercentile(values[values!=0.], min_percentile_alive) # safe 0.5% of Hoescht on initial frame
+			max_fluo_alive = np.nanpercentile(values[values!=0.], max_percentile_alive)
 			signal_set[:,:,k] -= min_fluo_alive
 			signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
 

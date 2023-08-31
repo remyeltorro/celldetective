@@ -26,6 +26,7 @@ from natsort import natsorted
 from glob import glob
 import shutil
 import random
+from celldetective.utils import color_from_status, color_from_class
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
@@ -112,13 +113,13 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		assert len(selected_signals)==len(required_signals),f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
 
 	print(f'The following channels will be passed to the model: {selected_signals}')
-	trajectories = clean_trajectories(trajectories, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels)
+	trajectories_clean = clean_trajectories(trajectories, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels)
 
-	max_signal_size = int(trajectories[column_labels['time']].max()) + 2
-	tracks = trajectories[column_labels['track']].unique()
+	max_signal_size = int(trajectories_clean[column_labels['time']].max()) + 2
+	tracks = trajectories_clean[column_labels['track']].unique()
 	signals = np.zeros((len(tracks),max_signal_size, len(selected_signals)))
 
-	for i,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
+	for i,(tid,group) in enumerate(trajectories_clean.groupby(column_labels['track'])):
 		frames = group[column_labels['time']].to_numpy().astype(int)
 		for j,col in enumerate(selected_signals):
 			signal = group[col].to_numpy()
@@ -135,6 +136,26 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		trajectories.loc[indices,'class'] = classes[i]
 		trajectories.loc[indices,'t0'] = times_recast[i]
 	print('Done.')
+
+	for tid, group in trajectories.groupby('TRACK_ID'):
+		
+		indices = group.index
+		t0 = group['t0'].to_numpy()[0]
+		cclass = group['class'].to_numpy()[0]
+		timeline = group['FRAME'].to_numpy()
+		status = np.zeros_like(timeline)
+		if t0 > 0:
+			status[timeline>=t0] = 1.
+		if cclass==2:
+			status[:] = 2
+		if cclass>2:
+			status[:] = 42
+		status_color = [color_from_status(s) for s in status]
+		class_color = [color_from_class(cclass) for i in range(len(status))]
+
+		trajectories.loc[indices, 'status'] = status
+		trajectories.loc[indices, 'status_color'] = status_color
+		trajectories.loc[indices, 'class_color'] = class_color
 
 	if plot_outcome:
 		fig,ax = plt.subplots(1,len(selected_signals), figsize=(10,5))

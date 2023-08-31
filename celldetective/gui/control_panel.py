@@ -419,4 +419,19 @@ class ControlPanel(QMainWindow):
 				else:
 					self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
 
+				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv'])):
+					self.ProcessEffectors.check_signals_btn.setEnabled(True)
+					self.ProcessEffectors.signal_analysis_action.setEnabled(True)
+
+				else:
+					self.ProcessEffectors.check_signals_btn.setEnabled(False)
+					self.ProcessEffectors.signal_analysis_action.setEnabled(False)
+
+				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_targets.csv'])):
+					self.ProcessTargets.check_signals_btn.setEnabled(True)
+					self.ProcessTargets.signal_analysis_action.setEnabled(True)
+
+				else:
+					self.ProcessTargets.check_signals_btn.setEnabled(False)
+					self.ProcessTargets.signal_analysis_action.setEnabled(False)
 

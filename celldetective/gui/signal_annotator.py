@@ -233,10 +233,11 @@ class SignalAnnotator(QMainWindow):
 			contrast_hbox = QHBoxLayout()
 			contrast_hbox.setContentsMargins(150,5,150,5)
 			self.contrast_slider = QLabeledDoubleRangeSlider()
-			self.contrast_slider.setSingleStep(0.00001)
-			self.contrast_slider.setTickInterval(0.00001)		
+			# self.contrast_slider.setSingleStep(0.001)
+			# self.contrast_slider.setTickInterval(0.001)		
 			self.contrast_slider.setOrientation(1)
-			self.contrast_slider.setRange(np.amin(self.stack),np.amax(self.stack))
+			print('range: ', [np.nanpercentile(self.stack.flatten(), 0.001), np.nanpercentile(self.stack.flatten(), 99.999)])
+			self.contrast_slider.setRange(*[np.nanpercentile(self.stack.flatten(), 0.001), np.nanpercentile(self.stack.flatten(), 99.999)])
 			self.contrast_slider.setValue([np.percentile(self.stack.flatten(), 1), np.percentile(self.stack.flatten(), 99.99)])
 			self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
 			contrast_hbox.addWidget(QLabel('contrast: '))
@@ -775,20 +776,23 @@ class SignalAnnotator(QMainWindow):
 			
 	def configure_ylims(self):
 
-		min_values = []
-		max_values = []
-		for i in range(len(self.signal_choice_cb)):
-			signal = self.signal_choice_cb[i].currentText()
-			if signal=='--':
-				continue
-			else:
-				maxx = np.nanpercentile(self.df_tracks.loc[:,signal].to_numpy().flatten(),99)
-				minn = np.nanpercentile(self.df_tracks.loc[:,signal].to_numpy().flatten(),1)
-				min_values.append(minn)
-				max_values.append(maxx)
+		try:
+			min_values = []
+			max_values = []
+			for i in range(len(self.signal_choice_cb)):
+				signal = self.signal_choice_cb[i].currentText()
+				if signal=='--':
+					continue
+				else:
+					maxx = np.nanpercentile(self.df_tracks.loc[:,signal].to_numpy().flatten(),99)
+					minn = np.nanpercentile(self.df_tracks.loc[:,signal].to_numpy().flatten(),1)
+					min_values.append(minn)
+					max_values.append(maxx)
 
-		if len(min_values)>0:
-			self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
+			if len(min_values)>0:
+				self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
+		except Exception as e:
+			print(e)
 
 	def draw_frame(self, framedata):
 		

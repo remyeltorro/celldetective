@@ -694,7 +694,7 @@ def remove_trajectory_measurements(trajectories, column_labels):
 	tracks = trajectories.copy()
 
 	columns_to_keep = [column_labels['track'], column_labels['time'], column_labels['x'], column_labels['y'],column_labels['x']+'_um', column_labels['y']+'_um', 'class_id', 
-					  't', 'state', 'generation', 'root', 'parent', 'ID']
+					  't', 'state', 'generation', 'root', 'parent', 'ID', 't0', 'class', 'status', 'class_color', 'status_color']
 	cols = tracks.columns
 	for c in columns_to_keep:
 		if c not in cols:
@@ -704,3 +704,46 @@ def remove_trajectory_measurements(trajectories, column_labels):
 	tracks = tracks[keep]	
 
 	return tracks
+
+
+def color_from_status(status, recently_modified=False):
+	
+	if not recently_modified:
+		if status==0:
+			return 'tab:blue'
+		elif status==1:
+			return 'tab:red'
+		elif status==2:
+			return 'yellow'
+		else:
+			return 'k'
+	else:
+		if status==0:
+			return 'tab:cyan'
+		elif status==1:
+			return 'tab:orange'
+		elif status==2:
+			return 'tab:olive'
+		else:
+			return 'k'
+
+def color_from_class(cclass, recently_modified=False):
+
+	if not recently_modified:
+		if cclass==0:
+			return 'tab:red'
+		elif cclass==1:
+			return 'tab:blue'
+		elif cclass==2:
+			return 'yellow'
+		else:
+			return 'k'
+	else:
+		if cclass==0:
+			return 'tab:orange'
+		elif cclass==1:
+			return 'tab:cyan'
+		elif cclass==2:
+			return 'tab:olive'
+		else:
+			return 'k'		

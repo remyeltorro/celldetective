@@ -340,7 +340,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.frame_slider = QLabeledSlider()
 		self.frame_slider.setSingleStep(1)
 		self.frame_slider.setOrientation(1)
-		self.frame_slider.setRange(0,self.len_movie)
+		self.frame_slider.setRange(0,self.len_movie - 1)
 		self.frame_slider.setValue(0)
 		self.frame_slider.valueChanged.connect(self.reload_frame)	
 		frame_hbox.addWidget(QLabel('frame: '), 10)
@@ -506,9 +506,12 @@ class ThresholdConfigWizard(QMainWindow):
 		t = int(self.frame_slider.value())
 		idx = t*self.nbr_channels + self.current_channel
 		self.img = load_frames(idx, self.stack_path, normalize_input=False)
-		self.refresh_imshow()
-		self.update_histogram()
-		#self.redo_histogram()
+		if self.img is not None:
+			self.refresh_imshow()
+			self.update_histogram()
+			#self.redo_histogram()
+		else:
+			print('Frame could not be loaded...')
 
 	# def redo_histogram(self):
 	# 	self.ax_hist.clear()
@@ -801,6 +804,7 @@ class ThresholdConfigWizard(QMainWindow):
 
 		filters = threshold_instructions['filters']
 		items_to_add = [f[0]+'_filter' for f in filters]
+		self.filters_qlist.list_widget.clear()
 		self.filters_qlist.list_widget.addItems(items_to_add)
 		self.filters_qlist.items = filters
 

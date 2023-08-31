@@ -869,7 +869,9 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 	try:
 		frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
 	except Exception as e:
-		print(f'Error in loading the frame {e}. Please check that the experiment channel information is consistent with the movie being read.')
+		print(f'Error in loading the frame {img_nums} {e}. Please check that the experiment channel information is consistent with the movie being read.')
+		return None
+
 	if frames.ndim==3:
 		# Systematically move channel axis to the end
 		channel_axis = np.argmin(frames.shape)
@@ -880,6 +882,14 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 		frames = normalize_multichannel(frames, **normalize_kwargs)
 	if scale is not None:
 		frames = zoom(frames, [scale,scale,1], order=3)
+	
+	# add a fake pixel to prevent auto normalization errors on images that are uniform
+	# to revisit
+	for k in range(frames.shape[2]):
+		unique_values = np.unique(frames[:,:,k])
+		if len(unique_values)==1:
+			frames[0,0,k] += 1
+
 	return frames.astype(dtype)
 
 

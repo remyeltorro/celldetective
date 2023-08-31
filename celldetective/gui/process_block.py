@@ -14,6 +14,7 @@ import numpy as np
 from glob import glob
 from natsort import natsorted
 import os
+import pandas as pd
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -397,6 +398,17 @@ class ProcessPanel(QFrame):
 			self.threshold_config = self.threshold_config_effectors
 		
 		loop_iter=0
+
+		if self.parent.position_list.currentText()=="*":
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Question)
+			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+
 		for w_idx in self.well_index:
 
 			pos = self.parent.positions[w_idx]
@@ -421,6 +433,17 @@ class ProcessPanel(QFrame):
 					os.mkdir(self.pos + 'output/tables/')
 
 				if self.segment_action.isChecked():
+					
+					if len(glob(os.sep.join([self.pos, f'labels_{self.mode}','*.tif'])))>0 and self.parent.position_list.currentText()!="*":
+						msgBox = QMessageBox()
+						msgBox.setIcon(QMessageBox.Question)
+						msgBox.setText("Labels have already been produced for this position. Do you want to segment again?")
+						msgBox.setWindowTitle("Info")
+						msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+						returnValue = msgBox.exec()
+						if returnValue == QMessageBox.No:
+							return None
+
 					if (self.seg_model_list.currentText()=="Threshold"):
 						if self.threshold_config is None:
 							msgBox = QMessageBox()
@@ -438,12 +461,39 @@ class ProcessPanel(QFrame):
 						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=True)
 
 				if self.track_action.isChecked():
+					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent.position_list.currentText()!="*":
+						msgBox = QMessageBox()
+						msgBox.setIcon(QMessageBox.Question)
+						msgBox.setText("A trajectory set already exists. Previously annotated data for\nthis position will be lost. Do you want to proceed?")
+						msgBox.setWindowTitle("Info")
+						msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+						returnValue = msgBox.exec()
+						if returnValue == QMessageBox.No:
+							return None
 					track_at_position(self.pos, self.mode)
 
 				if self.measure_action.isChecked():
 					measure_at_position(self.pos, self.mode)
 
-				if self.signal_analysis_action.isChecked():
+				table = os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])
+				if self.signal_analysis_action.isChecked() and os.path.exists(table):
+					print('table exists')
+					table = pd.read_csv(table)
+					cols = list(table.columns)
+					print(table, cols)
+					if 'class_color' in cols:
+						print(cols, 'class_color in cols')
+						colors = list(table['class_color'].to_numpy())
+						if 'tab:orange' in colors or 'tab:cyan' in colors:
+							if self.parent.position_list.currentText()!="*":
+								msgBox = QMessageBox()
+								msgBox.setIcon(QMessageBox.Question)
+								msgBox.setText("The signals of the cells in the position appear to have been annotated... Do you want to proceed?")
+								msgBox.setWindowTitle("Info")
+								msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+								returnValue = msgBox.exec()
+								if returnValue == QMessageBox.No:
+									return None
 					analyze_signals_at_position(self.pos, self.signal_models_list.currentText(), self.mode)
 
 

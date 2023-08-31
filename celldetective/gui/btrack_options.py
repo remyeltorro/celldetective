@@ -30,11 +30,11 @@ class ConfigTracking(QMainWindow):
 		self.mode = self.parent.mode
 		self.exp_dir = self.parent.exp_dir
 		if self.mode=="targets":
-			self.config_name = "configs/btrack_config_targets.json"
-			self.track_instructions_write_path = self.parent.exp_dir + "configs/tracking_instructions_targets.json"
+			self.config_name = os.sep.join(["configs", "btrack_config_targets.json"])
+			self.track_instructions_write_path = self.parent.exp_dir + os.sep.join(["configs","tracking_instructions_targets.json"])
 		elif self.mode=="effectors":
-			self.config_name = "configs/btrack_config_effectors.json"
-			self.track_instructions_write_path = self.parent.exp_dir + "configs/tracking_instructions_effectors.json"
+			self.config_name = os.sep.join(["configs","btrack_config_effectors.json"])
+			self.track_instructions_write_path = self.parent.exp_dir + os.sep.join(["configs", "tracking_instructions_effectors.json"])
 		self.soft_path = get_software_location()
 		
 		exp_config = self.exp_dir +"config.ini"
@@ -516,7 +516,8 @@ class ConfigTracking(QMainWindow):
 
 		self.file_dialog = QFileDialog()
 		try:
-			modelpath = self.soft_path+"/celldetective/models/tracking_configs/"
+			modelpath = os.sep.join([self.soft_path, "celldetective","models","tracking_configs"]) + os.sep
+			print("Track config path: ", modelpath)
 			self.filename = self.file_dialog.getOpenFileName(None, "Load config", modelpath, "json files (*.json)")[0]
 			if self.filename!=self.config_path:
 				copyfile(self.filename, self.config_path)
@@ -816,7 +817,7 @@ class ConfigTracking(QMainWindow):
 		Load the first frame of the first movie found in the experiment folder as a sample.
 		"""
 
-		movies = glob(self.parent.parent.exp_dir + f"*/*/movie/{self.parent.parent.movie_prefix}*.tif")
+		movies = glob(self.parent.parent.exp_dir + os.sep.join(["*","*","movie",self.parent.parent.movie_prefix+"*.tif"]))
 		if len(movies)==0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)

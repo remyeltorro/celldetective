@@ -102,6 +102,7 @@ else:
 	features = ['area', 'intensity_mean']
 	border_distances = None
 	haralick_options = None
+	clear_previous = False
 	intensity_measurement_radii = 10
 	isotropic_operations = ['mean']
 

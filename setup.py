@@ -10,7 +10,7 @@ setup(name='celldetective',
       #packages=['adccfactory'],
       packages=setuptools.find_packages(),
       zip_safe=False,
-      package_data={'celldetective': ['*','scripts/*','gui/*','models/*/*/*','models/*','icons/*']},
+      package_data={'celldetective': ['*','scripts/*','gui/*','models/*/*/*','models/*','models/*/*','icons/*']},
       entry_points = {
         'console_scripts': [
           'celldetective = celldetective.__main__:main']

@@ -399,6 +399,16 @@ class ControlPanel(QMainWindow):
 			for p in panels:
 				p.check_seg_btn.setEnabled(False)
 				p.check_tracking_result_btn.setEnabled(False)
+			self.ProcessTargets.view_tab_btn.setEnabled(False)
+			self.ProcessEffectors.view_tab_btn.setEnabled(False)
+			self.ProcessTargets.check_seg_btn.setEnabled(False)
+			self.ProcessEffectors.check_seg_btn.setEnabled(False)
+			self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
+			self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
+			#self.ProcessTargets.signal_analysis_action.setEnabled(False)
+			#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
+			self.ProcessTargets.check_signals_btn.setEnabled(False)
+			self.ProcessEffectors.check_signals_btn.setEnabled(False)
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()
@@ -421,17 +431,21 @@ class ControlPanel(QMainWindow):
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv'])):
 					self.ProcessEffectors.check_signals_btn.setEnabled(True)
-					self.ProcessEffectors.signal_analysis_action.setEnabled(True)
+					#self.ProcessEffectors.signal_analysis_action.setEnabled(True)
+					self.ProcessEffectors.view_tab_btn.setEnabled(True)
 
 				else:
 					self.ProcessEffectors.check_signals_btn.setEnabled(False)
-					self.ProcessEffectors.signal_analysis_action.setEnabled(False)
+					#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
+					self.ProcessEffectors.view_tab_btn.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_targets.csv'])):
 					self.ProcessTargets.check_signals_btn.setEnabled(True)
-					self.ProcessTargets.signal_analysis_action.setEnabled(True)
+					#self.ProcessTargets.signal_analysis_action.setEnabled(True)
+					self.ProcessTargets.view_tab_btn.setEnabled(True)
 
 				else:
 					self.ProcessTargets.check_signals_btn.setEnabled(False)
-					self.ProcessTargets.signal_analysis_action.setEnabled(False)
+					#self.ProcessTargets.signal_analysis_action.setEnabled(False)
+					self.ProcessTargets.view_tab_btn.setEnabled(False)
 

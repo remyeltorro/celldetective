@@ -4,7 +4,7 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
-from celldetective.gui import SegmentationModelLoader, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator
+from celldetective.gui import SegmentationModelLoader, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
@@ -90,10 +90,20 @@ class ProcessPanel(QFrame):
 		self.generate_signal_analysis_options()
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
+		self.view_tab_btn = QPushButton("View table")
+		self.view_tab_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.view_tab_btn.clicked.connect(self.view_table_ui)
+		self.view_tab_btn.setToolTip('poop twice a day for a healthy gut')
+		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
+		self.view_tab_btn.setIconSize(QSize(20, 20))
+		self.view_tab_btn.setEnabled(False)
+		self.grid_contents.addWidget(self.view_tab_btn, 10, 0, 1, 4)
+
+		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
 		self.submit_btn = QPushButton("Submit")
 		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
 		self.submit_btn.clicked.connect(self.process_population)
-		self.grid_contents.addWidget(self.submit_btn, 10, 0, 1, 4)
+		self.grid_contents.addWidget(self.submit_btn, 11, 0, 1, 4)
 
 	def generate_measure_options(self):
 		
@@ -195,14 +205,14 @@ class ProcessPanel(QFrame):
 		grid_track.addWidget(self.track_action, 80)
 		#self.to_disable.append(self.track_action_tc)
 
-		self.show_track_table_btn = QPushButton()
-		self.show_track_table_btn.setIcon(icon(MDI6.table,color="black"))
-		self.show_track_table_btn.setIconSize(QSize(20, 20))
-		self.show_track_table_btn.setToolTip("Show trajectories table.")
-		self.show_track_table_btn.setStyleSheet(self.parent.parent.button_select_all)
-		#self.show_track_table_btn.clicked.connect(self.display_trajectory_table)
-		self.show_track_table_btn.setEnabled(False)
-		grid_track.addWidget(self.show_track_table_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
+		# self.show_track_table_btn = QPushButton()
+		# self.show_track_table_btn.setIcon(icon(MDI6.table,color="black"))
+		# self.show_track_table_btn.setIconSize(QSize(20, 20))
+		# self.show_track_table_btn.setToolTip("Show trajectories table.")
+		# self.show_track_table_btn.setStyleSheet(self.parent.parent.button_select_all)
+		# #self.show_track_table_btn.clicked.connect(self.display_trajectory_table)
+		# self.show_track_table_btn.setEnabled(False)
+		# grid_track.addWidget(self.show_track_table_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
 
 		self.check_tracking_result_btn = QPushButton()
 		self.check_tracking_result_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
@@ -507,3 +517,17 @@ class ProcessPanel(QFrame):
 
 	def open_napari_tracking(self):
 		control_tracking_btrack(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode)
+
+	def view_table_ui(self):
+		print('view table')
+
+		test = self.parent.locate_selected_position()
+		if test:
+			tab_path = os.sep.join([self.parent.pos,"output","tables",f"trajectories_{self.mode}.csv"])
+			print(tab_path)
+			if os.path.exists(tab_path):
+				trajectories = pd.read_csv(tab_path)
+				self.tab_ui = TableUI(trajectories, f"Tracks {self.parent.position_list.currentText()}")
+				self.tab_ui.show()
+		else:
+			print(test, 'test failed')

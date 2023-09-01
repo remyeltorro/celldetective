@@ -14,16 +14,10 @@ If you want to run the latest development version, you can clone the repository 
 
 .. code-block:: bash
 
-    :linenos:
-
-    # This code block uses bash syntax highlighting
-
-    # Also, a code-block has args for line numbers,
-
-    # highlighting lines, and captions!
     # creates "celldetective" folder
     git clone git://github.com/remyeltorro/celldetective.git
     cd celldetective
+
     # install the celldetective package in editable/development mode
     pip install -e .
 

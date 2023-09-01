@@ -21,6 +21,12 @@ If you want to run the latest development version, you can clone the repository 
     # install the celldetective package in editable/development mode
     pip install -e .
 
+To run the latest development version without cloning the repository, you can also use this line:
+
+.. code-block:: bash
+
+    pip install git+https//github.com/remyeltorro/celldetective.git
+
 Read the tutorial here:
 
 https://celldetective.readthedocs.io/

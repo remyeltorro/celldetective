@@ -93,6 +93,8 @@ class FilterChoice(QWidget):
 						  'variance_filter': {'size': 4},
 						  'std_filter': {'size': 4},
 						  'laplace_filter': None,
+						  'abs_filter': None,
+						  'subtract_filter': {'value': 1},
 						  'dog_filter': {'sigma_low': 0.8, 'sigma_high': 1.6},
 						  'log_filter': {'sigma': 2},
 						  'tophat_filter': {'size': 4, 'connectivity': 4}

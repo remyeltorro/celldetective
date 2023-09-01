@@ -18,6 +18,13 @@ def minimum_filter(img, size, *kwargs):
 def percentile_filter(img, percentile, size, *kwargs):
 	return snd.percentile_filter(img.astype(float), percentile, size, *kwargs)
 
+def subtract_filter(img, value, *kwargs):
+	return img.astype(float) - value
+
+def abs_filter(img, *kwargs):
+	return np.abs(img)
+
+
 def variance_filter(img, size):
 
 	size = int(size)

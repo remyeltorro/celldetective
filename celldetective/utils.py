@@ -687,7 +687,7 @@ def extract_experiment_channels(config):
 	return channel_names, channel_indices
 
 def get_software_location():
-	return os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]
+	return rf"{os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]}"
 
 def remove_trajectory_measurements(trajectories, column_labels):
 

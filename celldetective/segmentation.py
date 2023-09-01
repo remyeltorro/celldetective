@@ -379,7 +379,6 @@ def filter_image(img, filters=None):
 
 	for f in filters:
 		func = eval(f[0]+'_filter')
-		print(f, f[0], f[1:])
 		img = func(img, *f[1:])	
 	return img
 

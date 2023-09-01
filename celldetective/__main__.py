@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
-
 import sys
+from PyQt5.QtWidgets import QApplication, QSplashScreen, QMainWindow
+from PyQt5.QtGui import QPixmap
 import os
-from PyQt5.QtWidgets import QMainWindow, QApplication,QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from glob import glob
-from celldetective.gui import Styles, ControlPanel, ConfigNewExperiment
-from celldetective.gui.gui_utils import center_window
 from celldetective.utils import get_software_location
-from superqt.fonticon import icon
-from fonticon_mdi6 import MDI6
-import gc
+from PyQt5.QtCore import QEventLoop
 
 class AppInitWindow(QMainWindow):
 
@@ -19,9 +12,10 @@ class AppInitWindow(QMainWindow):
 	Initial window to set the experiment folder or create a new one.
 	"""
 
-	def __init__(self):
+	def __init__(self, parent=None):
 		super().__init__()
 
+		self.parent = parent
 		self.Styles = Styles()
 		self.init_styles()
 		self.setWindowTitle("celldetective")
@@ -31,6 +25,8 @@ class AppInitWindow(QMainWindow):
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','mexican-hat.png'])))
 		print(os.sep.join([self.soft_path,'celldetective','icons','mexican-hat.png']))
 		center_window(self)
+		self._createActions()
+		self._createMenuBar()
 
 		app = QApplication.instance()
 		self.screen = app.primaryScreen()
@@ -54,7 +50,7 @@ class AppInitWindow(QMainWindow):
 		self.experiment_path_selection.setAlignment(Qt.AlignLeft)	
 		self.experiment_path_selection.setEnabled(True)
 		self.experiment_path_selection.setDragEnabled(True)
-		self.experiment_path_selection.setFixedWidth(400)
+		self.experiment_path_selection.setFixedWidth(430)
 		self.experiment_path_selection.textChanged[str].connect(self.check_path_and_enable_opening)
 		self.foldername = os.getcwd()
 		self.experiment_path_selection.setPlaceholderText('/path/to/experiment/folder/')
@@ -66,6 +62,43 @@ class AppInitWindow(QMainWindow):
 		self.browse_button.setIcon(icon(MDI6.folder, color="white"))
 		self.locate_exp_layout.addWidget(self.browse_button, 10)
 		self.vertical_layout.addLayout(self.locate_exp_layout)
+
+
+	def _createMenuBar(self):
+		menuBar = self.menuBar()
+		# Creating menus using a QMenu object
+
+		fileMenu = QMenu("File", self)
+		fileMenu.addAction(self.newExpAction)
+		fileMenu.addSeparator()
+		fileMenu.addAction(self.exitAction)
+		menuBar.addMenu(fileMenu)
+
+		helpMenu = QMenu("Help", self)
+		helpMenu.addAction(self.DocumentationAction)
+		helpMenu.addAction(self.SoftwareAction)
+		helpMenu.addSeparator()
+		helpMenu.addAction(self.AboutAction)
+		menuBar.addMenu(helpMenu)
+
+		#editMenu = menuBar.addMenu("&Edit")
+		#helpMenu = menuBar.addMenu("&Help")
+
+	def _createActions(self):
+		# Creating action using the first constructor
+		#self.newAction = QAction(self)
+		#self.newAction.setText("&New")
+		# Creating actions using the second constructor
+		self.newExpAction = QAction('New', self)
+		self.exitAction = QAction('Exit', self)
+
+		self.DocumentationAction = QAction("Documentation", self)
+		self.SoftwareAction = QAction("Software", self) #1st arg icon(MDI6.information)
+		self.AboutAction = QAction("About celldetective", self)
+
+		#self.DocumentationAction.triggered.connect(self.load_previous_config)
+		self.newExpAction.triggered.connect(self.create_new_experiment)
+		self.exitAction.triggered.connect(self.close)
 
 	def create_buttons_hbox(self):
 
@@ -187,12 +220,36 @@ class AppInitWindow(QMainWindow):
 		gc.collect()
 
 if __name__ == "__main__":
+
 	# import ctypes
 	# myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
 	# ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+	splash=True
 
-	
 	App = QApplication(sys.argv)
+	#App.setWindowIcon(QIcon(os.sep.join([get_software_location(),'celldetective','icons','mexican-hat.png'])))
 	App.setStyle("Fusion")
-	window = AppInitWindow()
+
+	if splash:
+		splash_pix = QPixmap(os.sep.join([get_software_location(),'celldetective','icons','splash.png']))
+		splash = QSplashScreen(splash_pix)
+		splash.setMask(splash_pix.mask())
+		splash.show()
+		App.processEvents(QEventLoop.AllEvents, 300)
+
+	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
+	from PyQt5.QtCore import Qt
+	from PyQt5.QtGui import QIcon
+	from glob import glob
+	from superqt.fonticon import icon
+	from fonticon_mdi6 import MDI6
+	import gc
+	from celldetective.gui import Styles, ControlPanel, ConfigNewExperiment
+	from celldetective.gui.gui_utils import center_window
+
+	window = AppInitWindow(App)
+
+	if splash:
+		splash.finish(window)
+
 	sys.exit(App.exec())

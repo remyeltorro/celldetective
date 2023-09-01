@@ -8,6 +8,7 @@ from fonticon_mdi6 import MDI6
 from configparser import ConfigParser
 import os
 from shutil import copyfile
+import time
 
 class ConfigNewExperiment(QMainWindow):
 

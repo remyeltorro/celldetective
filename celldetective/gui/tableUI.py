@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu
+from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu, QLineEdit, QHBoxLayout, QWidget, QPushButton
 from PyQt5.QtCore import Qt, QAbstractTableModel
 import pandas as pd
 import matplotlib.pyplot as plt
-from celldetective.gui.gui_utils import FigureCanvas
+from celldetective.gui.gui_utils import FigureCanvas, center_window
 import numpy as np
 
 class PandasModel(QAbstractTableModel):
@@ -29,6 +29,36 @@ class PandasModel(QAbstractTableModel):
 		return None
 
 
+class QueryWidget(QWidget):
+
+	def __init__(self, parent):
+
+		super().__init__()
+		self.parent = parent
+		self.setWindowTitle("Filter table")
+		# Create the QComboBox and add some items
+		center_window(self)
+
+		
+		layout = QHBoxLayout(self)
+		layout.setContentsMargins(30,30,30,30)
+		self.query_le = QLineEdit()
+		layout.addWidget(self.query_le, 70)
+
+		self.submit_btn = QPushButton('submit')
+		self.submit_btn.clicked.connect(self.filter_table)
+		layout.addWidget(self.submit_btn, 30)
+
+	def filter_table(self):
+		try:
+			tab = self.parent.data.query(self.query_le.text())
+			self.subtable = TableUI(tab,self.query_le.text(), plot_mode="plot_track_signals")
+			self.subtable.show()
+			self.close()
+		except Exception as e:
+			print(e)
+			return None
+
 
 class TableUI(QMainWindow):
 	def __init__(self, data, title, plot_mode="plot_track_signals", *args, **kwargs):
@@ -37,6 +67,7 @@ class TableUI(QMainWindow):
 
 		self.setWindowTitle(title)
 		self.setGeometry(100,100,1000,400)
+		center_window(self)
 		self.title = title
 		self.plot_mode = plot_mode
 		self.numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
@@ -75,6 +106,10 @@ class TableUI(QMainWindow):
 			self.groupby_time_action.setShortcut("Ctrl+t")
 			self.fileMenu.addAction(self.groupby_time_action)
 
+			self.query_action = QAction('Query...', self)
+			self.query_action.triggered.connect(self.perform_query)
+			self.fileMenu.addAction(self.query_action)
+
 	def groupby_time_table(self):
 
 		"""
@@ -89,6 +124,23 @@ class TableUI(QMainWindow):
 		timeseries["timeline"] = timeseries.index
 		self.subtable = TableUI(timeseries,"Group by frames", plot_mode="plot_timeseries")
 		self.subtable.show()
+
+	def perform_query(self):
+
+		"""
+		
+		Perform a time average across each track for all features
+
+		"""
+		self.query_widget = QueryWidget(self)
+		self.query_widget.show()
+
+		# num_df = self.data.select_dtypes(include=self.numerics)
+
+		# timeseries = num_df.groupby("FRAME").mean().copy()
+		# timeseries["timeline"] = timeseries.index
+		# self.subtable = TableUI(timeseries,"Group by frames", plot_mode="plot_timeseries")
+		# self.subtable.show()
 
 
 	# def groupby_track_table(self):

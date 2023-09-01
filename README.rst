@@ -1,8 +1,11 @@
 CellDetective
 =============
 
-This GitHub template includes fictional Python library
-with some basic Sphinx docs.
+Celldetective is a package and software for single cell detection and measurements with Python.
+
+- **Documentation:** https://celldetective.readthedocs.io
+- **Source code:** https://github.com/remyeltorro/celldetective
+- **Bug reports:** https://github.com/remyeltorro/celldetective/issues
 
 Installation
 ============

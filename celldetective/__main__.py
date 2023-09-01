@@ -196,7 +196,10 @@ class AppInitWindow(QMainWindow):
 		"""
 
 		self.foldername = str(QFileDialog.getExistingDirectory(self, 'Select directory'))
-		self.experiment_path_selection.setText(self.foldername)
+		if self.foldername!='':
+			self.experiment_path_selection.setText(self.foldername)
+		else:
+			return None
 		if not os.path.exists(self.foldername+"/config.ini"):
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
@@ -205,6 +208,7 @@ class AppInitWindow(QMainWindow):
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Ok:
+				self.experiment_path_selection.setText('')
 				return None
 	
 	def closeEvent(self, event):

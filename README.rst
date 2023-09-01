@@ -10,7 +10,7 @@ Installation
 Via GitHub
 ----------
 
-If you want to run the latest development version, you can clone the repository to your local machine and install vispy in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
+If you want to run the latest development version, you can clone the repository to your local machine and install celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
 
 .. code-block:: bash
 

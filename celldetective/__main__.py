@@ -100,6 +100,13 @@ class AppInitWindow(QMainWindow):
 		self.newExpAction.triggered.connect(self.create_new_experiment)
 		self.exitAction.triggered.connect(self.close)
 
+		self.DocumentationAction.triggered.connect(self.open_documentation)
+
+	def open_documentation(self):
+		doc_url = QUrl('https://celldetective.readthedocs.io/')
+		QDesktopServices.openUrl(doc_url)
+
+
 	def create_buttons_hbox(self):
 
 		self.buttons_layout = QHBoxLayout()
@@ -238,8 +245,8 @@ if __name__ == "__main__":
 		App.processEvents(QEventLoop.AllEvents, 300)
 
 	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
-	from PyQt5.QtCore import Qt
-	from PyQt5.QtGui import QIcon
+	from PyQt5.QtCore import Qt, QUrl
+	from PyQt5.QtGui import QIcon, QDesktopServices
 	from glob import glob
 	from superqt.fonticon import icon
 	from fonticon_mdi6 import MDI6

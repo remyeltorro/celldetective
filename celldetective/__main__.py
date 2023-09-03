@@ -248,7 +248,7 @@ class AppInitWindow(QMainWindow):
 				number_pos.append(len(position_folders))
 			print(f"Number of positions per well: {number_pos}")
 			
-			with open(os.sep.join([self.soft_path,'celldetective','recent.txt']), 'a') as f:
+			with open(os.sep.join([self.soft_path,'celldetective','recent.txt']), 'a+') as f:
 				f.write(self.exp_dir+'\n')
 
 			self.control_panel = ControlPanel(self, self.exp_dir)

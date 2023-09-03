@@ -76,8 +76,9 @@ class AppInitWindow(QMainWindow):
 
 		fileMenu.addMenu(self.OpenRecentAction)
 		self.OpenRecentAction.clear()
-		for i in range(len(self.recentFileActs)):
-			self.OpenRecentAction.addAction(self.recentFileActs[i])
+		if len(self.recentFileActs)>0:
+			for i in range(len(self.recentFileActs)):
+				self.OpenRecentAction.addAction(self.recentFileActs[i])
 
 		fileMenu.addAction(self.openModels)
 		fileMenu.addSeparator()
@@ -130,17 +131,16 @@ class AppInitWindow(QMainWindow):
 	def reload_previous_experiments(self):
 
 		recentExps = []
-		recentExps = open(os.sep.join([self.soft_path,'celldetective','recent.txt']), 'r')
-		recentExps = recentExps.readlines()
-		recentExps = [r.strip() for r in recentExps]
-		recentExps.reverse()
-		recentExps = list(dict.fromkeys(recentExps))
-
-
 		self.recentFileActs = []
-		self.recentFileActs = [QAction(r,self) for r in recentExps]
-		for r in self.recentFileActs:
-			r.triggered.connect(lambda checked, item=r: self.load_recent_exp(item.text()))	
+		if os.path.exists(os.sep.join([self.soft_path,'celldetective','recent.txt'])):
+			recentExps = open(os.sep.join([self.soft_path,'celldetective','recent.txt']), 'r')
+			recentExps = recentExps.readlines()
+			recentExps = [r.strip() for r in recentExps]
+			recentExps.reverse()
+			recentExps = list(dict.fromkeys(recentExps))
+			self.recentFileActs = [QAction(r,self) for r in recentExps]
+			for r in self.recentFileActs:
+				r.triggered.connect(lambda checked, item=r: self.load_recent_exp(item.text()))
 
 	def load_recent_exp(self, path):
 		print('loading?')

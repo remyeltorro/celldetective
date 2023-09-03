@@ -2,12 +2,9 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QSplashScreen, QMainWindow
 from PyQt5.QtGui import QPixmap
-import os
+from os import sep
 from celldetective.utils import get_software_location
-from celldetective.gui.about import AboutWidget
-from PyQt5.QtCore import QEventLoop
-import subprocess
-from functools import partial
+#from PyQt5.QtCore import QEventLoop
 
 class AppInitWindow(QMainWindow):
 
@@ -314,11 +311,11 @@ if __name__ == "__main__":
 	App.setStyle("Fusion")
 
 	if splash:
-		splash_pix = QPixmap(os.sep.join([get_software_location(),'celldetective','icons','splash.png']))
+		splash_pix = QPixmap(sep.join([get_software_location(),'celldetective','icons','splash.png']))
 		splash = QSplashScreen(splash_pix)
 		splash.setMask(splash_pix.mask())
 		splash.show()
-		App.processEvents(QEventLoop.AllEvents, 300)
+		#App.processEvents(QEventLoop.AllEvents, 300)
 
 	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 	from PyQt5.QtCore import Qt, QUrl
@@ -329,6 +326,9 @@ if __name__ == "__main__":
 	import gc
 	from celldetective.gui import Styles, ControlPanel, ConfigNewExperiment
 	from celldetective.gui.gui_utils import center_window
+	import subprocess
+	import os
+	from celldetective.gui.about import AboutWidget
 
 	window = AppInitWindow(App)
 

@@ -32,6 +32,12 @@ class AboutWidget(QWidget):
 		self.version_lbl.setOpenExternalLinks(True)
 		layout.addWidget(self.version_lbl, alignment=Qt.AlignCenter)
 
-		self.lab_lbl = QLabel('Developped at Laboratoire Adhésion et Inflammation')
+		self.lab_lbl = QLabel("Developed at Laboratoire Adhésion et Inflammation, INSERM")
 		layout.addWidget(self.lab_lbl, alignment=Qt.AlignCenter)
+
+		self.centuri_mention = QLabel("The project leading to this publication has received funding from France 2030, the French Government program managed by the French National Research Agency (ANR-16-CONV-0001) and from Excellence Initiative of Aix-Marseille University - A*MIDEX')")
+		self.centuri_mention.setWordWrap(True)
+		layout.addWidget(self.centuri_mention, alignment=Qt.AlignCenter)
+
+
 

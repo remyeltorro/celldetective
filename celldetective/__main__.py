@@ -4,7 +4,10 @@ from PyQt5.QtWidgets import QApplication, QSplashScreen, QMainWindow
 from PyQt5.QtGui import QPixmap
 import os
 from celldetective.utils import get_software_location
+from celldetective.gui.about import AboutWidget
 from PyQt5.QtCore import QEventLoop
+import subprocess
+from functools import partial
 
 class AppInitWindow(QMainWindow):
 
@@ -65,16 +68,27 @@ class AppInitWindow(QMainWindow):
 
 
 	def _createMenuBar(self):
+
 		menuBar = self.menuBar()
+		menuBar.clear()
 		# Creating menus using a QMenu object
 
 		fileMenu = QMenu("File", self)
+		fileMenu.clear()
 		fileMenu.addAction(self.newExpAction)
+
+		fileMenu.addMenu(self.OpenRecentAction)
+		self.OpenRecentAction.clear()
+		for i in range(len(self.recentFileActs)):
+			self.OpenRecentAction.addAction(self.recentFileActs[i])
+
+		fileMenu.addAction(self.openModels)
 		fileMenu.addSeparator()
 		fileMenu.addAction(self.exitAction)
 		menuBar.addMenu(fileMenu)
 
 		helpMenu = QMenu("Help", self)
+		helpMenu.clear()
 		helpMenu.addAction(self.DocumentationAction)
 		helpMenu.addAction(self.SoftwareAction)
 		helpMenu.addSeparator()
@@ -90,22 +104,74 @@ class AppInitWindow(QMainWindow):
 		#self.newAction.setText("&New")
 		# Creating actions using the second constructor
 		self.newExpAction = QAction('New', self)
+		self.newExpAction.setShortcut("Ctrl+N")
+		self.newExpAction.setShortcutVisibleInContextMenu(True)
 		self.exitAction = QAction('Exit', self)
 
+		self.openModels = QAction('Open Models Location')
+		self.openModels.setShortcut("Ctrl+L")
+		self.openModels.setShortcutVisibleInContextMenu(True)
+
+		self.OpenRecentAction = QMenu('Open Recent')
+		self.reload_previous_experiments()
+
 		self.DocumentationAction = QAction("Documentation", self)
+		self.DocumentationAction.setShortcut("Ctrl+D")
+		self.DocumentationAction.setShortcutVisibleInContextMenu(True)
+
 		self.SoftwareAction = QAction("Software", self) #1st arg icon(MDI6.information)
 		self.AboutAction = QAction("About celldetective", self)
 
 		#self.DocumentationAction.triggered.connect(self.load_previous_config)
 		self.newExpAction.triggered.connect(self.create_new_experiment)
 		self.exitAction.triggered.connect(self.close)
+		self.openModels.triggered.connect(self.open_models_folder)
+		self.AboutAction.triggered.connect(self.open_about_window)
 
 		self.DocumentationAction.triggered.connect(self.open_documentation)
+
+	def reload_previous_experiments(self):
+
+		recentExps = []
+		recentExps = open(os.sep.join([self.soft_path,'celldetective','recent.txt']), 'r')
+		recentExps = recentExps.readlines()
+		recentExps = [r.strip() for r in recentExps]
+		recentExps.reverse()
+		recentExps = list(dict.fromkeys(recentExps))
+
+
+		self.recentFileActs = []
+		self.recentFileActs = [QAction(r,self) for r in recentExps]
+		for r in self.recentFileActs:
+			r.triggered.connect(lambda checked, item=r: self.load_recent_exp(item.text()))	
+
+	def load_recent_exp(self, path):
+		print('loading?')
+		print('you selected path ', path)
+		self.experiment_path_selection.setText(path)
+		self.open_directory()
+
+	def open_about_window(self):
+		self.about_wdw = AboutWidget()
+		self.about_wdw.show()
 
 	def open_documentation(self):
 		doc_url = QUrl('https://celldetective.readthedocs.io/')
 		QDesktopServices.openUrl(doc_url)
 
+	def open_models_folder(self):
+		path = os.sep.join([self.soft_path,'celldetective','models',os.sep])
+		try:
+			subprocess.Popen(f'explorer {os.path.realpath(path)}')
+		except:
+
+			try:
+				os.system('xdg-open "%s"' % path)
+			except:
+				return None
+
+
+		#os.system(f'start {os.path.realpath(path)}')
 
 	def create_buttons_hbox(self):
 
@@ -113,7 +179,6 @@ class AppInitWindow(QMainWindow):
 		self.buttons_layout.setContentsMargins(30,15,30,5)
 		self.new_exp_button = QPushButton("New")
 		self.new_exp_button.clicked.connect(self.create_new_experiment)
-		self.new_exp_button.setShortcut("Ctrl+N")
 		self.new_exp_button.setStyleSheet(self.button_style_sheet_2)
 		self.buttons_layout.addWidget(self.new_exp_button, 50)
 
@@ -185,9 +250,16 @@ class AppInitWindow(QMainWindow):
 				position_folders = glob(os.sep.join([w,f"{w.split(os.sep)[-2][1]}*", os.sep]))
 				number_pos.append(len(position_folders))
 			print(f"Number of positions per well: {number_pos}")
+			
+			with open(os.sep.join([self.soft_path,'celldetective','recent.txt']), 'a') as f:
+				f.write(self.exp_dir+'\n')
 
 			self.control_panel = ControlPanel(self, self.exp_dir)
 			self.control_panel.show()
+
+			self.reload_previous_experiments()
+			self._createMenuBar()
+
 
 	def browse_experiment_folder(self):
 

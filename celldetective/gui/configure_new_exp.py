@@ -19,7 +19,7 @@ class ConfigNewExperiment(QMainWindow):
 		self.setWindowTitle("Experiment config")
 		center_window(self)
 		self.setFixedWidth(500)
-		self.setMaximumHeight(1160)
+		self.setMaximumHeight(int(0.8*self.parent.screen_height))
 
 		self.newExpFolder = str(QFileDialog.getExistingDirectory(self, 'Select directory'))
 		self.populate_widget()

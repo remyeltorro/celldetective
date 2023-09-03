@@ -13,6 +13,10 @@ from scipy.ndimage import zoom
 from btrack.datasets import cell_config
 from magicgui import magicgui
 from csbdeep.io import save_tiff_imagej_compatible
+from pathlib import Path, PurePath
+from celldetective.utils import ConfigSectionMap, extract_experiment_channels
+import json
+
 
 def locate_stack(position, prefix='Aligned'):
 
@@ -607,9 +611,46 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 			save_tiff_imagej_compatible(output_folder+f"{str(t).zfill(4)}.tif", im, axes='YX')
 		print("The labels have been successfully rewritten.")
 
+	def export_annotation():
+		
+		# Locate experiment config
+		parent1 = Path(position).parent
+		expfolder = parent1.parent
+		config = PurePath(expfolder,Path("config.ini"))
+		expfolder = str(expfolder)
+		exp_name = os.path.split(expfolder)[-1]
+		print(exp_name)
+
+		spatial_calibration = float(ConfigSectionMap(config,"MovieSettings")["pxtoum"])
+		channel_names, channel_indices = extract_experiment_channels(config)
+		print(spatial_calibration, channel_names, channel_indices)
+
+		annotation_folder = expfolder + os.sep + f'annotations_{population}' + os.sep
+		if not os.path.exists(annotation_folder):
+			os.mkdir(annotation_folder)
+
+		print('exporting!')
+		t = viewer.dims.current_step[0]
+		labels_layer = viewer.layers['segmentation'].data[t] # at current time
+		frame = viewer.layers['Image'].data[t]
+		if frame.ndim==2:
+			frame = frame[np.newaxis,:,:]
+
+		save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_labelled.tif", labels_layer, axes='YX')
+		save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", frame, axes='CYX')
+		info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
+		info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.json"
+		with open(info_name, 'w') as f:
+			json.dump(info, f, indent=4)
+		print('Done.')
+
 	@magicgui(call_button='Save the modified labels')
 	def save_widget():
 		return export_labels()
+
+	@magicgui(call_button='Export the annotation\nof the current frame')
+	def export_widget():
+		return export_annotation()
 
 	stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
 
@@ -621,6 +662,7 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 	viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
 	viewer.add_labels(labels.astype(int), name='segmentation',opacity=0.4)
 	viewer.window.add_dock_widget(save_widget, area='right')
+	viewer.window.add_dock_widget(export_widget, area='right')
 	viewer.show(block=True)
 
 	if flush_memory:

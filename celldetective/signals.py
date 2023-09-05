@@ -124,7 +124,12 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		for j,col in enumerate(selected_signals):
 			signal = group[col].to_numpy()
 			signals[i,frames,j] = signal
-	
+
+	# for i in range(5):
+	# 	print('pre model')
+	# 	plt.plot(signals[i,:,0])
+	# 	plt.show()
+
 	model = SignalDetectionModel(pretrained=complete_path)
 	print('signal shape: ', signals.shape)
 
@@ -433,14 +438,21 @@ class SignalDetectionModel(object):
 		self.normalize = normalize
 		self.pad = pad
 		self.return_one_hot = return_one_hot
-
-		if self.normalize:
-			self.x = normalize_signal_set(self.x, self.channel_option)
+		# self.max_relevant_time = np.shape(self.x)[1]
+		# print(f'Max relevant time: {self.max_relevant_time}')
 
 		if self.pad:
 			self.x = pad_to_model_length(self.x, self.model_signal_length)
 
+		if self.normalize:
+			self.x = normalize_signal_set(self.x, self.channel_option)
+
 		# implement auto interpolation here!!
+		#self.x = self.interpolate_signals(self.x)
+
+		# for i in range(5):
+		# 	plt.plot(self.x[i,:,0])
+		# 	plt.show()
 
 		assert self.x.shape[-1] == self.model_class.layers[0].input_shape[0][-1], f"Shape mismatch between the input shape and the model input shape..."
 		assert self.x.shape[-2] == self.model_class.layers[0].input_shape[0][-2], f"Shape mismatch between the input shape and the model input shape..."
@@ -458,16 +470,17 @@ class SignalDetectionModel(object):
 		self.x = np.copy(x)
 		self.normalize = normalize
 		self.pad = pad
+		# self.max_relevant_time = np.shape(self.x)[1]
+		# print(f'Max relevant time: {self.max_relevant_time}')
+
 		if class_predictions is not None:
 			self.class_predictions = class_predictions
-
-		if self.normalize:
-			self.x = normalize_signal_set(self.x, self.channel_option)
 
 		if self.pad:
 			self.x = pad_to_model_length(self.x, self.model_signal_length)
 
-		self.x = self.interpolate_signals(self.x)
+		if self.normalize:
+			self.x = normalize_signal_set(self.x, self.channel_option)
 
 		assert self.x.shape[-1] == self.model_reg.layers[0].input_shape[0][-1], f"Shape mismatch between the input shape and the model input shape..."
 		assert self.x.shape[-2] == self.model_reg.layers[0].input_shape[0][-2], f"Shape mismatch between the input shape and the model input shape..."
@@ -948,7 +961,7 @@ class SignalDetectionModel(object):
 		self.y_time_set.extend(times_of_interest)
 		self.y_class_set.extend(classes)
 
-def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.99], percentile_dead=[0.5,99.99], percentile_generic=[0.01,99.99]):
+def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.99], percentile_dead=[0.5,99.999], percentile_generic=[0.01,99.99]):
 
 	"""
 
@@ -1001,13 +1014,17 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 
 	for k,channel in enumerate(channel_option):
 
+		zero_values = []
+		for i in range(len(signal_set)):
+			zeros_loc = np.where(signal_set[i,:,k]==0)
+			zero_values.append(zeros_loc)
 
 		if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
 			print('red normalization')
 
 			min_percentile_dead, max_percentile_dead = percentile_dead
 			min_set = signal_set[:,:5,k]
-			max_set = signal_set[:,-5:,k]
+			max_set = signal_set[:,:,k]
 			min_fluo_dead = np.nanpercentile(min_set[min_set!=0.], min_percentile_dead) # 5 % on initial frame where barely any dead are expected
 			max_fluo_dead = np.nanpercentile(max_set[max_set!=0.], max_percentile_dead) # 99th percentile on last fluo frame
 			signal_set[:,:,k] -= min_fluo_dead
@@ -1034,10 +1051,13 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 
 			min_percentile, max_percentile = percentile_generic
 			values = signal_set[:,:,k]
-			min_signal = np.nanpercentile(values[np.nonzero(values)], min_percentile)
-			max_signal= np.nanpercentile(values[np.nonzero(values)], max_percentile)
+			min_signal = np.nanpercentile(values[values!=0.], min_percentile)
+			max_signal= np.nanpercentile(values[values!=0.], max_percentile)
 			signal_set[:,:,k] -= min_signal
 			signal_set[:,:,k] /= (max_signal - min_signal)
+
+		for i,z in enumerate(zero_values):
+			signal_set[i,z,k] = 0.
 
 	return signal_set
 

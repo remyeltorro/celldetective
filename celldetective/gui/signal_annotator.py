@@ -637,10 +637,11 @@ class SignalAnnotator(QMainWindow):
 			chan = []
 			indices = self.img_num_channels[self.channels[np.where(self.channel_names==target_ch_name)][0]]
 			for t in tqdm(range(len(indices)),desc='frame'):
-				
-				f = load_frames(indices[t], self.stack_path, scale=self.fraction, normalize_input=True, normalize_kwargs=normalize_kwargs)
 				if self.rgb_mode:
+					f = load_frames(indices[t], self.stack_path, scale=self.fraction, normalize_input=True, normalize_kwargs=normalize_kwargs)
 					f = f.astype(np.uint8)
+				else:
+					f = load_frames(indices[t], self.stack_path, scale=self.fraction, normalize_input=False)
 				chan.append(f[:,:,0])
 
 			self.stack.append(chan)
@@ -868,7 +869,11 @@ class SignalAnnotator(QMainWindow):
 		self.last_frame_btn.setEnabled(False)
 		self.last_frame_btn.disconnect()
 
-		self.anim._drawn_artists = self.draw_frame(len(self.stack)-1)
+		self.last_key = len(self.stack) - 1
+		while len(np.where(self.stack[self.last_key].flatten()==0)[0]) > 0.99*len(self.stack[self.last_key].flatten()):
+			self.last_key -= 1
+		print(f'Last frame is {len(self.stack) - 1}; last not black is {self.last_key}')
+		self.anim._drawn_artists = self.draw_frame(self.last_key)
 		self.anim._drawn_artists = sorted(self.anim._drawn_artists, key=lambda x: x.get_zorder())
 		for a in self.anim._drawn_artists:
 			a.set_visible(True)

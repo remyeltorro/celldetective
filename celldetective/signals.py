@@ -950,9 +950,10 @@ class SignalDetectionModel(object):
 		times_of_interest[(times_of_interest<=0.0)] = -1
 
 		# Attempt per-set normalization
+		fluo = pad_to_model_length(fluo, self.model_signal_length)
 		if self.normalize:
 			fluo = normalize_signal_set(fluo, self.channel_option)
-		fluo = pad_to_model_length(fluo, self.model_signal_length)
+			
 		# Trivial normalization for time of interest
 		times_of_interest /= self.model_signal_length
 		

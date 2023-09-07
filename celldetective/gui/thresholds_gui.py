@@ -52,14 +52,15 @@ class ThresholdConfigWizard(QMainWindow):
 			self.config_out_name = "threshold_effectors.json"
 
 		self.locate_stack()
-		self.threshold_slider = QLabeledDoubleRangeSlider()
-		self.initialize_histogram()
-		self.show_image()
-		self.initalize_props_scatter()
-		self.prep_cell_properties()
-		self.populate_widget()
+		if self.img is not None:
+			self.threshold_slider = QLabeledDoubleRangeSlider()
+			self.initialize_histogram()
+			self.show_image()
+			self.initalize_props_scatter()
+			self.prep_cell_properties()
+			self.populate_widget()
+			self.setAttribute(Qt.WA_DeleteOnClose)
 
-		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def _createMenuBar(self):
 		menuBar = self.menuBar()
@@ -368,7 +369,19 @@ class ThresholdConfigWizard(QMainWindow):
 
 		"""
 		print("this is the loaded position: ", self.pos)
-		movies = glob(self.pos + f"movie/{self.parent.parent.parent.movie_prefix}*.tif")
+		if isinstance(self.pos,str):
+			movies = glob(self.pos + f"movie/{self.parent.parent.parent.movie_prefix}*.tif")
+		else:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a unique position before launching the wizard...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.img = None
+				self.close()
+				return None
 
 		if len(movies)==0:
 			msgBox = QMessageBox()

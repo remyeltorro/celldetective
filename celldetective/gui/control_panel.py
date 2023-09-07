@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QLabel, QWidget, QGridLayout, QFrame, QTabWidget, QVBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton,QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, QTabWidget, QVBoxLayout, QMessageBox
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
@@ -91,8 +91,14 @@ class ControlPanel(QMainWindow):
 		experiment_label.setStyleSheet("""
 			font-weight: bold;
 			""")
-		self.grid.addWidget(experiment_label, 0,0,1,1, alignment=Qt.AlignRight)
-		self.grid.addWidget(QLabel(name), 0,1,1,1, alignment=Qt.AlignLeft)
+
+		self.folder_exp_btn = QPushButton()
+		self.folder_exp_btn.setIcon(icon(MDI6.folder,color="black"))
+		self.folder_exp_btn.setIconSize(QSize(20, 20))
+		self.folder_exp_btn.setToolTip("Open experiment folder on disk")
+		self.folder_exp_btn.clicked.connect(self.open_experiment_folder)
+		self.folder_exp_btn.setStyleSheet(self.parent.button_select_all)
+
 
 		self.edit_config_button = QPushButton()
 		self.edit_config_button.setIcon(icon(MDI6.cog_outline,color="black"))
@@ -100,7 +106,13 @@ class ControlPanel(QMainWindow):
 		self.edit_config_button.setToolTip("Configuration file")
 		self.edit_config_button.clicked.connect(self.open_config_editor)
 		self.edit_config_button.setStyleSheet(self.parent.button_select_all)
-		self.grid.addWidget(self.edit_config_button, 0,0,1,3, alignment=Qt.AlignRight)
+
+		self.exp_options_layout = QHBoxLayout()
+		self.exp_options_layout.addWidget(experiment_label, 32, alignment=Qt.AlignRight)
+		self.exp_options_layout.addWidget(QLabel(name), 65, alignment=Qt.AlignLeft)
+		self.exp_options_layout.addWidget(self.folder_exp_btn, 5, alignment=Qt.AlignRight)
+		self.exp_options_layout.addWidget(self.edit_config_button, 5, alignment=Qt.AlignRight)
+		self.grid.addLayout(self.exp_options_layout, 0,0,1,3)
 
 		self.well_list = QComboBox()
 		thresh = 40
@@ -121,12 +133,23 @@ class ControlPanel(QMainWindow):
 
 		self.grid.addWidget(QLabel("Well:"), 1, 0, 1,1, alignment=Qt.AlignRight)
 		self.grid.addWidget(self.well_list, 1, 1, 1, 2)
+
 		self.grid.addWidget(QLabel("Position:"),2,0,1,1, alignment=Qt.AlignRight)
 		self.grid.addWidget(self.position_list, 2,1,1,2)
 
 		
 		hsep = QHSeperationLine()
 		self.grid.addWidget(hsep, 5, 0, 1, 3)
+
+	def open_experiment_folder(self):
+
+		try:
+			subprocess.Popen(f'explorer {os.path.realpath(self.exp_dir)}')
+		except:
+			try:
+				os.system('xdg-open "%s"' % self.exp_dir)
+			except:
+				return None		
 
 	def load_configuration(self):
 

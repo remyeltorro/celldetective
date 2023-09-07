@@ -422,6 +422,16 @@ class SegmentationModelLoader(QWidget):
 			outfile.write(json_object)
 
 	def open_threshold_config_wizard(self):
-		
-		self.ThreshWizard = ThresholdConfigWizard(self)
-		self.ThreshWizard.show()
+
+		if isinstance(self.parent.parent.pos, str):
+			self.ThreshWizard = ThresholdConfigWizard(self)
+			self.ThreshWizard.show()
+		else:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a unique position before launching the wizard...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None			

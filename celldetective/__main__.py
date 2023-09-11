@@ -73,6 +73,7 @@ class AppInitWindow(QMainWindow):
 		fileMenu = QMenu("File", self)
 		fileMenu.clear()
 		fileMenu.addAction(self.newExpAction)
+		fileMenu.addAction(self.openAction)
 
 		fileMenu.addMenu(self.OpenRecentAction)
 		self.OpenRecentAction.clear()
@@ -101,6 +102,11 @@ class AppInitWindow(QMainWindow):
 		#self.newAction = QAction(self)
 		#self.newAction.setText("&New")
 		# Creating actions using the second constructor
+		self.openAction = QAction('Open...', self)
+		self.openAction.setShortcut("Ctrl+O")
+		self.openAction.setShortcutVisibleInContextMenu(True)
+
+
 		self.newExpAction = QAction('New', self)
 		self.newExpAction.setShortcut("Ctrl+N")
 		self.newExpAction.setShortcutVisibleInContextMenu(True)
@@ -121,6 +127,7 @@ class AppInitWindow(QMainWindow):
 		self.AboutAction = QAction("About celldetective", self)
 
 		#self.DocumentationAction.triggered.connect(self.load_previous_config)
+		self.openAction.triggered.connect(self.open_experiment)
 		self.newExpAction.triggered.connect(self.create_new_experiment)
 		self.exitAction.triggered.connect(self.close)
 		self.openModels.triggered.connect(self.open_models_folder)
@@ -141,6 +148,12 @@ class AppInitWindow(QMainWindow):
 			self.recentFileActs = [QAction(r,self) for r in recentExps]
 			for r in self.recentFileActs:
 				r.triggered.connect(lambda checked, item=r: self.load_recent_exp(item.text()))
+
+	def open_experiment(self):
+		print('ok')
+		self.browse_experiment_folder()
+		if self.experiment_path_selection.text()!='':
+			self.open_directory()
 
 	def load_recent_exp(self, path):
 		print('loading?')

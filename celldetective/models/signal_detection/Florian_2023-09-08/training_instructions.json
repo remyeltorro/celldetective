@@ -1,0 +1,19 @@
+{
+    "model_name": "Florian_2023-09-08",
+    "pretrained": null,
+    "channel_option": [
+        "dead_nuclei_channel",
+        "area"
+    ],
+    "model_signal_length": 128,
+    "recompile_pretrained": false,
+    "ds": [
+        "/home/limozin/Documents/FloFloForever/signals"
+    ],
+    "augmentation_factor": 2.0,
+    "validation_split": 0.25,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "epochs": 551,
+    "target_directory": "/home/limozin/Documents/GitHub/celldetective/celldetective/models/signal_detection/"
+}

@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
 from celldetective.utils import _extract_labels_from_config, ConfigSectionMap
-from celldetective.gui import ConfigEditor, ProcessPanel
+from celldetective.gui import ConfigEditor, ProcessPanel, AnalysisPanel
 from natsort import natsorted
 from glob import glob
 import os
@@ -11,6 +11,7 @@ import numpy as np
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
+import subprocess
 
 class ControlPanel(QMainWindow):
 
@@ -42,17 +43,24 @@ class ControlPanel(QMainWindow):
 		grid_process = QVBoxLayout(ProcessFrame)
 		grid_process.setContentsMargins(20,50,20,20)
 
+		AnalyzeFrame = QFrame()
+		grid_analyze = QVBoxLayout(AnalyzeFrame)
+		grid_analyze.setContentsMargins(20,50,20,20)
+		self.SurvivalBlock = AnalysisPanel(self,title='Survival')
+
+
 		grid_process.addWidget(self.ProcessEffectors)
 		grid_process.addWidget(self.ProcessTargets)
+
+		grid_analyze.addWidget(self.SurvivalBlock)
 
 
 		tabWidget = QTabWidget()
 		tab_index_process = tabWidget.addTab(ProcessFrame, "Process")
 		tabWidget.setTabIcon(tab_index_process, icon(MDI6.cog_outline, color='black'))
 
-		#tabWidget.addTab(CheckFrame, "Control")
-		#tab_index_analyze = tabWidget.addTab(AnalyzeFrame, "Analyze")
-		#tabWidget.setTabIcon(tab_index_analyze, icon(MDI6.chart_bell_curve, color='black'))
+		tab_index_analyze = tabWidget.addTab(AnalyzeFrame, "Analyze")
+		tabWidget.setTabIcon(tab_index_analyze, icon(MDI6.poll, color='black'))
 		tabWidget.setStyleSheet(self.parent.qtab_style)
 
 		self.grid.addWidget(tabWidget, 7,0,1,3, alignment=Qt.AlignTop)

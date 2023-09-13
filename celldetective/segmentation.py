@@ -419,6 +419,7 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	
 	pos = pos.replace('\\','/')
 	pos = pos.replace(' ','\\')
+	pos = rf'{pos}'
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells.py'])
@@ -440,15 +441,16 @@ def segment_from_threshold_at_position(pos, mode, config):
 
 	pos = pos.replace('\\','/')
 	pos = pos.replace(' ','\\ ')
+	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 
 	config = config.replace('\\','/')
 	config = config.replace(' ','\\')
+	config = rf"{config}"
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells_thresholds.py'])
-	subprocess.call(rf"python {script_path} --pos {pos} --config {config} --mode {mode}", shell=True)
-
+	subprocess.call(" ".join(['python', rf"{script_path}","--pos",rf"{pos}","--config",rf"{config}","--mode",rf"{mode}"]), shell=True)
 
 if __name__ == "__main__":
 	print(segment(None,'test'))

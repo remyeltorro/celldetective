@@ -1,0 +1,19 @@
+{
+    "model_name": "H_PI_2023-florian-08-09",
+    "pretrained": "/home/limozin/Documents/GitHub/celldetective/celldetective/models/signal_detection/H_PI",
+    "channel_option": [
+        "dead_nuclei_channel",
+        "live_nuclei_channel"
+    ],
+    "model_signal_length": 128,
+    "recompile_pretrained": false,
+    "ds": [
+        "/home/limozin/Documents/FloFloForever/signals"
+    ],
+    "augmentation_factor": 2.0,
+    "validation_split": 0.25,
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "epochs": 488,
+    "target_directory": "/home/limozin/Documents/GitHub/celldetective/celldetective/models/signal_detection/"
+}

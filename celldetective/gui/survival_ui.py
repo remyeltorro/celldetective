@@ -24,7 +24,7 @@ import pandas as pd
 from tqdm import tqdm
 from lifelines import KaplanMeierFitter
 from matplotlib.cm import viridis, tab10
-
+import math
 
 def switch_to_events(classes, times, max_times, first_detections=None):
 	
@@ -299,11 +299,14 @@ class ConfigSurvival(QWidget):
 			for i in range(len(self.well_names)):
 				self.line_check_vbox.addWidget(self.well_display_options[i], alignment=Qt.AlignLeft)
 				self.well_display_options[i].setChecked(True)
+				self.well_display_options[i].toggled.connect(self.select_survival_lines)
 		else:
 			self.pos_display_options = [QCheckBox(self.pos_names[i]) for i in range(len(self.pos_names))]
 			for i in range(len(self.pos_names)):
 				self.line_check_vbox.addWidget(self.pos_display_options[i], alignment=Qt.AlignLeft)
 				self.pos_display_options[i].setChecked(True)
+				self.pos_display_options[i].toggled.connect(self.select_survival_lines)
+
 		self.plotvbox.addWidget(self.line_choice_widget, alignment=Qt.AlignCenter)
 
 	def load_available_tables(self):
@@ -491,7 +494,7 @@ class ConfigSurvival(QWidget):
 		self.ax.plot([],[])
 		self.ax.spines['top'].set_visible(False)
 		self.ax.spines['right'].set_visible(False)
-		self.ax.set_ylim(0.001,1.05)
+		#self.ax.set_ylim(0.001,1.05)
 		self.ax.set_xlim(0,self.df['FRAME'].max())
 		self.ax.set_xlabel('time [frame]')
 		self.ax.set_ylabel('survival')
@@ -513,9 +516,17 @@ class ConfigSurvival(QWidget):
 			well_index = self.df_pos_info.loc[self.df_pos_info['select'],'well_index'].values
 			for i in range(len(lines)):
 				if len(self.well_indices)<=1:
-					lines[i].plot_survival_function(ax=self.ax, legend=None, color=colors[pos_indices[i]],label=pos_labels[i])
+					try:
+						lines[i].plot_survival_function(ax=self.ax, legend=None, color=colors[pos_indices[i]],label=pos_labels[i])
+					except Exception as e:
+						print(f'error {e}')
+						pass
 				else:
-					lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]],label=pos_labels[i])
+					try:
+						lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]],label=pos_labels[i])
+					except Exception as e:
+						print(f'error {e}')
+						pass
 
 		elif self.plot_mode=='well':
 			self.initialize_axis()
@@ -523,10 +534,18 @@ class ConfigSurvival(QWidget):
 			well_index = self.df_well_info.loc[self.df_well_info['select'],'well_index'].values
 			for i in range(len(lines)):		
 				if len(self.well_indices)<=1:
-					lines[i].plot_survival_function(ax=self.ax, legend=None, color="k")
+
+					try:
+						lines[i].plot_survival_function(ax=self.ax, legend=None, color="k")
+					except Exception as e:
+						print(f'error {e}')
+						pass
 				else:
-					print('well index: ',well_index)
-					lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]])
+					try:
+						lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]])
+					except Exception as e:
+						print(f'error {e}')
+						pass
 
 		elif self.plot_mode=='both':
 			self.initialize_axis()
@@ -538,15 +557,32 @@ class ConfigSurvival(QWidget):
 			well_index = self.df_well_info.loc[self.df_well_info['select'],'well_index'].values
 			for i in range(len(lines_pos)):
 				if len(self.well_indices)<=1:
-					lines_pos[i].plot_survival_function(ax=self.ax, legend=None, alpha=0.25, color=colors[pos_indices[i]])
+					
+					try:
+						lines_pos[i].plot_survival_function(ax=self.ax, legend=None, alpha=0.25, color=colors[pos_indices[i]])
+					except Exception as e:
+						print(f'error {e}')
+						pass
 				else:
-					lines_pos[i].plot_survival_function(ci_show=False, ax=self.ax, legend=None, alpha=0.25, color=well_color[well_index_pos[i]])
-			
+					try:
+						lines_pos[i].plot_survival_function(ci_show=False, ax=self.ax, legend=None, alpha=0.25, color=well_color[well_index_pos[i]])
+					except Exception as e:
+						print(f'error {e}')
+						pass
+
 			for i in range(len(lines_well)):		
 				if len(self.well_indices)<=1:
-					lines_well[i].plot_survival_function(ax=self.ax, legend=None, color="k")
+					try:
+						lines_well[i].plot_survival_function(ax=self.ax, legend=None, color="k")
+					except Exception as e:
+						print(f'error {e}')
+						pass
 				else:
-					lines_well[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]])
+					try:
+						lines_well[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]])
+					except Exception as e:
+						print(f'error {e}')
+						pass
 
 		self.survival_window.canvas.draw()
 
@@ -558,10 +594,10 @@ class ConfigSurvival(QWidget):
 
 		if self.ax.get_yscale()=='linear':
 			self.ax.set_yscale('log')
-			self.ax.set_ylim(0.01,1.05)
+			#self.ax.set_ylim(0.01,1.05)
 		else:
 			self.ax.set_yscale('linear')
-			self.ax.set_ylim(0.01,1.05)
+			#self.ax.set_ylim(0.01,1.05)
 
 		#self.ax.autoscale()
 		self.survival_window.canvas.draw_idle()
@@ -583,10 +619,12 @@ class ConfigSurvival(QWidget):
 			if self.select_option[i].isChecked():
 				self.selection_mode = self.select_label[i]
 		if self.selection_mode=='name':
-			self.position_scatter.hide()
+			if len(self.metafiles)>0:
+				self.position_scatter.hide()
 			self.line_choice_widget.show()
 		else:
-			self.position_scatter.show()
+			if len(self.metafiles)>0:
+				self.position_scatter.show()
 			self.line_choice_widget.hide()
 
 
@@ -639,39 +677,40 @@ class ConfigSurvival(QWidget):
 	def unselect_position(self, event):
 		
 		ind = event.ind # index of selected position
-		if len(ind)>0:
-			ind = ind[0]
+		well_idx = self.df_pos_info.iloc[ind]['well_index'].values[0]
+		selectedPos = self.df_pos_info.iloc[ind]['pos_path'].values[0]
+		currentSelState = self.df_pos_info.iloc[ind]['select'].values[0]
+		if self.plot_options[0].isChecked() or self.plot_options[2].isChecked():
+			self.df_pos_info.loc[self.df_pos_info['well_index']==well_idx,'select'] = not currentSelState
+			self.df_well_info.loc[self.df_well_info['well_index']==well_idx, 'select'] = not currentSelState
 			if len(self.well_indices)>1:
-				# auto switch all positions
-				currentWell = self.position_coords.iloc[ind]['well']
-				currentSelection = self.position_coords.loc[self.position_coords['well']==currentWell, 'select'].values
-				self.position_coords.loc[self.position_coords['well']==currentWell, 'select'] = [not v for v in currentSelection]
-				self.line_to_plot = self.position_coords["select"].values
+				self.well_display_options[well_idx].setChecked(not currentSelState)
 			else:
-				currentValue = bool(self.position_coords.iloc[ind]['select'])
-				currentLabel = self.position_coords.iloc[ind]['label']
-				self.position_coords.loc[self.position_coords['label']==currentLabel, 'select'] = not currentValue
-				self.line_to_plot = self.position_coords["select"].values
+				for p in self.pos_display_options:
+					p.setChecked(not currentSelState)
+		else:
+			self.df_pos_info.loc[self.df_pos_info['pos_path']==selectedPos,'select'] = not currentSelState
+			if len(self.well_indices)<=1:
+				self.pos_display_options[ind[0]].setChecked(not currentSelState)
 
-			self.sc.set_color(self.select_color(self.position_coords["select"].values))
+		self.sc.set_color(self.select_color(self.df_pos_info["select"].values))
+		self.position_scatter.canvas.draw_idle()
+		self.plot_survivals(0)
+
+	def select_survival_lines(self):
+		
+		if len(self.well_indices)>1:
+			for i in range(len(self.well_display_options)):
+				self.df_well_info.loc[self.df_well_info['well_index']==i,'select'] = self.well_display_options[i].isChecked()
+				self.df_pos_info.loc[self.df_pos_info['well_index']==i,'select'] = self.well_display_options[i].isChecked()
+		else:
+			for i in range(len(self.pos_display_options)):
+				self.df_pos_info.loc[self.df_pos_info['pos_index']==i,'select'] = self.pos_display_options[i].isChecked()
+
+		if len(self.metafiles)>0:
+			self.sc.set_color(self.select_color(self.df_pos_info["select"].values))
 			self.position_scatter.canvas.draw_idle()
-			self.plot_survivals(0)			
-
-			# if self.position_colors[ind]==tab10(0.1):
-			# 	self.position_colors[ind] = tab10(0)
-			# 	if self.plot_options[1].isChecked():
-			# 		self.line_to_plot[ind] = True # reselect line
-			# 	elif self.plot_options[0].isChecked():
-			# 		self.line_to_plot_well[ind] = True
-			# else:
-			# 	self.position_colors[ind] = tab10(0.1)
-			# 	if self.plot_options[1].isChecked():
-			# 		self.line_to_plot[ind] = False # unselect line
-			# 	elif self.plot_options[0].isChecked():
-			# 		self.line_to_plot_well[ind] = False
-			# self.sc.set_color(self.position_colors)
-			# self.position_scatter.canvas.draw_idle()
-			# self.plot_survivals(0)
+		self.plot_survivals(0)				
 
 
 	def select_color(self, selection):
@@ -689,6 +728,7 @@ class ConfigSurvival(QWidget):
 		self.annot.set_visible(False)
 		self.fig_scatter.canvas.mpl_connect("motion_notify_event", self.hover)
 		self.fig_scatter.canvas.mpl_connect("pick_event", self.unselect_position)
+
 
 	# def plot_positions(self):
 		

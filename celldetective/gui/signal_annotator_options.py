@@ -287,8 +287,8 @@ class ConfigSignalAnnotator(QMainWindow):
 					for i in range(max_iter):
 						idx = self.channel_cbs[i].findText(channels[i][0])
 						self.channel_cbs[i].setCurrentIndex(idx)					
-						self.min_val_les[i].setText(str(channels[0][1]))
-						self.max_val_les[i].setText(str(channels[0][2]))
+						self.min_val_les[i].setText(str(channels[i][1]))
+						self.max_val_les[i].setText(str(channels[i][2]))
 
 				if 'fraction' in instructions:
 					fraction = instructions['fraction']

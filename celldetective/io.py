@@ -623,7 +623,6 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 
 		spatial_calibration = float(ConfigSectionMap(config,"MovieSettings")["pxtoum"])
 		channel_names, channel_indices = extract_experiment_channels(config)
-		print(spatial_calibration, channel_names, channel_indices)
 
 		annotation_folder = expfolder + os.sep + f'annotations_{population}' + os.sep
 		if not os.path.exists(annotation_folder):
@@ -632,12 +631,23 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		print('exporting!')
 		t = viewer.dims.current_step[0]
 		labels_layer = viewer.layers['segmentation'].data[t] # at current time
+
 		frame = viewer.layers['Image'].data[t]
-		if frame.ndim==2:
-			frame = frame[np.newaxis,:,:]
+		# if frame.ndim==2:
+		# 	frame = frame[np.newaxis,:,:]
+
+		multichannel = [frame]
+		for i in range(len(channel_indices)-1):
+			try:
+				frame = viewer.layers[f'Image [{i+1}]'].data[t]
+				multichannel.append(frame)
+			except:
+				pass
+		multichannel = np.array(multichannel)
+		print(multichannel.shape)
 
 		save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_labelled.tif", labels_layer, axes='YX')
-		save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", frame, axes='CYX')
+		save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", multichannel, axes='CYX')
 		info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
 		info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.json"
 		with open(info_name, 'w') as f:

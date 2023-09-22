@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit,QFileDialog, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit,QFileDialog, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
@@ -149,6 +149,11 @@ class SignalAnnotator(QMainWindow):
 										self.time_of_interest_le, self.suppr_btn]
 		self.hide_annotation_buttons()
 		#### End of annotation buttons
+
+
+		self.del_shortcut = QShortcut(Qt.Key_Delete, self) #QKeySequence("s")
+		self.del_shortcut.activated.connect(self.shortcut_suppr)
+		self.del_shortcut.setEnabled(False)
 
 
 		# Cell signals
@@ -387,6 +392,8 @@ class SignalAnnotator(QMainWindow):
 		self.correct_btn.setEnabled(False)
 		self.correct_btn.setText('correct')
 		self.cancel_btn.setEnabled(False)
+		self.del_shortcut.setEnabled(False)
+
 		self.selection.pop(0)
 
 		#self.fcanvas.canvas.draw()
@@ -750,6 +757,7 @@ class SignalAnnotator(QMainWindow):
 			self.selection.append(ind)
 			self.correct_btn.setEnabled(True)
 			self.cancel_btn.setEnabled(True)
+			self.del_shortcut.setEnabled(True)
 
 			self.track_of_interest = self.tracks[self.framedata][ind]
 			print(f'You selected track {self.track_of_interest}.')
@@ -775,6 +783,11 @@ class SignalAnnotator(QMainWindow):
 		else:
 			pass
 			
+	def shortcut_suppr(self):
+		self.correct_btn.click()
+		self.suppr_btn.click()
+		self.correct_btn.click()
+
 	def configure_ylims(self):
 
 		try:

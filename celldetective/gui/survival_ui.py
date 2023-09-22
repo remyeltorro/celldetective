@@ -26,7 +26,7 @@ from lifelines import KaplanMeierFitter
 from matplotlib.cm import viridis, tab10
 import math
 
-def switch_to_events(classes, times, max_times, first_detections=None):
+def switch_to_events(classes, times, max_times, first_detections=None, left_censored=False):
 	
 	events = []
 	survival_times = []
@@ -34,15 +34,29 @@ def switch_to_events(classes, times, max_times, first_detections=None):
 		first_detections = np.zeros_like(max_times)
 		
 	for c,t,mt,ft in zip(classes, times, max_times, first_detections):
-		if c==0:
-			if t>0:
-				events.append(1)
-				survival_times.append(t - ft)
-		elif c==1:
-			events.append(0)
-			survival_times.append(mt - ft)
+
+		if left_censored:
+			if ft!=0.:
+				if c==0:
+					if t>0:
+						events.append(1)
+						survival_times.append(t - ft)
+				elif c==1:
+					events.append(0)
+					survival_times.append(mt - ft)
+				else:
+					pass
 		else:
-			pass
+			if c==0:
+				if t>0:
+					events.append(1)
+					survival_times.append(t - ft)
+			elif c==1:
+				events.append(0)
+				survival_times.append(mt - ft)
+			else:
+				pass
+
 	return events, survival_times
 	  
 	
@@ -155,130 +169,132 @@ class ConfigSurvival(QWidget):
 
 		# read instructions from combobox options
 		self.load_available_tables()
-		self.compute_survival_functions()
-		# prepare survival
+		if self.df is not None:
+			self.compute_survival_functions()
+			# prepare survival
 
-		# plot survival
-		self.survivalWidget = QWidget()
-		self.survivalWidget.setMinimumHeight(int(0.8*self.screen_height))
-		self.survivalWidget.setWindowTitle('survival')
-		self.plotvbox = QVBoxLayout(self.survivalWidget)
-		self.plotvbox.setContentsMargins(30,30,30,30)
-		self.survival_title = QLabel('Survival function')
-		self.survival_title.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
-		self.plotvbox.addWidget(self.survival_title, alignment=Qt.AlignCenter)
+			# plot survival
+			self.survivalWidget = QWidget()
+			self.survivalWidget.setMinimumHeight(int(0.8*self.screen_height))
+			self.survivalWidget.setWindowTitle('survival')
+			self.plotvbox = QVBoxLayout(self.survivalWidget)
+			self.plotvbox.setContentsMargins(30,30,30,30)
+			self.survival_title = QLabel('Survival function')
+			self.survival_title.setStyleSheet("""
+				font-weight: bold;
+				padding: 0px;
+				""")
+			self.plotvbox.addWidget(self.survival_title, alignment=Qt.AlignCenter)
 
-		plot_buttons_hbox = QHBoxLayout()
-		self.log_btn = QPushButton('')
-		self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-		self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.log_btn.clicked.connect(self.switch_to_log)
-		plot_buttons_hbox.addWidget(self.log_btn, alignment=Qt.AlignRight)
+			plot_buttons_hbox = QHBoxLayout()
+			self.log_btn = QPushButton('')
+			self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
+			self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.log_btn.clicked.connect(self.switch_to_log)
+			plot_buttons_hbox.addWidget(self.log_btn, alignment=Qt.AlignRight)
 
-		self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
-		self.survival_window = FigureCanvas(self.fig, title="Survival")
-		self.survival_window.setContentsMargins(0,0,0,0)
-		self.initialize_axis()
-		plt.tight_layout()
-		self.fig.set_facecolor('none')  # or 'None'
-		self.fig.canvas.setStyleSheet("background-color: transparent;")
-		self.survival_window.canvas.draw()
-
-		#self.survival_window.layout.addWidget(QLabel('WHAAAAATTT???'))
-
-		self.plot_options = [QRadioButton() for i in range(3)]
-		self.radio_labels = ['well', 'pos', 'both']
-		radio_hbox = QHBoxLayout()
-		radio_hbox.setContentsMargins(30,30,30,30)
-		self.plot_btn_group = QButtonGroup()
-		for i in range(3):
-			self.plot_options[i].setText(self.radio_labels[i])
-			#self.plot_options[i].toggled.connect(self.plot_survivals)
-			self.plot_btn_group.addButton(self.plot_options[i])
-			radio_hbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
-		self.plot_btn_group.buttonClicked[int].connect(self.plot_survivals)
-
-		print(self.well_indices, self.position_indices)
-		if self.position_indices is not None:
-			if len(self.well_indices)>1 and len(self.position_indices)==1:
-				self.plot_btn_group.buttons()[0].click()
-				for i in [1,2]:
-					self.plot_options[i].setEnabled(False)
-			elif len(self.well_indices)>1:
-				self.plot_btn_group.buttons()[0].click()
-			elif len(self.well_indices)==1 and len(self.position_indices)==1:
-				self.plot_btn_group.buttons()[1].click()
-				for i in [0,2]:
-					self.plot_options[i].setEnabled(False)
-		else:
-			if len(self.well_indices)>1:
-				self.plot_btn_group.buttons()[0].click()
-			elif len(self.well_indices)==1:
-				self.plot_btn_group.buttons()[2].click()
-
-
-		# elif len(self.well_indices)>1:		
-		# 	self.plot_btn_group.buttons()[0].click()
-		# else:
-		# 	self.plot_btn_group.buttons()[1].click()
-
-		# if self.position_indices is not None:
-		# 	for i in [0,2]:
-		# 		self.plot_options[i].setEnabled(False)
-
-
-		#self.plot_options[0].setChecked(True)
-		self.plotvbox.addLayout(radio_hbox)
-
-		self.plotvbox.addLayout(plot_buttons_hbox)
-		self.plotvbox.addWidget(self.survival_window)
-
-		self.select_pos_label = QLabel('Select positions')
-		self.select_pos_label.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
-		self.plotvbox.addWidget(self.select_pos_label, alignment=Qt.AlignCenter)
-
-		self.select_option = [QRadioButton() for i in range(2)]
-		self.select_label = ['name', 'spatial']
-		select_hbox = QHBoxLayout()
-		select_hbox.setContentsMargins(30,30,30,30)
-		self.select_btn_group = QButtonGroup()
-		for i in range(2):
-			self.select_option[i].setText(self.select_label[i])
-			#self.select_option[i].toggled.connect(self.switch_selection_mode)
-			self.select_btn_group.addButton(self.select_option[i])
-			select_hbox.addWidget(self.select_option[i],33, alignment=Qt.AlignCenter)
-		self.select_btn_group.buttonClicked[int].connect(self.switch_selection_mode)
-		self.plotvbox.addLayout(select_hbox)
-
-		self.look_for_metadata()
-		if self.metadata_found:
-			self.fig_scatter, self.ax_scatter = plt.subplots(1,1,figsize=(4,3))
-			self.position_scatter = FigureCanvas(self.fig_scatter)
-			self.load_coordinates()
-			self.plot_spatial_location()
-			#self.plot_positions()
-			self.ax_scatter.spines['top'].set_visible(False)
-			self.ax_scatter.spines['right'].set_visible(False)
-			self.ax_scatter.set_aspect('equal')
-			self.ax_scatter.set_xticks([])
-			self.ax_scatter.set_yticks([])
+			self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+			self.survival_window = FigureCanvas(self.fig, title="Survival")
+			self.survival_window.setContentsMargins(0,0,0,0)
+			if self.df is not None:
+				self.initialize_axis()
 			plt.tight_layout()
-			self.fig_scatter.set_facecolor('none')  # or 'None'
-			self.fig_scatter.canvas.setStyleSheet("background-color: transparent;")
-			self.plotvbox.addWidget(self.position_scatter)
+			self.fig.set_facecolor('none')  # or 'None'
+			self.fig.canvas.setStyleSheet("background-color: transparent;")
+			self.survival_window.canvas.draw()
 
-		self.generate_pos_selection_widget()
+			#self.survival_window.layout.addWidget(QLabel('WHAAAAATTT???'))
 
-		# if self.df is not None and len(self.ks_estimators_per_position)>0:
-		# 	self.plot_survivals()
-		self.select_btn_group.buttons()[0].click()
-		self.survivalWidget.show()
+			self.plot_options = [QRadioButton() for i in range(3)]
+			self.radio_labels = ['well', 'pos', 'both']
+			radio_hbox = QHBoxLayout()
+			radio_hbox.setContentsMargins(30,30,30,30)
+			self.plot_btn_group = QButtonGroup()
+			for i in range(3):
+				self.plot_options[i].setText(self.radio_labels[i])
+				#self.plot_options[i].toggled.connect(self.plot_survivals)
+				self.plot_btn_group.addButton(self.plot_options[i])
+				radio_hbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
+			self.plot_btn_group.buttonClicked[int].connect(self.plot_survivals)
+
+			print(self.well_indices, self.position_indices)
+			if self.position_indices is not None:
+				if len(self.well_indices)>1 and len(self.position_indices)==1:
+					self.plot_btn_group.buttons()[0].click()
+					for i in [1,2]:
+						self.plot_options[i].setEnabled(False)
+				elif len(self.well_indices)>1:
+					self.plot_btn_group.buttons()[0].click()
+				elif len(self.well_indices)==1 and len(self.position_indices)==1:
+					self.plot_btn_group.buttons()[1].click()
+					for i in [0,2]:
+						self.plot_options[i].setEnabled(False)
+			else:
+				if len(self.well_indices)>1:
+					self.plot_btn_group.buttons()[0].click()
+				elif len(self.well_indices)==1:
+					self.plot_btn_group.buttons()[2].click()
+
+
+			# elif len(self.well_indices)>1:		
+			# 	self.plot_btn_group.buttons()[0].click()
+			# else:
+			# 	self.plot_btn_group.buttons()[1].click()
+
+			# if self.position_indices is not None:
+			# 	for i in [0,2]:
+			# 		self.plot_options[i].setEnabled(False)
+
+
+			#self.plot_options[0].setChecked(True)
+			self.plotvbox.addLayout(radio_hbox)
+
+			self.plotvbox.addLayout(plot_buttons_hbox)
+			self.plotvbox.addWidget(self.survival_window)
+
+			self.select_pos_label = QLabel('Select positions')
+			self.select_pos_label.setStyleSheet("""
+				font-weight: bold;
+				padding: 0px;
+				""")
+			self.plotvbox.addWidget(self.select_pos_label, alignment=Qt.AlignCenter)
+
+			self.select_option = [QRadioButton() for i in range(2)]
+			self.select_label = ['name', 'spatial']
+			select_hbox = QHBoxLayout()
+			select_hbox.setContentsMargins(30,30,30,30)
+			self.select_btn_group = QButtonGroup()
+			for i in range(2):
+				self.select_option[i].setText(self.select_label[i])
+				#self.select_option[i].toggled.connect(self.switch_selection_mode)
+				self.select_btn_group.addButton(self.select_option[i])
+				select_hbox.addWidget(self.select_option[i],33, alignment=Qt.AlignCenter)
+			self.select_btn_group.buttonClicked[int].connect(self.switch_selection_mode)
+			self.plotvbox.addLayout(select_hbox)
+
+			self.look_for_metadata()
+			if self.metadata_found:
+				self.fig_scatter, self.ax_scatter = plt.subplots(1,1,figsize=(4,3))
+				self.position_scatter = FigureCanvas(self.fig_scatter)
+				self.load_coordinates()
+				self.plot_spatial_location()
+				#self.plot_positions()
+				self.ax_scatter.spines['top'].set_visible(False)
+				self.ax_scatter.spines['right'].set_visible(False)
+				self.ax_scatter.set_aspect('equal')
+				self.ax_scatter.set_xticks([])
+				self.ax_scatter.set_yticks([])
+				plt.tight_layout()
+				self.fig_scatter.set_facecolor('none')  # or 'None'
+				self.fig_scatter.canvas.setStyleSheet("background-color: transparent;")
+				self.plotvbox.addWidget(self.position_scatter)
+
+			self.generate_pos_selection_widget()
+
+			# if self.df is not None and len(self.ks_estimators_per_position)>0:
+			# 	self.plot_survivals()
+			self.select_btn_group.buttons()[0].click()
+			self.survivalWidget.show()
 
 	def generate_pos_selection_widget(self):
 
@@ -318,9 +334,10 @@ class ConfigSurvival(QWidget):
 
 		self.df = []
 		self.df_pos_info = []
-
+		real_well_index=0
 		for widx,well_path in enumerate(tqdm(self.wells[self.well_indices])):
 
+			any_table=False
 			well_index = widx
 			split_well_path = well_path.split(os.sep)
 			split_well_path = list(filter(None, split_well_path))
@@ -335,6 +352,7 @@ class ConfigSurvival(QWidget):
 				except:
 					continue
 
+			real_pos_index=0
 			for pidx,pos_path in enumerate(positions):
 
 				split_pos_path = pos_path.split(os.sep)
@@ -356,18 +374,40 @@ class ConfigSurvival(QWidget):
 					df_pos['well_name'] = well_name
 					df_pos['pos_name'] = pos_name
 					self.df.append(df_pos)
+					any_table=True
 
-					self.df_pos_info.append({'pos_path': pos_path, 'pos_index': pidx, 'pos_name': pos_name, 'table_path': table, 'stack_path': stack_path,
-											'well_path': well_path, 'well_index': well_index, 'well_name': well_name, 'well_number': well_number, 'well_alias': well_alias})
+					self.df_pos_info.append({'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table, 'stack_path': stack_path,
+											'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name, 'well_number': well_number, 'well_alias': well_alias})
+					real_pos_index+=1
 
-		self.df_pos_info = pd.DataFrame(self.df_pos_info)
-		self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
-		self.df_well_info.to_csv(self.exp_dir+'exp_info_well.csv')
+			if any_table:
+				real_well_index+=1
+
+		try:
+			self.df_pos_info = pd.DataFrame(self.df_pos_info)
+			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
+			self.df_well_info.to_csv(self.exp_dir+'exp_info_well.csv')
+		except Exception as e:
+			print(f'{e}. No table could be found to compute survival...')
+			self.df = None
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table could be found to compute survival...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.close()
+				return None
+			else:
+				self.close()
+				return None
 
 		if len(self.df)>0:
 			self.df = pd.concat(self.df)
 		else:
 			print('No table could be found to compute survival...')
+			self.df = None
 			return None
 
 		print('End of new function...')
@@ -438,7 +478,11 @@ class ConfigSurvival(QWidget):
 					else:
 						continue
 
-			events, survival_times = switch_to_events(classes, times, max_times, first_detections)
+			if self.cbs[2].currentText()=='first detection':
+				left_censored = True
+			else:
+				left_censored = False
+			events, survival_times = switch_to_events(classes, times, max_times, first_detections, left_censored=left_censored)
 			ks = KaplanMeierFitter()
 			if len(events)>0:
 				ks.fit(survival_times, event_observed=events)
@@ -634,6 +678,7 @@ class ConfigSurvival(QWidget):
 		Read metadata and try to extract position coordinates
 		"""
 
+		self.no_meta = False
 		try:
 			with open(self.metafiles[0], 'r') as f:
 				data = json.load(f)
@@ -644,12 +689,20 @@ class ConfigSurvival(QWidget):
 
 		for k in range(len(positions)):
 			pos_label = positions[k]['Label']
-			coords = positions[k]['DeviceCoordinatesUm']['XYStage']
-			files = self.df_pos_info['stack_path'].values
-			pos_loc = [pos_label in f for f in files]
-			self.df_pos_info.loc[pos_loc, 'x'] = coords[0]
-			self.df_pos_info.loc[pos_loc, 'y'] = coords[1]
-			self.df_pos_info.loc[pos_loc, 'metadata_tag'] = pos_label
+			try:
+				coords = positions[k]['DeviceCoordinatesUm']['XYStage']
+			except:
+				try:
+					coords = positions[k]['DeviceCoordinatesUm']['PIXYStage']
+				except:
+					self.no_meta = True
+
+			if not self.no_meta:
+				files = self.df_pos_info['stack_path'].values
+				pos_loc = [pos_label in f for f in files]
+				self.df_pos_info.loc[pos_loc, 'x'] = coords[0]
+				self.df_pos_info.loc[pos_loc, 'y'] = coords[1]
+				self.df_pos_info.loc[pos_loc, 'metadata_tag'] = pos_label
 
 
 	def update_annot(self, ind):

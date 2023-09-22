@@ -1,0 +1,11 @@
+{
+    "channels": [
+        "adhesion_channel"
+    ],
+    "diameter": 40.167,
+    "cellprob_threshold": 0.0,
+    "flow_threshold": 0.4,
+    "normalize": true,
+    "spatial_calibration": 0.125,
+    "model_type": "cellpose"
+}

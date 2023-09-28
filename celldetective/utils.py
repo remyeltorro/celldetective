@@ -3,11 +3,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 import os
+from scipy.ndimage import shift, zoom
 os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow.config import list_physical_devices
 import configparser
 from sklearn.utils.class_weight import compute_class_weight
+from skimage.util import random_noise
+from skimage.filters import gaussian
+import random
+from tifffile import imread
+import json
+from csbdeep.utils import normalize_mi_ma
+from glob import glob
 
 def create_patch_mask(h, w, center=None, radius=None):
 
@@ -746,4 +754,211 @@ def color_from_class(cclass, recently_modified=False):
 		elif cclass==2:
 			return 'tab:olive'
 		else:
-			return 'k'		
+			return 'k'
+
+def random_fliprot(img, mask):
+
+	"""
+
+	Perform random flipping of the image and the associated mask. 
+	Needs YXC (channel last).
+
+	"""
+	assert img.ndim >= mask.ndim
+	axes = tuple(range(mask.ndim))
+	perm = tuple(np.random.permutation(axes))
+	img = img.transpose(perm + tuple(range(mask.ndim, img.ndim))) 
+	mask = mask.transpose(perm) 
+	for ax in axes: 
+		if np.random.rand() > 0.5:
+			img = np.flip(img, axis=ax)
+			mask = np.flip(mask, axis=ax)
+	return img, mask 
+
+# def random_intensity_change(img):
+#     img[img!=0.] = img[img!=0.]*np.random.uniform(0.3,2)
+#     img[img!=0.] += np.random.uniform(-0.2,0.2)
+#     return img
+
+def random_shift(image,mask, max_shift_amplitude=0.1):
+
+	"""
+
+	Perform random shift of the image in X and or Y. 
+	Needs YXC (channel last).
+
+	"""	
+	
+	input_shape = image.shape[0]
+	max_shift = input_shape*max_shift_amplitude
+	
+	shift_value_x = random.choice(np.arange(max_shift))
+	if np.random.random() > 0.5:
+		shift_value_x*=-1
+
+	shift_value_y = random.choice(np.arange(max_shift))
+	if np.random.random() > 0.5:
+		shift_value_y*=-1
+
+	image = shift(image,[shift_value_x, shift_value_y, 0], output=np.float32, order=3, mode="constant",cval=0.0)
+	mask = shift(mask,[shift_value_x,shift_value_y],order=0,mode="constant",cval=0.0)
+	
+	return image,mask
+
+
+def blur(x,max_sigma=4.0):
+	"""
+	Random image blur
+	"""
+	sigma = np.random.random()*max_sigma
+	loc_i,loc_j,loc_c = np.where(x==0.)
+	x = gaussian(x, sigma, channel_axis=-1, preserve_range=True)
+	x[loc_i,loc_j,loc_c] = 0.
+
+	return x
+
+def noise(x, apply_probability=0.5, clip_option=False):
+
+	"""
+	Apply random noise to a multichannel image
+
+	"""
+
+	x_noise = x.astype(float).copy()
+	loc_i,loc_j,loc_c = np.where(x_noise==0.)
+	options =  ['gaussian', 'localvar', 'poisson', 'speckle']
+
+	for k in range(x_noise.shape[-1]):
+		mode_order = random.sample(options, len(options))
+		for m in mode_order:
+			p = np.random.random()
+			if p <= apply_probability:
+				try:
+					x_noise[:,:,k] = random_noise(x_noise[:,:,k], mode=m, clip=clip_option)
+				except:
+					pass
+
+	x_noise[loc_i,loc_j,loc_c] = 0.
+
+	return x_noise
+
+
+
+def augmenter(x, y, flip=True, gauss_blur=True, noise_option=True, shift=True, 
+	channel_extinction=False, extinction_probability=0.1, clip=False, max_sigma_blur=4, 
+	apply_noise_probability=0.5, augment_probability=0.9):
+
+	"""
+	Augmentation routine for DL training.
+
+	"""
+
+	r = random.random()
+	if r<= augment_probability:
+
+		if flip:
+			x, y = random_fliprot(x, y)
+
+		if gauss_blur:
+			x = blur(x, max_sigma=max_sigma_blur)
+
+		if noise_option:
+			x = noise(x, apply_probability=apply_noise_probability, clip_option=clip)
+
+		if shift:
+			x,y = random_shift(x,y)
+	  
+		if channel_extinction:
+			assert extinction_probability <= 1.,'The extinction probability must be a number between 0 and 1.'
+			for i in range(x.shape[-1]):
+				if np.random.random() > (1 - extinction_probability):
+					x[:,:,i] = 0.
+
+	return x, y
+
+def normalize_per_channel(X, normalization_percentile_mode=True, normalization_values=[0.1,99.99],normalization_clipping=False):
+	
+	assert X[0].ndim==3,'Channel axis does not exist. Abort.'
+	n_channels = X[0].shape[-1]
+	if isinstance(normalization_percentile_mode, bool):
+		normalization_percentile_mode = [normalization_percentile_mode]*n_channels
+	if isinstance(normalization_clipping, bool):
+		normalization_clipping = [normalization_clipping]*n_channels
+	if len(normalization_values)==2 and not isinstance(normalization_values[0], list):
+		normalization_values = [normalization_values]*n_channels
+
+	assert len(normalization_values)==n_channels
+	assert len(normalization_clipping)==n_channels
+	assert len(normalization_percentile_mode)==n_channels
+	
+	for i in range(len(X)):
+		x = X[i]
+		loc_i,loc_j,loc_c = np.where(x==0.)
+		norm_x = np.zeros_like(x, dtype=np.float32)
+		for k in range(x.shape[-1]):
+			chan = x[:,:,k]
+			if normalization_percentile_mode[k]:
+				min_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][0])
+				max_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][1])
+			else:
+				min_val = normalization_values[k][0]
+				max_val = normalization_values[k][1]
+
+			clip_option = normalization_clipping[k]
+			norm_x[:,:,k] = normalize_mi_ma(chan.astype(np.float32), min_val, max_val, clip=clip_option, eps=1e-20, dtype=np.float32)
+		
+		X[i] = norm_x
+
+	return X
+
+def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_suffix='labelled'):
+
+	if isinstance(channels, str):
+		channels = [channels]
+		
+	assert isinstance(channels, list),'Please provide a list of channels. Abort.'
+
+	X = []; Y = [];
+
+	for ds in datasets:
+		img_paths = list(set(glob(ds+os.sep+'*.tif')) - set(glob(ds+os.sep+f'*_{mask_suffix}.tif')))
+		for im in img_paths:
+			mask_path = os.sep.join([os.path.split(im)[0],os.path.split(im)[-1].replace('.tif', f'_{mask_suffix}.tif')])
+			if os.path.exists(mask_path):
+				# load image and mask
+				image = imread(im)
+				if image.ndim==2:
+					image = image[np.newaxis]
+				if image.ndim>3:
+					print('Invalid image shape, skipping')
+					continue
+				mask = imread(mask_path)
+				config_path = im.replace('.tif','.json')
+				if os.path.exists(config_path):
+					# Load config
+					with open(config_path, 'r') as f:
+						config = json.load(f)
+					try:
+						ch_idx = []
+						for c in channels:
+							idx = config['channels'].index(c)
+							ch_idx.append(idx)
+						im_calib = config['spatial_calibration']
+					except Exception as e:
+						print(e,' channels and/or spatial calibration could not be found in the config... Skipping image.')
+						continue
+				
+				image = image[ch_idx]
+				image = np.moveaxis(image,0,-1)
+				assert image.ndim==3,'The image has a wrong number of dimensions. Abort.'
+	
+				if im_calib != train_spatial_calibration:
+					factor = im_calib / train_spatial_calibration
+					image = zoom(image, [factor,factor,1], order=3)
+					mask = zoom(mask, [factor,factor], order=0)        
+					
+			X.append(image)
+			Y.append(mask)
+
+	assert len(X)==len(Y),'The number of images does not match with the number of masks... Abort.'
+	return X,Y

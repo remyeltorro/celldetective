@@ -6,6 +6,35 @@
         "live_nuclei_channel"
     ],
     "spatial_calibration": 0.3112,
-    "normalize": true,
+    "normalization_percentile": [
+        true,
+        true,
+        true,
+        true
+    ],
+    "normalization_clip": [
+        false,
+        false,
+        false,
+        false
+    ],
+    "normalization_values": [
+        [
+            0.1,
+            99.999
+        ],
+        [
+            0.1,
+            99.999
+        ],
+        [
+            0.1,
+            99.999
+        ],
+        [
+            0.1,
+            99.999
+        ]                
+    ],
     "model_type": "stardist"
 }

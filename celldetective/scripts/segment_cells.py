@@ -8,7 +8,7 @@ import json
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
-from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
+from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
@@ -81,11 +81,9 @@ print(f'Required channels: {required_channels} located at channel indices {chann
 required_spatial_calibration = input_config['spatial_calibration']
 print(f'Expected spatial calibration is {required_spatial_calibration}.')
 
-if 'normalize' in input_config:
-	normalize = input_config['normalize']
-else:
-	normalize = True
-print(f'Normalize the input images: {normalize}')
+normalization_percentile = input_config['normalization_percentile']
+normalization_clip = input_config['normalization_clip']
+normalization_values = input_config['normalization_values']
 
 model_type = input_config['model_type']
 
@@ -106,8 +104,8 @@ if len_movie_auto is not None:
 
 if model_type=='cellpose':
 	diameter = input_config['diameter']
-	if diameter!=30:
-		required_spatial_calibration = None 	# ignore spatial calibration and use diameter
+	# if diameter!=30:
+	# 	required_spatial_calibration = None 	# ignore spatial calibration and use diameter
 	cellprob_threshold = input_config['cellprob_threshold']
 	flow_threshold = input_config['flow_threshold']
 
@@ -128,33 +126,33 @@ if model_type=='stardist':
 	model = StarDist2D(None, name=modelname, basedir=Path(model_complete_path).parent)
 	model.config.use_gpu = use_gpu
 	model.use_gpu = use_gpu
+	model._axes_tile_overlap("YXC")
+	print('Tile overlap: ', model._tile_overlap)
 	print(f"StarDist model {modelname} successfully loaded.")
 
 elif model_type=='cellpose':
-	
-	model = CellposeModel(gpu=use_gpu, pretrained_model=model_complete_path+modelname, diam_mean=30.0)
+	print(model_complete_path+modelname, 'nchan',len(required_channels), required_channels)
+	model = CellposeModel(gpu=use_gpu, pretrained_model=model_complete_path+modelname, diam_mean=30.0, model_type=None, nchan=len(required_channels))
 	print(f'Cellpose model {modelname} successfully loaded.')
 
 # Loop over all frames and segment
 for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 	
 	# Load channels at time t
-	f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=normalize)
+	f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=False)
+	f = normalize_per_channel([f], normalization_percentile_mode=normalization_percentile, normalization_values=normalization_values,
+								normalization_clipping=normalization_clip)
+	f = f[0]
 
 	if model_type=="stardist":
-		
 		Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)
 		Y_pred = Y_pred.astype(np.uint16)
 
 	elif model_type=="cellpose":
 
-		if len(img_num_channels)==1:
-			channels = [[0,0]]
-		else:
-			channels = [[0,1]]
-
-		Y_pred, _, _ = model.eval([f], diameter = diameter, flow_threshold=flow_threshold, channels=channels, normalize=normalize)
-		Y_pred = Y_pred[0].astype(np.uint16)
+		img = np.moveaxis(f, -1, 0)
+		Y_pred, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
+		Y_pred = Y_pred.astype(np.uint16)
 
 	if scale is not None:
 		Y_pred = zoom(Y_pred, [1./scale,1./scale],order=0)

@@ -452,5 +452,15 @@ def segment_from_threshold_at_position(pos, mode, config):
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells_thresholds.py'])
 	subprocess.call(" ".join(['python', rf"{script_path}","--pos",rf"{pos}","--config",rf"{config}","--mode",rf"{mode}"]), shell=True)
 
+
+def train_segmentation_model(config):
+
+	config = config.replace('\\','/')
+	config = config.replace(' ','\\ ')
+	assert os.path.exists(config),f'Config {config} is not a valid path.'
+
+	script_path = os.sep.join([abs_path, 'scripts', 'train_segmentation_model.py'])
+	subprocess.call(rf"python {script_path} --config {config}", shell=True)
+
 if __name__ == "__main__":
 	print(segment(None,'test'))

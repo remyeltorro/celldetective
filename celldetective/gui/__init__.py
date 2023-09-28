@@ -7,6 +7,7 @@ from .survival_ui import ConfigSurvival
 from .signal_annotator_options import ConfigSignalAnnotator
 from .signal_annotator import SignalAnnotator
 from .retrain_signal_model_options import ConfigSignalModelTraining
+from .retrain_segmentation_model_options import ConfigSegmentationModelTraining
 from .thresholds_gui import ThresholdConfigWizard
 from .seg_model_loader import SegmentationModelLoader
 from .process_block import ProcessPanel

@@ -1,0 +1,37 @@
+{
+    "model_name": "mcf7_cellpose",
+    "model_type": "cellpose",
+    "pretrained": null,
+    "spatial_calibration": 0.3112,
+    "channel_option": [
+        "live_nuclei_channel",
+        "dead_nuclei_channel"
+    ],
+    "normalization_percentile": [
+        true,
+        true
+    ],
+    "normalization_clip": [
+        false,
+        false
+    ],
+    "normalization_values": [
+        [
+            0.1,
+            99.99
+        ],
+        [
+            0.1,
+            99.99
+        ]
+    ],
+    "ds": [
+        "/home/limozin/Documents/Experiments/MinimumJan/annotations_targets"
+    ],
+    "augmentation_factor": 2.69,
+    "validation_split": 0.2,
+    "learning_rate": 0.05,
+    "batch_size": 4,
+    "epochs": 28,
+    "target_directory": "/home/limozin/Documents/GitHub/celldetective/celldetective/models/segmentation_targets"
+}

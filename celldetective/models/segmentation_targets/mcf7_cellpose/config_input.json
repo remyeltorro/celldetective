@@ -1,0 +1,29 @@
+{
+    "channels": [
+        "live_nuclei_channel",
+        "dead_nuclei_channel"
+    ],
+    "diameter": 37.29942480094474,
+    "cellprob_threshold": 0.0,
+    "flow_threshold": 0.4,
+    "normalization_percentile": [
+        true,
+        true
+    ],
+    "normalization_clip": [
+        false,
+        false
+    ],
+    "normalization_values": [
+        [
+            0.1,
+            99.99
+        ],
+        [
+            0.1,
+            99.99
+        ]
+    ],
+    "model_type": "cellpose",
+    "spatial_calibration": 0.3112
+}

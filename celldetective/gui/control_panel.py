@@ -430,8 +430,8 @@ class ControlPanel(QMainWindow):
 			for p in panels:
 				p.check_seg_btn.setEnabled(False)
 				p.check_tracking_result_btn.setEnabled(False)
-			self.ProcessTargets.view_tab_btn.setEnabled(False)
-			self.ProcessEffectors.view_tab_btn.setEnabled(False)
+			#self.ProcessTargets.view_tab_btn.setEnabled(False)
+			#self.ProcessEffectors.view_tab_btn.setEnabled(False)
 			self.ProcessTargets.check_seg_btn.setEnabled(False)
 			self.ProcessEffectors.check_seg_btn.setEnabled(False)
 			self.ProcessTargets.check_tracking_result_btn.setEnabled(False)

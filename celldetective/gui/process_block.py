@@ -4,7 +4,7 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
-from celldetective.gui import SegmentationModelLoader, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
+from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
@@ -15,6 +15,7 @@ from glob import glob
 from natsort import natsorted
 import os
 import pandas as pd
+from tqdm import tqdm
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -121,13 +122,21 @@ class ProcessPanel(QFrame):
 		measure_layout.addWidget(self.measure_action, 90)
 		#self.to_disable.append(self.measure_action_tc)
 
+		self.classify_btn = QPushButton()
+		self.classify_btn.setIcon(icon(MDI6.scatter_plot,color="black"))
+		self.classify_btn.setIconSize(QSize(20, 20))
+		self.classify_btn.setToolTip("Classify data.")
+		self.classify_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.classify_btn.clicked.connect(self.open_classifier_ui)
+		measure_layout.addWidget(self.classify_btn, 5) #4,2,1,1, alignment=Qt.AlignRight
+
 		self.measurements_config_btn = QPushButton()
 		self.measurements_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.measurements_config_btn.setIconSize(QSize(20, 20))
 		self.measurements_config_btn.setToolTip("Configure measurements.")
 		self.measurements_config_btn.setStyleSheet(self.parent.parent.button_select_all)
 		self.measurements_config_btn.clicked.connect(self.open_measurement_configuration_ui)
-		measure_layout.addWidget(self.measurements_config_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
+		measure_layout.addWidget(self.measurements_config_btn, 5) #4,2,1,1, alignment=Qt.AlignRight
 
 		self.grid_contents.addLayout(measure_layout,5,0,1,4)
 
@@ -393,6 +402,10 @@ class ProcessPanel(QFrame):
 		self.ConfigMeasurements = ConfigMeasurements(self)
 		self.ConfigMeasurements.show()
 
+	def open_classifier_ui(self):
+		self.ClassifierWidget = ClassifierWidget(self)
+		self.ClassifierWidget.show()
+
 	def open_signal_annotator_configuration_ui(self):
 		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
 		self.ConfigSignalAnnotator.show()
@@ -525,15 +538,122 @@ class ProcessPanel(QFrame):
 		control_tracking_btrack(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode)
 
 	def view_table_ui(self):
+		
 		print('view table')
+		self.load_available_tables()
 
-		test = self.parent.locate_selected_position()
-		if test:
-			tab_path = os.sep.join([self.parent.pos,"output","tables",f"trajectories_{self.mode}.csv"])
-			print(tab_path)
-			if os.path.exists(tab_path):
-				trajectories = pd.read_csv(tab_path)
-				self.tab_ui = TableUI(trajectories, f"Tracks {self.parent.position_list.currentText()}")
-				self.tab_ui.show()
+		if self.df is not None:
+			self.tab_ui = TableUI(self.df, f"Well {self.parent.well_list.currentText()}; Position {self.parent.position_list.currentText()}")
+			self.tab_ui.show()
 		else:
 			print(test, 'test failed')
+
+	def interpret_pos_location(self):
+		
+		"""
+		Read the well/position selection from the control panel to decide which data to load
+		Set position_indices to None if all positions must be taken
+
+		"""
+		
+		if self.well_option==len(self.wells):
+			self.well_indices = np.arange(len(self.wells))
+		else:
+			self.well_indices = np.array([self.well_option],dtype=int)
+
+		if self.position_option==0:
+			self.position_indices = None
+		else:
+			self.position_indices = np.array([self.position_option],dtype=int)
+
+	def load_available_tables(self):
+
+		"""
+		Load the tables of the selected wells/positions from the control Panel for the population of interest
+
+		"""
+
+		self.wells = np.array(self.parent.wells,dtype=str)
+		self.well_option = self.parent.well_list.currentIndex()
+		self.position_option = self.parent.position_list.currentIndex()
+		self.interpret_pos_location()
+
+		self.df = []
+		self.df_pos_info = []
+		real_well_index=0
+		for widx,well_path in enumerate(tqdm(self.wells[self.well_indices])):
+
+			any_table=False
+			well_index = widx
+			split_well_path = well_path.split(os.sep)
+			split_well_path = list(filter(None, split_well_path))
+			well_name = split_well_path[-1]
+			well_number = int(split_well_path[-1].replace('W',''))
+			well_alias = self.parent.well_labels[widx]
+
+			positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
+			if self.position_indices is not None:
+				try:
+					positions = positions[self.position_indices]
+				except:
+					continue
+
+			real_pos_index=0
+			for pidx,pos_path in enumerate(positions):
+
+				split_pos_path = pos_path.split(os.sep)
+				split_pos_path = list(filter(None, split_pos_path))
+				pos_name = split_pos_path[-1]
+				table = os.sep.join([pos_path,'output','tables',f'trajectories_{self.mode}.csv'])
+
+				movies = glob(pos_path+os.sep.join(['movie',self.parent.movie_prefix+'*.tif']))
+				if len(movies)>0:
+					stack_path = movies[0]
+				else:
+					stack_path = np.nan
+
+				if os.path.exists(table):
+					df_pos = pd.read_csv(table, low_memory=False)
+					df_pos['position'] = pos_path
+					df_pos['well'] = well_path
+					df_pos['well_index'] = well_number
+					df_pos['well_name'] = well_name
+					df_pos['pos_name'] = pos_name
+					self.df.append(df_pos)
+					any_table=True
+
+					self.df_pos_info.append({'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table, 'stack_path': stack_path,
+											'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name, 'well_number': well_number, 'well_alias': well_alias})
+					real_pos_index+=1
+
+			if any_table:
+				real_well_index+=1
+
+		try:
+			self.df_pos_info = pd.DataFrame(self.df_pos_info)
+		except Exception as e:
+			print(f'{e}...')
+			self.df = None
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table could be found...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.close()
+				return None
+			else:
+				self.close()
+				return None
+
+		if len(self.df)>0:
+			self.df = pd.concat(self.df)
+			self.df = self.df.reset_index(drop=True)
+		else:
+			print('No table could be found...')
+			self.df = None
+			return None
+
+		print('End of new function...')
+

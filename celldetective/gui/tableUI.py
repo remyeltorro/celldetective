@@ -240,6 +240,7 @@ class TableUI(QMainWindow):
 		elif self.plot_mode=="plot_track_signals":
 
 			print("mode plot track signals")
+			print('we plot here')
 
 			x = self.table_view.selectedIndexes()
 			col_idx = np.array([l.column() for l in x])
@@ -254,8 +255,10 @@ class TableUI(QMainWindow):
 					row_idx_i = row_idx[np.where(col_idx==unique_cols[k])[0]]
 					y = self.data.iloc[row_idx_i, unique_cols[k]]
 					print(unique_cols[k])
-					for tid,group in self.data.groupby('TRACK_ID'):
-						ax.plot(group["FRAME"], group[column_names[unique_cols[k]]],label=column_names[unique_cols[k]])
+					for w,well_group in self.data.groupby('well_name'):
+						for pos,pos_group in well_group.groupby('pos_name'):
+							for tid,group_track in pos_group.groupby('TRACK_ID'):
+								ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[k]]],label=column_names[unique_cols[k]])
 					#ax.plot(self.data["FRAME"][row_idx_i], y, label=column_names[unique_cols[k]])
 				ax.legend()
 				ax.set_xlabel("time [frame]")
@@ -289,8 +292,11 @@ class TableUI(QMainWindow):
 				else:
 					ref_time_col = 'FRAME'
 
-				for tid,group in self.data.groupby('TRACK_ID'):
-					self.ax.plot(group["FRAME"] - group[ref_time_col].to_numpy()[0], group[column_names[unique_cols[0]]],c="k", alpha = 0.1)
+
+				for w,well_group in self.data.groupby('well_name'):
+					for pos,pos_group in well_group.groupby('pos_name'):
+						for tid,group_track in pos_group.groupby('TRACK_ID'):
+							self.ax.plot(group_track["FRAME"] - group_track[ref_time_col].to_numpy()[0], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
 				self.ax.set_xlabel(r"$t - t_0$ [frame]")
 				self.ax.set_ylabel(column_names[unique_cols[0]])
 				plt.tight_layout()

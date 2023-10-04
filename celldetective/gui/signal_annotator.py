@@ -481,7 +481,13 @@ class SignalAnnotator(QMainWindow):
 
 			self.MinMaxScaler = MinMaxScaler()
 			self.columns_to_rescale = list(self.df_tracks.columns)
-			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y']
+
+			# is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
+			# is_number_test = is_number(self.df_tracks.dtypes)
+			# self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
+			# print(self.columns_to_rescale)
+			
+			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index']
 			for tr in cols_to_remove:
 				try:
 					self.columns_to_rescale.remove(tr)
@@ -525,7 +531,7 @@ class SignalAnnotator(QMainWindow):
 
 		signals = list(self.df_tracks.columns)
 		print(signals)
-		to_remove = ['TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y']
+		to_remove = ['TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index']
 		for c in to_remove:
 			if c in signals:
 				signals.remove(c)

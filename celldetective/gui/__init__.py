@@ -3,7 +3,9 @@ from .btrack_options import ConfigTracking
 from .json_readers import ConfigEditor
 from .tableUI import TableUI
 from .measurement_options import ConfigMeasurements
+from .classifier_widget import ClassifierWidget
 from .survival_ui import ConfigSurvival
+from .plot_signals_ui import ConfigSignalPlot
 from .signal_annotator_options import ConfigSignalAnnotator
 from .signal_annotator import SignalAnnotator
 from .retrain_signal_model_options import ConfigSignalModelTraining

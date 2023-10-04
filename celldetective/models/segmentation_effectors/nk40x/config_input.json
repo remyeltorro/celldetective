@@ -1,0 +1,36 @@
+{
+    "channels": [
+        "brightfield_channel",
+        "effector_fluo_channel",
+        "live_nuclei_channel"
+    ],
+    "diameter": 30.0,
+    "cellprob_threshold": 0.0,
+    "flow_threshold": 0.4,
+    "normalization_percentile": [
+        true,
+        true,
+        true
+    ],
+    "normalization_clip": [
+        false,
+        true,
+        true
+    ],
+    "normalization_values": [
+        [
+            0.1,
+            99.99
+        ],
+        [
+            0.1,
+            99.99
+        ],
+        [
+            0.1,
+            99.99
+        ]
+    ],
+    "model_type": "cellpose",
+    "spatial_calibration": 0.23818436748070562
+}

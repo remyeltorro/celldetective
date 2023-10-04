@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QButtonGroup, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, QRadioButton
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QDoubleValidator
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
@@ -26,7 +26,7 @@ from lifelines import KaplanMeierFitter
 from matplotlib.cm import viridis, tab10
 import math
 
-def switch_to_events(classes, times, max_times, first_detections=None, left_censored=False):
+def switch_to_events(classes, times, max_times, first_detections=None, left_censored=False, FrameToMin=None):
 	
 	events = []
 	survival_times = []
@@ -36,14 +36,20 @@ def switch_to_events(classes, times, max_times, first_detections=None, left_cens
 	for c,t,mt,ft in zip(classes, times, max_times, first_detections):
 
 		if left_censored:
-			if ft!=0.:
+			#print('left censored is True: exclude cells that exist in first frame')
+			if ft>0.:
 				if c==0:
 					if t>0:
-						events.append(1)
-						survival_times.append(t - ft)
+						dt = t - ft
+						#print('event: dt = ',dt, t, ft)
+						if dt>0:
+							events.append(1)
+							survival_times.append(dt)
 				elif c==1:
-					events.append(0)
-					survival_times.append(mt - ft)
+					dt = mt - ft
+					if dt>0:
+						events.append(0)
+						survival_times.append(dt)
 				else:
 					pass
 		else:
@@ -57,6 +63,9 @@ def switch_to_events(classes, times, max_times, first_detections=None, left_cens
 			else:
 				pass
 
+	if FrameToMin is not None:
+		print('convert to minutes!', FrameToMin)
+		survival_times = [s*FrameToMin for s in survival_times]
 	return events, survival_times
 	  
 	
@@ -82,6 +91,9 @@ class ConfigSurvival(QWidget):
 		self.exp_config = self.exp_dir +"config.ini"
 		self.wells = np.array(self.parent.parent.wells,dtype=str)
 		self.well_labels = _extract_labels_from_config(self.exp_config,len(self.wells))
+		self.FrameToMin = self.parent.parent.FrameToMin
+		self.float_validator = QDoubleValidator()
+
 		print('Parent wells: ', self.wells)
 
 
@@ -152,6 +164,16 @@ class ConfigSurvival(QWidget):
 			choice_layout.addLayout(hbox)
 		main_layout.addLayout(choice_layout)
 
+
+		time_calib_layout = QHBoxLayout()
+		time_calib_layout.setContentsMargins(20,20,20,20)
+		time_calib_layout.addWidget(QLabel('time calibration\n(frame to min)'), 33)
+		self.time_calibration_le = QLineEdit(str(self.FrameToMin).replace('.',','))
+		self.time_calibration_le.setValidator(self.float_validator)
+		time_calib_layout.addWidget(self.time_calibration_le, 66)
+		#time_calib_layout.addWidget(QLabel(' min'))
+		main_layout.addLayout(time_calib_layout)
+
 		self.submit_btn = QPushButton('Submit')
 		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
 		self.submit_btn.clicked.connect(self.process_survival)
@@ -166,6 +188,8 @@ class ConfigSurvival(QWidget):
 	def process_survival(self):
 
 		print('you clicked!!')
+		self.FrameToMin = float(self.time_calibration_le.text().replace(',','.'))
+		print(self.FrameToMin, 'set')
 
 		# read instructions from combobox options
 		self.load_available_tables()
@@ -187,11 +211,23 @@ class ConfigSurvival(QWidget):
 			self.plotvbox.addWidget(self.survival_title, alignment=Qt.AlignCenter)
 
 			plot_buttons_hbox = QHBoxLayout()
+			plot_buttons_hbox.addWidget(QLabel(''),90, alignment=Qt.AlignLeft)
+
+			self.legend_btn = QPushButton('')
+			self.legend_btn.setIcon(icon(MDI6.text_box,color="black"))
+			self.legend_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.legend_btn.setToolTip('Show or hide the legend')
+			self.legend_visible = True
+			self.legend_btn.clicked.connect(self.show_hide_legend)
+			plot_buttons_hbox.addWidget(self.legend_btn, 5,alignment=Qt.AlignRight)
+
+
 			self.log_btn = QPushButton('')
 			self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
 			self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 			self.log_btn.clicked.connect(self.switch_to_log)
-			plot_buttons_hbox.addWidget(self.log_btn, alignment=Qt.AlignRight)
+			self.log_btn.setToolTip('Enable or disable log scale')
+			plot_buttons_hbox.addWidget(self.log_btn, 5, alignment=Qt.AlignRight)
 
 			self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
 			self.survival_window = FigureCanvas(self.fig, title="Survival")
@@ -458,12 +494,14 @@ class ConfigSurvival(QWidget):
 	def compute_survival_functions(self):
 
 		# Per position survival
+		left_censored = False
 		for block,movie_group in self.df.groupby(['well','position']):
 			classes = movie_group.groupby('TRACK_ID')[self.cbs[3].currentText()].min().values
 			times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
 			max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 			first_detections = None
 			if self.cbs[2].currentText()=='first detection':
+				left_censored = True
 				first_detections = []
 				for tid,track_group in movie_group.groupby('TRACK_ID'):
 					if 'area' in self.df.columns:
@@ -482,13 +520,14 @@ class ConfigSurvival(QWidget):
 				left_censored = True
 			else:
 				left_censored = False
-			events, survival_times = switch_to_events(classes, times, max_times, first_detections, left_censored=left_censored)
+			events, survival_times = switch_to_events(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
 			ks = KaplanMeierFitter()
 			if len(events)>0:
 				ks.fit(survival_times, event_observed=events)
 				self.df_pos_info.loc[self.df_pos_info['pos_path']==block[1],'survival_fit'] = ks
 
 		# Per well survival
+		left_censored = False
 		for well,well_group in self.df.groupby('well'):
 
 			well_classes = []
@@ -502,6 +541,8 @@ class ConfigSurvival(QWidget):
 				max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 				first_detections = None
 				if self.cbs[2].currentText()=='first detection':
+					
+					left_censored = True
 					first_detections = []
 					for tid,track_group in movie_group.groupby('TRACK_ID'):
 						if 'area' in self.df.columns:
@@ -524,9 +565,11 @@ class ConfigSurvival(QWidget):
 			if len(well_first_detections)==0:
 				well_first_detections = None
 		  
-			events, survival_times = switch_to_events(well_classes, well_times, well_max_times, well_first_detections)
+			events, survival_times = switch_to_events(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
 			ks = KaplanMeierFitter()
+			print(survival_times, events)
 			ks.fit(survival_times, event_observed=events)
+			print(ks.survival_function_)
 			self.df_well_info.loc[self.df_well_info['well_path']==well,'survival_fit'] = ks
 
 		self.df_pos_info.loc[:,'select'] = True
@@ -539,8 +582,8 @@ class ConfigSurvival(QWidget):
 		self.ax.spines['top'].set_visible(False)
 		self.ax.spines['right'].set_visible(False)
 		#self.ax.set_ylim(0.001,1.05)
-		self.ax.set_xlim(0,self.df['FRAME'].max())
-		self.ax.set_xlabel('time [frame]')
+		self.ax.set_xlim(0,self.df['FRAME'].max()*self.FrameToMin)
+		self.ax.set_xlabel('time [min]')
 		self.ax.set_ylabel('survival')
 
 	def plot_survivals(self, id):
@@ -561,13 +604,13 @@ class ConfigSurvival(QWidget):
 			for i in range(len(lines)):
 				if len(self.well_indices)<=1:
 					try:
-						lines[i].plot_survival_function(ax=self.ax, legend=None, color=colors[pos_indices[i]],label=pos_labels[i])
+						lines[i].plot_survival_function(ax=self.ax, legend=None, color=colors[pos_indices[i]],label=pos_labels[i], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
 				else:
 					try:
-						lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]],label=pos_labels[i])
+						lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]],label=pos_labels[i], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
@@ -576,17 +619,18 @@ class ConfigSurvival(QWidget):
 			self.initialize_axis()
 			lines = self.df_well_info.loc[self.df_well_info['select'],'survival_fit'].values	
 			well_index = self.df_well_info.loc[self.df_well_info['select'],'well_index'].values
+			well_labels = self.df_well_info.loc[self.df_well_info['select'],'well_name'].values
 			for i in range(len(lines)):		
 				if len(self.well_indices)<=1:
 
 					try:
-						lines[i].plot_survival_function(ax=self.ax, legend=None, color="k")
+						lines[i].plot_survival_function(ax=self.ax, label=well_labels[i], color="k", xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
 				else:
 					try:
-						lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]])
+						lines[i].plot_survival_function(ax=self.ax, label=well_labels[i], color=well_color[well_index[i]], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
@@ -599,17 +643,20 @@ class ConfigSurvival(QWidget):
 			pos_indices = self.df_pos_info.loc[self.df_pos_info['select'],'pos_index'].values
 			well_index_pos = self.df_pos_info.loc[self.df_pos_info['select'],'well_index'].values
 			well_index = self.df_well_info.loc[self.df_well_info['select'],'well_index'].values
+			well_labels = self.df_well_info.loc[self.df_well_info['select'],'well_name'].values
+			pos_labels = self.df_pos_info.loc[self.df_pos_info['select'],'pos_name'].values
+
 			for i in range(len(lines_pos)):
 				if len(self.well_indices)<=1:
 					
 					try:
-						lines_pos[i].plot_survival_function(ax=self.ax, legend=None, alpha=0.25, color=colors[pos_indices[i]])
+						lines_pos[i].plot_survival_function(ax=self.ax, label=pos_labels[i], alpha=0.25, color=colors[pos_indices[i]], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
 				else:
 					try:
-						lines_pos[i].plot_survival_function(ci_show=False, ax=self.ax, legend=None, alpha=0.25, color=well_color[well_index_pos[i]])
+						lines_pos[i].plot_survival_function(ci_show=False, ax=self.ax, legend=None, alpha=0.25, color=well_color[well_index_pos[i]], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
@@ -617,17 +664,18 @@ class ConfigSurvival(QWidget):
 			for i in range(len(lines_well)):		
 				if len(self.well_indices)<=1:
 					try:
-						lines_well[i].plot_survival_function(ax=self.ax, legend=None, color="k")
+						lines_well[i].plot_survival_function(ax=self.ax, label='pool', color="k")
 					except Exception as e:
 						print(f'error {e}')
 						pass
 				else:
 					try:
-						lines_well[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]])
+						lines_well[i].plot_survival_function(ax=self.ax, label=well_labels[i], color=well_color[well_index[i]])
 					except Exception as e:
 						print(f'error {e}')
 						pass
 
+		
 		self.survival_window.canvas.draw()
 
 	def switch_to_log(self):
@@ -645,6 +693,18 @@ class ConfigSurvival(QWidget):
 
 		#self.ax.autoscale()
 		self.survival_window.canvas.draw_idle()
+
+	def show_hide_legend(self):
+		if self.legend_visible:
+			self.ax.legend().set_visible(False)
+			self.legend_visible = False
+			self.legend_btn.setIcon(icon(MDI6.text_box_outline,color="black"))
+		else:
+			self.ax.legend().set_visible(True)
+			self.legend_visible = True
+			self.legend_btn.setIcon(icon(MDI6.text_box,color="black"))
+
+		self.survival_window.canvas.draw_idle()		
 
 	def look_for_metadata(self):
 

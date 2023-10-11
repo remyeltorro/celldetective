@@ -14,6 +14,7 @@ import json
 from shutil import copyfile
 import os
 import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
 from natsort import natsorted
@@ -685,7 +686,7 @@ class ConfigSignalPlot(QWidget):
 			if cell_lines_option and matrix is not None:
 				mat = line[matrix]
 				for i in range(mat.shape[0]):
-					self.ax.plot(line['timeline'], mat[i,:], color=color, alpha=alpha_cell_lines)
+					self.ax.plot(line['timeline']*self.FrameToMin, mat[i,:], color=color, alpha=alpha_cell_lines)
 		except Exception as e:
 			print(f'Exception {e}')
 

@@ -1,9 +1,12 @@
-from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu, QLineEdit, QHBoxLayout, QWidget, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel
 from PyQt5.QtCore import Qt, QAbstractTableModel
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.cm import viridis
+plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window
 import numpy as np
+import seaborn as sns
 
 class PandasModel(QAbstractTableModel):
 
@@ -53,7 +56,7 @@ class QueryWidget(QWidget):
 		try:
 			query_text = self.query_le.text().replace('class','`class`')
 			tab = self.parent.data.query(query_text)
-			self.subtable = TableUI(tab,query_text, plot_mode="plot_track_signals")
+			self.subtable = TableUI(tab,query_text, plot_mode="scatter")
 			self.subtable.show()
 			self.close()
 		except Exception as e:
@@ -98,7 +101,7 @@ class TableUI(QMainWindow):
 			self.fileMenu.addAction(self.plot_action)		
 
 			self.groupby_action = QAction("&Group by tracks...", self)
-			#self.groupby_action.triggered.connect(self.groupby_track_table)
+			self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
 			self.groupby_action.setShortcut("Ctrl+g")
 			self.fileMenu.addAction(self.groupby_action)
 
@@ -143,6 +146,34 @@ class TableUI(QMainWindow):
 		# self.subtable = TableUI(timeseries,"Group by frames", plot_mode="plot_timeseries")
 		# self.subtable.show()
 
+	def set_projection_mode_tracks(self):
+
+		self.projectionWidget = QWidget()
+		self.projectionWidget.setWindowTitle('Set projection mode')
+		
+		layout = QVBoxLayout()
+		self.projectionWidget.setLayout(layout)
+		self.projection_op_cb = QComboBox()
+		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum', 'std', 'var', 'sem', 'skew', 'kurt', 'idmax', 'idmin'])
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('operation: '), 33)
+		hbox.addWidget(self.projection_op_cb, 66)
+		layout.addLayout(hbox)
+
+		self.set_projection_btn = QPushButton('set')
+		self.set_projection_btn.clicked.connect(self.set_proj_mode)
+		layout.addWidget(self.set_projection_btn)
+
+		self.projectionWidget.show()
+		center_window(self.projectionWidget)
+
+	def set_proj_mode(self):
+		self.projection_mode = self.projection_op_cb.currentText()
+		#eval(self.projection_mode)
+		op = getattr(self.data.groupby(['position', 'TRACK_ID']), self.projection_mode)
+		group_table = op(self.data.groupby(['position', 'TRACK_ID']))
+		self.subtable = TableUI(group_table,"Group by tracks", plot_mode="scatter")
+		self.subtable.show()	
 
 	# def groupby_track_table(self):
 
@@ -187,13 +218,32 @@ class TableUI(QMainWindow):
 
 
 			if len(unique_cols)==1:
-				print("one column, histogram mode")
-				x1 = self.test_bool(self.data.iloc[row_idx, unique_cols[0]])
-				fig,ax = plt.subplots(1,1,figsize=(7,5.5))
-				ax.hist(x1)
-				ax.set_xlabel(column_names[unique_cols[0]])
+
+				x = self.table_view.selectedIndexes()
+				col_idx = np.array([l.column() for l in x])
+				row_idx = np.array([l.row() for l in x])
+				column_names = self.data.columns
+				unique_cols = np.unique(col_idx)[0]
+
+				self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+				self.histogram_window = FigureCanvas(self.fig, title="scatter")
+				self.ax.clear()
+				row_idx_i = row_idx[np.where(col_idx==unique_cols)[0]]
+				y = self.data.iloc[row_idx_i, unique_cols]
+
+				colors = [viridis(i / len(self.data['well_index'].unique())) for i in range(len(self.data['well_index'].unique()))]
+				#for w,well_group in self.data.groupby('well_index'):
+				sns.kdeplot(data=self.data, x=column_names[unique_cols], hue='well_index', ax=self.ax, fill=False,common_norm=False, palette=colors, alpha=.5, linewidth=2,)
+				for k,(w,well_group) in enumerate(self.data.groupby('well_index')):
+					self.ax.hist(well_group[column_names[unique_cols]],label=w, density=True, alpha=0.5, color=colors[k])
+				#self.ax.legend()
+				self.ax.set_xlabel(column_names[unique_cols])
 				plt.tight_layout()
-				plt.show(block=False)
+				self.fig.set_facecolor('none')  # or 'None'
+				self.fig.canvas.setStyleSheet("background-color: transparent;")
+				self.histogram_window.canvas.draw()
+				self.histogram_window.show()
+
 
 			elif len(unique_cols)==2:
 

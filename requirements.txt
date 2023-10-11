@@ -15,3 +15,5 @@ tqdm
 mahotas
 fonticon-materialdesignicons6
 art
+lifelines
+setuptools

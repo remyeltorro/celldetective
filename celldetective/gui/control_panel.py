@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
 from celldetective.utils import _extract_labels_from_config, ConfigSectionMap
-from celldetective.gui import ConfigEditor, ProcessPanel, AnalysisPanel
+from celldetective.gui import ConfigEditor, ProcessPanel, AnalysisPanel, NeighPanel
 from natsort import natsorted
 from glob import glob
 import os
@@ -38,6 +38,7 @@ class ControlPanel(QMainWindow):
 		self.generate_header()
 		self.ProcessEffectors = ProcessPanel(self,'effectors')
 		self.ProcessTargets = ProcessPanel(self,'targets')
+		self.NeighPanel = NeighPanel(self)
 		
 		ProcessFrame = QFrame()
 		grid_process = QVBoxLayout(ProcessFrame)
@@ -51,7 +52,8 @@ class ControlPanel(QMainWindow):
 
 		grid_process.addWidget(self.ProcessEffectors)
 		grid_process.addWidget(self.ProcessTargets)
-
+		grid_process.addWidget(self.NeighPanel)
+		
 		grid_analyze.addWidget(self.SurvivalBlock)
 
 

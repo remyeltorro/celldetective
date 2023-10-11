@@ -14,6 +14,7 @@ import json
 from shutil import copyfile
 import os
 import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
 from natsort import natsorted

@@ -147,7 +147,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		epochs_layout = QHBoxLayout()
 		epochs_layout.addWidget(QLabel('# epochs: '), 30)
 		self.epochs_slider = QLabeledSlider()
-		self.epochs_slider.setRange(1,3000)
+		self.epochs_slider.setRange(1,300)
 		self.epochs_slider.setSingleStep(1)
 		self.epochs_slider.setTickInterval(1)		
 		self.epochs_slider.setOrientation(1)
@@ -155,6 +155,8 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		epochs_layout.addWidget(self.epochs_slider, 70)
 		layout.addLayout(epochs_layout)
 
+		self.stardist_model.clicked.connect(self.rescale_slider)
+		self.cellpose_model.clicked.connect(self.rescale_slider)
 
 	def populate_data_frame(self):
 
@@ -377,6 +379,14 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		# self.model_length_slider.setValue(128)		
 		# model_length_layout.addWidget(self.model_length_slider, 70)
 		# layout.addLayout(model_length_layout)
+
+
+	def rescale_slider(self):
+		if self.stardist_model.isChecked():
+			self.epochs_slider.setRange(1,300)
+		else:
+			self.epochs_slider.setRange(1,3000)
+
 
 	def showDialog_pretrained(self):
 

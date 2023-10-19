@@ -1,9 +1,10 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, QMessageBox
+from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, QMessageBox, QWidget, QLineEdit
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
+from celldetective.io import locate_segmentation_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
@@ -16,6 +17,8 @@ from natsort import natsorted
 import os
 import pandas as pd
 from tqdm import tqdm
+from celldetective.gui.gui_utils import center_window
+import json
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -28,6 +31,7 @@ class ProcessPanel(QFrame):
 		self.threshold_config_targets = None
 		self.threshold_config_effectors = None
 		self.wells = np.array(self.parent.wells,dtype=str)
+		self.cellpose_calibrated = False
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -448,6 +452,41 @@ class ProcessPanel(QFrame):
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.No:
 				return None
+		
+		model_name = self.seg_models[self.seg_model_list.currentIndex()]
+		if model_name==f'CP_{self.mode}' and not self.cellpose_calibrated:
+
+			self.diamWidget = QWidget()
+			self.diamWidget.setWindowTitle('Estimate diameter')
+			
+			layout = QVBoxLayout()
+			self.diamWidget.setLayout(layout)
+			self.diameter_le = QLineEdit('40')
+
+			self.cellpose_channel_cb = [QComboBox() for i in range(2)]
+			self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
+
+			for k in range(2):
+				hbox_channel = QHBoxLayout()
+				hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
+				hbox_channel.addWidget(self.cellpose_channel_cb[k])
+				self.cellpose_channel_cb[k].addItems(self.exp_channels)
+				idx = self.cellpose_channel_cb[k].findText(self.cellpose_channel_template[k])
+				self.cellpose_channel_cb[k].setCurrentIndex(idx)
+				layout.addLayout(hbox_channel)
+
+			hbox = QHBoxLayout()
+			hbox.addWidget(QLabel('diameter [px]: '), 33)
+			hbox.addWidget(self.diameter_le, 66)
+			layout.addLayout(hbox)
+
+			self.set_cellpose_scale_btn = QPushButton('set')
+			self.set_cellpose_scale_btn.clicked.connect(self.set_cellpose_scale)
+			layout.addWidget(self.set_cellpose_scale_btn)
+
+			self.diamWidget.show()
+			center_window(self.diamWidget)
+			return None
 
 		for w_idx in self.well_index:
 
@@ -465,7 +504,6 @@ class ProcessPanel(QFrame):
 				
 				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*/"))[pos_idx]
 				print(f"Position {self.pos}...\nLoading stack movie...")
-				model_name = self.seg_models[self.seg_model_list.currentIndex()]
 
 				if not os.path.exists(self.pos + 'output/'):
 					os.mkdir(self.pos + 'output/')
@@ -498,6 +536,7 @@ class ProcessPanel(QFrame):
 							print(f"Segmentation from threshold config: {self.threshold_config}")
 							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config)
 					else:
+
 						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=True)
 
 				if self.track_action.isChecked():
@@ -606,6 +645,25 @@ class ProcessPanel(QFrame):
 		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.mode, return_pos_info=True)
 		if self.df is None:
 			print('no table could be found...')
+
+	def set_cellpose_scale(self):
+
+		scale = self.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		model_complete_path = locate_segmentation_model(f'CP_{self.mode}')
+		input_config_path = model_complete_path+"config_input.json"
+		new_channels = [self.cellpose_channel_cb[i].currentText() for i in range(2)]
+		with open(input_config_path) as config_file:
+			input_config = json.load(config_file)
+		
+		input_config['spatial_calibration'] = scale
+		input_config['channels'] = new_channels
+		with open(input_config_path, 'w') as f:
+			json.dump(input_config, f, indent=4)
+
+		self.cellpose_calibrated = True
+		print('model scale automatically computed: ', scale)
+		self.diamWidget.close()
+		self.process_population()
 
 class NeighPanel(QFrame):
 	def __init__(self, parent):

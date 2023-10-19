@@ -83,7 +83,7 @@ class ControlPanel(QMainWindow):
 			w = os.path.split(w[:-1])
 			root = w[0]
 			w = w[1]
-			positions_path = natsorted(glob(os.sep.join([root, w, f"{w[-1]}*{os.sep}"])))
+			positions_path = natsorted(glob(os.sep.join([root, w, f"{w[1:]}*{os.sep}"])))
 			self.positions.append([os.path.split(pos[:-1])[1] for pos in positions_path])
 
 	def generate_header(self):
@@ -411,7 +411,7 @@ class ControlPanel(QMainWindow):
 			well = self.wells[w_idx]
 
 			for pos_idx in pos_indices:
-				self.pos = natsorted(glob(well+f"{well[-2]}*{os.sep}"))[pos_idx]
+				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*{os.sep}"))[pos_idx]
 				if not os.path.exists(self.pos + 'output'):
 					os.mkdir(self.pos + 'output')
 				if not os.path.exists(self.pos + os.sep.join(['output','tables'])):

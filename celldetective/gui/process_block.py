@@ -453,7 +453,7 @@ class ProcessPanel(QFrame):
 
 			for pos_idx in pos_indices:
 				
-				self.pos = natsorted(glob(well+f"{well[-2]}*/"))[pos_idx]
+				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*/"))[pos_idx]
 				print(f"Position {self.pos}...\nLoading stack movie...")
 				model_name = self.seg_models[self.seg_model_list.currentIndex()]
 
@@ -577,6 +577,12 @@ class ProcessPanel(QFrame):
 		self.wells = np.array(self.parent.wells,dtype=str)
 		self.well_option = self.parent.well_list.currentIndex()
 		self.position_option = self.parent.position_list.currentIndex()
+
+		self.concentrations = self.parent.concentrations
+		self.antibodies = self.parent.antibodies
+		self.cell_types = self.parent.cell_types
+		self.pharmaceutical_agents = self.parent.pharmaceutical_agents
+
 		self.interpret_pos_location()
 
 		self.df = []
@@ -591,6 +597,11 @@ class ProcessPanel(QFrame):
 			well_name = split_well_path[-1]
 			well_number = int(split_well_path[-1].replace('W',''))
 			well_alias = self.parent.well_labels[widx]
+
+			well_concentration = self.concentrations[widx]
+			well_antibody = self.antibodies[widx]
+			well_ct = self.cell_types[widx]
+			well_pa = self.pharmaceutical_agents[widx]
 
 			positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
 			if self.position_indices is not None:
@@ -620,6 +631,12 @@ class ProcessPanel(QFrame):
 					df_pos['well_index'] = well_number
 					df_pos['well_name'] = well_name
 					df_pos['pos_name'] = pos_name
+
+					df_pos['concentration'] = well_concentration
+					df_pos['antibody'] = well_antibody
+					df_pos['cell_type'] = well_ct
+					df_pos['pharmaceutical_agent'] = well_pa
+
 					self.df.append(df_pos)
 					any_table=True
 

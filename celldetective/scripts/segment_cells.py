@@ -126,8 +126,9 @@ if model_type=='stardist':
 	model = StarDist2D(None, name=modelname, basedir=Path(model_complete_path).parent)
 	model.config.use_gpu = use_gpu
 	model.use_gpu = use_gpu
-	model._axes_tile_overlap("YXC")
-	print('Tile overlap: ', model._tile_overlap)
+	#model._axes_tile_overlap("YXC")
+	#fov = np.array(model._axes_tile_overlap('YX'))
+	#print('Tile overlap: ', model._tile_overlap)
 	print(f"StarDist model {modelname} successfully loaded.")
 
 elif model_type=='cellpose':

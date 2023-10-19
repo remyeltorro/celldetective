@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel
+from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel
 from PyQt5.QtCore import Qt, QAbstractTableModel
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -91,7 +91,7 @@ class TableUI(QMainWindow):
 	def _createActions(self):
 
 			self.save_as = QAction("&Save as...", self)
-			#self.save_as.triggered.connect(self.save_as_csv)
+			self.save_as.triggered.connect(self.save_as_csv)
 			self.save_as.setShortcut("Ctrl+s")
 			self.fileMenu.addAction(self.save_as)
 
@@ -191,14 +191,14 @@ class TableUI(QMainWindow):
 		self.fileMenu = QMenu("&File", self)
 		menuBar.addMenu(self.fileMenu)
 
-	# def save_as_csv(self):
-	# 	options = QFileDialog.Options()
-	# 	options |= QFileDialog.ReadOnly
-	# 	file_name, _ = QFileDialog.getSaveFileName(self, "Save as .csv", "","CSV Files (*.csv);;All Files (*)", options=options)
-	# 	if file_name:
-	# 		if not file_name.endswith(".csv"):
-	# 			file_name += ".csv"
-	# 		self.data.to_csv(file_name, index=False)
+	def save_as_csv(self):
+		options = QFileDialog.Options()
+		options |= QFileDialog.ReadOnly
+		file_name, _ = QFileDialog.getSaveFileName(self, "Save as .csv", "","CSV Files (*.csv);;All Files (*)", options=options)
+		if file_name:
+			if not file_name.endswith(".csv"):
+				file_name += ".csv"
+			self.data.to_csv(file_name, index=False)
 
 	# def test_bool(self, array):
 	# 	if array.dtype=="bool":
@@ -233,9 +233,11 @@ class TableUI(QMainWindow):
 
 				colors = [viridis(i / len(self.data['well_index'].unique())) for i in range(len(self.data['well_index'].unique()))]
 				#for w,well_group in self.data.groupby('well_index'):
-				sns.kdeplot(data=self.data, x=column_names[unique_cols], hue='well_index', ax=self.ax, fill=False,common_norm=False, palette=colors, alpha=.5, linewidth=2,)
-				for k,(w,well_group) in enumerate(self.data.groupby('well_index')):
-					self.ax.hist(well_group[column_names[unique_cols]],label=w, density=True, alpha=0.5, color=colors[k])
+				sns.boxplot(data=self.data, y=column_names[unique_cols], x='well_index', ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.stripplot(data=self.data, y=column_names[unique_cols],ax=self.ax, x='well_index', palette=colors)
+				# sns.kdeplot(data=self.data, x=column_names[unique_cols], hue='well_index', ax=self.ax, fill=False,common_norm=False, palette=colors, alpha=.5, linewidth=2,)
+				# for k,(w,well_group) in enumerate(self.data.groupby('well_index')):
+				# 	self.ax.hist(well_group[column_names[unique_cols]],label=w, density=True, alpha=0.5, color=colors[k])
 				#self.ax.legend()
 				self.ax.set_xlabel(column_names[unique_cols])
 				plt.tight_layout()

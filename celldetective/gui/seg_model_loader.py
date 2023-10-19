@@ -386,6 +386,13 @@ class SegmentationModelLoader(QWidget):
 			flow_threshold = float(self.cp_flow_le.text().replace(',','.'))
 			normalize = self.normalize_checkbox.isChecked()
 			spatial_calib = float(self.spatial_calib_le.text().replace(',','.'))
+			if normalize:
+				norm_percentile = [True]*len(channels)
+				norm_clip = [True]*len(channels)
+			else:
+				norm_percentile = [False]*len(channels)
+				norm_clip = [False]*len(channels)
+			normalization_values = [[1.0,99.0]]*len(channels)
 
 			dico.update({"channels": channels,
 						 "diameter": diameter,
@@ -393,6 +400,9 @@ class SegmentationModelLoader(QWidget):
 						 "flow_threshold": flow_threshold,
 						 "normalize": normalize,
 						 "spatial_calibration": spatial_calib,
+						 'normalization_percentile': norm_percentile,
+						 'normalization_clip': norm_clip,
+						 'normalization_values': normalization_values,
 						 })
 
 		elif self.threshold_button.isChecked():

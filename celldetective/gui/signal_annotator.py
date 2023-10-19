@@ -487,7 +487,7 @@ class SignalAnnotator(QMainWindow):
 			# self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
 			# print(self.columns_to_rescale)
 			
-			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index']
+			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent']
 			for tr in cols_to_remove:
 				try:
 					self.columns_to_rescale.remove(tr)

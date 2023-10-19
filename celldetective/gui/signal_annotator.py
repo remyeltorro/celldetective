@@ -168,8 +168,17 @@ class SignalAnnotator(QMainWindow):
 		self.normalize_features_btn.setFixedSize(QSize(30, 30))
 		self.normalize_features_btn.setShortcut(QKeySequence('n'))
 		self.normalize_features_btn.clicked.connect(self.normalize_features)
-		plot_buttons_hbox.addWidget(self.normalize_features_btn, alignment=Qt.AlignRight)
+
+		plot_buttons_hbox.addWidget(QLabel(''), 90)
+		plot_buttons_hbox.addWidget(self.normalize_features_btn, 5)
 		self.normalized_signals = False
+
+		self.log_btn = QPushButton() 
+		self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
+		self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.log_btn.clicked.connect(self.switch_to_log)
+		plot_buttons_hbox.addWidget(self.log_btn, 5)
+
 		self.left_panel.addLayout(plot_buttons_hbox)
 
 		signal_choice_vbox = QVBoxLayout()
@@ -178,8 +187,13 @@ class SignalAnnotator(QMainWindow):
 			
 			hlayout = QHBoxLayout()
 			hlayout.addWidget(self.signal_choice_label[i], 20)
-			hlayout.addWidget(self.signal_choice_cb[i], 80)
+			hlayout.addWidget(self.signal_choice_cb[i], 75)
+			#hlayout.addWidget(self.log_btns[i], 5)
 			signal_choice_vbox.addLayout(hlayout)
+
+			# self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
+			# self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
+			# self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
 
 		self.left_panel.addLayout(signal_choice_vbox)
 
@@ -528,6 +542,7 @@ class SignalAnnotator(QMainWindow):
 		
 		self.signal_choice_cb = [QComboBox() for i in range(self.n_signals)]
 		self.signal_choice_label = [QLabel(f'signal {i+1}: ') for i in range(self.n_signals)]
+		#self.log_btns = [QPushButton() for i in range(self.n_signals)]
 
 		signals = list(self.df_tracks.columns)
 		print(signals)
@@ -958,3 +973,22 @@ class SignalAnnotator(QMainWindow):
 			self.normalized_signals = False			
 			self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
 			self.normalize_features_btn.setIconSize(QSize(25, 25))
+
+	def switch_to_log(self):
+
+		"""
+		Better would be to create a log(quantity) and plot it...
+		"""
+
+		try:
+			if self.cell_ax.get_yscale()=='linear':
+				self.cell_ax.set_yscale('log')
+				self.log_btn.setIcon(icon(MDI6.math_log,color="#1565c0"))
+			else:
+				self.cell_ax.set_yscale('linear')
+				self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
+		except Exception as e:
+			print(e)
+
+		#self.cell_ax.autoscale()
+		self.cell_fcanvas.canvas.draw_idle()

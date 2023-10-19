@@ -5,6 +5,7 @@ from PyQt5.QtGui import QPixmap
 from os import sep
 from celldetective.utils import get_software_location
 #from PyQt5.QtCore import QEventLoop
+from time import time, sleep
 
 class AppInitWindow(QMainWindow):
 
@@ -324,11 +325,15 @@ if __name__ == "__main__":
 	App.setStyle("Fusion")
 
 	if splash:
+		start = time()
 		splash_pix = QPixmap(sep.join([get_software_location(),'celldetective','icons','splash.png']))
 		splash = QSplashScreen(splash_pix)
 		splash.setMask(splash_pix.mask())
 		splash.show()
 		#App.processEvents(QEventLoop.AllEvents, 300)
+		while time() - start < 1:
+			sleep(0.001)
+			App.processEvents()
 
 	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 	from PyQt5.QtCore import Qt, QUrl

@@ -1,4 +1,4 @@
-from skimage.filters import difference_of_gaussians
+from skimage.filters import difference_of_gaussians, threshold_otsu, threshold_local, threshold_niblack, threshold_sauvola
 import scipy.ndimage as snd
 import numpy as np
 
@@ -52,6 +52,27 @@ def laplace_filter(img, output=float, *kwargs):
 
 def dog_filter(img, sigma_low, sigma_high, *kwargs):
 	return difference_of_gaussians(img.astype(float), sigma_low, sigma_high, *kwargs)
+
+def otsu_filter(img, *kwargs):
+	thresh = threshold_otsu(img.astype(float))
+	binary = img >= thresh
+	return binary.astype(float)
+
+def local_filter(img, *kwargs):
+	print(*kwargs)
+	thresh = threshold_local(img.astype(float), *kwargs)
+	binary = img >= thresh
+	return binary.astype(float)
+
+def niblack_filter(img, *kwargs):
+	thresh = threshold_niblack(img, *kwargs)
+	binary = img >= thresh
+	return binary.astype(float)
+
+def sauvola_filter(img, *kwargs):
+	thresh = threshold_sauvola(img, *kwargs)
+	binary = img >= thresh
+	return binary.astype(float)
 
 def log_filter(img, sigma, *kwargs):
 	return snd.gaussian_laplace(img.astype(float), sigma, *kwargs)

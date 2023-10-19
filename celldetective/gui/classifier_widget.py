@@ -73,16 +73,23 @@ class ClassifierWidget(QWidget):
 
 
 		self.features_cb = [QComboBox() for i in range(2)]
+		self.log_btns = [QPushButton() for i in range(2)]
+
 		for i in range(2):
 			hbox_feat = QHBoxLayout()
 			hbox_feat.addWidget(QLabel(f'feature {i}: '), 20)
-			hbox_feat.addWidget(self.features_cb[i], 80)
+			hbox_feat.addWidget(self.features_cb[i], 75)
+			hbox_feat.addWidget(self.log_btns[i], 5)
 			layout.addLayout(hbox_feat)
 
 			self.features_cb[i].clear()
 			self.features_cb[i].addItems(sorted(list(self.cols),key=str.lower))
 			self.features_cb[i].currentTextChanged.connect(self.update_props_scatter)
 			self.features_cb[i].setCurrentIndex(i)
+
+			self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
+			self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
 
 		hbox_classify = QHBoxLayout()
 		hbox_classify.addWidget(QLabel('classify: '), 10)
@@ -213,4 +220,34 @@ class ClassifierWidget(QWidget):
 		# reset
 		self.init_class()
 		self.update_props_scatter()
+
+	def switch_to_log(self, i):
+
+		"""
+		Switch threshold histogram to log scale. Auto adjust.
+		"""
+
+		if i==1:
+			try:
+				if self.ax_props.get_xscale()=='linear':
+					self.ax_props.set_xscale('log')
+					self.log_btns[i].setIcon(icon(MDI6.math_log,color="#1565c0"))
+				else:
+					self.ax_props.set_xscale('linear')
+					self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
+			except Exception as e:
+				print(e)
+		elif i==0:
+			try:
+				if self.ax_props.get_yscale()=='linear':
+					self.ax_props.set_yscale('log')
+					self.log_btns[i].setIcon(icon(MDI6.math_log,color="#1565c0"))
+				else:
+					self.ax_props.set_yscale('linear')
+					self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
+			except Exception as e:
+				print(e)
+
+		self.ax_props.autoscale()
+		self.propscanvas.canvas.draw_idle()
 

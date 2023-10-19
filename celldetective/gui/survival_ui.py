@@ -6,7 +6,7 @@ from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlid
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location, _extract_labels_from_config
-from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
+from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames, load_experiment_tables
 from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
 import numpy as np
 from tifffile import imread
@@ -24,54 +24,9 @@ import gc
 import pandas as pd
 from tqdm import tqdm
 from lifelines import KaplanMeierFitter
-from matplotlib.cm import viridis, tab10
+import matplotlib.cm as mcm
 import math
-
-def switch_to_events(classes, times, max_times, first_detections=None, left_censored=False, FrameToMin=None):
-	
-	events = []
-	survival_times = []
-	if first_detections is None:
-		first_detections = np.zeros_like(max_times)
-		
-	for c,t,mt,ft in zip(classes, times, max_times, first_detections):
-
-		if left_censored:
-			#print('left censored is True: exclude cells that exist in first frame')
-			if ft>0.:
-				if c==0:
-					if t>0:
-						dt = t - ft
-						#print('event: dt = ',dt, t, ft)
-						if dt>0:
-							events.append(1)
-							survival_times.append(dt)
-				elif c==1:
-					dt = mt - ft
-					if dt>0:
-						events.append(0)
-						survival_times.append(dt)
-				else:
-					pass
-		else:
-			if c==0:
-				if t>0:
-					events.append(1)
-					survival_times.append(t - ft)
-			elif c==1:
-				events.append(0)
-				survival_times.append(mt - ft)
-			else:
-				pass
-
-	if FrameToMin is not None:
-		print('convert to minutes!', FrameToMin)
-		survival_times = [s*FrameToMin for s in survival_times]
-	return events, survival_times
-	  
-	
-
-
+from celldetective.events import switch_to_events
 
 class ConfigSurvival(QWidget):
 	
@@ -151,8 +106,8 @@ class ConfigSurvival(QWidget):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 
-		labels = [QLabel('population: '), QLabel('time of\ninterest: '), QLabel('time of\nreference: '), QLabel('class: ')]
-		cb_options = [['targets','effectors'],['t0','first detection'], ['0','first detection'], ['class']]
+		labels = [QLabel('population: '), QLabel('time of\ninterest: '), QLabel('time of\nreference: '), QLabel('class: '), QLabel('cmap: ')]
+		cb_options = [['targets','effectors'],['t0','first detection'], ['0','first detection'], ['class'], list(plt.colormaps())]
 		self.cbs = [QComboBox() for i in range(len(labels))]
 
 		choice_layout = QVBoxLayout()
@@ -254,7 +209,6 @@ class ConfigSurvival(QWidget):
 				radio_hbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
 			self.plot_btn_group.buttonClicked[int].connect(self.plot_survivals)
 
-			print(self.well_indices, self.position_indices)
 			if self.position_indices is not None:
 				if len(self.well_indices)>1 and len(self.position_indices)==1:
 					self.plot_btn_group.buttons()[0].click()
@@ -362,6 +316,7 @@ class ConfigSurvival(QWidget):
 
 		self.plotvbox.addWidget(self.line_choice_widget, alignment=Qt.AlignCenter)
 
+
 	def load_available_tables(self):
 
 		"""
@@ -369,128 +324,22 @@ class ConfigSurvival(QWidget):
 
 		"""
 
-		self.df = []
-		self.df_pos_info = []
-		real_well_index=0
-		for widx,well_path in enumerate(tqdm(self.wells[self.well_indices])):
-
-			any_table=False
-			well_index = widx
-			split_well_path = well_path.split(os.sep)
-			split_well_path = list(filter(None, split_well_path))
-			well_name = split_well_path[-1]
-			well_number = int(split_well_path[-1].replace('W',''))
-			well_alias = self.well_labels[widx]
-
-			positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
-			if self.position_indices is not None:
-				try:
-					positions = positions[self.position_indices]
-				except:
-					continue
-
-			real_pos_index=0
-			for pidx,pos_path in enumerate(positions):
-
-				split_pos_path = pos_path.split(os.sep)
-				split_pos_path = list(filter(None, split_pos_path))
-				pos_name = split_pos_path[-1]
-				table = os.sep.join([pos_path,'output','tables',f'trajectories_{self.cbs[0].currentText()}.csv'])
-
-				movies = glob(pos_path+os.sep.join(['movie',self.parent.parent.movie_prefix+'*.tif']))
-				if len(movies)>0:
-					stack_path = movies[0]
-				else:
-					stack_path = np.nan
-
-				if os.path.exists(table):
-					df_pos = pd.read_csv(table, low_memory=False)
-					df_pos['position'] = pos_path
-					df_pos['well'] = well_path
-					df_pos['well_index'] = well_number
-					df_pos['well_name'] = well_name
-					df_pos['pos_name'] = pos_name
-					self.df.append(df_pos)
-					any_table=True
-
-					self.df_pos_info.append({'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table, 'stack_path': stack_path,
-											'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name, 'well_number': well_number, 'well_alias': well_alias})
-					real_pos_index+=1
-
-			if any_table:
-				real_well_index+=1
-
-		try:
-			self.df_pos_info = pd.DataFrame(self.df_pos_info)
-			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
-			self.df_well_info.to_csv(self.exp_dir+'exp_info_well.csv')
-		except Exception as e:
-			print(f'{e}. No table could be found to compute survival...')
-			self.df = None
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("No table could be found to compute survival...")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Ok)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				self.close()
-				return None
-			else:
-				self.close()
-				return None
-
-		if len(self.df)>0:
-			self.df = pd.concat(self.df)
+		self.well_option = self.parent.parent.well_list.currentIndex()
+		if self.well_option==len(self.wells):
+			wo = '*'
 		else:
-			print('No table could be found to compute survival...')
-			self.df = None
-			return None
+			wo = self.well_option
+		self.position_option = self.parent.parent.position_list.currentIndex()
+		if self.position_option==0:
+			po = '*'
+		else:
+			po = self.position_option
 
-		print('End of new function...')
-
-
-
-	# def load_available_tables(self):
-
-	# 	"""
-	# 	Load the tables of the selected wells/positions from the control Panel for the population of interest
-
-	# 	"""
-
-	# 	self.load_available_tables_v2()
-	# 	self.df = []
-	# 	for widx,w in enumerate(tqdm(self.wells[self.well_indices])):
-			
-	# 		split_w = w.split(os.sep)
-	# 		split_w = list(filter(None, split_w))
-	# 		well_nbr = int(split_w[-1].replace('W','')) - 1
-	# 		well_name = split_w[-1]
-
-	# 		positions = np.array(natsorted(glob(w+'*'+os.sep)),dtype=str)
-	# 		if self.position_indices is not None:
-	# 			# load only selected position
-	# 			positions = positions[self.position_indices]
-
-	# 		for pidx,pos in enumerate(positions):
-	# 			split_pos = pos.split(os.sep)
-	# 			split_pos = list(filter(None, split_pos))
-	# 			pos_name = split_pos[-1]
-	# 			table = os.sep.join([pos,'output','tables',f'trajectories_{self.cbs[0].currentText()}.csv'])
-	# 			if os.path.exists(table):
-	# 				df_pos = pd.read_csv(table, low_memory=False)
-	# 				df_pos['position'] = pos
-	# 				df_pos['well'] = w
-	# 				df_pos['well_index'] = well_nbr
-	# 				df_pos['well_name'] = well_name
-	# 				df_pos['pos_name'] = pos_name
-	# 				self.df.append(df_pos)
-
-	# 	if len(self.df)>0:
-	# 		self.df = pd.concat(self.df)
-	# 	else:
-	# 		print('No table could be found to compute survival...')
-	# 		return None
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.cbs[0].currentText(), return_pos_info=True)
+		if self.df is None:
+			print('no table could be found...')
+		else:
+			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
 
 	def compute_survival_functions(self):
 
@@ -593,8 +442,11 @@ class ConfigSurvival(QWidget):
 			if self.plot_options[i].isChecked():
 				self.plot_mode = self.radio_labels[i]
 
-		colors = np.array([tab10(i / len(self.df_pos_info)) for i in range(len(self.df_pos_info))])
-		well_color = [tab10(i / len(self.df_well_info)) for i in range(len(self.df_well_info))]
+		cmap_lbl = self.cbs[4].currentText()
+		self.cmap = getattr(mcm, cmap_lbl)
+
+		colors = np.array([self.cmap(i / len(self.df_pos_info)) for i in range(len(self.df_pos_info))])
+		well_color = [self.cmap(i / len(self.df_well_info)) for i in range(len(self.df_well_info))]
 
 		if self.plot_mode=='pos':
 			self.initialize_axis()
@@ -828,7 +680,7 @@ class ConfigSurvival(QWidget):
 
 
 	def select_color(self, selection):
-		colors = [tab10(0) if s else tab10(0.1) for s in selection]
+		colors = [self.cmap(0) if s else self.cmap(0.1) for s in selection]
 		return colors
 
 	def plot_spatial_location(self):

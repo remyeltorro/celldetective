@@ -14,8 +14,236 @@ from btrack.datasets import cell_config
 from magicgui import magicgui
 from csbdeep.io import save_tiff_imagej_compatible
 from pathlib import Path, PurePath
-from celldetective.utils import ConfigSectionMap, extract_experiment_channels
+from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config
 import json
+
+def get_experiment_wells(experiment):
+	
+	if not experiment.endswith(os.sep):
+		experiment += os.sep
+		
+	wells = natsorted(glob(experiment + "W*" + os.sep))
+	return np.array(wells,dtype=str)
+
+def get_config(experiment):
+
+	if not experiment.endswith(os.sep):
+		experiment += os.sep
+	
+	config = experiment + 'config.ini'
+	assert os.path.exists(config),'The experiment configuration could not be located...'
+	return config	
+
+
+def get_spatial_calibration(experiment):
+	
+	
+	config = get_config(experiment)
+	PxToUm = float(ConfigSectionMap(self.exp_config,"MovieSettings")["pxtoum"])
+	
+	return PxToUm
+
+def get_temporal_calibration(experiment):
+	
+	config = get_config(experiment)
+	FrameToMin = float(ConfigSectionMap(config,"MovieSettings")["frametomin"])
+	
+	return FrameToMin
+
+def get_experiment_concentrations(experiment, dtype=str):
+	
+	
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	nbr_of_wells = len(wells)
+	
+	concentrations = ConfigSectionMap(config,"Labels")["concentrations"].split(",")
+	if nbr_of_wells != len(concentrations):
+		concentrations = [str(s) for s in np.linspace(0,nbr_of_wells-1,nbr_of_wells)]
+	
+	return np.array([dtype(c) for c in concentrations])
+
+def get_experiment_cell_types(experiment, dtype=str):
+	
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	nbr_of_wells = len(wells)
+	
+	cell_types = ConfigSectionMap(config,"Labels")["cell_types"].split(",")
+	if nbr_of_wells != len(cell_types):
+		cell_types = [str(s) for s in np.linspace(0,nbr_of_wells-1,nbr_of_wells)]
+	
+	return np.array([dtype(c) for c in cell_types])
+
+def get_experiment_antibodies(experiment, dtype=str):
+	
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	nbr_of_wells = len(wells)
+	
+	antibodies = ConfigSectionMap(config,"Labels")["antibodies"].split(",")
+	if nbr_of_wells != len(antibodies):
+		antibodies = [str(s) for s in np.linspace(0,nbr_of_wells-1,nbr_of_wells)]
+	
+	return np.array([dtype(c) for c in antibodies])
+
+def get_experiment_pharmaceutical_agents(experiment, dtype=str):
+	
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	nbr_of_wells = len(wells)
+	
+	pharmaceutical_agents = ConfigSectionMap(config,"Labels")["pharmaceutical_agents"].split(",")
+	if nbr_of_wells != len(pharmaceutical_agents):
+		pharmaceutical_agents = [str(s) for s in np.linspace(0,nbr_of_wells-1,nbr_of_wells)]
+	
+	return np.array([dtype(c) for c in pharmaceutical_agents])
+
+
+def _interpret_wells_and_positions(experiment, well_option, position_option):
+	
+	wells = get_experiment_wells(experiment)
+	nbr_of_wells = len(wells)    
+	
+	if well_option=='*':
+		well_indices = np.arange(len(wells))
+	elif isinstance(well_option, int):
+		well_indices = np.array([well_option], dtype=int)
+	elif isinstance(well_option, list):
+		well_indices = well_option
+		
+	if position_option=='*':
+		position_indices = None
+	elif isinstance(position_option, int):
+		position_indices = np.array([position_option], dtype=int)
+	elif isinstance(position_option, list):
+		position_indices = position_option
+	
+	return well_indices, position_indices
+		
+def extract_well_name_and_number(well):
+	
+	split_well_path = well.split(os.sep)
+	split_well_path = list(filter(None, split_well_path))
+	well_name = split_well_path[-1]
+	well_number = int(split_well_path[-1].replace('W',''))  
+	
+	return well_name, well_number
+
+def extract_position_name(pos):
+	
+	split_pos_path = pos.split(os.sep)
+	split_pos_path = list(filter(None, split_pos_path))
+	pos_name = split_pos_path[-1]
+	
+	return pos_name
+
+def get_position_table(pos, population, return_path=False):
+	
+	table = os.sep.join([pos,'output','tables',f'trajectories_{population}.csv'])
+	if os.path.exists(table):
+		df_pos = pd.read_csv(table, low_memory=False)
+	else:
+		df_pos = None
+	
+	if return_path:
+		return df_pos, table
+	else:
+		return df_pos
+
+def get_position_movie_path(pos, prefix=''):
+
+	movies = glob(pos+os.sep.join(['movie',prefix+'*.tif']))
+	if len(movies)>0:
+		stack_path = movies[0]
+	else:
+		stack_path = np.nan
+	
+	return stack_path
+					
+def load_experiment_tables(experiment, population='targets', well_option='*',position_option='*', return_pos_info=False):
+	
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+
+	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]
+	concentrations = get_experiment_concentrations(experiment, dtype=float)
+	cell_types = get_experiment_cell_types(experiment)
+	antibodies = get_experiment_antibodies(experiment)
+	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
+	well_labels = _extract_labels_from_config(config,len(wells))
+	
+	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
+	
+	df = []
+	df_pos_info = []
+	real_well_index = 0
+	
+	for widx, well_path in enumerate(tqdm(wells[well_indices])):
+		
+		any_table = False # assume no table
+		
+		well_index = widx
+		well_name, well_number = extract_well_name_and_number(well_path)
+		well_alias = well_labels[widx]
+		
+		well_concentration = concentrations[widx]
+		well_antibody = antibodies[widx]
+		well_cell_type = cell_types[widx]
+		well_pharmaceutical_agent = pharmaceutical_agents[widx]
+		
+		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
+		if position_indices is not None:
+			try:
+				positions = positions[position_indices]
+			except Exception as e:
+				print(e)
+				continue
+		
+		real_pos_index = 0
+		for pidx,pos_path in enumerate(positions):
+			
+			pos_name = extract_position_name(pos_path)
+			
+			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
+			
+			df_pos,table = get_position_table(pos_path, population=population, return_path=True)
+			if df_pos is not None:
+			
+				df_pos['position'] = pos_path
+				df_pos['well'] = well_path
+				df_pos['well_index'] = well_number
+				df_pos['well_name'] = well_name
+				df_pos['pos_name'] = pos_name
+
+				df_pos['concentration'] = well_concentration
+				df_pos['antibody'] = well_antibody
+				df_pos['cell_type'] = well_cell_type
+				df_pos['pharmaceutical_agent'] = well_pharmaceutical_agent
+				
+				df.append(df_pos)
+				any_table = True
+				
+				df_pos_info.append({'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table, 'stack_path': stack_path,
+									'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name, 'well_number': well_number, 'well_alias': well_alias})
+				
+				real_pos_index+=1
+		
+		if any_table:
+			real_well_index += 1
+	
+	df_pos_info = pd.DataFrame(df_pos_info)
+	if len(df)>0:
+		df = pd.concat(df)
+		df = df.reset_index(drop=True)
+	else:
+		df = None
+		
+	if return_pos_info:
+		return df, df_pos_info
+	else:
+		return df
+
 
 
 def locate_stack(position, prefix='Aligned'):
@@ -967,6 +1195,7 @@ def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.
 		gc.collect()
 
 	return values
+
 
 if __name__ == '__main__':
 	control_segmentation_napari("/home/limozin/Documents/Experiments/MinimumJan/W4/401/", prefix='Aligned', population="target", flush_memory=False)

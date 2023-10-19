@@ -432,8 +432,8 @@ class ControlPanel(QMainWindow):
 			for p in panels:
 				p.check_seg_btn.setEnabled(False)
 				p.check_tracking_result_btn.setEnabled(False)
-			#self.ProcessTargets.view_tab_btn.setEnabled(False)
-			#self.ProcessEffectors.view_tab_btn.setEnabled(False)
+			self.ProcessTargets.view_tab_btn.setEnabled(True)
+			self.ProcessEffectors.view_tab_btn.setEnabled(True)
 			self.ProcessTargets.check_seg_btn.setEnabled(False)
 			self.ProcessEffectors.check_seg_btn.setEnabled(False)
 			self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
@@ -442,6 +442,9 @@ class ControlPanel(QMainWindow):
 			#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
 			self.ProcessTargets.check_signals_btn.setEnabled(False)
 			self.ProcessEffectors.check_signals_btn.setEnabled(False)
+		elif self.well_list.currentText()=='*':
+			self.ProcessTargets.view_tab_btn.setEnabled(True)
+			self.ProcessEffectors.view_tab_btn.setEnabled(True)			
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()

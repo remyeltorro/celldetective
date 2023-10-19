@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
-from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
+from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
@@ -64,6 +64,7 @@ class ProcessPanel(QFrame):
 		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.populate_contents()
+
 		self.grid.addWidget(self.ContentsFrame, 1, 0, 1, 4, alignment=Qt.AlignTop)
 		self.collapse_btn.clicked.connect(lambda: self.ContentsFrame.setHidden(not self.ContentsFrame.isHidden()))
 		self.collapse_btn.clicked.connect(self.collapse_advanced)
@@ -98,7 +99,7 @@ class ProcessPanel(QFrame):
 		self.view_tab_btn.setToolTip('poop twice a day for a healthy gut')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
-		self.view_tab_btn.setEnabled(False)
+		#self.view_tab_btn.setEnabled(False)
 		self.grid_contents.addWidget(self.view_tab_btn, 10, 0, 1, 4)
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
@@ -174,6 +175,9 @@ class ProcessPanel(QFrame):
 
 		#self.to_disable.append(self.measure_action_tc)
 		signal_layout.addLayout(signal_hlayout)
+
+		signal_model_vbox = QVBoxLayout()
+		signal_model_vbox.setContentsMargins(25,0,25,0)
 		
 		model_zoo_layout = QHBoxLayout()
 		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
@@ -190,8 +194,11 @@ class ProcessPanel(QFrame):
 		self.train_signal_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
 		model_zoo_layout.addWidget(self.train_signal_model_btn, 5)
 		self.train_signal_model_btn.clicked.connect(self.open_signal_model_config_ui)
-		signal_layout.addLayout(model_zoo_layout)
-		signal_layout.addWidget(self.signal_models_list)
+		
+		signal_model_vbox.addLayout(model_zoo_layout)
+		signal_model_vbox.addWidget(self.signal_models_list)
+
+		signal_layout.addLayout(signal_model_vbox)
 
 		self.grid_contents.addLayout(signal_layout,6,0,1,4)
 
@@ -271,6 +278,8 @@ class ProcessPanel(QFrame):
 		grid_segment.addWidget(self.check_seg_btn, 10)
 		self.grid_contents.addLayout(grid_segment, 0,0,1,4)
 		
+		seg_option_vbox = QVBoxLayout()
+		seg_option_vbox.setContentsMargins(25,0,25,0)
 		model_zoo_layout = QHBoxLayout()
 		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
 		self.seg_model_list = QComboBox()
@@ -298,9 +307,10 @@ class ProcessPanel(QFrame):
 		# self.train_button_tc.clicked.connect(self.train_stardist_model_tc)
 		# self.to_disable.append(self.train_button_tc)
 
-		self.grid_contents.addLayout(model_zoo_layout, 2, 0, 1,4)
+		seg_option_vbox.addLayout(model_zoo_layout)
+		seg_option_vbox.addWidget(self.seg_model_list)
 		self.seg_model_list.setEnabled(False)
-		self.grid_contents.addWidget(self.seg_model_list, 3, 0, 1, 4)
+		self.grid_contents.addLayout(seg_option_vbox, 2, 0, 1, 4)
 
 	def check_segmentation(self):
 
@@ -540,32 +550,40 @@ class ProcessPanel(QFrame):
 
 	def view_table_ui(self):
 		
-		print('view table')
+		print('Load table...')
 		self.load_available_tables()
 
 		if self.df is not None:
 			self.tab_ui = TableUI(self.df, f"Well {self.parent.well_list.currentText()}; Position {self.parent.position_list.currentText()}")
 			self.tab_ui.show()
 		else:
-			print(test, 'test failed')
+			print('Table could not be loaded...')
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table could be loaded...")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
 
-	def interpret_pos_location(self):
+	# def interpret_pos_location(self):
 		
-		"""
-		Read the well/position selection from the control panel to decide which data to load
-		Set position_indices to None if all positions must be taken
+	# 	"""
+	# 	Read the well/position selection from the control panel to decide which data to load
+	# 	Set position_indices to None if all positions must be taken
 
-		"""
+	# 	"""
 		
-		if self.well_option==len(self.wells):
-			self.well_indices = np.arange(len(self.wells))
-		else:
-			self.well_indices = np.array([self.well_option],dtype=int)
+	# 	if self.well_option==len(self.wells):
+	# 		self.well_indices = np.arange(len(self.wells))
+	# 	else:
+	# 		self.well_indices = np.array([self.well_option],dtype=int)
 
-		if self.position_option==0:
-			self.position_indices = None
-		else:
-			self.position_indices = np.array([self.position_option],dtype=int)
+	# 	if self.position_option==0:
+	# 		self.position_indices = None
+	# 	else:
+	# 		self.position_indices = np.array([self.position_option],dtype=int)
 
 	def load_available_tables(self):
 
@@ -574,107 +592,20 @@ class ProcessPanel(QFrame):
 
 		"""
 
-		self.wells = np.array(self.parent.wells,dtype=str)
 		self.well_option = self.parent.well_list.currentIndex()
-		self.position_option = self.parent.position_list.currentIndex()
-
-		self.concentrations = self.parent.concentrations
-		self.antibodies = self.parent.antibodies
-		self.cell_types = self.parent.cell_types
-		self.pharmaceutical_agents = self.parent.pharmaceutical_agents
-
-		self.interpret_pos_location()
-
-		self.df = []
-		self.df_pos_info = []
-		real_well_index=0
-		for widx,well_path in enumerate(tqdm(self.wells[self.well_indices])):
-
-			any_table=False
-			well_index = widx
-			split_well_path = well_path.split(os.sep)
-			split_well_path = list(filter(None, split_well_path))
-			well_name = split_well_path[-1]
-			well_number = int(split_well_path[-1].replace('W',''))
-			well_alias = self.parent.well_labels[widx]
-
-			well_concentration = self.concentrations[widx]
-			well_antibody = self.antibodies[widx]
-			well_ct = self.cell_types[widx]
-			well_pa = self.pharmaceutical_agents[widx]
-
-			positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
-			if self.position_indices is not None:
-				try:
-					positions = positions[self.position_indices]
-				except:
-					continue
-
-			real_pos_index=0
-			for pidx,pos_path in enumerate(positions):
-
-				split_pos_path = pos_path.split(os.sep)
-				split_pos_path = list(filter(None, split_pos_path))
-				pos_name = split_pos_path[-1]
-				table = os.sep.join([pos_path,'output','tables',f'trajectories_{self.mode}.csv'])
-
-				movies = glob(pos_path+os.sep.join(['movie',self.parent.movie_prefix+'*.tif']))
-				if len(movies)>0:
-					stack_path = movies[0]
-				else:
-					stack_path = np.nan
-
-				if os.path.exists(table):
-					df_pos = pd.read_csv(table, low_memory=False)
-					df_pos['position'] = pos_path
-					df_pos['well'] = well_path
-					df_pos['well_index'] = well_number
-					df_pos['well_name'] = well_name
-					df_pos['pos_name'] = pos_name
-
-					df_pos['concentration'] = well_concentration
-					df_pos['antibody'] = well_antibody
-					df_pos['cell_type'] = well_ct
-					df_pos['pharmaceutical_agent'] = well_pa
-
-					self.df.append(df_pos)
-					any_table=True
-
-					self.df_pos_info.append({'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table, 'stack_path': stack_path,
-											'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name, 'well_number': well_number, 'well_alias': well_alias})
-					real_pos_index+=1
-
-			if any_table:
-				real_well_index+=1
-
-		try:
-			self.df_pos_info = pd.DataFrame(self.df_pos_info)
-		except Exception as e:
-			print(f'{e}...')
-			self.df = None
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("No table could be found...")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Ok)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				self.close()
-				return None
-			else:
-				self.close()
-				return None
-
-		if len(self.df)>0:
-			self.df = pd.concat(self.df)
-			self.df = self.df.reset_index(drop=True)
+		if self.well_option==len(self.wells):
+			wo = '*'
 		else:
-			print('No table could be found...')
-			self.df = None
-			return None
+			wo = self.well_option
+		self.position_option = self.parent.position_list.currentIndex()
+		if self.position_option==0:
+			po = '*'
+		else:
+			po = self.position_option
 
-		print('End of new function...')
-
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.mode, return_pos_info=True)
+		if self.df is None:
+			print('no table could be found...')
 
 class NeighPanel(QFrame):
 	def __init__(self, parent):

@@ -97,7 +97,11 @@ class FilterChoice(QWidget):
 						  'subtract_filter': {'value': 1},
 						  'dog_filter': {'sigma_low': 0.8, 'sigma_high': 1.6},
 						  'log_filter': {'sigma': 2},
-						  'tophat_filter': {'size': 4, 'connectivity': 4}
+						  'tophat_filter': {'size': 4, 'connectivity': 4},
+						  'otsu_filter': None,
+						  'local_filter': {'block_size': 73, 'method': 'mean', 'offset': 0},
+						  'niblack_filter': {'window_size': 15, 'k': 0.2},
+						  #'sauvola_filter': {'window_size': 15, 'k': 0.2}
 						  }
 
 		
@@ -131,8 +135,14 @@ class FilterChoice(QWidget):
 		filter_instructions = [filtername.split('_')[0]]
 		for a in self.arguments_le:
 			arg = a.text()
-			if (arg!=''):
-				filter_instructions.append(float(arg))
+			arg_num = arg
+			if (arg!='') and arg_num.replace('.','').replace(',','').isnumeric():
+				num = float(arg)
+				if num.is_integer():
+					num = int(num)
+				filter_instructions.append(num)
+			elif arg!='':
+				filter_instructions.append(arg)
 		
 		print(f'You added filter {filter_instructions}.')
 

@@ -640,11 +640,11 @@ class ProcessPanel(QFrame):
 		if self.position_option==0:
 			po = '*'
 		else:
-			po = self.position_option
+			po = self.position_option - 1
 
 		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.mode, return_pos_info=True)
 		if self.df is None:
-			print('no table could be found...')
+			print('No table could be found...')
 
 	def set_cellpose_scale(self):
 

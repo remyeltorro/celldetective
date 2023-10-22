@@ -140,7 +140,11 @@ def extract_position_name(pos):
 
 def get_position_table(pos, population, return_path=False):
 	
-	table = os.sep.join([pos,'output','tables',f'trajectories_{population}.csv'])
+	if not pos.endswith(os.sep):
+		table = os.sep.join([pos,'output','tables',f'trajectories_{population}.csv'])
+	else:
+		table = pos + os.sep.join(['output','tables',f'trajectories_{population}.csv'])		
+
 	if os.path.exists(table):
 		df_pos = pd.read_csv(table, low_memory=False)
 	else:
@@ -163,6 +167,7 @@ def get_position_movie_path(pos, prefix=''):
 					
 def load_experiment_tables(experiment, population='targets', well_option='*',position_option='*', return_pos_info=False):
 	
+
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
 
@@ -174,7 +179,7 @@ def load_experiment_tables(experiment, population='targets', well_option='*',pos
 	well_labels = _extract_labels_from_config(config,len(wells))
 	
 	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
-	
+
 	df = []
 	df_pos_info = []
 	real_well_index = 0
@@ -199,7 +204,7 @@ def load_experiment_tables(experiment, population='targets', well_option='*',pos
 			except Exception as e:
 				print(e)
 				continue
-		
+
 		real_pos_index = 0
 		for pidx,pos_path in enumerate(positions):
 			

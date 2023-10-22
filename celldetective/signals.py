@@ -1398,3 +1398,57 @@ def train_signal_model(config):
 
 	script_path = os.sep.join([abs_path, 'scripts', 'train_signal_model.py'])
 	subprocess.call(rf"python {script_path} --config {config}", shell=True)
+
+def derivative(x, timeline, window, mode='bi'):
+	
+	# modes = bi, forward, backward
+	dxdt = np.zeros(len(x))
+	dxdt[:] = np.nan
+	
+	if mode=='bi':
+		assert window%2==1,'Please set an odd window for the bidirectional mode'
+		lower_bound = window//2
+		upper_bound = len(x) - window//2 - 1
+	elif mode=='forward':
+		lower_bound = 0
+		upper_bound = len(x) - window
+	elif mode=='backward':
+		lower_bound = window
+		upper_bound = len(x)
+
+	for t in range(lower_bound,upper_bound):
+		if mode=='bi':
+			dxdt[t] = (x[t+window//2+1] - x[t-window//2]) / (timeline[t+window//2+1] - timeline[t-window//2])
+		elif mode=='forward':
+			dxdt[t] = (x[t+window] - x[t]) /  (timeline[t+window] - timeline[t])
+		elif mode=='backward':
+			dxdt[t] = (x[t] - x[t-window]) /  (timeline[t] - timeline[t-window])
+	return dxdt
+
+def velocity(x,y,timeline,window,mode='bi'):
+	
+	v = np.zeros((len(x),2))
+	v[:,:] = np.nan
+	
+	v[:,0] = derivative(x, timeline, window, mode=mode)
+	v[:,1] = derivative(y, timeline, window, mode=mode)
+
+	return v
+
+def magnitude_velocity(v_matrix):
+	
+	magnitude = np.zeros(len(v_matrix))
+	magnitude[:] = np.nan
+	for i in range(len(v_matrix)):
+		if v_matrix[i,0]==v_matrix[i,0]:
+			magnitude[i] = np.sqrt(v_matrix[i,0]**2 + v_matrix[i,1]**2)
+	return magnitude
+		
+def orientation(v_matrix):
+	orientation_array = np.zeros(len(v_matrix))
+	for t in range(len(orientation_array)):
+		if v_matrix[t,0]==v_matrix[t,0]:
+			orientation_array[t] = np.arctan2(v_matrix[t,0],v_matrix[t,1])
+	return orientation_array
+
+

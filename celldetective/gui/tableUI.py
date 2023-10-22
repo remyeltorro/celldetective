@@ -278,6 +278,11 @@ class TableUI(QMainWindow):
 		#eval(self.projection_mode)
 		op = getattr(self.data.groupby(['position', 'TRACK_ID']), self.projection_mode)
 		group_table = op(self.data.groupby(['position', 'TRACK_ID']))
+
+		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent']
+		for c in self.static_columns:
+			group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
 		self.subtable.show()
 

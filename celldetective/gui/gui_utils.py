@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QWidget, QLineEdi
 from PyQt5.QtCore import QEvent
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+import matplotlib.pyplot as plt
 
 def center_window(window):
 	
@@ -363,6 +364,13 @@ class FigureCanvas(QWidget):
 		self.layout.addWidget(self.canvas)
 		if interactive:
 			self.layout.addWidget(self.toolbar)
+			
+	def closeEvent(self, event):
+		""" Delete figure on closing window. """
+		#self.canvas.ax.cla() # ****
+		self.fig.clf() # ****
+		plt.close(self.fig)
+		super(FigureCanvas, self).closeEvent(event) 
 
 def color_from_status(status, recently_modified=False):
 	

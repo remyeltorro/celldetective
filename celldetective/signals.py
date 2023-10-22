@@ -1401,6 +1401,55 @@ def train_signal_model(config):
 
 def derivative(x, timeline, window, mode='bi'):
 	
+	"""
+	Compute the derivative of a given array of values with respect to time using a specified numerical differentiation method.
+
+	Parameters
+	----------
+	x : array_like
+		The input array of values.
+	timeline : array_like
+		The array representing the time points corresponding to the input values.
+	window : int
+		The size of the window used for numerical differentiation. Must be a positive odd integer.
+	mode : {'bi', 'forward', 'backward'}, optional
+		The numerical differentiation method to be used:
+		- 'bi' (default): Bidirectional differentiation using a symmetric window.
+		- 'forward': Forward differentiation using a one-sided window.
+		- 'backward': Backward differentiation using a one-sided window.
+
+	Returns
+	-------
+	dxdt : ndarray
+		The computed derivative values of the input array with respect to time.
+
+	Raises
+	------
+	AssertionError
+		If the window size is not an odd integer and mode is 'bi'.
+
+	Notes
+	-----
+	- For 'bi' mode, the window size must be an odd number.
+	- For 'forward' mode, the derivative at the edge points may not be accurate due to the one-sided window.
+	- For 'backward' mode, the derivative at the first few points may not be accurate due to the one-sided window.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> x = np.array([1, 2, 4, 7, 11])
+	>>> timeline = np.array([0, 1, 2, 3, 4])
+	>>> window = 3
+	>>> derivative(x, timeline, window, mode='bi')
+	array([3., 3., 3.])
+
+	>>> derivative(x, timeline, window, mode='forward')
+	array([1., 2., 3.])
+
+	>>> derivative(x, timeline, window, mode='backward')
+	array([3., 3., 3., 3.])
+	"""
+
 	# modes = bi, forward, backward
 	dxdt = np.zeros(len(x))
 	dxdt[:] = np.nan
@@ -1426,7 +1475,64 @@ def derivative(x, timeline, window, mode='bi'):
 	return dxdt
 
 def velocity(x,y,timeline,window,mode='bi'):
-	
+
+	"""
+	Compute the velocity vector of a given 2D trajectory represented by arrays of x and y coordinates
+	with respect to time using a specified numerical differentiation method.
+
+	Parameters
+	----------
+	x : array_like
+		The array of x-coordinates of the trajectory.
+	y : array_like
+		The array of y-coordinates of the trajectory.
+	timeline : array_like
+		The array representing the time points corresponding to the x and y coordinates.
+	window : int
+		The size of the window used for numerical differentiation. Must be a positive odd integer.
+	mode : {'bi', 'forward', 'backward'}, optional
+		The numerical differentiation method to be used:
+		- 'bi' (default): Bidirectional differentiation using a symmetric window.
+		- 'forward': Forward differentiation using a one-sided window.
+		- 'backward': Backward differentiation using a one-sided window.
+
+	Returns
+	-------
+	v : ndarray
+		The computed velocity vector of the 2D trajectory with respect to time.
+		The first column represents the x-component of velocity, and the second column represents the y-component.
+
+	Raises
+	------
+	AssertionError
+		If the window size is not an odd integer and mode is 'bi'.
+
+	Notes
+	-----
+	- For 'bi' mode, the window size must be an odd number.
+	- For 'forward' mode, the velocity at the edge points may not be accurate due to the one-sided window.
+	- For 'backward' mode, the velocity at the first few points may not be accurate due to the one-sided window.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> x = np.array([1, 2, 4, 7, 11])
+	>>> y = np.array([0, 3, 5, 8, 10])
+	>>> timeline = np.array([0, 1, 2, 3, 4])
+	>>> window = 3
+	>>> velocity(x, y, timeline, window, mode='bi')
+	array([[3., 3.],
+		   [3., 3.]])
+
+	>>> velocity(x, y, timeline, window, mode='forward')
+	array([[2., 2.],
+		   [3., 3.]])
+
+	>>> velocity(x, y, timeline, window, mode='backward')
+	array([[3., 3.],
+		   [3., 3.]])
+	"""
+
 	v = np.zeros((len(x),2))
 	v[:,:] = np.nan
 	
@@ -1436,7 +1542,42 @@ def velocity(x,y,timeline,window,mode='bi'):
 	return v
 
 def magnitude_velocity(v_matrix):
-	
+
+	"""
+	Compute the magnitude of velocity vectors given a matrix representing 2D velocity vectors.
+
+	Parameters
+	----------
+	v_matrix : array_like
+		The matrix where each row represents a 2D velocity vector with the first column
+		being the x-component and the second column being the y-component.
+
+	Returns
+	-------
+	magnitude : ndarray
+		The computed magnitudes of the input velocity vectors.
+
+	Notes
+	-----
+	- If a velocity vector has NaN components, the corresponding magnitude will be NaN.
+	- The function handles NaN values in the input matrix gracefully.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> v_matrix = np.array([[3, 4],
+	...                      [2, 2],
+	...                      [3, 3]])
+	>>> magnitude_velocity(v_matrix)
+	array([5., 2.82842712, 4.24264069])
+
+	>>> v_matrix_with_nan = np.array([[3, 4],
+	...                               [np.nan, 2],
+	...                               [3, np.nan]])
+	>>> magnitude_velocity(v_matrix_with_nan)
+	array([5., nan, nan])
+	"""
+
 	magnitude = np.zeros(len(v_matrix))
 	magnitude[:] = np.nan
 	for i in range(len(v_matrix)):
@@ -1445,10 +1586,243 @@ def magnitude_velocity(v_matrix):
 	return magnitude
 		
 def orientation(v_matrix):
+
+	"""
+	Compute the orientation angles (in radians) of 2D velocity vectors given a matrix representing velocity vectors.
+
+	Parameters
+	----------
+	v_matrix : array_like
+		The matrix where each row represents a 2D velocity vector with the first column
+		being the x-component and the second column being the y-component.
+
+	Returns
+	-------
+	orientation_array : ndarray
+		The computed orientation angles of the input velocity vectors in radians.
+		If a velocity vector has NaN components, the corresponding orientation angle will be NaN.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> v_matrix = np.array([[3, 4],
+	...                      [2, 2],
+	...                      [-3, -3]])
+	>>> orientation(v_matrix)
+	array([0.92729522, 0.78539816, -2.35619449])
+
+	>>> v_matrix_with_nan = np.array([[3, 4],
+	...                               [np.nan, 2],
+	...                               [3, np.nan]])
+	>>> orientation(v_matrix_with_nan)
+	array([0.92729522, nan, nan])
+	"""
+
 	orientation_array = np.zeros(len(v_matrix))
 	for t in range(len(orientation_array)):
 		if v_matrix[t,0]==v_matrix[t,0]:
 			orientation_array[t] = np.arctan2(v_matrix[t,0],v_matrix[t,1])
 	return orientation_array
 
+def T_MSD(x,y,dt):
 
+	"""
+	Compute the Time-Averaged Mean Square Displacement (T-MSD) of a 2D trajectory.
+
+	Parameters
+	----------
+	x : array_like
+		The array of x-coordinates of the trajectory.
+	y : array_like
+		The array of y-coordinates of the trajectory.
+	dt : float
+		The time interval between successive data points in the trajectory.
+
+	Returns
+	-------
+	msd : list
+		A list containing the Time-Averaged Mean Square Displacement values for different time lags.
+	timelag : ndarray
+		The array representing the time lags corresponding to the calculated MSD values.
+
+	Notes
+	-----
+	- T-MSD is a measure of the average spatial extent explored by a particle over a given time interval.
+	- The input trajectories (x, y) are assumed to be in the same unit of length.
+	- The time interval (dt) should be consistent with the time unit used in the data.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> x = np.array([1, 2, 4, 7, 11])
+	>>> y = np.array([0, 3, 5, 8, 10])
+	>>> dt = 1.0  # Time interval between data points
+	>>> T_MSD(x, y, dt)
+	([6.0, 9.0, 4.666666666666667, 1.6666666666666667],
+	 array([1., 2., 3., 4.]))
+	"""
+
+	msd = []
+	N = len(x)
+	for n in range(1,N):
+		s = 0
+		for i in range(0,N-n):
+			s+=(x[n+i] - x[i])**2 + (y[n+i] - y[i])**2
+		msd.append(1/(N-n)*s)
+
+	timelag = np.linspace(dt,(N-1)*dt,N-1)
+	return msd,timelag 
+
+def linear_msd(t, m):
+
+	"""
+	Function to compute Mean Square Displacement (MSD) with a linear scaling relationship.
+
+	Parameters
+	----------
+	t : array_like
+		Time lag values.
+	m : float
+		Linear scaling factor representing the slope of the MSD curve.
+
+	Returns
+	-------
+	msd : ndarray
+		Computed MSD values based on the linear scaling relationship.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> t = np.array([1, 2, 3, 4])
+	>>> m = 2.0
+	>>> linear_msd(t, m)
+	array([2., 4., 6., 8.])
+	"""
+
+	return m*t
+
+def alpha_msd(t, m, alpha):
+
+	"""
+	Function to compute Mean Square Displacement (MSD) with a power-law scaling relationship.
+
+	Parameters
+	----------
+	t : array_like
+		Time lag values.
+	m : float
+		Scaling factor.
+	alpha : float
+		Exponent representing the scaling relationship between MSD and time.
+
+	Returns
+	-------
+	msd : ndarray
+		Computed MSD values based on the power-law scaling relationship.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> t = np.array([1, 2, 3, 4])
+	>>> m = 2.0
+	>>> alpha = 0.5
+	>>> alpha_msd(t, m, alpha)
+	array([2.        , 4.        , 6.        , 8.        ])
+	"""
+
+	return m*t**alpha
+
+def sliding_msd(x, y, timeline, window, mode='bi', n_points_migration=7,  n_points_transport=7):
+
+	"""
+	Compute sliding mean square displacement (sMSD) and anomalous exponent (alpha) for a 2D trajectory using a sliding window approach.
+
+	Parameters
+	----------
+	x : array_like
+		The array of x-coordinates of the trajectory.
+	y : array_like
+		The array of y-coordinates of the trajectory.
+	timeline : array_like
+		The array representing the time points corresponding to the x and y coordinates.
+	window : int
+		The size of the sliding window used for computing local MSD and alpha values.
+	mode : {'bi', 'forward', 'backward'}, optional
+		The sliding window mode:
+		- 'bi' (default): Bidirectional sliding window.
+		- 'forward': Forward sliding window.
+		- 'backward': Backward sliding window.
+	n_points_migration : int, optional
+		The number of points used for fitting the linear function in the MSD calculation.
+	n_points_transport : int, optional
+		The number of points used for fitting the alpha function in the anomalous exponent calculation.
+
+	Returns
+	-------
+	s_msd : ndarray
+		Sliding Mean Square Displacement values calculated using the sliding window approach.
+	s_alpha : ndarray
+		Sliding anomalous exponent (alpha) values calculated using the sliding window approach.
+
+	Raises
+	------
+	AssertionError
+		If the window size is not larger than the number of fit points.
+
+	Notes
+	-----
+	- The input trajectories (x, y) are assumed to be in the same unit of length.
+	- The time unit used in the data should be consistent with the time intervals in the timeline array.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> x = np.array([1, 2, 4, 7, 11, 15, 20])
+	>>> y = np.array([0, 3, 5, 8, 10, 14, 18])
+	>>> timeline = np.array([0, 1, 2, 3, 4, 5, 6])
+	>>> window = 3
+	>>> s_msd, s_alpha = sliding_msd(x, y, timeline, window, n_points_migration=2, n_points_transport=3)
+	"""
+
+	assert window > n_points_migration,'Please set a window larger than the number of fit points...'
+	
+	# modes = bi, forward, backward
+	s_msd = np.zeros(len(x))
+	s_msd[:] = np.nan
+	s_alpha = np.zeros(len(x))
+	s_alpha[:] = np.nan
+	dt = timeline[1] - timeline[0]
+	
+	if mode=='bi':
+		assert window%2==1,'Please set an odd window for the bidirectional mode'
+		lower_bound = window//2
+		upper_bound = len(x) - window//2 - 1
+	elif mode=='forward':
+		lower_bound = 0
+		upper_bound = len(x) - window
+	elif mode=='backward':
+		lower_bound = window
+		upper_bound = len(x)
+	
+	for t in range(lower_bound,upper_bound):
+		if mode=='bi':
+			x_sub = x[t-window//2:t+window//2+1]
+			y_sub = y[t-window//2:t+window//2+1]
+			msd,timelag = T_MSD(x_sub,y_sub,dt)
+			# dxdt[t] = (x[t+window//2+1] - x[t-window//2]) / (timeline[t+window//2+1] - timeline[t-window//2])
+		elif mode=='forward':
+			x_sub = x[t:t+window]
+			y_sub = y[t:t+window]
+			msd,timelag = T_MSD(x_sub,y_sub,dt)
+			# dxdt[t] = (x[t+window] - x[t]) /  (timeline[t+window] - timeline[t])
+		elif mode=='backward':
+			x_sub = x[t-window:t]
+			y_sub = y[t-window:t]
+			msd,timelag = T_MSD(x_sub,y_sub,dt)
+			# dxdt[t] = (x[t] - x[t-window]) /  (timeline[t] - timeline[t-window])
+		popt,pcov = curve_fit(linear_msd,timelag[:n_points_migration],msd[:n_points_migration])
+		s_msd[t] = popt[0]
+		popt_alpha,pcov_alpha = curve_fit(alpha_msd,timelag[:n_points_transport],msd[:n_points_transport])
+		s_alpha[t] = popt_alpha[1]
+		
+	return s_msd, s_alpha

@@ -20,6 +20,7 @@ from natsort import natsorted
 from tifffile import imread
 from pathlib import Path, PurePath
 from datetime import datetime
+import pandas as pd
 
 class ConfigSignalModelTraining(QMainWindow):
 	
@@ -296,7 +297,14 @@ class ConfigSignalModelTraining(QMainWindow):
 
 		self.channel_cbs = [QComboBox() for i in range(4)]
 
-		self.channel_items = ['--', 'brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 
+		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{self.mode}.csv']))
+		print(tables)
+		all_measurements = []
+		for tab in tables:
+			cols = pd.read_csv(tab, nrows=1).columns.tolist()
+			all_measurements.extend(cols)
+		all_measurements = np.unique(all_measurements)
+		generic_measurements = ['brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 
 							 'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2',
 							 "area", "area_bbox","area_convex","area_filled","major_axis_length", 
 							 "minor_axis_length", 
@@ -326,6 +334,9 @@ class ConfigSignalModelTraining(QMainWindow):
 							"POSITION_X",
 							"POSITION_Y",
 							]
+
+		self.channel_items = np.unique(generic_measurements + list(all_measurements))
+		self.channel_items = np.insert(self.channel_items, 0, '--')
 
 		for i in range(len(self.channel_cbs)):
 			ch_layout = QHBoxLayout()

@@ -84,7 +84,8 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	assert os.path.exists(complete_path),f'Model {model} could not be located in folder {model_path}... Abort.'
 	assert os.path.exists(model_config_path),f'Model configuration could not be located in folder {model_path}... Abort.'
 
-	available_signals = trajectories.columns
+	available_signals = list(trajectories.columns)
+	print('The available_signals are : ',available_signals)
 
 	f = open(model_config_path)
 	config = json.load(f)
@@ -93,7 +94,8 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	if selected_signals is None:
 		selected_signals = []
 		for s in required_signals:
-			pattern_test = [s in a for a in available_signals]
+			pattern_test = [s in a or s==a for a in available_signals]
+			print(f'Pattern test for signal {s}: ', pattern_test)
 			assert np.any(pattern_test),f'No signal matches with the requirements of the model {required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
 			valid_columns = np.array(available_signals)[np.array(pattern_test)]
 			if len(valid_columns)==1:
@@ -417,6 +419,8 @@ class SignalDetectionModel(object):
 		self.epochs = epochs
 		self.augment = augment
 		self.augmentation_factor = augmentation_factor
+		if self.augmentation_factor==1:
+			self.augment = False
 		self.model_name = model_name
 		self.target_directory = target_directory
 		self.model_folder = self.target_directory + "/" + self.model_name

@@ -18,6 +18,7 @@ import os
 import pandas as pd
 from tqdm import tqdm
 from celldetective.gui.gui_utils import center_window
+from tifffile import imwrite
 import json
 
 class ProcessPanel(QFrame):
@@ -277,7 +278,7 @@ class ProcessPanel(QFrame):
 		self.check_seg_btn.setIconSize(QSize(20, 20))
 		self.check_seg_btn.clicked.connect(self.check_segmentation)
 		self.check_seg_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.check_seg_btn.setEnabled(False)
+		#self.check_seg_btn.setEnabled(False)
 		#self.to_disable.append(self.control_target_seg)
 		grid_segment.addWidget(self.check_seg_btn, 10)
 		self.grid_contents.addLayout(grid_segment, 0,0,1,4)
@@ -317,6 +318,20 @@ class ProcessPanel(QFrame):
 		self.grid_contents.addLayout(seg_option_vbox, 2, 0, 1, 4)
 
 	def check_segmentation(self):
+		if not os.path.exists(os.sep.join([self.parent.pos,f'labels_{self.mode}', os.sep])):
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Question)
+			msgBox.setText("No labels can be found for this position. Do you want to annotate from scratch?")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+			else:
+				os.mkdir(os.sep.join([self.parent.pos,f'labels_{self.mode}']))
+				lbl = np.zeros((self.parent.shape_x, self.parent.shape_y), dtype=int)
+				for i in range(self.parent.len_movie):
+					imwrite(os.sep.join([self.parent.pos,f'labels_{self.mode}', str(i).zfill(4)+'.tif']), lbl)
 
 		#self.freeze()
 		#QApplication.setOverrideCursor(Qt.WaitCursor)

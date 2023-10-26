@@ -448,14 +448,11 @@ class ControlPanel(QMainWindow):
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()
-				if os.path.exists(os.sep.join([self.pos,'labels_effectors', os.sep])):
-					self.ProcessEffectors.check_seg_btn.setEnabled(True)
-				else:
-					self.ProcessEffectors.check_seg_btn.setEnabled(False)
-				if os.path.exists(os.sep.join([self.pos,'labels_targets', os.sep])):
-					self.ProcessTargets.check_seg_btn.setEnabled(True)
-				else:
-					self.ProcessTargets.check_seg_btn.setEnabled(False)
+				# if os.path.exists(os.sep.join([self.pos,'labels_effectors', os.sep])):
+				self.ProcessEffectors.check_seg_btn.setEnabled(True)
+				# if os.path.exists(os.sep.join([self.pos,'labels_targets', os.sep])):
+				self.ProcessTargets.check_seg_btn.setEnabled(True)
+				
 				if os.path.exists(os.sep.join([self.pos,'output','tables','napari_target_trajectories.npy'])):
 					self.ProcessTargets.check_tracking_result_btn.setEnabled(True)
 				else:

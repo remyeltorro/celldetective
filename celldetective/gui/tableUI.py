@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox
+from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox, QMessageBox
 from PyQt5.QtCore import Qt, QAbstractTableModel
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -114,6 +114,44 @@ class TableUI(QMainWindow):
 			self.query_action = QAction('Query...', self)
 			self.query_action.triggered.connect(self.perform_query)
 			self.fileMenu.addAction(self.query_action)
+
+			self.delete_action = QAction('&Delete...', self)
+			self.delete_action.triggered.connect(self.delete_columns)
+			self.delete_action.setShortcut(Qt.Key_Delete)
+			self.editMenu.addAction(self.delete_action)
+
+			self.derivative_action = QAction('&Differentiate...', self)
+			self.derivative_action.triggered.connect(self.differenciate_selected_feature)
+			self.derivative_action.setShortcut("Ctrl+D")
+			self.mathMenu.addAction(self.derivative_action)			
+
+	def delete_columns(self):
+
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		cols = np.array(list(self.data.columns))
+
+		msgBox = QMessageBox()
+		msgBox.setIcon(QMessageBox.Question)
+		msgBox.setText(f"You are about to delete columns {cols[col_idx]}... Do you want to proceed?")
+		msgBox.setWindowTitle("Info")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		returnValue = msgBox.exec()
+		if returnValue == QMessageBox.No:
+			return None
+
+		self.data = self.data.drop(list(cols[col_idx]),axis=1)
+		self.model = PandasModel(self.data)
+		self.table_view.setModel(self.model)
+
+	def differenciate_selected_feature(self):
+		
+		# check only one col selected and assert is numerical
+		# open widget to select window parameters, directionality
+		# create new col
+		print('you want to differentiate? cool but I"m too tired to code it now...')
+		pass
+
 
 	def groupby_time_table(self):
 
@@ -303,6 +341,10 @@ class TableUI(QMainWindow):
 		menuBar = self.menuBar()
 		self.fileMenu = QMenu("&File", self)
 		menuBar.addMenu(self.fileMenu)
+		self.editMenu = QMenu("&Edit", self)
+		menuBar.addMenu(self.editMenu)
+		self.mathMenu = QMenu('&Math', self)
+		menuBar.addMenu(self.mathMenu)
 
 	def save_as_csv(self):
 		options = QFileDialog.Options()

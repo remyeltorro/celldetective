@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit,QFileDialog, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut
+from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit,QFileDialog, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
@@ -51,6 +51,11 @@ class SignalAnnotator(QMainWindow):
 		self.screen_height = self.parent.parent.parent.screen_height
 		self.screen_width = self.parent.parent.parent.screen_width
 
+		# default params
+		self.class_name = 'class'
+		self.time_name = 't0'
+		self.status_name = 'status'
+
 		center_window(self)
 
 		self.locate_stack()
@@ -90,6 +95,41 @@ class SignalAnnotator(QMainWindow):
 		self.left_panel.setSpacing(10)
 
 		self.right_panel = QVBoxLayout()
+
+		class_hbox = QHBoxLayout()
+		class_hbox.addWidget(QLabel('event: '), 25)
+		self.class_choice_cb = QComboBox()
+
+		cols = np.array(self.df_tracks.columns)
+		class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
+		class_cols = list(cols[class_cols])
+		class_cols.remove('class_id')
+		class_cols.remove('class_color')
+
+		self.class_choice_cb.addItems(class_cols)
+		self.class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors)
+		self.class_choice_cb.setCurrentIndex(0)
+
+		class_hbox.addWidget(self.class_choice_cb, 70)
+
+		self.add_class_btn = QPushButton('')
+		self.add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.add_class_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.add_class_btn.setToolTip("Add a new event class")
+		self.add_class_btn.setIconSize(QSize(20, 20))
+		self.add_class_btn.clicked.connect(self.create_new_event_class)
+		class_hbox.addWidget(self.add_class_btn, 5)
+
+		self.del_class_btn = QPushButton('')
+		self.del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_class_btn.setIcon(icon(MDI6.delete,color="black"))
+		self.del_class_btn.setToolTip("Delete an event class")
+		self.del_class_btn.setIconSize(QSize(20, 20))
+		self.del_class_btn.clicked.connect(self.del_event_class)
+		class_hbox.addWidget(self.del_class_btn, 5)
+
+		self.left_panel.addLayout(class_hbox)
+
 
 		self.cell_info = QLabel('')
 		self.left_panel.addWidget(self.cell_info)
@@ -288,6 +328,152 @@ class SignalAnnotator(QMainWindow):
 
 		QApplication.processEvents()
 
+	def del_event_class(self):
+
+		msgBox = QMessageBox()
+		msgBox.setIcon(QMessageBox.Warning)
+		msgBox.setText(f"You are about to delete event class {self.class_choice_cb.currentText()}. The associated time and\nstatus will also be deleted. Do you still want to proceed?")
+		msgBox.setWindowTitle("Warning")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		returnValue = msgBox.exec()
+		if returnValue == QMessageBox.No:
+			return None
+		else:
+			class_to_delete = self.class_choice_cb.currentText()
+			time_to_delete = class_to_delete.replace('class','t')
+			status_to_delete = class_to_delete.replace('class', 'status')
+			cols_to_delete = [class_to_delete, time_to_delete, status_to_delete]
+			for c in cols_to_delete:
+				try:
+					self.df_tracks = self.df_tracks.drop([c], axis=1)
+				except Exception as e:
+					print(e)
+			item_idx = self.class_choice_cb.findText(class_to_delete)
+			self.class_choice_cb.removeItem(item_idx)
+
+
+
+	def create_new_event_class(self):
+
+		# display qwidget to name the event
+		self.newClassWidget = QWidget()
+		self.newClassWidget.setWindowTitle('Create new event class')
+		
+		layout = QVBoxLayout()
+		self.newClassWidget.setLayout(layout)
+		name_hbox = QHBoxLayout()
+		name_hbox.addWidget(QLabel('event name: '), 25)
+		self.class_name_le = QLineEdit('event')
+		name_hbox.addWidget(self.class_name_le, 75)
+		layout.addLayout(name_hbox)
+
+		class_labels = ['event', 'no event', 'else']
+		layout.addWidget(QLabel('prefill: '))
+		radio_box = QHBoxLayout()
+		self.class_option_rb = [QRadioButton() for i in range(3)]
+		for i,c in enumerate(self.class_option_rb):
+			if i==0:
+				c.setChecked(True)
+			c.setText(class_labels[i])
+			radio_box.addWidget(c, 33, alignment=Qt.AlignCenter)
+		layout.addLayout(radio_box)
+
+		btn_hbox = QHBoxLayout()
+		submit_btn = QPushButton('submit')
+		cancel_btn = QPushButton('cancel')
+		btn_hbox.addWidget(cancel_btn, 50)
+		btn_hbox.addWidget(submit_btn, 50)
+		layout.addLayout(btn_hbox)
+
+		submit_btn.clicked.connect(self.write_new_event_class)
+		cancel_btn.clicked.connect(self.close_without_new_class)
+
+		self.newClassWidget.show()
+		center_window(self.newClassWidget)
+
+
+		# Prefill with class value
+		# write in table
+
+	def write_new_event_class(self):
+		
+		self.target_class = 'class_'+self.class_name_le.text()
+		self.target_time = 't_'+self.class_name_le.text()
+
+		if self.target_class in list(self.df_tracks.columns):
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("This event name already exists. If you proceed,\nall annotated data will be rewritten. Do you wish to continue?")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+			else:
+				pass
+
+		fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
+		self.df_tracks.loc[:,self.target_class] = fill_option
+		if fill_option==0:
+			self.df_tracks.loc[:,self.target_time] = 0.1
+		else:
+			self.df_tracks.loc[:,self.target_time] = -1
+		
+		self.class_choice_cb.clear()
+		cols = np.array(self.df_tracks.columns)
+		class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
+		class_cols = list(cols[class_cols])
+		class_cols.remove('class_id')
+		class_cols.remove('class_color')
+		self.class_choice_cb.addItems(class_cols)
+		idx = self.class_choice_cb.findText(self.target_class)
+		self.class_choice_cb.setCurrentIndex(idx)
+
+		self.newClassWidget.close()	
+
+
+	def close_without_new_class(self):
+		self.newClassWidget.close()
+
+	def compute_status_and_colors(self, i):
+
+		self.class_name = self.class_choice_cb.currentText()
+		self.expected_status = 'status'
+		suffix = self.class_name.replace('class','').replace('_','')
+		if suffix!='':
+			self.expected_status+='_'+suffix
+			self.expected_time = 't_'+suffix
+		else:
+			self.expected_time = 't0'
+
+		self.time_name = self.expected_time
+		self.status_name = self.expected_status
+
+		print('selection and expected names: ', self.class_name, self.expected_time, self.expected_status)
+
+		if self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns and not self.status_name in self.df_tracks.columns:
+			# only create the status column if it does not exist to not erase static classification results
+			self.make_status_column()
+		elif self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns:
+			# all good, do nothing
+			pass
+		else:
+			if not self.status_name in self.df_tracks.columns:
+				self.df_tracks[self.status_name] = 0
+				self.df_tracks['status_color'] = color_from_status(0)
+				self.df_tracks['class_color'] = color_from_class(1)
+
+		if not self.class_name in self.df_tracks.columns:
+			self.df_tracks[self.class_name] = 1
+		if not self.time_name in self.df_tracks.columns:
+			self.df_tracks[self.time_name] = -1
+
+		self.df_tracks['status_color'] = [color_from_status(i) for i in self.df_tracks[self.status_name].to_numpy()]					
+		self.df_tracks['class_color'] = [color_from_class(i) for i in self.df_tracks[self.class_name].to_numpy()]
+
+
+		self.extract_scatter_from_trajectories()
 
 	def contrast_slider_action(self):
 
@@ -336,8 +522,8 @@ class SignalAnnotator(QMainWindow):
 		for a in self.annotation_btns_to_hide:
 			a.show()
 
-		cclass = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'].to_numpy()[0]
-		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]
+		cclass = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.class_name].to_numpy()[0]
+		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.time_name].to_numpy()[0]
 
 		if cclass==0:
 			self.event_btn.setChecked(True)
@@ -375,10 +561,10 @@ class SignalAnnotator(QMainWindow):
 		elif self.suppr_btn.isChecked():
 			cclass = 42
 
-		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'] = cclass
-		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'] = t0
+		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.class_name] = cclass
+		self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.time_name] = t0
 
-		indices = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'].index
+		indices = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.class_name].index
 		timeline = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'FRAME'].to_numpy()
 		status = np.zeros_like(timeline)
 		if t0 > 0:
@@ -390,7 +576,7 @@ class SignalAnnotator(QMainWindow):
 		status_color = [color_from_status(s, recently_modified=True) for s in status]
 		class_color = [color_from_class(cclass, recently_modified=True) for i in range(len(status))]
 
-		self.df_tracks.loc[indices, 'status'] = status
+		self.df_tracks.loc[indices, self.status_name] = status
 		self.df_tracks.loc[indices, 'status_color'] = status_color
 		self.df_tracks.loc[indices, 'class_color'] = class_color
 
@@ -464,17 +650,54 @@ class SignalAnnotator(QMainWindow):
 			# Load and prep tracks
 			self.df_tracks = pd.read_csv(self.trajectories_path)
 			self.df_tracks = self.df_tracks.sort_values(by=['TRACK_ID', 'FRAME'])
-			if not 'status' in self.df_tracks.columns:
-				if 't0' in self.df_tracks.columns and 'class' in self.df_tracks.columns:
-					self.make_status_column()
+
+			cols = np.array(self.df_tracks.columns)
+			class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
+			class_cols = list(cols[class_cols])
+			try:
+				class_cols.remove('class_id')
+			except:
+				pass
+			try:
+				class_cols.remove('class_color')
+			except:
+				pass
+			if len(class_cols)>0:
+				self.class_name = class_cols[0]
+				self.expected_status = 'status'
+				suffix = self.class_name.replace('class','').replace('_','')
+				if suffix!='':
+					self.expected_status+='_'+suffix
+					self.expected_time = 't_'+suffix
 				else:
-					self.df_tracks['status'] = 0
+					self.expected_time = 't0'
+				self.time_name = self.expected_time
+				self.status_name = self.expected_status
+			else:
+				self.class_name = 'class'
+				self.time_name = 't0'
+				self.status_name = 'status'
+
+			if self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns and not self.status_name in self.df_tracks.columns:
+				# only create the status column if it does not exist to not erase static classification results
+				self.make_status_column()
+			elif self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns:
+				# all good, do nothing
+				pass
+			else:
+				if not self.status_name in self.df_tracks.columns:
+					self.df_tracks[self.status_name] = 0
 					self.df_tracks['status_color'] = color_from_status(0)
 					self.df_tracks['class_color'] = color_from_class(1)
-			if not 'class' in self.df_tracks.columns:
-				self.df_tracks['class'] = 1
-			if not 't0' in self.df_tracks.columns:
-				self.df_tracks['t0'] = -1
+
+			if not self.class_name in self.df_tracks.columns:
+				self.df_tracks[self.class_name] = 1
+			if not self.time_name in self.df_tracks.columns:
+				self.df_tracks[self.time_name] = -1
+
+			self.df_tracks['status_color'] = [color_from_status(i) for i in self.df_tracks[self.status_name].to_numpy()]					
+			self.df_tracks['class_color'] = [color_from_class(i) for i in self.df_tracks[self.class_name].to_numpy()]
+
 
 			self.df_tracks = self.df_tracks.dropna(subset=['POSITION_X', 'POSITION_Y'])
 			self.df_tracks['x_anim'] = self.df_tracks['POSITION_X'] * self.fraction
@@ -515,12 +738,13 @@ class SignalAnnotator(QMainWindow):
 
 
 	def make_status_column(self):
-
+		print(self.class_name, self.time_name, self.status_name)
+		print('remaking the status column')
 		for tid, group in self.df_tracks.groupby('TRACK_ID'):
 			
 			indices = group.index
-			t0 = group['t0'].to_numpy()[0]
-			cclass = group['class'].to_numpy()[0]
+			t0 = group[self.time_name].to_numpy()[0]
+			cclass = group[self.class_name].to_numpy()[0]
 			timeline = group['FRAME'].to_numpy()
 			status = np.zeros_like(timeline)
 			if t0 > 0:
@@ -532,11 +756,9 @@ class SignalAnnotator(QMainWindow):
 			status_color = [color_from_status(s) for s in status]
 			class_color = [color_from_class(cclass) for i in range(len(status))]
 
-			self.df_tracks.loc[indices, 'status'] = status
+			self.df_tracks.loc[indices, self.status_name] = status
 			self.df_tracks.loc[indices, 'status_color'] = status_color
 			self.df_tracks.loc[indices, 'class_color'] = class_color
-
-		print(self.df_tracks)
 
 	def generate_signal_choices(self):
 		
@@ -584,7 +806,7 @@ class SignalAnnotator(QMainWindow):
 		self.configure_ylims()
 
 		min_val,max_val = self.cell_ax.get_ylim()
-		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]
+		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.time_name].to_numpy()[0]
 		self.line_dt.set_xdata([t0, t0])
 		self.line_dt.set_ydata([min_val,max_val])
 
@@ -875,8 +1097,8 @@ class SignalAnnotator(QMainWindow):
 	def give_cell_information(self):
 
 		cell_selected = f"cell: {self.track_of_interest}\n"
-		cell_class = f"class: {self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'class'].to_numpy()[0]}\n"
-		cell_time = f"time of interest: {self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 't0'].to_numpy()[0]}\n"
+		cell_class = f"class: {self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.class_name].to_numpy()[0]}\n"
+		cell_time = f"time of interest: {self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.time_name].to_numpy()[0]}\n"
 		self.cell_info.setText(cell_selected+cell_class+cell_time)
 
 	def save_trajectories(self):
@@ -884,7 +1106,7 @@ class SignalAnnotator(QMainWindow):
 		if self.normalized_signals:
 			self.normalize_features_btn.click()
 
-		self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks['class']>2].index)
+		self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks[self.class_name]>2].index)
 		self.df_tracks.to_csv(self.trajectories_path, index=False)
 		print('table saved.')
 		self.extract_scatter_from_trajectories()
@@ -937,8 +1159,8 @@ class SignalAnnotator(QMainWindow):
 			signals = {}
 			for c in cols:
 				signals.update({c: self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, c].to_numpy()})
-			time_of_interest = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, "t0"].to_numpy()[0]
-			cclass = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, "class"].to_numpy()[0]
+			time_of_interest = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, self.time_name].to_numpy()[0]
+			cclass = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, self.class_name].to_numpy()[0]
 			signals.update({"time_of_interest": time_of_interest,"class": cclass})
 			# Here auto add all available channels
 			training_set.append(signals)

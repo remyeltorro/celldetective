@@ -213,13 +213,25 @@ class ClassifierWidget(QWidget):
 
 		name_map = {self.class_name: self.class_name_user}
 		self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
+		if 'TRACK_ID' in list(self.df.columns):
+			print('Tracks detected... save a status column...')
+			stat_col = self.class_name_user.replace('class','status')
+			self.df.loc[:,stat_col] = 1 - self.df[self.class_name_user].values
+			for tid,track in self.df.groupby('TRACK_ID'):
+				indices = track[self.class_name_user].index
+				status_values = track[stat_col].to_numpy()
+				if np.all([s==0 for s in status_values]):
+					self.df.loc[indices, self.class_name_user] = 1
+				else:
+					self.df.loc[indices, self.class_name_user] = 2
 
 		for pos,pos_group in self.df.groupby('position'):
 			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.mode}.csv']), index=False)
 
 		# reset
-		self.init_class()
-		self.update_props_scatter()
+		#self.init_class()
+		#self.update_props_scatter()
+		self.close()
 
 	def switch_to_log(self, i):
 

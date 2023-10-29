@@ -20,6 +20,7 @@ from tqdm import tqdm
 from celldetective.gui.gui_utils import center_window
 from tifffile import imwrite
 import json
+import psutil
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -318,6 +319,7 @@ class ProcessPanel(QFrame):
 		self.grid_contents.addLayout(seg_option_vbox, 2, 0, 1, 4)
 
 	def check_segmentation(self):
+
 		if not os.path.exists(os.sep.join([self.parent.pos,f'labels_{self.mode}', os.sep])):
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
@@ -337,6 +339,7 @@ class ProcessPanel(QFrame):
 		#QApplication.setOverrideCursor(Qt.WaitCursor)
 		test = self.parent.locate_selected_position()
 		if test:
+			print('Memory use: ', dict(psutil.virtual_memory()._asdict()))
 			control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode,flush_memory=True)
 			gc.collect()
 

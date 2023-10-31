@@ -112,6 +112,7 @@ class ConfigSignalPlot(QWidget):
 		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: ')]
 		self.cb_options = [['targets','effectors'],['class'], ['t0','first detection']]
 		self.cbs = [QComboBox() for i in range(len(labels))]
+		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 
 		choice_layout = QVBoxLayout()
 		choice_layout.setContentsMargins(20,20,20,20)
@@ -121,6 +122,10 @@ class ConfigSignalPlot(QWidget):
 			hbox.addWidget(self.cbs[i],66)
 			self.cbs[i].addItems(self.cb_options[i])
 			choice_layout.addLayout(hbox)
+
+
+		self.cbs[0].setCurrentIndex(1)
+		self.cbs[0].setCurrentIndex(0)
 
 		self.abs_time_checkbox = QCheckBox('absolute time')
 		self.frame_slider = QLabeledSlider()
@@ -157,6 +162,26 @@ class ConfigSignalPlot(QWidget):
 
 		# self.setCentralWidget(self.scroll_area)
 		# self.show()
+
+	def set_classes_and_times(self):
+
+		# Look for all classes and times
+		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{self.cbs[0].currentText()}*']))
+		self.all_columns = []
+		for tab in tables:
+			cols = pd.read_csv(tab, nrows=1).columns.tolist()
+			self.all_columns.extend(cols)
+		self.all_columns = np.unique(self.all_columns)
+		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
+		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
+		class_columns = list(self.all_columns[class_idx])
+		time_columns = list(self.all_columns[time_idx])
+		
+		self.cbs[2].clear()
+		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
+
+		self.cbs[1].clear()
+		self.cbs[1].addItems(np.unique(self.cb_options[1]+class_columns))
 
 	def ask_for_feature(self):
 
@@ -543,12 +568,12 @@ class ConfigSignalPlot(QWidget):
 		mapping = np.arange(-max_time-1, max_time+2)
 		cid=0
 		for block,movie_group in well_group.groupby('position'):
-			for tid,track_group in movie_group.loc[movie_group['class'].isin(cclass)].groupby('TRACK_ID'):
+			for tid,track_group in movie_group.loc[movie_group[self.cbs[1].currentText()].isin(cclass)].groupby('TRACK_ID'):
 				try:
 					timeline = track_group['FRAME'].to_numpy().astype(int)
 					feature = track_group[feature_selected].to_numpy()
-					t0 = math.floor(track_group['t0'].to_numpy()[0])
-					if self.cbs[2].currentText()=='t0' and not self.abs_time_checkbox.isChecked():
+					if self.cbs[2].currentText().startswith('t') and not self.abs_time_checkbox.isChecked():
+						t0 = math.floor(track_group[self.cbs[2].currentText()].to_numpy()[0])
 						timeline -= t0
 					elif self.cbs[2].currentText()=='first detection' and not self.abs_time_checkbox.isChecked():
 
@@ -596,7 +621,7 @@ class ConfigSignalPlot(QWidget):
 		self.ax.spines['top'].set_visible(False)
 		self.ax.spines['right'].set_visible(False)
 		#self.ax.set_ylim(0.001,1.05)
-		self.ax.set_xlim(-self.df['FRAME'].max()*self.FrameToMin,self.df['FRAME'].max()*self.FrameToMin)
+		#self.ax.set_xlim(-self.df['FRAME'].max()*self.FrameToMin,self.df['FRAME'].max()*self.FrameToMin)
 		self.ax.set_xlabel('time [min]')
 		self.ax.set_ylabel(self.feature_selected)
 

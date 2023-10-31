@@ -39,6 +39,7 @@ class ConfigSignalAnnotator(QMainWindow):
 		self.channel_names, self.channels = extract_experiment_channels(exp_config)
 		self.channel_names = np.array(self.channel_names)
 		self.channels = np.array(self.channels)
+		self.log_option = False
 
 		self.screen_height = self.parent.parent.parent.screen_height
 		center_window(self)
@@ -79,14 +80,27 @@ class ConfigSignalAnnotator(QMainWindow):
 		option_layout.addWidget(self.rgb_btn, alignment=Qt.AlignCenter)
 		sub_layout.addLayout(option_layout)
 
+		btn_hbox = QHBoxLayout()
+
 		self.percentile_btn = QPushButton()
 		self.percentile_btn.setIcon(icon(MDI6.percent_circle_outline,color="black"))
 		self.percentile_btn.setIconSize(QSize(20, 20))	
 		self.percentile_btn.setStyleSheet(self.parent.parent.parent.button_select_all)	
 		self.percentile_btn.setToolTip("Switch to percentile normalization values.")
 		self.percentile_btn.clicked.connect(self.switch_to_absolute_normalization_mode)
-		sub_layout.addWidget(self.percentile_btn, alignment=Qt.AlignRight)
-	
+
+		self.log_btn = QPushButton()
+		self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
+		self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.log_btn.clicked.connect(self.switch_to_log)
+		self.log_btn.setToolTip("Log-transform the intensities.")
+		self.log_btn.setIconSize(QSize(20, 20))	
+
+		btn_hbox.addWidget(QLabel(''), 90)
+		btn_hbox.addWidget(self.log_btn, 5,alignment=Qt.AlignRight)
+		btn_hbox.addWidget(self.percentile_btn, 5,alignment=Qt.AlignRight)
+		sub_layout.addLayout(btn_hbox)
+
 		self.channel_cbs = [QComboBox() for i in range(3)]
 		self.channel_cbs_lbls = [QLabel() for i in range(3)]
 
@@ -183,6 +197,9 @@ class ConfigSignalAnnotator(QMainWindow):
 		"""
 
 		if self.gs_btn.isChecked():
+
+			self.log_btn.setEnabled(True)
+
 			for k in range(1,3):
 				self.channel_cbs[k].setEnabled(False)
 				self.channel_cbs_lbls[k].setEnabled(False)
@@ -193,6 +210,9 @@ class ConfigSignalAnnotator(QMainWindow):
 				self.max_val_lbls[k].setEnabled(False)
 
 		elif self.rgb_btn.isChecked():
+
+			self.log_btn.setEnabled(False)
+
 			for k in range(3):
 
 				self.channel_cbs[k].setEnabled(True)
@@ -238,7 +258,7 @@ class ConfigSignalAnnotator(QMainWindow):
 		
 		"""
 
-		instructions = {'rgb_mode': self.rgb_btn.isChecked(), 'percentile_mode': self.percentile_mode, 'fraction': float(self.fraction_slider.value()), 'interval': int(self.interval_slider.value())}
+		instructions = {'rgb_mode': self.rgb_btn.isChecked(), 'percentile_mode': self.percentile_mode, 'fraction': float(self.fraction_slider.value()), 'interval': int(self.interval_slider.value()), 'log': self.log_option}
 		max_i = 3 if self.rgb_btn.isChecked() else 1
 		channels = []
 		for i in range(max_i):
@@ -297,3 +317,20 @@ class ConfigSignalAnnotator(QMainWindow):
 				if 'interval' in instructions:
 					interval = instructions['interval']
 					self.interval_slider.setValue(interval)
+
+				if 'log' in instructions:
+					self.log_option = not instructions['log']
+					self.switch_to_log()
+
+	def switch_to_log(self):
+
+		"""
+		Switch threshold histogram to log scale. Auto adjust.
+		"""
+
+		if not self.log_option:
+			self.log_btn.setIcon(icon(MDI6.math_log,color="#1565c0"))
+			self.log_option = True
+		else:
+			self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
+			self.log_option = False

@@ -107,8 +107,9 @@ class ConfigSurvival(QWidget):
 
 
 		labels = [QLabel('population: '), QLabel('time of\ninterest: '), QLabel('time of\nreference: '), QLabel('class: '), QLabel('cmap: ')]
-		cb_options = [['targets','effectors'],['t0','first detection'], ['0','first detection'], ['class'], list(plt.colormaps())]
+		self.cb_options = [['targets','effectors'],['t0','first detection'], ['0','first detection', 't0'], ['class'], list(plt.colormaps())]
 		self.cbs = [QComboBox() for i in range(len(labels))]
+		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 
 		choice_layout = QVBoxLayout()
 		choice_layout.setContentsMargins(20,20,20,20)
@@ -116,10 +117,12 @@ class ConfigSurvival(QWidget):
 			hbox = QHBoxLayout()
 			hbox.addWidget(labels[i], 33)
 			hbox.addWidget(self.cbs[i],66)
-			self.cbs[i].addItems(cb_options[i])
+			self.cbs[i].addItems(self.cb_options[i])
 			choice_layout.addLayout(hbox)
 		main_layout.addLayout(choice_layout)
 
+		self.cbs[0].setCurrentIndex(1)
+		self.cbs[0].setCurrentIndex(0)
 
 		time_calib_layout = QHBoxLayout()
 		time_calib_layout.setContentsMargins(20,20,20,20)
@@ -140,6 +143,30 @@ class ConfigSurvival(QWidget):
 
 		# self.setCentralWidget(self.scroll_area)
 		# self.show()
+
+	def set_classes_and_times(self):
+
+		# Look for all classes and times
+		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{self.cbs[0].currentText()}*']))
+		self.all_columns = []
+		for tab in tables:
+			cols = pd.read_csv(tab, nrows=1).columns.tolist()
+			self.all_columns.extend(cols)
+		self.all_columns = np.unique(self.all_columns)
+		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
+		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
+		class_columns = list(self.all_columns[class_idx])
+		time_columns = list(self.all_columns[time_idx])
+		
+		self.cbs[1].clear()
+		self.cbs[1].addItems(np.unique(self.cb_options[1]+time_columns))
+
+		self.cbs[2].clear()
+		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
+
+		self.cbs[3].clear()
+		self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
+		
 
 	def process_survival(self):
 
@@ -365,8 +392,12 @@ class ConfigSurvival(QWidget):
 							continue
 					else:
 						continue
+			elif self.cbs[2].currentText().startswith('t'):
+				left_censored = True
+				first_detections = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].max().values
 
-			if self.cbs[2].currentText()=='first detection':
+
+			if self.cbs[2].currentText()=='first detection' or self.cbs[2].currentText().startswith('t'):
 				left_censored = True
 			else:
 				left_censored = False

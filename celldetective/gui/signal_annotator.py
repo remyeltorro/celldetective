@@ -257,6 +257,16 @@ class SignalAnnotator(QMainWindow):
 
 		animation_buttons_box.addWidget(self.frame_lbl, 20, alignment=Qt.AlignLeft)
 
+		self.first_frame_btn = QPushButton()
+		self.first_frame_btn.clicked.connect(self.set_first_frame)
+		self.first_frame_btn.setShortcut(QKeySequence('f'))
+		self.first_frame_btn.setIcon(icon(MDI6.page_first,color="black"))
+		self.first_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.first_frame_btn.setFixedSize(QSize(60, 60))
+		self.first_frame_btn.setIconSize(QSize(30, 30))		
+
+
+
 		self.last_frame_btn = QPushButton()
 		self.last_frame_btn.clicked.connect(self.set_last_frame)
 		self.last_frame_btn.setShortcut(QKeySequence('l'))
@@ -264,7 +274,6 @@ class SignalAnnotator(QMainWindow):
 		self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.last_frame_btn.setFixedSize(QSize(60, 60))
 		self.last_frame_btn.setIconSize(QSize(30, 30))		
-		animation_buttons_box.addWidget(self.last_frame_btn, 5, alignment=Qt.AlignRight)
 
 		self.stop_btn = QPushButton()
 		self.stop_btn.clicked.connect(self.stop)
@@ -272,7 +281,7 @@ class SignalAnnotator(QMainWindow):
 		self.stop_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.stop_btn.setFixedSize(QSize(60, 60))
 		self.stop_btn.setIconSize(QSize(30, 30))
-		animation_buttons_box.addWidget(self.stop_btn,5, alignment=Qt.AlignRight)
+
 
 		self.start_btn = QPushButton()
 		self.start_btn.clicked.connect(self.start)
@@ -280,8 +289,13 @@ class SignalAnnotator(QMainWindow):
 		self.start_btn.setFixedSize(QSize(60, 60))
 		self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.start_btn.setIconSize(QSize(30, 30))
-		animation_buttons_box.addWidget(self.start_btn,5, alignment=Qt.AlignRight)
 		self.start_btn.hide()
+
+		animation_buttons_box.addWidget(self.first_frame_btn, 5, alignment=Qt.AlignRight)
+		animation_buttons_box.addWidget(self.stop_btn,5, alignment=Qt.AlignRight)
+		animation_buttons_box.addWidget(self.start_btn,5, alignment=Qt.AlignRight)
+		animation_buttons_box.addWidget(self.last_frame_btn, 5, alignment=Qt.AlignRight)
+
 
 		self.right_panel.addLayout(animation_buttons_box, 5)
 
@@ -863,8 +877,14 @@ class SignalAnnotator(QMainWindow):
 					self.anim_interval = int(instructions['interval'])
 				else:
 					self.anim_interval = 1
+
+				if 'log' in instructions:
+					self.log_option = instructions['log']
+				else:
+					self.log_option = False
 		else:
 			self.rgb_mode = False
+			self.log_option = False
 			self.percentile_mode = True
 			self.target_channels = [[self.channel_names[0], 0.01, 99.99]]
 			self.fraction = 0.25
@@ -901,6 +921,8 @@ class SignalAnnotator(QMainWindow):
 			self.stack = np.moveaxis(self.stack, 0, -1)
 		else:
 			self.stack = self.stack[0]
+			if self.log_option:
+				self.stack[np.where(self.stack>0.)] = np.log(self.stack[np.where(self.stack>0.)])
 
 		print(f'Load stack of shape: {self.stack.shape}.')
 
@@ -1086,6 +1108,10 @@ class SignalAnnotator(QMainWindow):
 
 		self.last_frame_btn.setEnabled(True)
 		self.last_frame_btn.clicked.connect(self.set_last_frame)
+
+		self.first_frame_btn.setEnabled(True)
+		self.first_frame_btn.clicked.connect(self.set_first_frame)
+
 		
 		self.start_btn.hide()
 		self.stop_btn.show()
@@ -1142,6 +1168,28 @@ class SignalAnnotator(QMainWindow):
 		self.start_btn.show()
 		self.stop_btn.clicked.connect(self.start)
 		self.start_btn.setShortcut(QKeySequence("l"))
+
+	def set_first_frame(self):
+
+		self.first_frame_btn.setEnabled(False)
+		self.first_frame_btn.disconnect()
+
+		self.first_key = 0
+		print(f'First frame is {0}')
+		self.anim._drawn_artists = self.draw_frame(0)
+		self.anim._drawn_artists = sorted(self.anim._drawn_artists, key=lambda x: x.get_zorder())
+		for a in self.anim._drawn_artists:
+			a.set_visible(True)
+
+		self.fig.canvas.draw()
+		self.anim.event_source.stop()
+
+		#self.cell_plot.draw()
+		self.stop_btn.hide()
+		self.start_btn.show()
+		self.stop_btn.clicked.connect(self.start)
+		self.start_btn.setShortcut(QKeySequence("f"))
+
 
 	def export_signals(self):
 		

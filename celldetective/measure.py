@@ -662,11 +662,12 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 def measure_at_position(pos, mode, return_measurements=False):
 	
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\ ')
+	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
 	script_path = os.sep.join([abs_path, 'scripts', 'measure_cells.py'])
-	subprocess.call(rf"python {script_path} --pos {pos} --mode {mode}", shell=True)
+	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}"'
+	subprocess.call(cmd, shell=True)
 	
 	return None

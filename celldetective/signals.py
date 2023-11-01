@@ -80,7 +80,9 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 	_,model_path = get_signal_models_list(return_path=True)
 	complete_path = model_path+model
+	complete_path = rf"{complete_path}"
 	model_config_path = os.sep.join([complete_path,'config_input.json'])
+	model_config_path = rf"{model_config_path}"
 	assert os.path.exists(complete_path),f'Model {model} could not be located in folder {model_path}... Abort.'
 	assert os.path.exists(model_config_path),f'Model configuration could not be located in folder {model_path}... Abort.'
 
@@ -90,6 +92,13 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	f = open(model_config_path)
 	config = json.load(f)
 	required_signals = config["channels"]
+
+	try:
+		label = config['label']
+		if label=='':
+			label = None
+	except:
+		label = None
 	
 	if selected_signals is None:
 		selected_signals = []
@@ -138,18 +147,27 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	classes = model.predict_class(signals)
 	times_recast = model.predict_time_of_interest(signals)
 
+	if label is None:
+		class_col = 'class'
+		time_col = 't0'
+		status_col = 'status'
+	else:
+		class_col = 'class_'+label
+		time_col = 't_'+label
+		status_col = 'status_'+label
+
 	for i,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
 		indices = group.index
-		trajectories.loc[indices,'class'] = classes[i]
-		trajectories.loc[indices,'t0'] = times_recast[i]
+		trajectories.loc[indices,class_col] = classes[i]
+		trajectories.loc[indices,time_col] = times_recast[i]
 	print('Done.')
 
-	for tid, group in trajectories.groupby('TRACK_ID'):
+	for tid, group in trajectories.groupby(column_labels['track']):
 		
 		indices = group.index
-		t0 = group['t0'].to_numpy()[0]
-		cclass = group['class'].to_numpy()[0]
-		timeline = group['FRAME'].to_numpy()
+		t0 = group[time_col].to_numpy()[0]
+		cclass = group[class_col].to_numpy()[0]
+		timeline = group[column_labels['time']].to_numpy()
 		status = np.zeros_like(timeline)
 		if t0 > 0:
 			status[timeline>=t0] = 1.
@@ -160,7 +178,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		status_color = [color_from_status(s) for s in status]
 		class_color = [color_from_class(cclass) for i in range(len(status))]
 
-		trajectories.loc[indices, 'status'] = status
+		trajectories.loc[indices, status_col] = status
 		trajectories.loc[indices, 'status_color'] = status_color
 		trajectories.loc[indices, 'class_color'] = class_color
 
@@ -168,8 +186,8 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		fig,ax = plt.subplots(1,len(selected_signals), figsize=(10,5))
 		for i,s in enumerate(selected_signals):
 			for k,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
-				cclass = group['class'].to_numpy()[0]
-				t0 = group['t0'].to_numpy()[0]
+				cclass = group[class_col].to_numpy()[0]
+				t0 = group[time_col].to_numpy()[0]
 				timeline = group[column_labels['time']].to_numpy()
 				if cclass==0:
 					if len(selected_signals)>1:
@@ -198,13 +216,14 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 	
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\')
+	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'analyze_signals.py'])
-	subprocess.call(rf"python {script_path} --pos {pos} --model {model} --mode {mode} --use_gpu {use_gpu}", shell=True)
+	cmd = f'python "{script_path}" --pos "{pos}" --model "{model}" --mode "{mode}" --use_gpu "{use_gpu}"'
+	subprocess.call(cmd, shell=True)
 	
 	return None
 
@@ -212,7 +231,7 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 class SignalDetectionModel(object):
 	
 	def __init__(self, path=None, pretrained=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_signal_length=128, n_channels=2, 
-				n_conv=3, n_classes=3, dense_collection=128, dropout_rate=0.1):
+				n_conv=3, n_classes=3, dense_collection=128, dropout_rate=0.1, label=''):
 		
 		self.prep_gpu()
 
@@ -224,6 +243,7 @@ class SignalDetectionModel(object):
 		self.n_classes = n_classes
 		self.dense_collection = dense_collection
 		self.dropout_rate = dropout_rate
+		self.label = label
 
 		if self.pretrained is not None:
 			print(f"Load pretrained models from {path}...")
@@ -243,27 +263,32 @@ class SignalDetectionModel(object):
 		
 		# Load keras model
 		try:
-			self.model_class = load_model(self.pretrained+"/classifier.h5")
-			self.model_class.load_weights(self.pretrained+"/classifier.h5")
+			self.model_class = load_model(os.sep.join([self.pretrained,"classifier.h5"]))
+			self.model_class.load_weights(os.sep.join([self.pretrained,"classifier.h5"]))
 			print("Classifier successfully loaded...")
 		except Exception as e:
 			print(f"Error {e}...")
 			self.model_class = None
 		try:
-			self.model_reg = load_model(self.pretrained+"/regressor.h5")
-			self.model_reg.load_weights(self.pretrained+"/regressor.h5")
+			self.model_reg = load_model(os.sep.join([self.pretrained,"regressor.h5"]))
+			self.model_reg.load_weights(os.sep.join([self.pretrained,"regressor.h5"]))
 			print("Regressor successfully loaded...")
 		except Exception as e:
 			print(f"Error {e}...")
 			self.model_reg = None
 
 		# load config
-		with open(self.pretrained+"/config_input.json") as config_file:
+		with open(os.sep.join([self.pretrained,"config_input.json"])) as config_file:
 			model_config = json.load(config_file)
 
 		req_channels = model_config["channels"]
 		print(f"Required channels read from pretrained model: {req_channels}")
 		self.channel_option = req_channels
+
+		try:
+			self.label = model_config['label']
+		except:
+			pass
 
 		self.n_channels = self.model_class.layers[0].input_shape[0][-1]
 		self.model_signal_length = self.model_class.layers[0].input_shape[0][-2]
@@ -317,15 +342,15 @@ class SignalDetectionModel(object):
 		"""
 		
 		self.normalize = normalize
-		self.ds_folders = ds_folders
+		self.ds_folders = [rf'{d}' for d in ds_folders]
 		self.batch_size = batch_size
 		self.epochs = epochs
 		self.validation_split = validation_split
 		self.test_split = test_split
 		self.augment = augment
 		self.augmentation_factor = augmentation_factor
-		self.model_name = model_name
-		self.target_directory = target_directory
+		self.model_name = rf'{model_name}'
+		self.target_directory = rf'{target_directory}'
 		self.model_folder = os.sep.join([self.target_directory,self.model_name])
 		self.recompile_pretrained = recompile_pretrained
 		self.learning_rate = learning_rate
@@ -350,7 +375,7 @@ class SignalDetectionModel(object):
 		self.train_classifier()
 		self.train_regressor()
 
-		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length}
+		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length, 'label': self.label}
 		json_string = json.dumps(config_input)
 		with open(os.sep.join([self.model_folder,"config_input.json"]), 'w') as outfile:
 			outfile.write(json_string)
@@ -423,7 +448,7 @@ class SignalDetectionModel(object):
 			self.augment = False
 		self.model_name = model_name
 		self.target_directory = target_directory
-		self.model_folder = self.target_directory + "/" + self.model_name
+		self.model_folder = os.sep.join([self.target_directory,self.model_name])
 		self.recompile_pretrained = recompile_pretrained
 		self.learning_rate = learning_rate
 		self.loss_reg = loss_reg
@@ -583,7 +608,7 @@ class SignalDetectionModel(object):
 			# Confusion matrix on test set
 			results = confusion_matrix(ground_truth,predictions)
 			try:
-				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+"/", title=title)
+				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
 			except:
 				pass
 			print("Test set: ",classification_report(ground_truth,predictions))
@@ -603,7 +628,7 @@ class SignalDetectionModel(object):
 			# Confusion matrix on validation set
 			results = confusion_matrix(ground_truth,predictions)
 			try:
-				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+"/", title=title)
+				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
 			except:
 				pass
 			print("Validation set: ",classification_report(ground_truth,predictions))
@@ -1397,11 +1422,12 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 def train_signal_model(config):
 
 	config = config.replace('\\','/')
-	config = config.replace(' ','\\ ')
+	config = rf"{config}"
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'train_signal_model.py'])
-	subprocess.call(rf"python {script_path} --config {config}", shell=True)
+	cmd = f'python "{script_path}" --config "{config}"'
+	subprocess.call(cmd, shell=True)
 
 def derivative(x, timeline, window, mode='bi'):
 	

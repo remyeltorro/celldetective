@@ -31,6 +31,7 @@ def get_config(experiment):
 		experiment += os.sep
 	
 	config = experiment + 'config.ini'
+	config = rf"{config}"
 	assert os.path.exists(config),'The experiment configuration could not be located...'
 	return config	
 

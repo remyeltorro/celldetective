@@ -267,6 +267,13 @@ class ConfigSignalModelTraining(QMainWindow):
 		modelname_layout.addWidget(self.modelname_le, 70)
 		layout.addLayout(modelname_layout)
 
+		classname_layout = QHBoxLayout()
+		classname_layout.addWidget(QLabel('class name: '), 30)
+		self.class_name_le = QLineEdit()
+		self.class_name_le.setText("")
+		classname_layout.addWidget(self.class_name_le, 70)
+		layout.addLayout(classname_layout)
+
 		pretrained_layout = QHBoxLayout()
 		pretrained_layout.setContentsMargins(0,0,0,0)
 		pretrained_layout.addWidget(QLabel('Pretrained model: '), 30)
@@ -362,19 +369,19 @@ class ConfigSignalModelTraining(QMainWindow):
 
 		self.pretrained_model = QFileDialog.getExistingDirectory(
 						self, "Open Directory",
-						self.soft_path+'/celldetective/models/signal_detection/',
+						os.sep.join([self.soft_path,'celldetective','models','signal_detection','']),
 						QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
 						)
 
 		if self.pretrained_model is not None:
 		# 	self.foldername = self.file_dialog_pretrained.selectedFiles()[0]
-			subfiles = glob(self.pretrained_model+"/*")
-			if self.pretrained_model+"/config_input.json" in subfiles:
+			subfiles = glob(os.sep.join([self.pretrained_model,"*"]))
+			if os.sep.join([self.pretrained_model,"config_input.json"]) in subfiles:
 				self.load_pretrained_config()
-				self.pretrained_lbl.setText(self.pretrained_model.split("/")[-1])
+				self.pretrained_lbl.setText(self.pretrained_model.split(os.sep)[-1])
 				self.cancel_pretrained.setVisible(True)
 				self.recompile_option.setEnabled(True)
-				self.modelname_le.setText(f"{self.pretrained_model.split('/')[-1]}_{datetime.today().strftime('%Y-%m-%d')}")
+				self.modelname_le.setText(f"{self.pretrained_model.split(os.sep)[-1]}_{datetime.today().strftime('%Y-%m-%d')}")
 			else:
 				self.pretrained_model = None
 				self.pretrained_lbl.setText('No folder chosen')	
@@ -391,7 +398,7 @@ class ConfigSignalModelTraining(QMainWindow):
 						)
 		if self.dataset_folder is not None:
 
-			subfiles = glob(self.dataset_folder+"/*.npy")
+			subfiles = glob(os.sep.join([self.dataset_folder,"*.npy"]))
 			if len(subfiles)>0:
 				print(f'found {len(subfiles)} files in folder')
 				self.data_folder_label.setText(self.dataset_folder[:16]+'...')
@@ -412,6 +419,7 @@ class ConfigSignalModelTraining(QMainWindow):
 		self.recompile_option.setEnabled(False)
 		self.cancel_pretrained.setVisible(False)
 		self.model_length_slider.setEnabled(True)
+		self.class_name_le.setText('')
 		self.modelname_le.setText(f"Untitled_model_{datetime.today().strftime('%Y-%m-%d')}")
 
 	def clear_dataset(self):
@@ -424,10 +432,15 @@ class ConfigSignalModelTraining(QMainWindow):
 
 	def load_pretrained_config(self):
 
-		f = open(self.pretrained_model+"/config_input.json")
+		f = open(os.sep.join([self.pretrained_model,"config_input.json"]))
 		data = json.load(f)
 		channels = data["channels"]
 		signal_length = data["model_signal_length"]
+		try:
+			label = data['label']
+			self.class_name_le.setText(label)
+		except:
+			pass
 		self.model_length_slider.setValue(int(signal_length))
 		self.model_length_slider.setEnabled(False)
 
@@ -491,7 +504,7 @@ class ConfigSignalModelTraining(QMainWindow):
 
 		training_instructions = {'model_name': model_name,'pretrained': pretrained_model, 'channel_option': channels, 'model_signal_length': signal_length,
 		'recompile_pretrained': recompile_op, 'ds': data_folders, 'augmentation_factor': aug_factor, 'validation_split': val_split,
-		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs}
+		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs, 'label': self.class_name_le.text()}
 
 		model_folder = self.signal_models_dir + model_name + '/'
 		if not os.path.exists(model_folder):

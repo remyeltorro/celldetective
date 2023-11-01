@@ -858,13 +858,14 @@ def compute_instantaneous_diffusion(trajectories, column_labels={'track': "TRACK
 def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 	
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\ ')
+	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	if not pos.endswith('/'):
 		pos += '/'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'track_cells.py'])	
-	subprocess.call(rf"python {script_path} --pos {pos} --mode {mode}", shell=True)
+	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}"'
+	subprocess.call(cmd, shell=True)
 	
 	# if return_labels or view_on_napari:
 	# 	labels = locate_labels(pos, population=mode)

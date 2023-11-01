@@ -1,1 +1,1 @@
-{"channels": ["dead_nuclei_channel","live_nuclei_channel"], "model_signal_length": 128}
+{"channels": ["dead_nuclei_channel","live_nuclei_channel"], "model_signal_length": 128, "label": "sigmoid-lysis"}

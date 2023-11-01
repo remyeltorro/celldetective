@@ -418,12 +418,12 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	"""
 	
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\')
 	pos = rf'{pos}'
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells.py'])
-	subprocess.call(rf"python {script_path} --pos {pos} --model {model_name} --mode {mode} --use_gpu {use_gpu}", shell=True)
+	cmd = f'python "{script_path}" --pos "{pos}" --model "{model_name}" --mode "{mode}" --use_gpu "{use_gpu}"'
+	subprocess.call(cmd, shell=True)
 
 	if return_labels or view_on_napari:
 		labels = locate_labels(pos, population=mode)
@@ -438,29 +438,30 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 		return None
 
 def segment_from_threshold_at_position(pos, mode, config):
+	# Space in path problem fixed!!!
 
 	pos = pos.replace('\\','/')
-	pos = pos.replace(' ','\\ ')
 	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 
 	config = config.replace('\\','/')
-	config = config.replace(' ','\\')
 	config = rf"{config}"
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells_thresholds.py'])
-	subprocess.call(" ".join(['python', rf"{script_path}","--pos",rf"{pos}","--config",rf"{config}","--mode",rf"{mode}"]), shell=True)
+	cmd = f'python "{script_path}" --pos "{pos}" --config "{config}" --mode "{mode}"'
+	subprocess.call(cmd, shell=True)
 
 
 def train_segmentation_model(config):
 
 	config = config.replace('\\','/')
-	config = config.replace(' ','\\ ')
+	config = rf"{config}"
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'train_segmentation_model.py'])
-	subprocess.call(rf"python {script_path} --config {config}", shell=True)
+	cmd = f'python "{script_path}" --config "{config}"'
+	subprocess.call(cmd, shell=True)
 
 if __name__ == "__main__":
 	print(segment(None,'test'))

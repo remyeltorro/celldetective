@@ -151,6 +151,8 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 	if channel_names is not None:
 		df = rename_intensity_column(df, channel_names)
 
+	df = write_first_detection_class(df, column_labels=column_labels)
+
 	if clean_trajectories_kwargs is not None:
 		df = clean_trajectories(df.copy(),**clean_trajectories_kwargs)
 
@@ -356,6 +358,25 @@ def clean_trajectories(trajectories,remove_not_in_first=False,remove_not_in_last
 	
 	trajectories = trajectories.sort_values(by=[column_labels['track'],column_labels['time']])
 	trajectories.reset_index(inplace=True, drop=True)
+
+	if 'class_firstdetection' in list(trajectories.columns):
+		for tid, track_group in trajectories.groupby(column_labels['track']):
+			indices = track_group.index
+
+			class_values = np.array(track_group['class_firstdetection'].unique())
+			class_values = class_values[class_values==class_values]
+			t_values = np.array(track_group['t_firstdetection'].unique())
+			t_values = t_values[t_values==t_values]
+			if len(class_values)==0:
+				class_values = 2
+				t_values = -1
+			else:
+				class_values = class_values[0]
+				t_values = t_values[0]
+
+			trajectories.loc[indices, 'class_firstdetection'] = class_values
+			trajectories.loc[indices, 't_firstdetection'] = t_values
+
 	return trajectories
 
 def interpolate_per_track(group_df):
@@ -878,6 +899,33 @@ def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 	# 	return labels
 	# else:
 	return None
+
+def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
+	
+	tab = tab.sort_values(by=[column_labels['track'],column_labels['time']])
+	for tid,track_group in tab.groupby(column_labels['track']):
+		indices = track_group.index
+		detection = track_group[column_labels['x']].values
+		timeline = track_group[column_labels['time']].values
+		if len(timeline)>2:
+			dt = timeline[1] - timeline[0]
+			if np.any(detection==detection):
+				t_first = timeline[detection==detection][0]
+				cclass = 0
+				if t_first==0:
+					t_first = -1
+					cclass = 2
+				else:
+					t_first =  float(t_first) - float(dt/2)
+			else:
+				t_first = -1
+				cclass = 2
+
+			tab.loc[indices, 'class_firstdetection'] = cclass
+			tab.loc[indices, 't_firstdetection'] = t_first
+	return tab
+
+
 
 if __name__ == "__main__":
 	track_at_position("/home/limozin/Documents/Experiments/MinimumJan/W4/401",

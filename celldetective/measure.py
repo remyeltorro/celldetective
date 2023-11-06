@@ -183,6 +183,29 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 
 	return measurements
 
+def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
+	
+	tab = tab.sort_values(by=[column_labels['track'],column_labels['time']])
+	if 'area' in tab.columns:
+		for tid,track_group in tab.groupby(column_labels['track']):
+			indices = track_group.index
+			area = track_group['area'].values
+			timeline = track_group[column_labels['time']].values
+			if np.any(area==area):
+				t_first = timeline[area==area][0]
+				cclass = 1
+				if t_first==0:
+					t_first = 0
+					cclass = 2
+			else:
+				t_first = -1
+				cclass = 2
+
+			tab.loc[indices, 'class_firstdetection'] = cclass
+			tab.loc[indices, 't_firstdetection'] = t_first
+	return tab
+
+
 def contour_of_instance_segmentation(label, distance):
 
 	"""

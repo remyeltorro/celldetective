@@ -101,12 +101,12 @@ class SignalAnnotator(QMainWindow):
 		self.class_choice_cb = QComboBox()
 
 		cols = np.array(self.df_tracks.columns)
-		class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
-		class_cols = list(cols[class_cols])
-		class_cols.remove('class_id')
-		class_cols.remove('class_color')
+		self.class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
+		self.class_cols = list(cols[self.class_cols])
+		self.class_cols.remove('class_id')
+		self.class_cols.remove('class_color')
 
-		self.class_choice_cb.addItems(class_cols)
+		self.class_choice_cb.addItems(self.class_cols)
 		self.class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors)
 		self.class_choice_cb.setCurrentIndex(0)
 
@@ -436,11 +436,11 @@ class SignalAnnotator(QMainWindow):
 		
 		self.class_choice_cb.clear()
 		cols = np.array(self.df_tracks.columns)
-		class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
-		class_cols = list(cols[class_cols])
-		class_cols.remove('class_id')
-		class_cols.remove('class_color')
-		self.class_choice_cb.addItems(class_cols)
+		self.class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
+		self.class_cols = list(cols[self.class_cols])
+		self.class_cols.remove('class_id')
+		self.class_cols.remove('class_color')
+		self.class_choice_cb.addItems(self.class_cols)
 		idx = self.class_choice_cb.findText(self.target_class)
 		self.class_choice_cb.setCurrentIndex(idx)
 
@@ -666,18 +666,18 @@ class SignalAnnotator(QMainWindow):
 			self.df_tracks = self.df_tracks.sort_values(by=['TRACK_ID', 'FRAME'])
 
 			cols = np.array(self.df_tracks.columns)
-			class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
-			class_cols = list(cols[class_cols])
+			self.class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
+			self.class_cols = list(cols[self.class_cols])
 			try:
-				class_cols.remove('class_id')
+				self.class_cols.remove('class_id')
 			except:
 				pass
 			try:
-				class_cols.remove('class_color')
+				self.class_cols.remove('class_color')
 			except:
 				pass
-			if len(class_cols)>0:
-				self.class_name = class_cols[0]
+			if len(self.class_cols)>0:
+				self.class_name = self.class_cols[0]
 				self.expected_status = 'status'
 				suffix = self.class_name.replace('class','').replace('_','')
 				if suffix!='':
@@ -738,7 +738,12 @@ class SignalAnnotator(QMainWindow):
 			# self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
 			# print(self.columns_to_rescale)
 			
-			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent']
+			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.class_cols
+			cols = np.array(list(self.df_tracks.columns))
+			time_cols = np.array([c.startswith('t_') for c in cols])
+			time_cols = list(cols[time_cols])
+			cols_to_remove += time_cols			
+
 			for tr in cols_to_remove:
 				try:
 					self.columns_to_rescale.remove(tr)
@@ -783,6 +788,7 @@ class SignalAnnotator(QMainWindow):
 		signals = list(self.df_tracks.columns)
 		print(signals)
 		to_remove = ['TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index']
+
 		for c in to_remove:
 			if c in signals:
 				signals.remove(c)
@@ -820,7 +826,7 @@ class SignalAnnotator(QMainWindow):
 		self.configure_ylims()
 
 		min_val,max_val = self.cell_ax.get_ylim()
-		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.time_name].to_numpy()[0]
+		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.expected_time].to_numpy()[0]
 		self.line_dt.set_xdata([t0, t0])
 		self.line_dt.set_ydata([min_val,max_val])
 

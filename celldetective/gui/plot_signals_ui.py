@@ -6,8 +6,9 @@ from superqt import QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location, _extract_labels_from_config
-from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
+from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames, load_experiment_tables
 from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
+from celldetective.signals import columnwise_mean, mean_signal
 import numpy as np
 from tifffile import imread
 import json
@@ -166,7 +167,7 @@ class ConfigSignalPlot(QWidget):
 	def set_classes_and_times(self):
 
 		# Look for all classes and times
-		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{self.cbs[0].currentText()}*']))
+		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*']))
 		self.all_columns = []
 		for tab in tables:
 			cols = pd.read_csv(tab, nrows=1).columns.tolist()
@@ -438,64 +439,25 @@ class ConfigSignalPlot(QWidget):
 
 		"""
 
-		self.df = []
-		self.df_pos_info = []
-		real_well_index=0
-		for widx,well_path in enumerate(tqdm(self.wells[self.well_indices])):
+		self.well_option = self.parent.parent.well_list.currentIndex()
+		if self.well_option==len(self.wells):
+			wo = '*'
+		else:
+			wo = self.well_option
+		self.position_option = self.parent.parent.position_list.currentIndex()
+		if self.position_option==0:
+			po = '*'
+		else:
+			po = self.position_option - 1
 
-			any_table=False
-			well_index = widx
-			split_well_path = well_path.split(os.sep)
-			split_well_path = list(filter(None, split_well_path))
-			well_name = split_well_path[-1]
-			well_number = int(split_well_path[-1].replace('W',''))
-			well_alias = self.well_labels[widx]
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.cbs[0].currentText(), return_pos_info=True)
+		self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
+		#self.df_well_info.to_csv(self.exp_dir+'exp_info_well.csv')
 
-			positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
-			if self.position_indices is not None:
-				try:
-					positions = positions[self.position_indices]
-				except:
-					continue
 
-			real_pos_index=0
-			for pidx,pos_path in enumerate(positions):
-
-				split_pos_path = pos_path.split(os.sep)
-				split_pos_path = list(filter(None, split_pos_path))
-				pos_name = split_pos_path[-1]
-				table = os.sep.join([pos_path,'output','tables',f'trajectories_{self.cbs[0].currentText()}.csv'])
-
-				movies = glob(pos_path+os.sep.join(['movie',self.parent.parent.movie_prefix+'*.tif']))
-				if len(movies)>0:
-					stack_path = movies[0]
-				else:
-					stack_path = np.nan
-
-				if os.path.exists(table):
-					df_pos = pd.read_csv(table, low_memory=False)
-					df_pos['position'] = pos_path
-					df_pos['well'] = well_path
-					df_pos['well_index'] = well_number
-					df_pos['well_name'] = well_name
-					df_pos['pos_name'] = pos_name
-					self.df.append(df_pos)
-					any_table=True
-
-					self.df_pos_info.append({'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table, 'stack_path': stack_path,
-											'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name, 'well_number': well_number, 'well_alias': well_alias})
-					real_pos_index+=1
-
-			if any_table:
-				real_well_index+=1
-
-		try:
-			self.df_pos_info = pd.DataFrame(self.df_pos_info)
-			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
-			self.df_well_info.to_csv(self.exp_dir+'exp_info_well.csv')
-		except Exception as e:
-			print(f'{e}. No table could be found to compute survival...')
-			self.df = None
+		if self.df is None:
+			
+			print('No table could be found...')
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
 			msgBox.setText("No table could be found to compute survival...")
@@ -509,49 +471,33 @@ class ConfigSignalPlot(QWidget):
 				self.close()
 				return None
 
-		if len(self.df)>0:
-			self.df = pd.concat(self.df)
-		else:
-			print('No table could be found to compute survival...')
-			self.df = None
-			return None
-
-		print('End of new function...')
-
-
 	def compute_signal_functions(self):
 
+		# REPLACE EVRYTHING WITH MEAN_SIGNAL FUNCTION
 
 		# Per position signal
-		max_time = self.df.FRAME.max()
+		max_time = int(self.df.FRAME.max()) + 1
+		class_col = self.cbs[1].currentText()
+		time_col = self.cbs[2].currentText()
+
+
 		for block,movie_group in self.df.groupby(['well','position']):
 
-			matrix_all = self.generate_synchronized_matrix(movie_group, self.feature_selected, [0,1], max_time)
-			well_signal_mean, well_std_mean = self.col_mean(matrix_all)
-
-			matrix_event = self.generate_synchronized_matrix(movie_group, self.feature_selected, 0, max_time)
-			well_signal_event, well_std_event = self.col_mean(matrix_event)
-
-			matrix_no_event = self.generate_synchronized_matrix(movie_group, self.feature_selected, 1, max_time)
-			well_signal_no_event, well_std_no_event = self.col_mean(matrix_no_event)			
-
+			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
+			well_signal_event, well_std_event, timeline_event, matrix_event = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)		
+			well_signal_no_event, well_std_no_event, timeline_no_event, matrix_no_event = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
+			self.mean_plots_timeline = timeline_all
 			self.df_pos_info.loc[self.df_pos_info['pos_path']==block[1],'signal'] = [{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
-																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  np.arange(-max_time-1, max_time+2)}]
+																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline}]
 
 		# Per well
 		for well,well_group in self.df.groupby('well'):
 
-			matrix_all = self.generate_synchronized_matrix(well_group, self.feature_selected, [0,1], max_time)
-			well_signal_mean, well_std_mean = self.col_mean(matrix_all)
-
-			matrix_event = self.generate_synchronized_matrix(well_group, self.feature_selected, 0, max_time)
-			well_signal_event, well_std_event = self.col_mean(matrix_event)
-
-			matrix_no_event = self.generate_synchronized_matrix(well_group, self.feature_selected, 1, max_time)
-			well_signal_no_event, well_std_no_event = self.col_mean(matrix_no_event)			
-
+			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
+			well_signal_event, well_std_event, timeline_event, matrix_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)			
+			well_signal_no_event, well_std_no_event, timeline_no_event, matrix_no_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
 			self.df_well_info.loc[self.df_well_info['well_path']==well,'signal'] = [{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
-																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  np.arange(-max_time-1, max_time+2)}]
+																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline}]
 
 		self.df_pos_info.loc[:,'select'] = True
 		self.df_well_info.loc[:,'select'] = True
@@ -620,8 +566,8 @@ class ConfigSignalPlot(QWidget):
 		self.ax.plot([],[])
 		self.ax.spines['top'].set_visible(False)
 		self.ax.spines['right'].set_visible(False)
-		#self.ax.set_ylim(0.001,1.05)
-		#self.ax.set_xlim(-self.df['FRAME'].max()*self.FrameToMin,self.df['FRAME'].max()*self.FrameToMin)
+		self.ax.set_ylim(self.df[self.feature_selected].min(),self.df[self.feature_selected].max())
+		self.ax.set_xlim(-(self.df['FRAME'].max()+2)*self.FrameToMin,(self.df['FRAME'].max()+2)*self.FrameToMin)
 		self.ax.set_xlabel('time [min]')
 		self.ax.set_ylabel(self.feature_selected)
 

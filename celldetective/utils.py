@@ -923,6 +923,7 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 	for ds in datasets:
 		img_paths = list(set(glob(ds+os.sep+'*.tif')) - set(glob(ds+os.sep+f'*_{mask_suffix}.tif')))
 		for im in img_paths:
+			print(f'{im=}')
 			mask_path = os.sep.join([os.path.split(im)[0],os.path.split(im)[-1].replace('.tif', f'_{mask_suffix}.tif')])
 			if os.path.exists(mask_path):
 				# load image and mask
@@ -954,6 +955,7 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 	
 				if im_calib != train_spatial_calibration:
 					factor = im_calib / train_spatial_calibration
+					print(f'{im_calib=}, {train_spatial_calibration=}, {factor=}')
 					image = zoom(image, [factor,factor,1], order=3)
 					mask = zoom(mask, [factor,factor], order=0)        
 					

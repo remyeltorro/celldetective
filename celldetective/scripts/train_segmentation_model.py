@@ -14,6 +14,21 @@ import random
 from celldetective.utils import load_image_dataset, normalize_per_channel, augmenter
 from stardist import fill_label_holes
 from art import tprint
+import matplotlib.pyplot as plt
+
+def interpolate_nan(array_like):
+	array = array_like.copy()
+	
+	isnan_array = ~np.isnan(array)
+	
+	xp = isnan_array.ravel().nonzero()[0]
+	
+	fp = array[~np.isnan(array)]
+	x = np.isnan(array).ravel().nonzero()[0]
+	
+	array[np.isnan(array)] = np.interp(x, xp, fp)
+	
+	return array
 
 tprint("Train")
 
@@ -60,13 +75,27 @@ batch_size = training_instructions['batch_size']
 X,Y = load_image_dataset(datasets, target_channels, train_spatial_calibration=spatial_calibration,
 						mask_suffix='labelled')
 
-
 # Normalize images
 X = normalize_per_channel(X,
 						  normalization_percentile_mode=normalization_percentile, 
 						  normalization_values=normalization_values, 
 						  normalization_clipping=normalization_clip
 						  )
+
+for x in X:
+	plt.imshow(x[:,:,0])
+	plt.xlim(0,1004)
+	plt.ylim(0,1002)
+	plt.colorbar()
+	plt.pause(2)
+	plt.close()
+	print(x.shape)
+	interp = interpolate_nan(x)
+	print(interp.shape)
+	print(np.any(np.isnan(x).flatten()))
+	print(np.any(np.isnan(interp).flatten()))
+
+
 Y = [fill_label_holes(y) for y in tqdm(Y)]
 
 assert len(X) > 1, "not enough training data"

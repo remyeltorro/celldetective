@@ -26,7 +26,7 @@ from tqdm import tqdm
 from lifelines import KaplanMeierFitter
 import matplotlib.cm as mcm
 import math
-from celldetective.events import switch_to_events
+from celldetective.events import switch_to_events_v2
 
 class ConfigSurvival(QWidget):
 	
@@ -147,7 +147,7 @@ class ConfigSurvival(QWidget):
 	def set_classes_and_times(self):
 
 		# Look for all classes and times
-		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{self.cbs[0].currentText()}*']))
+		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*']))
 		self.all_columns = []
 		for tab in tables:
 			cols = pd.read_csv(tab, nrows=1).columns.tolist()
@@ -156,6 +156,10 @@ class ConfigSurvival(QWidget):
 		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
 		class_columns = list(self.all_columns[class_idx])
+		for c in ['class_id', 'class_color']:
+			if c in class_columns:
+				class_columns.remove(c)
+
 		time_columns = list(self.all_columns[time_idx])
 		
 		self.cbs[1].clear()
@@ -377,8 +381,10 @@ class ConfigSurvival(QWidget):
 			times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
 			max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 			first_detections = None
+			
 			if self.cbs[2].currentText()=='first detection':
 				left_censored = True
+
 				first_detections = []
 				for tid,track_group in movie_group.groupby('TRACK_ID'):
 					if 'area' in self.df.columns:
@@ -392,16 +398,18 @@ class ConfigSurvival(QWidget):
 							continue
 					else:
 						continue
+
 			elif self.cbs[2].currentText().startswith('t'):
 				left_censored = True
 				first_detections = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].max().values
+				print(first_detections)
 
 
 			if self.cbs[2].currentText()=='first detection' or self.cbs[2].currentText().startswith('t'):
 				left_censored = True
 			else:
 				left_censored = False
-			events, survival_times = switch_to_events(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
+			events, survival_times = switch_to_events_v2(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
 			ks = KaplanMeierFitter()
 			if len(events)>0:
 				ks.fit(survival_times, event_observed=events)
@@ -435,8 +443,14 @@ class ConfigSurvival(QWidget):
 							else:
 								# think about assymmetry with class and times
 								continue
-						else:
-							continue
+
+				elif self.cbs[2].currentText().startswith('t'):
+					left_censored = True
+					first_detections = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].max().values
+
+				else:
+					continue
+
 				well_classes.extend(classes)
 				well_times.extend(times)
 				well_max_times.extend(max_times)
@@ -446,11 +460,13 @@ class ConfigSurvival(QWidget):
 			if len(well_first_detections)==0:
 				well_first_detections = None
 		  
-			events, survival_times = switch_to_events(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
+			events, survival_times = switch_to_events_v2(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
 			ks = KaplanMeierFitter()
-			print(survival_times, events)
-			ks.fit(survival_times, event_observed=events)
-			print(ks.survival_function_)
+			if len(survival_times)>0:
+				ks.fit(survival_times, event_observed=events)
+				print(ks.survival_function_)
+			else:
+				ks = None
 			self.df_well_info.loc[self.df_well_info['well_path']==well,'survival_fit'] = ks
 
 		self.df_pos_info.loc[:,'select'] = True
@@ -486,18 +502,20 @@ class ConfigSurvival(QWidget):
 			pos_indices = self.df_pos_info.loc[self.df_pos_info['select'],'pos_index'].values
 			well_index = self.df_pos_info.loc[self.df_pos_info['select'],'well_index'].values
 			for i in range(len(lines)):
-				if len(self.well_indices)<=1:
+				if (len(self.well_indices)<=1) and lines[i]==lines[i]:
 					try:
 						lines[i].plot_survival_function(ax=self.ax, legend=None, color=colors[pos_indices[i]],label=pos_labels[i], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
-				else:
+				elif lines[i]==lines[i]:
 					try:
 						lines[i].plot_survival_function(ax=self.ax, legend=None, color=well_color[well_index[i]],label=pos_labels[i], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
+				else:
+					pass
 
 		elif self.plot_mode=='well':
 			self.initialize_axis()
@@ -505,19 +523,21 @@ class ConfigSurvival(QWidget):
 			well_index = self.df_well_info.loc[self.df_well_info['select'],'well_index'].values
 			well_labels = self.df_well_info.loc[self.df_well_info['select'],'well_name'].values
 			for i in range(len(lines)):		
-				if len(self.well_indices)<=1:
+				if len(self.well_indices)<=1 and lines[i]==lines[i]:
 
 					try:
 						lines[i].plot_survival_function(ax=self.ax, label=well_labels[i], color="k", xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
-				else:
+				elif lines[i]==lines[i]:
 					try:
 						lines[i].plot_survival_function(ax=self.ax, label=well_labels[i], color=well_color[well_index[i]], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
+				else:
+					pass
 
 		elif self.plot_mode=='both':
 			self.initialize_axis()
@@ -531,33 +551,37 @@ class ConfigSurvival(QWidget):
 			pos_labels = self.df_pos_info.loc[self.df_pos_info['select'],'pos_name'].values
 
 			for i in range(len(lines_pos)):
-				if len(self.well_indices)<=1:
+				if len(self.well_indices)<=1 and lines_pos[i]==lines_pos[i]:
 					
 					try:
 						lines_pos[i].plot_survival_function(ax=self.ax, label=pos_labels[i], alpha=0.25, color=colors[pos_indices[i]], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
-				else:
+				elif lines_pos[i]==lines_pos[i]:
 					try:
 						lines_pos[i].plot_survival_function(ci_show=False, ax=self.ax, legend=None, alpha=0.25, color=well_color[well_index_pos[i]], xlabel='timeline [min]')
 					except Exception as e:
 						print(f'error {e}')
 						pass
+				else:
+					pass
 
 			for i in range(len(lines_well)):		
-				if len(self.well_indices)<=1:
+				if len(self.well_indices)<=1 and lines_well[i]==lines_well[i]:
 					try:
 						lines_well[i].plot_survival_function(ax=self.ax, label='pool', color="k")
 					except Exception as e:
 						print(f'error {e}')
 						pass
-				else:
+				elif lines_well[i]==lines_well[i]:
 					try:
 						lines_well[i].plot_survival_function(ax=self.ax, label=well_labels[i], color=well_color[well_index[i]])
 					except Exception as e:
 						print(f'error {e}')
 						pass
+				else:
+					pass
 
 		
 		self.survival_window.canvas.draw()

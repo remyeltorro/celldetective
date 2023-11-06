@@ -27,6 +27,7 @@ from glob import glob
 import shutil
 import random
 from celldetective.utils import color_from_status, color_from_class
+from math import floor, ceil
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
@@ -1856,3 +1857,117 @@ def sliding_msd(x, y, timeline, window, mode='bi', n_points_migration=7,  n_poin
 		s_alpha[t] = popt_alpha[1]
 		
 	return s_msd, s_alpha
+
+
+def columnwise_mean(matrix, min_nbr_values = 1):
+	
+	"""
+	Calculate the column-wise mean and standard deviation of non-NaN elements in the input matrix.
+
+	Parameters:
+	----------
+	matrix : numpy.ndarray
+		The input matrix for which column-wise mean and standard deviation are calculated.
+	min_nbr_values : int, optional
+		The minimum number of non-NaN values required in a column to calculate mean and standard deviation.
+		Default is 8.
+
+	Returns:
+	-------
+	mean_line : numpy.ndarray
+		An array containing the column-wise mean of non-NaN elements. Elements with fewer than `min_nbr_values` non-NaN
+		values are replaced with NaN.
+	mean_line_std : numpy.ndarray
+		An array containing the column-wise standard deviation of non-NaN elements. Elements with fewer than `min_nbr_values`
+		non-NaN values are replaced with NaN.
+
+	Notes:
+	------
+	1. This function calculates the mean and standard deviation of non-NaN elements in each column of the input matrix.
+	2. Columns with fewer than `min_nbr_values` non-zero elements will have NaN as the mean and standard deviation.
+	3. NaN values in the input matrix are ignored during calculation.
+	"""
+
+	mean_line = np.zeros(matrix.shape[1])
+	mean_line[:] = np.nan
+	mean_line_std = np.zeros(matrix.shape[1])
+	mean_line_std[:] = np.nan  
+	
+	for k in range(matrix.shape[1]):
+		values = matrix[:,k]
+		values = values[values!=0]
+		if len(values[values==values])>min_nbr_values:
+			mean_line[k] = np.nanmean(values)
+			mean_line_std[k] = np.nanstd(values)
+	return mean_line, mean_line_std
+
+
+def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], return_matrix=False, forced_max_duration=None, min_nbr_values=2):
+
+	"""
+	Calculate the mean and standard deviation of a specified signal for tracks of a given class in the input DataFrame.
+
+	Parameters:
+	----------
+	df : pandas.DataFrame
+		Input DataFrame containing tracking data.
+	signal_name : str
+		Name of the signal (column) in the DataFrame for which mean and standard deviation are calculated.
+	class_col : str
+		Name of the column in the DataFrame containing class labels.
+	time_col : str, optional
+		Name of the column in the DataFrame containing time information. Default is None.
+	class_value : int, optional
+		Value representing the class of interest. Default is 0.
+
+	Returns:
+	-------
+	mean_signal : numpy.ndarray
+		An array containing the mean signal values for tracks of the specified class. Tracks with class not equal to
+		`class_value` are excluded from the calculation.
+	std_signal : numpy.ndarray
+		An array containing the standard deviation of signal values for tracks of the specified class. Tracks with class
+		not equal to `class_value` are excluded from the calculation.
+	actual_timeline : numpy.ndarray
+		An array representing the time points corresponding to the mean signal values.
+
+	Notes:
+	------
+	1. This function calculates the mean and standard deviation of the specified signal for tracks of a given class.
+	2. Tracks with class not equal to `class_value` are excluded from the calculation.
+	3. Tracks with missing or NaN values in the specified signal are ignored during calculation.
+	4. Tracks are aligned based on their 'FRAME' values and the specified `time_col` (if provided).
+	"""
+	
+	assert signal_name in list(df.columns),"The signal you want to plot is not one of the measured features."
+	if isinstance(class_value,int):
+		class_value = [class_value]
+
+	if forced_max_duration is None:
+		max_duration = ceil(np.amax(df.groupby(['position','TRACK_ID']).size().values))
+	else:
+		max_duration = forced_max_duration
+	n_tracks = len(df.groupby(['position','TRACK_ID']))
+	signal_matrix = np.zeros((n_tracks,max_duration*2 + 1))
+	signal_matrix[:,:] = np.nan
+
+	trackid=0
+	for track,track_group in df.loc[df[class_col].isin(class_value)].groupby(['position','TRACK_ID']):
+		track_group = track_group.sort_values(by='FRAME')
+		cclass = track_group[class_col].to_numpy()[0]
+		if cclass != 0:
+			ref_time = 0
+		else:
+			ref_time = floor(track_group[time_col].to_numpy()[0])
+		signal = track_group[signal_name].to_numpy()
+		timeline = track_group['FRAME'].to_numpy().astype(int)
+		timeline_shifted = timeline - ref_time + max_duration
+		signal_matrix[trackid,timeline_shifted] = signal
+		trackid+=1
+	
+	mean_signal, std_signal = columnwise_mean(signal_matrix, min_nbr_values=min_nbr_values)
+	actual_timeline = np.linspace(-max_duration, max_duration, 2*max_duration+1)
+	if return_matrix:
+		return mean_signal, std_signal, actual_timeline, signal_matrix
+	else:
+		return mean_signal, std_signal, actual_timeline

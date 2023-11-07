@@ -28,6 +28,7 @@ import shutil
 import random
 from celldetective.utils import color_from_status, color_from_class
 from math import floor, ceil
+from scipy.optimize import curve_fit
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 

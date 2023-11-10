@@ -916,7 +916,7 @@ def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time':
 					t_first = -1
 					cclass = 2
 				else:
-					t_first =  float(t_first) - float(dt/2)
+					t_first =  float(t_first) - float(dt)
 			else:
 				t_first = -1
 				cclass = 2

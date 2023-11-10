@@ -208,7 +208,7 @@ def filter_on_property(labels, intensity_image=None, queries=None, channel_names
 	props = ['label','area', 'area_bbox', 'area_convex', 'area_filled', 'axis_major_length',
 						'axis_minor_length', 'eccentricity', 'equivalent_diameter_area', 
 						'euler_number', 'feret_diameter_max', 'orientation', 'perimeter',
-						'perimeter_crofton', 'solidity']
+						'perimeter_crofton', 'solidity', 'centroid']
 
 	intensity_props = ['intensity_mean', 'intensity_max', 'intensity_min']
 
@@ -218,6 +218,8 @@ def filter_on_property(labels, intensity_image=None, queries=None, channel_names
 	properties = pd.DataFrame(regionprops_table(labels, intensity_image=intensity_image, properties=props))
 	if channel_names is not None:
 		properties = rename_intensity_column(properties, channel_names)
+	properties['radial_distance'] = np.sqrt((properties['centroid-1'] - labels.shape[0]/2)**2 + (properties['centroid-0'] - labels.shape[1]/2)**2)
+
 	for query in queries:
 		try:
 			properties = properties.query(f'not ({query})')

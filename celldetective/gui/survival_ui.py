@@ -740,16 +740,18 @@ class ConfigSurvival(QWidget):
 
 	def plot_spatial_location(self):
 
-		self.sc = self.ax_scatter.scatter(self.df_pos_info["x"].values, self.df_pos_info["y"].values, picker=True, pickradius=1, color=self.select_color(self.df_pos_info["select"].values))
-		self.scat_labels = self.df_pos_info['metadata_tag'].values
-		self.ax_scatter.invert_xaxis()
-		self.annot = self.ax_scatter.annotate("", xy=(0,0), xytext=(10,10),textcoords="offset points",
-							bbox=dict(boxstyle="round", fc="w"),
-							arrowprops=dict(arrowstyle="->"))
-		self.annot.set_visible(False)
-		self.fig_scatter.canvas.mpl_connect("motion_notify_event", self.hover)
-		self.fig_scatter.canvas.mpl_connect("pick_event", self.unselect_position)
-
+		try:
+			self.sc = self.ax_scatter.scatter(self.df_pos_info["x"].values, self.df_pos_info["y"].values, picker=True, pickradius=1, color=self.select_color(self.df_pos_info["select"].values))
+			self.scat_labels = self.df_pos_info['metadata_tag'].values
+			self.ax_scatter.invert_xaxis()
+			self.annot = self.ax_scatter.annotate("", xy=(0,0), xytext=(10,10),textcoords="offset points",
+								bbox=dict(boxstyle="round", fc="w"),
+								arrowprops=dict(arrowstyle="->"))
+			self.annot.set_visible(False)
+			self.fig_scatter.canvas.mpl_connect("motion_notify_event", self.hover)
+			self.fig_scatter.canvas.mpl_connect("pick_event", self.unselect_position)
+		except Exception as e:
+			pass
 
 	# def plot_positions(self):
 		

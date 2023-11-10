@@ -496,6 +496,7 @@ class ConfigSignalPlot(QWidget):
 			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
 			well_signal_event, well_std_event, timeline_event, matrix_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)			
 			well_signal_no_event, well_std_no_event, timeline_no_event, matrix_no_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
+			
 			self.df_well_info.loc[self.df_well_info['well_path']==well,'signal'] = [{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
 																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline}]
 
@@ -815,15 +816,18 @@ class ConfigSignalPlot(QWidget):
 
 	def plot_spatial_location(self):
 
-		self.sc = self.ax_scatter.scatter(self.df_pos_info["x"].values, self.df_pos_info["y"].values, picker=True, pickradius=1, color=self.select_color(self.df_pos_info["select"].values))
-		self.scat_labels = self.df_pos_info['metadata_tag'].values
-		self.ax_scatter.invert_xaxis()
-		self.annot = self.ax_scatter.annotate("", xy=(0,0), xytext=(10,10),textcoords="offset points",
-							bbox=dict(boxstyle="round", fc="w"),
-							arrowprops=dict(arrowstyle="->"))
-		self.annot.set_visible(False)
-		self.fig_scatter.canvas.mpl_connect("motion_notify_event", self.hover)
-		self.fig_scatter.canvas.mpl_connect("pick_event", self.unselect_position)
+		try:
+			self.sc = self.ax_scatter.scatter(self.df_pos_info["x"].values, self.df_pos_info["y"].values, picker=True, pickradius=1, color=self.select_color(self.df_pos_info["select"].values))
+			self.scat_labels = self.df_pos_info['metadata_tag'].values
+			self.ax_scatter.invert_xaxis()
+			self.annot = self.ax_scatter.annotate("", xy=(0,0), xytext=(10,10),textcoords="offset points",
+								bbox=dict(boxstyle="round", fc="w"),
+								arrowprops=dict(arrowstyle="->"))
+			self.annot.set_visible(False)
+			self.fig_scatter.canvas.mpl_connect("motion_notify_event", self.hover)
+			self.fig_scatter.canvas.mpl_connect("pick_event", self.unselect_position)
+		except Exception as e:
+			pass
 
 
 	def switch_ref_time_mode(self):

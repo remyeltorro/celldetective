@@ -683,11 +683,14 @@ class ThresholdConfigWizard(QMainWindow):
 		multichannel = load_frames(intensity_image_idx, self.stack_path, normalize_input=False)
 		self.props = pd.DataFrame(regionprops_table(self.labels, intensity_image=multichannel, properties=self.cell_properties))
 		self.props = rename_intensity_column(self.props, self.channel_names)
+		self.props['radial_distance'] = np.sqrt((self.props['centroid-1'] - self.img.shape[0]/2)**2 + (self.props['centroid-0'] - self.img.shape[1]/2)**2)
+
 		for i in range(2):
 			self.features_cb[i].clear()
 			self.features_cb[i].addItems(list(self.props.columns))
 			self.features_cb[i].setCurrentIndex(i)
 		self.props["class"] = 1
+
 		
 		self.update_props_scatter()
 

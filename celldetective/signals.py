@@ -1959,7 +1959,10 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 		if cclass != 0:
 			ref_time = 0
 		else:
-			ref_time = floor(track_group[time_col].to_numpy()[0])
+			try:
+				ref_time = floor(track_group[time_col].to_numpy()[0])
+			except:
+				continue
 		signal = track_group[signal_name].to_numpy()
 		timeline = track_group['FRAME'].to_numpy().astype(int)
 		timeline_shifted = timeline - ref_time + max_duration

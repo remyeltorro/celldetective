@@ -57,7 +57,7 @@ def switch_to_events_v2(classes, event_times, max_times, origin_times=None, left
 
 		if left_censored:
 
-			if ot>0. and ot==ot:
+			if ot>=0. and ot==ot:
 				# origin time is larger than zero, no censorship
 				if c==0 and t>0:
 					delta_t = t - ot

@@ -511,70 +511,97 @@ def ConfigSectionMap(path,section):
 
 def _extract_channel_indices_from_config(config, channels_to_extract):
 
+	# V2
 	channels = []
 	for c in channels_to_extract:
 		try:
-			c1 = int(ConfigSectionMap(config,"MovieSettings")[c])
+			c1 = int(ConfigSectionMap(config,"Channels")[c])
 			channels.append(c1)
 		except Exception as e:
 			print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
 			channels = None
 			break
+
+	# LEGACY
+	if channels is None:
+		channels = []
+		for c in channels_to_extract:
+			try:
+				c1 = int(ConfigSectionMap(config,"MovieSettings")[c])
+				channels.append(c1)
+			except Exception as e:
+				print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
+				channels = None
+				break
 	return channels
 
 def _extract_nbr_channels_from_config(config, return_names=False):
 
-	# Read channels
+	# V2
 	nbr_channels = 0
 	channels = []
-	try:
-		brightfield_channel = int(ConfigSectionMap(config,"MovieSettings")["brightfield_channel"])
-		nbr_channels += 1
-		channels.append('brightfield_channel')
-	except:
-		brightfield_channel = None
+	fields = ConfigSectionMap(config,"Channels")
+	for c in fields:
+		try:
+			channel = int(ConfigSectionMap(config, "Channels")[c])
+			nbr_channels += 1
+			channels.append(c)
+		except:
+			pass
 
-	try:
-		live_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["live_nuclei_channel"])
-		nbr_channels += 1
-		channels.append('live_nuclei_channel')
-	except:
-		live_nuclei_channel = None
+	if nbr_channels==0:	
 
-	try:
-		dead_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["dead_nuclei_channel"])
-		nbr_channels +=1
-		channels.append('dead_nuclei_channel')
-	except:
-		dead_nuclei_channel = None
+		# Read channels LEGACY
+		nbr_channels = 0
+		channels = []
+		try:
+			brightfield_channel = int(ConfigSectionMap(config,"MovieSettings")["brightfield_channel"])
+			nbr_channels += 1
+			channels.append('brightfield_channel')
+		except:
+			brightfield_channel = None
 
-	try:
-		effector_fluo_channel = int(ConfigSectionMap(config,"MovieSettings")["effector_fluo_channel"])
-		nbr_channels +=1
-		channels.append('effector_fluo_channel')
-	except:
-		effector_fluo_channel = None
+		try:
+			live_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["live_nuclei_channel"])
+			nbr_channels += 1
+			channels.append('live_nuclei_channel')
+		except:
+			live_nuclei_channel = None
 
-	try:
-		adhesion_channel = int(ConfigSectionMap(config,"MovieSettings")["adhesion_channel"])
-		nbr_channels += 1
-		channels.append('adhesion_channel')
-	except:
-		adhesion_channel = None
+		try:
+			dead_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["dead_nuclei_channel"])
+			nbr_channels +=1
+			channels.append('dead_nuclei_channel')
+		except:
+			dead_nuclei_channel = None
 
-	try:
-		fluo_channel_1 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_1"])
-		nbr_channels += 1
-		channels.append('fluo_channel_1')
-	except:
-		fluo_channel_1 = None	
+		try:
+			effector_fluo_channel = int(ConfigSectionMap(config,"MovieSettings")["effector_fluo_channel"])
+			nbr_channels +=1
+			channels.append('effector_fluo_channel')
+		except:
+			effector_fluo_channel = None
 
-	try:
-		fluo_channel_2 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_2"])
-		nbr_channels += 1
-		channels.append('fluo_channel_2')
-	except:
-		fluo_channel_2 = None
+		try:
+			adhesion_channel = int(ConfigSectionMap(config,"MovieSettings")["adhesion_channel"])
+			nbr_channels += 1
+			channels.append('adhesion_channel')
+		except:
+			adhesion_channel = None
+
+		try:
+			fluo_channel_1 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_1"])
+			nbr_channels += 1
+			channels.append('fluo_channel_1')
+		except:
+			fluo_channel_1 = None	
+
+		try:
+			fluo_channel_2 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_2"])
+			nbr_channels += 1
+			channels.append('fluo_channel_2')
+		except:
+			fluo_channel_2 = None
 
 	if return_names:
 		return nbr_channels,channels
@@ -632,59 +659,73 @@ def _extract_labels_from_config(config,number_of_wells):
 
 def extract_experiment_channels(config):
 
-	# Remap intensities to channel:
+	# V2
 	channel_names = []
 	channel_indices = []
+	fields = ConfigSectionMap(config,"Channels")
+	for c in fields:
+		try:
+			idx = int(ConfigSectionMap(config, "Channels")[c])
+			channel_names.append(c)
+			channel_indices.append(idx)
+		except:
+			pass	
 
-	try:
-		brightfield_channel = int(ConfigSectionMap(config,"MovieSettings")["brightfield_channel"])
-		channel_names.append("brightfield_channel")
-		channel_indices.append(brightfield_channel)
-		#exp_channels.update({"brightfield_channel": brightfield_channel})
-	except:
-		pass
-	try:
-		live_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["live_nuclei_channel"])
-		channel_names.append("live_nuclei_channel")
-		channel_indices.append(live_nuclei_channel)
-		#exp_channels.update({"live_nuclei_channel": live_nuclei_channel})
-	except:
-		pass
-	try:
-		dead_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["dead_nuclei_channel"])
-		channel_names.append("dead_nuclei_channel")
-		channel_indices.append(dead_nuclei_channel)
-		#exp_channels.update({"dead_nuclei_channel": dead_nuclei_channel})
-	except:
-		pass
-	try:
-		effector_fluo_channel = int(ConfigSectionMap(config,"MovieSettings")["effector_fluo_channel"])
-		channel_names.append("effector_fluo_channel")
-		channel_indices.append(effector_fluo_channel)
-		#exp_channels.update({"effector_fluo_channel": effector_fluo_channel})
-	except:
-		pass
-	try:
-		adhesion_channel = int(ConfigSectionMap(config,"MovieSettings")["adhesion_channel"])
-		channel_names.append("adhesion_channel")
-		channel_indices.append(adhesion_channel)
-		#exp_channels.update({"adhesion_channel": adhesion_channel})
-	except:
-		pass
-	try:
-		fluo_channel_1 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_1"])
-		channel_names.append("fluo_channel_1")
-		channel_indices.append(fluo_channel_1)
-		#exp_channels.update({"fluo_channel_1": fluo_channel_1})
-	except:
-		pass
-	try:
-		fluo_channel_2 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_2"])
-		channel_names.append("fluo_channel_2")
-		channel_indices.append(fluo_channel_2)
-		#exp_channels.update({"fluo_channel_2": fluo_channel_2})
-	except:
-		pass
+	if not channel_names:
+		# LEGACY
+		# Remap intensities to channel:
+		channel_names = []
+		channel_indices = []
+
+		try:
+			brightfield_channel = int(ConfigSectionMap(config,"MovieSettings")["brightfield_channel"])
+			channel_names.append("brightfield_channel")
+			channel_indices.append(brightfield_channel)
+			#exp_channels.update({"brightfield_channel": brightfield_channel})
+		except:
+			pass
+		try:
+			live_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["live_nuclei_channel"])
+			channel_names.append("live_nuclei_channel")
+			channel_indices.append(live_nuclei_channel)
+			#exp_channels.update({"live_nuclei_channel": live_nuclei_channel})
+		except:
+			pass
+		try:
+			dead_nuclei_channel = int(ConfigSectionMap(config,"MovieSettings")["dead_nuclei_channel"])
+			channel_names.append("dead_nuclei_channel")
+			channel_indices.append(dead_nuclei_channel)
+			#exp_channels.update({"dead_nuclei_channel": dead_nuclei_channel})
+		except:
+			pass
+		try:
+			effector_fluo_channel = int(ConfigSectionMap(config,"MovieSettings")["effector_fluo_channel"])
+			channel_names.append("effector_fluo_channel")
+			channel_indices.append(effector_fluo_channel)
+			#exp_channels.update({"effector_fluo_channel": effector_fluo_channel})
+		except:
+			pass
+		try:
+			adhesion_channel = int(ConfigSectionMap(config,"MovieSettings")["adhesion_channel"])
+			channel_names.append("adhesion_channel")
+			channel_indices.append(adhesion_channel)
+			#exp_channels.update({"adhesion_channel": adhesion_channel})
+		except:
+			pass
+		try:
+			fluo_channel_1 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_1"])
+			channel_names.append("fluo_channel_1")
+			channel_indices.append(fluo_channel_1)
+			#exp_channels.update({"fluo_channel_1": fluo_channel_1})
+		except:
+			pass
+		try:
+			fluo_channel_2 = int(ConfigSectionMap(config,"MovieSettings")["fluo_channel_2"])
+			channel_names.append("fluo_channel_2")
+			channel_indices.append(fluo_channel_2)
+			#exp_channels.update({"fluo_channel_2": fluo_channel_2})
+		except:
+			pass
 
 	channel_indices = np.array(channel_indices)
 	channel_names = np.array(channel_names)

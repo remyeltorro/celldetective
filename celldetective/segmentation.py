@@ -221,10 +221,13 @@ def filter_on_property(labels, intensity_image=None, queries=None, channel_names
 	properties['radial_distance'] = np.sqrt((properties['centroid-1'] - labels.shape[0]/2)**2 + (properties['centroid-0'] - labels.shape[1]/2)**2)
 
 	for query in queries:
-		try:
-			properties = properties.query(f'not ({query})')
-		except Exception as e:
-			print(f'Query {query} could not be applied. Ensure that the feature exists. {e}')
+		if query!='':
+			try:
+				properties = properties.query(f'not ({query})')
+			except Exception as e:
+				print(f'Query {query} could not be applied. Ensure that the feature exists. {e}')
+		else:
+			pass
 
 	cell_ids = list(np.unique(labels)[1:])
 	leftover_cells = list(properties['label'].unique())

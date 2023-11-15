@@ -337,6 +337,10 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		self.channel_items = ['--', 'brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 
 							 'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2'
 							]
+		exp_ch = self.parent.parent.exp_channels
+		for c in exp_ch:
+			if c not in self.channel_items:
+				self.channel_items.append(c)
 
 		self.channel_option_layouts = []
 		for i in range(len(self.channel_cbs)):

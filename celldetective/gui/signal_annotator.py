@@ -508,9 +508,12 @@ class SignalAnnotator(QMainWindow):
 		self.cancel_btn.setEnabled(False)
 		self.selection.pop(0)
 
-		for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):
-			self.colors[t][idx,0] = self.previous_color[k][0]
-			self.colors[t][idx,1] = self.previous_color[k][1]
+		try:
+			for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):
+				self.colors[t][idx,0] = self.previous_color[k][0]
+				self.colors[t][idx,1] = self.previous_color[k][1]
+		except Exception as e:
+			print(f'{e=}')
 
 	def hide_annotation_buttons(self):
 		
@@ -748,7 +751,8 @@ class SignalAnnotator(QMainWindow):
 				try:
 					self.columns_to_rescale.remove(tr)
 				except:
-					print(f'column {tr} could not be found...')
+					pass
+					#print(f'column {tr} could not be found...')
 
 			x = self.df_tracks[self.columns_to_rescale].values
 			self.MinMaxScaler.fit(x)
@@ -1137,6 +1141,8 @@ class SignalAnnotator(QMainWindow):
 
 		if self.normalized_signals:
 			self.normalize_features_btn.click()
+		if self.selection:
+			self.cancel_selection()
 
 		self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks[self.class_name]>2].index)
 		self.df_tracks.to_csv(self.trajectories_path, index=False)

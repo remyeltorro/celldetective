@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton,QHBoxLayout, QLa
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
-from celldetective.utils import _extract_labels_from_config, ConfigSectionMap
+from celldetective.utils import _extract_labels_from_config, ConfigSectionMap, extract_experiment_channels
 from celldetective.gui import ConfigEditor, ProcessPanel, AnalysisPanel, NeighPanel
 from natsort import natsorted
 from glob import glob
@@ -176,74 +176,8 @@ class ControlPanel(QMainWindow):
 		self.movie_prefix = ConfigSectionMap(self.exp_config,"MovieSettings")["movie_prefix"]
 
 		# Read channels
-		self.nbr_channels = 0
-		self.exp_channels = []
-		try:
-			self.brightfield_channel = int(ConfigSectionMap(self.exp_config,"MovieSettings")["brightfield_channel"])
-			self.nbr_channels += 1
-			self.exp_channels.append("brightfield_channel")
-		except:
-			self.brightfield_channel = None
-
-		try:
-			self.live_nuclei_channel = int(ConfigSectionMap(self.exp_config,"MovieSettings")["live_nuclei_channel"])
-			self.nbr_channels += 1
-			self.exp_channels.append("live_nuclei_channel")
-		except:
-			self.live_nuclei_channel = None
-
-		try:
-			self.dead_nuclei_channel = int(ConfigSectionMap(self.exp_config,"MovieSettings")["dead_nuclei_channel"])
-			self.nbr_channels +=1
-			self.exp_channels.append("dead_nuclei_channel")
-		except:
-			self.dead_nuclei_channel = None
-
-		try:
-			self.effector_fluo_channel = int(ConfigSectionMap(self.exp_config,"MovieSettings")["effector_fluo_channel"])
-			self.nbr_channels +=1
-			self.exp_channels.append("effector_fluo_channel")
-		except:
-			self.effector_fluo_channel = None
-
-		try:
-			self.adhesion_channel = int(ConfigSectionMap(self.exp_config,"MovieSettings")["adhesion_channel"])
-			self.nbr_channels += 1
-			self.exp_channels.append("adhesion_channel")
-		except:
-			self.adhesion_channel = None
-
-		try:
-			self.fluo_channel_1 = int(ConfigSectionMap(self.exp_config,"MovieSettings")["fluo_channel_1"])
-			self.nbr_channels += 1
-			self.exp_channels.append("fluo_channel_1")
-		except:
-			self.fluo_channel_1 = None	
-	
-		try:
-			self.fluo_channel_2 = int(ConfigSectionMap(self.exp_config,"MovieSettings")["fluo_channel_2"])
-			self.nbr_channels += 1
-			self.exp_channels.append("fluo_channel_2")
-		except:
-			self.fluo_channel_2 = None			
-
-		# try:
-		# 	self.search_radius_targets = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_targets"])
-		# 	self.search_radius_effectors = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_effectors"])
-		# except:
-		# 	self.search_radius_targets = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_tc"])
-		# 	self.search_radius_effectors = int(ConfigSectionMap(self.exp_config,"SearchRadii")["search_radius_nk"])
-
-		# self.time_dilation = int(ConfigSectionMap(self.exp_config,"BinningParameters")["time_dilation"])
-
-		# self.intensity_measurement_radius = int(ConfigSectionMap(self.exp_config,"Thresholds")["intensity_measurement_radius"])
-		# self.intensity_measurement_radius_nk = int(ConfigSectionMap(self.exp_config,"Thresholds")["intensity_measurement_radius_nk"])
-		# self.model_signal_length = int(ConfigSectionMap(self.exp_config,"Thresholds")["model_signal_length"])
-
-		# try:
-		# 	self.hide_frames_for_tracking = np.array([int(s) for s in ConfigSectionMap(config,"Thresholds")["hide_frames_for_tracking"].split(",")])
-		# except:
-		# 	self.hide_frames_for_tracking = np.array([])
+		self.exp_channels, channel_indices = extract_experiment_channels(self.exp_config)
+		self.nbr_channels = len(self.exp_channels)
 
 		number_of_wells = len(self.wells)
 		self.well_labels = _extract_labels_from_config(self.exp_config,number_of_wells)
@@ -274,7 +208,6 @@ class ControlPanel(QMainWindow):
 			print("Warning... pharmaceutical agents not found...")
 			self.pharmaceutical_agents = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]
 
-		#self.modelpath = abs_path+"/models/" #ConfigSectionMap(config,"Paths")["modelpath"]
 
 	def closeEvent(self, event):
 

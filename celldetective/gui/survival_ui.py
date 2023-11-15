@@ -179,7 +179,7 @@ class ConfigSurvival(QWidget):
 		print(self.FrameToMin, 'set')
 
 		# read instructions from combobox options
-		self.load_available_tables()
+		self.load_available_tables_local()
 		if self.df is not None:
 			self.compute_survival_functions()
 			# prepare survival
@@ -348,7 +348,7 @@ class ConfigSurvival(QWidget):
 		self.plotvbox.addWidget(self.line_choice_widget, alignment=Qt.AlignCenter)
 
 
-	def load_available_tables(self):
+	def load_available_tables_local(self):
 
 		"""
 		Load the tables of the selected wells/positions from the control Panel for the population of interest
@@ -364,7 +364,7 @@ class ConfigSurvival(QWidget):
 		if self.position_option==0:
 			po = '*'
 		else:
-			po = self.position_option
+			po = self.position_option - 1
 
 		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.cbs[0].currentText(), return_pos_info=True)
 		if self.df is None:

@@ -199,10 +199,13 @@ class ConfigSignalAnnotator(QMainWindow):
 		if self.gs_btn.isChecked():
 
 			self.log_btn.setEnabled(True)
+			self.percentile_btn.setEnabled(False)
 
 			for k in range(1,3):
 				self.channel_cbs[k].setEnabled(False)
 				self.channel_cbs_lbls[k].setEnabled(False)
+
+			for k in range(3):
 
 				self.min_val_les[k].setEnabled(False)
 				self.min_val_lbls[k].setEnabled(False)
@@ -212,6 +215,7 @@ class ConfigSignalAnnotator(QMainWindow):
 		elif self.rgb_btn.isChecked():
 
 			self.log_btn.setEnabled(False)
+			self.percentile_btn.setEnabled(True)
 
 			for k in range(3):
 

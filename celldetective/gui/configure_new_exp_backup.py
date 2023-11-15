@@ -2,15 +2,13 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QDialog, QHB
 from PyQt5.QtGui import QIntValidator, QDoubleValidator
 from celldetective.gui.gui_utils import center_window
 from superqt import QLabeledSlider
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from configparser import ConfigParser
 import os
 from shutil import copyfile
 import time
-from functools import partial
-import numpy as np
 
 class ConfigNewExperiment(QMainWindow):
 
@@ -183,8 +181,6 @@ class ConfigNewExperiment(QMainWindow):
 
 		"""
 		Parameters related to the movie channels
-		Rewrite all of it
-
 		"""
 
 		self.channel_grid = QGridLayout()
@@ -196,87 +192,124 @@ class ConfigNewExperiment(QMainWindow):
 			""")
 		self.channel_grid.addWidget(channel_lbl, 0,0,1,3, alignment=Qt.AlignCenter)
 
+		self.bf_op = QCheckBox("brightfield")
+		self.bf_op.toggled.connect(self.show_bf_slider)
+		self.channel_grid.addWidget(self.bf_op, 1,0,1,1)
+		self.SliderBF = QLabeledSlider(Qt.Orientation.Horizontal)
+		self.SliderBF.setMinimum(0)
+		self.SliderBF.setMaximum(6)
+		self.channel_grid.addWidget(self.SliderBF, 1, 1, 1, 2, alignment = Qt.AlignRight)
+		self.SliderBF.setEnabled(False)
 
-		self.channels = ['brightfield', "live nuclei channel\n(Hoechst, NucSpot®)", "dead nuclei channel\n(PI)", "effector fluorescence\n(CFSE)",
-						"adhesion\n(RICM, IRM)", "fluorescence miscellaneous 1\n(LAMP-1, Actin...)", "fluorescence miscellaneous 2\n(LAMP-1, Actin...)"]
-		self.channel_mapping = ['brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 'effector_fluo_channel',
-								'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2']
-		self.checkBoxes = [QCheckBox() for i in range(len(self.channels))]
-		self.sliders = [QLabeledSlider(Qt.Orientation.Horizontal) for i in range(len(self.channels))]
+		self.live_nuc_op = QCheckBox("live nuclei channel\n(Hoechst, NucSpot®)")
+		self.live_nuc_op.toggled.connect(self.show_live_slider)
+		self.channel_grid.addWidget(self.live_nuc_op, 3,0,1,1)
+		self.SliderLive = QLabeledSlider(Qt.Orientation.Horizontal)
+		self.SliderLive.setMinimum(0)
+		self.SliderLive.setMaximum(6)
+		self.channel_grid.addWidget(self.SliderLive, 3, 1, 1, 2, alignment = Qt.AlignRight)
+		self.SliderLive.setEnabled(False)
 
-		for i in range(len(self.channels)):
+		self.dead_nuc_op = QCheckBox("dead nuclei channel\n(PI)")
+		self.dead_nuc_op.toggled.connect(self.show_dead_slider)
+		self.channel_grid.addWidget(self.dead_nuc_op, 4,0,1,1)
+		self.SliderDead = QLabeledSlider(Qt.Orientation.Horizontal)
+		self.SliderDead.setMinimum(0)
+		self.SliderDead.setMaximum(6)
+		self.channel_grid.addWidget(self.SliderDead, 4, 1, 1, 2, alignment = Qt.AlignRight)
+		self.SliderDead.setEnabled(False)
 
-			self.checkBoxes[i].setText(self.channels[i])
-			self.checkBoxes[i].toggled.connect(partial(self.show_slider, i))
+		self.effector_fluo_op = QCheckBox("effector fluorescence\n(CFSE)")
+		self.effector_fluo_op.toggled.connect(self.show_effector_slider)
+		self.channel_grid.addWidget(self.effector_fluo_op, 5,0,1,1)
+		self.SliderEffectorFluo = QLabeledSlider(Qt.Orientation.Horizontal)
+		self.SliderEffectorFluo.setMinimum(0)
+		self.SliderEffectorFluo.setMaximum(6)
+		self.channel_grid.addWidget(self.SliderEffectorFluo, 5, 1, 1, 2, alignment = Qt.AlignRight)
+		self.SliderEffectorFluo.setEnabled(False)
 
-			self.channel_grid.addWidget(self.checkBoxes[i], i+1, 0, 1, 1)
+		self.adhesion_op = QCheckBox("adhesion\n(RICM, IRM)")
+		self.adhesion_op.toggled.connect(self.show_adhesion_slider)
+		self.channel_grid.addWidget(self.adhesion_op, 6,0,1,1)
+		self.SliderAdhesion = QLabeledSlider(Qt.Orientation.Horizontal)
+		self.SliderAdhesion.setMinimum(0)
+		self.SliderAdhesion.setMaximum(6)
+		self.channel_grid.addWidget(self.SliderAdhesion, 6, 1, 1, 2, alignment = Qt.AlignRight)
+		self.SliderAdhesion.setEnabled(False)
 
-			self.sliders[i].setMinimum(0)
-			self.sliders[i].setMaximum(len(self.channels))
-			self.sliders[i].setEnabled(False)
+		self.fluo_1_op = QCheckBox("fluorescence miscellaneous 1\n(LAMP-1, Actin...)")
+		self.fluo_1_op.toggled.connect(self.show_fluo_1_slider)
+		self.channel_grid.addWidget(self.fluo_1_op, 7,0,1,1)
+		self.SliderFluo1 = QLabeledSlider(Qt.Orientation.Horizontal)
+		self.SliderFluo1.setMinimum(0)
+		self.SliderFluo1.setMaximum(6)
+		self.channel_grid.addWidget(self.SliderFluo1, 7, 1, 1, 2, alignment = Qt.AlignRight)
+		self.SliderFluo1.setEnabled(False)
 
-			self.channel_grid.addWidget(self.sliders[i], i+1, 1, 1, 2, alignment = Qt.AlignRight)
+		self.fluo_2_op = QCheckBox("fluorescence miscellaneous 2\n(LAMP-1, Actin...)")
+		self.fluo_2_op.toggled.connect(self.show_fluo_2_slider)
+		self.channel_grid.addWidget(self.fluo_2_op, 8,0,1,1)
+		self.SliderFluo2 = QLabeledSlider(Qt.Orientation.Horizontal)
+		self.SliderFluo2.setMinimum(0)
+		self.SliderFluo2.setMaximum(6)
+		self.channel_grid.addWidget(self.SliderFluo2, 8, 1, 1, 2, alignment = Qt.AlignRight)
+		self.SliderFluo2.setEnabled(False)
 
-		# Add channel button
-		self.addChannelBtn = QPushButton('Add channel')
-		self.addChannelBtn.setIcon(icon(MDI6.plus,color="#000000"))
-		self.addChannelBtn.setIconSize(QSize(25, 25))
-		#self.addChannelBtn.setStyleSheet(self.parent.parent.button_select_all)
-		self.addChannelBtn.clicked.connect(self.add_custom_channel)
-		self.channel_grid.addWidget(self.addChannelBtn, 1000, 0, 1, 1)
-
-	def add_custom_channel(self):
-
-		self.CustomChannelWidget = QWidget()
-		self.CustomChannelWidget.setWindowTitle("Custom channel")
-		layout = QVBoxLayout()
-		self.CustomChannelWidget.setLayout(layout)
-
-		self.name_le = QLineEdit('custom_channel')
-		hbox = QHBoxLayout()
-		hbox.addWidget(QLabel('channel name: '), 33)
-		hbox.addWidget(self.name_le, 66)
-		layout.addLayout(hbox)
-
-		self.createBtn = QPushButton('create')
-		self.createBtn.clicked.connect(self.write_custom_channel)
-		layout.addWidget(self.createBtn)
-		center_window(self.CustomChannelWidget)
-		self.CustomChannelWidget.show()
-
-		print('new channel added')
-
-	def write_custom_channel(self):
-		
-		self.new_channel_name = self.name_le.text()
-		name_map = self.new_channel_name
-		name_map = name_map.replace('_channel','')
-		name_map = name_map.replace('channel','')
-		name_map = name_map.strip()
-		if not name_map.endswith('_channel'):
-			name_map += '_channel'
-
-		self.channels.append(self.new_channel_name)
-		self.channel_mapping.append(name_map)
-		self.checkBoxes.append(QCheckBox())
-		self.sliders.append(QLabeledSlider(Qt.Orientation.Horizontal))
-		self.CustomChannelWidget.close()
-
-		self.checkBoxes[-1].setText(self.channels[-1])
-		self.checkBoxes[-1].toggled.connect(partial(self.show_slider, len(self.channels)-1))
-		self.channel_grid.addWidget(self.checkBoxes[-1], len(self.channels)+1, 0, 1, 1)
-
-		self.sliders[-1].setMinimum(0)
-		for i in range(len(self.channels)):
-			self.sliders[i].setMaximum(len(self.channels))
-		self.sliders[-1].setEnabled(False)
-		self.channel_grid.addWidget(self.sliders[-1], len(self.channels)+1, 1, 1, 2, alignment = Qt.AlignRight)
-
-	def show_slider(self, index):
-		if self.checkBoxes[index].isChecked():
-			self.sliders[index].setEnabled(True)
+	def show_fluo_2_slider(self):
+		if self.fluo_2_op.isChecked():
+			self.SliderFluo2.setEnabled(True)
 		else:
-			self.sliders[index].setEnabled(False)
+			self.fluo_2_op.setText("fluorescence miscellaneous 2\n(LAMP-1, Actin...)")
+			self.SliderFluo2.setEnabled(False)
+
+	def show_fluo_1_slider(self):
+		if self.fluo_1_op.isChecked():
+			self.SliderFluo1.setEnabled(True)
+		else:
+			self.fluo_1_op.setText("fluorescence miscellaneous 1\n(LAMP-1, Actin...)")
+			self.SliderFluo1.setEnabled(False)
+
+	def show_adhesion_slider(self):
+		if self.adhesion_op.isChecked():
+			self.SliderAdhesion.setEnabled(True)
+		else:
+			self.adhesion_op.setText("adhesion\n(RICM, IRM)")
+			self.SliderAdhesion.setEnabled(False)
+
+	def show_effector_slider(self):
+		if self.effector_fluo_op.isChecked():
+			self.SliderEffectorFluo.setEnabled(True)
+		else:
+			self.effector_fluo_op.setText("effector fluorescence\n(CFSE)")
+			self.SliderEffectorFluo.setEnabled(False)
+
+	def show_bf_slider(self):
+		if self.bf_op.isChecked():
+			self.SliderBF.setEnabled(True)
+		else:
+			self.bf_op.setText("brightfield")
+			self.SliderBF.setEnabled(False)
+	
+	def show_dead_slider(self):
+		if self.dead_nuc_op.isChecked():
+			self.SliderDead.setEnabled(True)
+		else:
+			self.dead_nuc_op.setText("dead nuclei channel\n(PI)")
+			self.SliderDead.setEnabled(False)
+
+	def show_live_slider(self):
+		if self.live_nuc_op.isChecked():
+			self.SliderLive.setEnabled(True)
+		else:
+			self.live_nuc_op.setText("live nuclei channel\n(Hoechst, NucSpot®)")
+			self.SliderLive.setEnabled(False)
+
+	def show_green_slider(self):
+		if self.green_check.isChecked():
+			self.SliderGreen.show()
+		else:
+			self.green_check.setText("CFSE channel")
+			self.SliderGreen.hide()
 
 	def browse_experiment_folder(self):
 
@@ -292,44 +325,6 @@ class ConfigNewExperiment(QMainWindow):
 		"""
 		Create the folder tree, the config, issue a warning if the experiment folder already exists.
 		"""
-
-		channel_indices = []
-		for i in range(len(self.channels)):
-			if self.checkBoxes[i].isChecked():
-				channel_indices.append(self.sliders[i].value())
-		if not channel_indices:
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("Please set at least one channel before proceeding.")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Ok)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				return None
-
-		if len(channel_indices) != len(set(channel_indices)):
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("Some channel indices are repeated. Please check your configuration.")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Ok)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				return None
-
-		sorted_list = set(channel_indices)
-		expected_list = set(np.arange(max(sorted_list)+1))
-		print(sorted_list, expected_list, sorted_list==expected_list)
-
-		if not sorted_list==expected_list:
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("There is a gap in your channel indices. Please check your configuration.")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Ok)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				return None			
 		
 		try:
 			self.directory = self.supFolder.text()+"/"+self.expName.text()
@@ -356,12 +351,12 @@ class ConfigNewExperiment(QMainWindow):
 		self.nbr_wells = self.SliderWells.value()
 		self.nbr_positions = self.SliderPos.value()
 		for k in range(self.nbr_wells):
-			well_name = f"W{k+1}"+os.sep
+			well_name = f"W{k+1}/"
 			os.mkdir(well_name)
 			for p in range(self.nbr_positions):
-				position_name = well_name+f"{k+1}0{p}"+os.sep
+				position_name = well_name+f"{k+1}0{p}/"
 				os.mkdir(position_name)
-				os.mkdir(position_name+os.sep+"movie"+os.sep)
+				os.mkdir(position_name+"/movie/")
 
 	def annotate_wells(self):
 		self.w = SetupConditionLabels(self, self.nbr_wells)
@@ -384,14 +379,50 @@ class ConfigNewExperiment(QMainWindow):
 		config.set('MovieSettings', 'len_movie', str(self.MovieLengthSlider.value()))
 		config.set('MovieSettings', 'shape_x', self.shape_x_field.text())
 		config.set('MovieSettings', 'shape_y', self.shape_y_field.text())
-		config.set('MovieSettings', 'movie_prefix', self.movie_prefix_field.text())
+		
+		# Brightfield
+		if self.bf_op.isChecked():
+			config.set('MovieSettings', 'brightfield_channel', str(self.SliderBF.value()))
+		else:
+			config.set('MovieSettings', 'brightfield_channel', "nan")
 
-		config.add_section('Channels')
-		for i in range(len(self.channels)):
-			if self.checkBoxes[i].isChecked():
-				config.set('Channels', self.channel_mapping[i], str(self.sliders[i].value()))
-			else:
-				config.set('Channels', self.channel_mapping[i], "nan")
+		# Live nuclei
+		if self.live_nuc_op.isChecked():
+			config.set('MovieSettings', 'live_nuclei_channel', str(self.SliderLive.value()))
+		else:
+			config.set('MovieSettings', 'live_nuclei_channel', "nan")
+
+		# Dead nuclei
+		if self.dead_nuc_op.isChecked():
+			config.set('MovieSettings', 'dead_nuclei_channel', str(self.SliderDead.value()))
+		else:
+			config.set('MovieSettings', 'dead_nuclei_channel', "nan")
+
+		# Effector
+		if self.effector_fluo_op.isChecked():
+			config.set('MovieSettings', 'effector_fluo_channel', str(self.SliderEffectorFluo.value()))
+		else:
+			config.set('MovieSettings', 'effector_fluo_channel', "nan")
+
+		# Adhesion
+		if self.adhesion_op.isChecked():
+			config.set('MovieSettings', 'adhesion_channel', str(self.SliderAdhesion.value()))
+		else:
+			config.set('MovieSettings', 'adhesion_channel', "nan")
+
+		# Fluo 1
+		if self.fluo_1_op.isChecked():
+			config.set('MovieSettings', 'fluo_channel_1', str(self.SliderFluo1.value()))
+		else:
+			config.set('MovieSettings', 'fluo_channel_1', "nan")
+
+		# Fluo 2
+		if self.fluo_2_op.isChecked():
+			config.set('MovieSettings', 'fluo_channel_2', str(self.SliderFluo2.value()))
+		else:
+			config.set('MovieSettings', 'fluo_channel_2', "nan")
+		
+		config.set('MovieSettings', 'movie_prefix', self.movie_prefix_field.text())
 
 		config.add_section('Labels')
 		config.set('Labels', 'cell_types', self.cell_types)

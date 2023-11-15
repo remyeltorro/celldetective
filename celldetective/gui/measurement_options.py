@@ -375,7 +375,10 @@ class ConfigMeasurements(QMainWindow):
 		self.features_to_disable = [self.feature_lbl, self.del_feature_btn, self.add_feature_btn, self.features_list, 
 									self.activate_haralick_btn]
 
-		self.activate_haralick_btn.setChecked(True)
+		self.activate_haralick_btn.setChecked(False)
+		for f in self.haralick_to_hide:
+			f.setEnabled(False)
+
 		self.haralick_normalization_mode_btn.clicked.connect(self.switch_to_absolute_normalization_mode)
 		layout.addLayout(self.haralick_layout)
 

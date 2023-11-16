@@ -729,8 +729,11 @@ class ConfigSurvival(QWidget):
 				self.df_pos_info.loc[self.df_pos_info['pos_index']==i,'select'] = self.pos_display_options[i].isChecked()
 
 		if len(self.metafiles)>0:
-			self.sc.set_color(self.select_color(self.df_pos_info["select"].values))
-			self.position_scatter.canvas.draw_idle()
+			try:
+				self.sc.set_color(self.select_color(self.df_pos_info["select"].values))
+				self.position_scatter.canvas.draw_idle()
+			except:
+				pass
 		self.plot_survivals(0)				
 
 

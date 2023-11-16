@@ -87,6 +87,10 @@ class AppInitWindow(QMainWindow):
 		fileMenu.addAction(self.exitAction)
 		menuBar.addMenu(fileMenu)
 
+		OptionsMenu = QMenu("Options", self)
+		OptionsMenu.addAction(self.MemoryAndThreadsAction)
+		menuBar.addMenu(OptionsMenu)
+
 		helpMenu = QMenu("Help", self)
 		helpMenu.clear()
 		helpMenu.addAction(self.DocumentationAction)
@@ -107,6 +111,7 @@ class AppInitWindow(QMainWindow):
 		self.openAction.setShortcut("Ctrl+O")
 		self.openAction.setShortcutVisibleInContextMenu(True)
 
+		self.MemoryAndThreadsAction = QAction('Memory & Threads...')
 
 		self.newExpAction = QAction('New', self)
 		self.newExpAction.setShortcut("Ctrl+N")
@@ -133,6 +138,7 @@ class AppInitWindow(QMainWindow):
 		self.exitAction.triggered.connect(self.close)
 		self.openModels.triggered.connect(self.open_models_folder)
 		self.AboutAction.triggered.connect(self.open_about_window)
+		#self.MemoryAndThreadsAction.triggered.connect(self.set_memory_and_threads)
 
 		self.DocumentationAction.triggered.connect(self.open_documentation)
 

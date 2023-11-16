@@ -805,37 +805,40 @@ class SignalAnnotator(QMainWindow):
 
 	def plot_signals(self):
 		
-		yvalues = []
-		for i in range(len(self.signal_choice_cb)):
+		try:
+			yvalues = []
+			for i in range(len(self.signal_choice_cb)):
+				
+				signal_choice = self.signal_choice_cb[i].currentText()
+				self.lines[i].set_label(signal_choice)
+
+				if signal_choice=="--":
+					self.lines[i].set_xdata([])
+					self.lines[i].set_ydata([])
+				else:
+					print(f'plot signal {signal_choice} for cell {self.track_of_interest}')
+					xdata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'FRAME'].to_numpy()
+					ydata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, signal_choice].to_numpy()
+
+					xdata = xdata[ydata==ydata] # remove nan
+					ydata = ydata[ydata==ydata]
+
+					yvalues.extend(ydata)
+					self.lines[i].set_xdata(xdata)
+					self.lines[i].set_ydata(ydata)
+					self.lines[i].set_color(tab10(i/3.))
 			
-			signal_choice = self.signal_choice_cb[i].currentText()
-			self.lines[i].set_label(signal_choice)
+			self.configure_ylims()
 
-			if signal_choice=="--":
-				self.lines[i].set_xdata([])
-				self.lines[i].set_ydata([])
-			else:
-				print(f'plot signal {signal_choice} for cell {self.track_of_interest}')
-				xdata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, 'FRAME'].to_numpy()
-				ydata = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, signal_choice].to_numpy()
+			min_val,max_val = self.cell_ax.get_ylim()
+			t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.expected_time].to_numpy()[0]
+			self.line_dt.set_xdata([t0, t0])
+			self.line_dt.set_ydata([min_val,max_val])
 
-				xdata = xdata[ydata==ydata] # remove nan
-				ydata = ydata[ydata==ydata]
-
-				yvalues.extend(ydata)
-				self.lines[i].set_xdata(xdata)
-				self.lines[i].set_ydata(ydata)
-				self.lines[i].set_color(tab10(i/3.))
-		
-		self.configure_ylims()
-
-		min_val,max_val = self.cell_ax.get_ylim()
-		t0 = self.df_tracks.loc[self.df_tracks['TRACK_ID']==self.track_of_interest, self.expected_time].to_numpy()[0]
-		self.line_dt.set_xdata([t0, t0])
-		self.line_dt.set_ydata([min_val,max_val])
-
-		self.cell_ax.legend()
-		self.cell_fcanvas.canvas.draw()
+			self.cell_ax.legend()
+			self.cell_fcanvas.canvas.draw()
+		except Exception as e:
+			print(f"{e=}")
 
 	def extract_scatter_from_trajectories(self):
 

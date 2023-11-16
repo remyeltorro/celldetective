@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QDialog, QHBoxLayout, QFileDialog, QVBoxLayout, QScrollArea, QCheckBox, QSlider, QGridLayout, QLabel, QLineEdit, QPushButton, QWidget
 from PyQt5.QtGui import QIntValidator, QDoubleValidator
 from celldetective.gui.gui_utils import center_window
+from celldetective.gui.styles import Styles
 from superqt import QLabeledSlider
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
@@ -18,10 +19,15 @@ class ConfigNewExperiment(QMainWindow):
 		
 		super().__init__()
 		self.parent = parent
-		self.setWindowTitle("Experiment config")
+		self.setWindowTitle("New experiment")
 		center_window(self)
 		self.setFixedWidth(500)
 		self.setMaximumHeight(int(0.8*self.parent.screen_height))
+		self.onlyFloat = QDoubleValidator()
+		
+		self.Styles = Styles()
+		self.button_style = self.Styles.button_add
+		self.button_style_sheet = self.Styles.button_style_sheet
 
 		self.newExpFolder = str(QFileDialog.getExistingDirectory(self, 'Select directory'))
 		self.populate_widget()
@@ -52,6 +58,7 @@ class ConfigNewExperiment(QMainWindow):
 		grid.addWidget(QLabel("Experiment name:"), 2, 0, 1, 3)
 		
 		self.expName = QLineEdit()
+		self.expName.setPlaceholderText('folder_name_for_the_experiment')
 		self.expName.setAlignment(Qt.AlignLeft)	
 		self.expName.setEnabled(True)
 		self.expName.setFixedWidth(400)
@@ -131,10 +138,12 @@ class ConfigNewExperiment(QMainWindow):
 
 		self.ms_grid.addWidget(QLabel("Calibration from pixel to µm:"), 5, 0, 1, 3)
 		self.PxToUm_field = QLineEdit()
+		self.PxToUm_field.setValidator(self.onlyFloat)
+		self.PxToUm_field.setPlaceholderText('1 px = XXX µm')
 		self.PxToUm_field.setAlignment(Qt.AlignLeft)	
 		self.PxToUm_field.setEnabled(True)
 		self.PxToUm_field.setFixedWidth(400)
-		self.PxToUm_field.setText("0.3112")
+		self.PxToUm_field.setText("1,0")
 		self.ms_grid.addWidget(self.PxToUm_field, 6, 0, 1, 3)
 
 		self.ms_grid.addWidget(QLabel("Calibration from frame to minutes:"), 7, 0, 1, 3)
@@ -142,7 +151,9 @@ class ConfigNewExperiment(QMainWindow):
 		self.FrameToMin_field.setAlignment(Qt.AlignLeft)	
 		self.FrameToMin_field.setEnabled(True)
 		self.FrameToMin_field.setFixedWidth(400)
-		self.FrameToMin_field.setText("1.0")
+		self.FrameToMin_field.setValidator(self.onlyFloat)
+		self.FrameToMin_field.setPlaceholderText('1 frame = XXX min')
+		self.FrameToMin_field.setText("1,0")
 		self.ms_grid.addWidget(self.FrameToMin_field, 8, 0, 1, 3)
 
 		self.movie_length = QLabel("Number of frames:")
@@ -224,7 +235,7 @@ class ConfigNewExperiment(QMainWindow):
 		self.addChannelBtn = QPushButton('Add channel')
 		self.addChannelBtn.setIcon(icon(MDI6.plus,color="#000000"))
 		self.addChannelBtn.setIconSize(QSize(25, 25))
-		#self.addChannelBtn.setStyleSheet(self.parent.parent.button_select_all)
+		self.addChannelBtn.setStyleSheet(self.button_style)
 		self.addChannelBtn.clicked.connect(self.add_custom_channel)
 		self.channel_grid.addWidget(self.addChannelBtn, 1000, 0, 1, 1)
 
@@ -242,6 +253,7 @@ class ConfigNewExperiment(QMainWindow):
 		layout.addLayout(hbox)
 
 		self.createBtn = QPushButton('create')
+		self.createBtn.setStyleSheet(self.button_style_sheet)
 		self.createBtn.clicked.connect(self.write_custom_channel)
 		layout.addWidget(self.createBtn)
 		center_window(self.CustomChannelWidget)
@@ -391,8 +403,8 @@ class ConfigNewExperiment(QMainWindow):
 
 		# add a new section and some values
 		config.add_section('MovieSettings')
-		config.set('MovieSettings', 'PxToUm', self.PxToUm_field.text())
-		config.set('MovieSettings', 'FrameToMin', self.FrameToMin_field.text())
+		config.set('MovieSettings', 'PxToUm', self.PxToUm_field.text().replace(',','.'))
+		config.set('MovieSettings', 'FrameToMin', self.FrameToMin_field.text().replace(',','.'))
 		config.set('MovieSettings', 'len_movie', str(self.MovieLengthSlider.value()))
 		config.set('MovieSettings', 'shape_x', self.shape_x_field.text())
 		config.set('MovieSettings', 'shape_y', self.shape_y_field.text())
@@ -424,7 +436,7 @@ class SetupConditionLabels(QWidget):
 		super().__init__()
 		self.parent = parent
 		self.n_wells = n_wells
-		self.setWindowTitle("Label the wells")
+		self.setWindowTitle("Well conditions")
 		self.layout = QVBoxLayout()
 		self.layout.setContentsMargins(30,30,30,30)
 		self.setLayout(self.layout)

@@ -105,7 +105,7 @@ class ControlPanel(QMainWindow):
 		self.folder_exp_btn = QPushButton()
 		self.folder_exp_btn.setIcon(icon(MDI6.folder,color="black"))
 		self.folder_exp_btn.setIconSize(QSize(20, 20))
-		self.folder_exp_btn.setToolTip("Open experiment folder on disk")
+		self.folder_exp_btn.setToolTip("Experiment folder")
 		self.folder_exp_btn.clicked.connect(self.open_experiment_folder)
 		self.folder_exp_btn.setStyleSheet(self.parent.button_select_all)
 

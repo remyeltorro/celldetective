@@ -107,6 +107,23 @@ class Styles(object):
 			}
 		'''
 
+		self.button_add = '''
+			QPushButton {
+				background-color: transparent;
+				color: black;
+				border-radius: 13px;
+				padding: 7px;
+				font-size: 12px;
+				Text-align: left;
+			}
+			QPushButton:hover {
+				background-color: #bdbdbd;
+			}
+			QPushButton:pressed {
+				background-color: #ff8a00;
+			}
+		'''
+
 	def init_tab_styles(self):
 
 		self.qtab_style = """

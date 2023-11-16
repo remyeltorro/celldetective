@@ -146,18 +146,21 @@ class ConfigNewExperiment(QMainWindow):
 		self.ms_grid.addWidget(self.FrameToMin_field, 8, 0, 1, 3)
 
 		self.movie_length = QLabel("Number of frames:")
+		self.movie_length.setToolTip('Optional: depending on how the movies are encoded, the automatic extraction of the number of frames can be difficult.\nThe software will then rely on this value.')
 		self.ms_grid.addWidget(self.movie_length,9, 0, 1, 3)
 		self.MovieLengthSlider = QLabeledSlider(Qt.Horizontal, self)
 		self.MovieLengthSlider.setMinimum(2)
 		self.MovieLengthSlider.setMaximum(128)
 		self.ms_grid.addWidget(self.MovieLengthSlider, 10, 0, 1, 3)
 
-		self.ms_grid.addWidget(QLabel("Prefix for the movies:"), 11, 0, 1, 3)
+		self.prefix_lbl = QLabel("Prefix for the movies:")
+		self.prefix_lbl.setToolTip('The stack file name must start with this prefix to be properly loaded.')
+		self.ms_grid.addWidget(self.prefix_lbl, 11, 0, 1, 3)
 		self.movie_prefix_field = QLineEdit()
 		self.movie_prefix_field.setAlignment(Qt.AlignLeft)	
 		self.movie_prefix_field.setEnabled(True)
 		self.movie_prefix_field.setFixedWidth(400)
-		self.movie_prefix_field.setText("Aligned")
+		self.movie_prefix_field.setText("")
 		self.ms_grid.addWidget(self.movie_prefix_field, 12, 0, 1, 3)
 
 		self.ms_grid.addWidget(QLabel("X shape in pixels:"), 13, 0, 1, 3)
@@ -252,7 +255,7 @@ class ConfigNewExperiment(QMainWindow):
 		name_map = self.new_channel_name
 		name_map = name_map.replace('_channel','')
 		name_map = name_map.replace('channel','')
-		name_map = name_map.strip()
+		name_map = name_map.replace(' ','')
 		if not name_map.endswith('_channel'):
 			name_map += '_channel'
 
@@ -332,11 +335,20 @@ class ConfigNewExperiment(QMainWindow):
 				return None			
 		
 		try:
-			self.directory = self.supFolder.text()+"/"+self.expName.text()
+			
+			folder = self.supFolder.text()
+			folder = folder.replace('\\','/')
+			folder = rf"{folder}"
+
+			name = str(self.expName.text())
+			name = name.replace(' ','')
+
+			self.directory = os.sep.join([folder,name])
 			os.mkdir(self.directory)
 			os.chdir(self.directory)
 			self.create_subfolders()
 			self.annotate_wells()
+
 		except FileExistsError:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)

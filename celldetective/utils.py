@@ -540,14 +540,17 @@ def _extract_nbr_channels_from_config(config, return_names=False):
 	# V2
 	nbr_channels = 0
 	channels = []
-	fields = ConfigSectionMap(config,"Channels")
-	for c in fields:
-		try:
-			channel = int(ConfigSectionMap(config, "Channels")[c])
-			nbr_channels += 1
-			channels.append(c)
-		except:
-			pass
+	try:
+		fields = ConfigSectionMap(config,"Channels")
+		for c in fields:
+			try:
+				channel = int(ConfigSectionMap(config, "Channels")[c])
+				nbr_channels += 1
+				channels.append(c)
+			except:
+				pass
+	except:
+		pass
 
 	if nbr_channels==0:	
 
@@ -662,14 +665,18 @@ def extract_experiment_channels(config):
 	# V2
 	channel_names = []
 	channel_indices = []
-	fields = ConfigSectionMap(config,"Channels")
-	for c in fields:
-		try:
-			idx = int(ConfigSectionMap(config, "Channels")[c])
-			channel_names.append(c)
-			channel_indices.append(idx)
-		except:
-			pass	
+	try:
+		fields = ConfigSectionMap(config,"Channels")
+		for c in fields:
+			try:
+				idx = int(ConfigSectionMap(config, "Channels")[c])
+				channel_names.append(c)
+				channel_indices.append(idx)
+			except:
+				pass
+	except:
+		pass
+
 
 	if not channel_names:
 		# LEGACY

@@ -16,7 +16,6 @@ import numpy as np
 from csbdeep.io import save_tiff_imagej_compatible
 import gc
 from art import tprint
-import threading
 
 tprint("Segment")
 
@@ -25,14 +24,11 @@ parser = argparse.ArgumentParser(description="Segment a movie in position with a
 parser.add_argument('-p',"--position", required=True, help="Path to the position")
 parser.add_argument('-c',"--config", required=True,help="Threshold instructions")
 parser.add_argument("--mode", default="target", choices=["target","effector","targets","effectors"],help="Cell population of interest")
-parser.add_argument("--threads", default="1",help="Number of parallel threads")
 
 args = parser.parse_args()
 process_arguments = vars(args)
 pos = str(process_arguments['position'])
 mode = str(process_arguments['mode'])
-n_threads = int(process_arguments['threads'])
-
 threshold_instructions = str(process_arguments['config'])
 equalize = False
 
@@ -107,30 +103,16 @@ threshold_instructions.update({'equalize_reference': f_reference})
 print(threshold_instructions)
 
 # Loop over all frames and segment
-def segment_index(indices):
+for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
+	
+	# Load channels at time t
+	f = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
+	mask = segment_frame_from_thresholds(f, **threshold_instructions)
+	save_tiff_imagej_compatible(os.sep.join([pos, label_folder, f"{str(t).zfill(4)}.tif"]), mask.astype(np.uint16), axes='YX')
 
-	for t in tqdm(indices,desc="frame"):
-		
-		# Load channels at time t
-		f = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
-		mask = segment_frame_from_thresholds(f, **threshold_instructions)
-		save_tiff_imagej_compatible(os.sep.join([pos, label_folder, f"{str(t).zfill(4)}.tif"]), mask.astype(np.uint16), axes='YX')
-
-		del f;
-		del mask;
-		gc.collect()
-
-# Multithreading
-indices = list(range(img_num_channels.shape[1]))
-chunks = np.array_split(indices, n_threads)
-threads = []
-for i in range(n_threads):
-	thread_i = threading.Thread(target=segment_index, args=[chunks[i]])
-	threads.append(thread_i)
-for th in threads:
-	th.start()
-for th in threads:
-	th.join()
+	del f;
+	del mask;
+	gc.collect()
 
 print('Done.')
 gc.collect()

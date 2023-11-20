@@ -19,7 +19,6 @@ from csbdeep.io import save_tiff_imagej_compatible
 import gc
 from art import tprint
 from scipy.ndimage import zoom
-import threading
 
 tprint("Segment")
 
@@ -29,7 +28,6 @@ parser.add_argument('-p',"--position", required=True, help="Path to the position
 parser.add_argument('-m',"--model", required=True,help="Model name")
 parser.add_argument("--mode", default="target", choices=["target","effector","targets","effectors"],help="Cell population of interest")
 parser.add_argument("--use_gpu", default="True", choices=["True","False"],help="use GPU")
-parser.add_argument("--threads", default="1",help="Number of parallel threads")
 
 args = parser.parse_args()
 process_arguments = vars(args)
@@ -43,8 +41,7 @@ else:
 
 if not use_gpu:
 	os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-n_threads = int(process_arguments['threads'])
-
+	
 modelname = str(process_arguments['model'])
 
 if mode.lower()=="target" or mode.lower()=="targets":
@@ -140,56 +137,41 @@ elif model_type=='cellpose':
 	print(f'Cellpose model {modelname} successfully loaded.')
 
 # Loop over all frames and segment
-def segment_index(indices):
+for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
+	
+	# Load channels at time t
+	f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=False)
+	f = normalize_per_channel([f], normalization_percentile_mode=normalization_percentile, normalization_values=normalization_values,
+								normalization_clipping=normalization_clip)
+	f = f[0]
 
-	for t in tqdm(indices,desc="frame"):
-		
-		# Load channels at time t
-		f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=False)
-		f = normalize_per_channel([f], normalization_percentile_mode=normalization_percentile, normalization_values=normalization_values,
-									normalization_clipping=normalization_clip)
-		f = f[0]
+	if model_type=="stardist":
+		Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)
+		Y_pred = Y_pred.astype(np.uint16)
 
-		if model_type=="stardist":
-			Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)
-			Y_pred = Y_pred.astype(np.uint16)
+	elif model_type=="cellpose":
 
-		elif model_type=="cellpose":
+		img = np.moveaxis(f, -1, 0)
+		Y_pred, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
+		Y_pred = Y_pred.astype(np.uint16)
 
-			img = np.moveaxis(f, -1, 0)
-			Y_pred, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
-			Y_pred = Y_pred.astype(np.uint16)
+	if scale is not None:
+		Y_pred = zoom(Y_pred, [1./scale,1./scale],order=0)
 
-		if scale is not None:
-			Y_pred = zoom(Y_pred, [1./scale,1./scale],order=0)
+	template = load_frames(0,file,scale=1,normalize_input=False)
+	if Y_pred.shape != template.shape[:2]:
+		Y_pred = resize(Y_pred, template.shape[:2], order=0)
 
-		template = load_frames(0,file,scale=1,normalize_input=False)
-		if Y_pred.shape != template.shape[:2]:
-			Y_pred = resize(Y_pred, template.shape[:2], order=0)
+	save_tiff_imagej_compatible(os.sep.join([pos,label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
 
-		save_tiff_imagej_compatible(os.sep.join([pos,label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
-
-		del f;
-		del template;
-		del Y_pred;
-		gc.collect()
-
-# Multithreading
-indices = list(range(img_num_channels.shape[1]))
-chunks = np.array_split(indices, n_threads)
-threads = []
-for i in range(n_threads):
-	thread_i = threading.Thread(target=segment_index, args=[chunks[i]])
-	threads.append(thread_i)
-for th in threads:
-	th.start()
-for th in threads:
-	th.join()
+	del f;
+	del template;
+	del Y_pred;
+	gc.collect()
 
 print('Done.')
 del model
 gc.collect()
-
 
 
 

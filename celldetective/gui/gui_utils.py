@@ -95,6 +95,7 @@ class FilterChoice(QWidget):
 						  'std_filter': {'size': 4},
 						  'laplace_filter': None,
 						  'abs_filter': None,
+						  'ln_filter': None,
 						  'subtract_filter': {'value': 1},
 						  'dog_filter': {'sigma_low': 0.8, 'sigma_high': 1.6},
 						  'log_filter': {'sigma': 2},

@@ -24,6 +24,12 @@ def subtract_filter(img, value, *kwargs):
 def abs_filter(img, *kwargs):
 	return np.abs(img)
 
+def ln_filter(img, *kwargs):
+
+	img[np.where(img>0.)] = np.log(img[np.where(img>0.)])
+	img[np.where(img<=0.)] = 0.
+
+	return img
 
 def variance_filter(img, size):
 
@@ -81,4 +87,3 @@ def tophat_filter(img, size, connectivity=4, *kwargs):
 	structure = snd.generate_binary_structure(rank=2, connectivity=connectivity)
 	img = snd.white_tophat(img.astype(float), structure=structure, size=size, *kwargs)
 	return img
-

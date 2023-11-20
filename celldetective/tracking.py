@@ -123,13 +123,16 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 		tracker.configure(configuration)
 
 		if columns:
-			tracker.tracking_updates = ["MOTION","VISUAL"]
+			tracking_updates = ["motion","visual"]
+			#tracker.tracking_updates = ["motion","visual"]
 			tracker.features = columns
+		else:
+			tracking_updates = ["motion"]
 		
 		tracker.append(new_btrack_objects)
 		tracker.volume = ((0,volume[0]), (0,volume[1])) #(-1e5, 1e5)
 		#print(tracker.volume)
-		tracker.track(**track_kwargs)
+		tracker.track(tracking_updates=tracking_updates, **track_kwargs)
 		tracker.optimize(options=optimizer_options)
 
 		data, properties, graph = tracker.to_napari() #ndim=2
@@ -164,6 +167,156 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 		return df, napari_data
 	else:
 		return df
+
+# def track(labels, configuration=None, stack=None, spatial_calibration=1, features=None, channel_names=None,
+# 		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None, volume=(2048,2048),
+# 		  optimizer_options = {'tm_lim': int(12e4)}, track_kwargs={'step_size': 100}, objects=None,
+# 		  clean_trajectories_kwargs=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
+# 		  ):
+
+# 	"""
+
+# 	Perform cell tracking on segmented labels using the bTrack library.
+
+# 	Parameters
+# 	----------
+# 	labels : ndarray
+# 		The segmented labels representing cell objects.
+# 	configuration : Configuration or None
+# 		The bTrack configuration object. If None, a default configuration is used.
+# 	stack : ndarray or None, optional
+# 		The image stack corresponding to the labels. Default is None.
+# 	spatial_calibration : float, optional
+# 		The spatial calibration factor to convert pixel coordinates to physical units. Default is 1.
+# 	features : list or None, optional
+# 		The list of features to extract from the objects. If None, no additional features are extracted. Default is None.
+# 	channel_names : list or None, optional
+# 		The list of channel names corresponding to the image stack. Used for renaming intensity columns in the output DataFrame.
+# 		Default is None.
+# 	haralick_options : dict or None, optional
+# 		The options for Haralick feature extraction. If None, no Haralick features are extracted. Default is None.
+# 	return_napari_data : bool, optional
+# 		Whether to return the napari data dictionary along with the DataFrame. Default is False.
+# 	view_on_napari : bool, optional
+# 		Whether to view the tracking results on napari. Default is False.
+# 	optimizer_options : dict, optional
+# 		The options for the optimizer. Default is {'tm_lim': int(12e4)}.
+# 	track_kwargs : dict, optional
+# 		Additional keyword arguments for the bTrack tracker. Default is {'step_size': 100}.
+# 	clean_trajectories_kwargs : dict or None, optional
+# 		Keyword arguments for the clean_trajectories function to post-process the tracking trajectories. If None, no post-processing is performed.
+# 		Default is None.
+# 	column_labels : dict, optional
+# 		The column labels to use in the output DataFrame. Default is {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}.
+
+# 	Returns
+# 	-------
+# 	DataFrame or tuple
+# 		If return_napari_data is False, returns the DataFrame containing the tracking results. If return_napari_data is True, returns a tuple
+# 		containing the DataFrame and the napari data dictionary.
+
+# 	Notes
+# 	-----
+# 	This function performs cell tracking on the segmented labels using the bTrack library. It extracts features from the objects, normalizes
+# 	the features, tracks the objects, and generates a DataFrame with the tracking results. The DataFrame can be post-processed using the
+# 	clean_trajectories function. If specified, the tracking results can be visualized on napari.
+
+# 	Examples
+# 	--------
+# 	>>> labels = np.array([[1, 1, 2, 2, 0, 0],
+# 						   [1, 1, 1, 2, 2, 0],
+# 						   [0, 0, 1, 2, 0, 0]])
+# 	>>> configuration = cell_config()
+# 	>>> stack = np.random.rand(3, 6)
+# 	>>> df = track(labels, configuration, stack=stack, spatial_calibration=0.5)
+# 	>>> df.head()
+
+# 	   TRACK_ID  FRAME  POSITION_Y  POSITION_X
+# 	0         0      0         0.0         0.0
+# 	1         0      1         0.0         0.0
+# 	2         0      2         0.0         0.0
+# 	3         1      0         0.5         0.5
+# 	4         1      1         0.5         0.5
+
+# 	"""
+
+# 	configuration = interpret_tracking_configuration(configuration)
+
+# 	if objects is None:
+# 		objects = extract_objects_and_features(labels, stack, features, 
+# 										   channel_names=channel_names,
+# 										   haralick_options=haralick_options,
+# 										   mask_timepoints=mask_timepoints,
+# 										   mask_channels=mask_channels,
+# 										   )
+
+# 	columns = list(objects.columns)
+# 	to_remove = ['x','y','class_id','t']
+# 	for tr in to_remove:
+# 		try:
+# 			columns.remove(tr)
+# 		except:
+# 			print(f'column {tr} could not be found...')
+
+# 	scaler = StandardScaler()
+# 	if columns:
+# 		x = objects[columns].values
+# 		x_scaled = scaler.fit_transform(x)
+# 		df_temp = pd.DataFrame(x_scaled, columns=columns, index = objects.index)
+# 		objects[columns] = df_temp
+# 	else:
+# 		print('Warning: no features were passed to bTrack...')
+
+# 	# 2) track the objects
+# 	new_btrack_objects = localizations_to_objects(objects)
+
+# 	with BayesianTracker() as tracker:
+
+# 		tracker.configure(configuration)
+
+# 		if columns:
+# 			tracker.tracking_updates = ["motion","visual"]
+# 			tracker.features = columns
+		
+# 		tracker.append(new_btrack_objects)
+# 		tracker.volume = ((0,volume[0]), (0,volume[1])) #(-1e5, 1e5)
+# 		#print(tracker.volume)
+# 		tracker.track(**track_kwargs)
+# 		tracker.optimize(options=optimizer_options)
+
+# 		data, properties, graph = tracker.to_napari() #ndim=2
+
+# 	# do the table post processing and napari options
+# 	df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])
+# 	df[column_labels['x']+'_um'] = df[column_labels['x']]*spatial_calibration
+# 	df[column_labels['y']+'_um'] = df[column_labels['y']]*spatial_calibration
+
+# 	df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
+# 	if columns:
+# 		x = df[columns].values
+# 		x_scaled = scaler.inverse_transform(x)
+# 		df_temp = pd.DataFrame(x_scaled, columns=columns, index = df.index)
+# 		df[columns] = df_temp
+
+# 	df = df.sort_values(by=[column_labels['track'],column_labels['time']])
+
+# 	if channel_names is not None:
+# 		df = rename_intensity_column(df, channel_names)
+
+# 	df = write_first_detection_class(df, column_labels=column_labels)
+
+# 	if clean_trajectories_kwargs is not None:
+# 		df = clean_trajectories(df.copy(),**clean_trajectories_kwargs)
+
+# 	if view_on_napari:
+# 		view_on_napari_btrack(data,properties,graph,stack=stack,labels=labels,relabel=True)
+
+# 	if return_napari_data:
+# 		napari_data = {"data": data, "properties": properties, "graph": graph}
+# 		return df, napari_data
+# 	else:
+# 		return df
+
 
 def extract_objects_and_features(labels, stack, features, channel_names=None, haralick_options=None, mask_timepoints=None, mask_channels=None):
 

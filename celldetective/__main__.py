@@ -20,11 +20,11 @@ class AppInitWindow(QMainWindow):
 		self.Styles = Styles()
 		self.init_styles()
 		self.setWindowTitle("celldetective")
-		print(os.getcwd())
+
+		self.n_threads = psutil.cpu_count()
 		self.soft_path = get_software_location()
-		print(self.soft_path)
+		self.onlyInt = QIntValidator()
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','logo.png'])))
-		print(os.sep.join([self.soft_path,'celldetective','icons','logo.png']))
 		center_window(self)
 		self._createActions()
 		self._createMenuBar()
@@ -138,7 +138,7 @@ class AppInitWindow(QMainWindow):
 		self.exitAction.triggered.connect(self.close)
 		self.openModels.triggered.connect(self.open_models_folder)
 		self.AboutAction.triggered.connect(self.open_about_window)
-		#self.MemoryAndThreadsAction.triggered.connect(self.set_memory_and_threads)
+		self.MemoryAndThreadsAction.triggered.connect(self.set_memory_and_threads)
 
 		self.DocumentationAction.triggered.connect(self.open_documentation)
 
@@ -155,6 +155,34 @@ class AppInitWindow(QMainWindow):
 			self.recentFileActs = [QAction(r,self) for r in recentExps]
 			for r in self.recentFileActs:
 				r.triggered.connect(lambda checked, item=r: self.load_recent_exp(item.text()))
+
+	def set_memory_and_threads(self):
+		
+		print('setting memory and threads')
+
+		self.ThreadsWidget = QWidget()
+		self.ThreadsWidget.setWindowTitle("Threads")
+		layout = QVBoxLayout()
+		self.ThreadsWidget.setLayout(layout)
+
+		self.threads_le = QLineEdit(str(self.n_threads))
+		self.threads_le.setValidator(self.onlyInt)
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('Parallel threads: '), 33)
+		hbox.addWidget(self.threads_le, 66)
+		layout.addLayout(hbox)
+
+		self.validateThreadBtn = QPushButton('Submit')
+		self.validateThreadBtn.setStyleSheet(self.button_style_sheet)
+		self.validateThreadBtn.clicked.connect(self.set_threads)
+		layout.addWidget(self.validateThreadBtn)
+		center_window(self.ThreadsWidget)
+		self.ThreadsWidget.show()
+
+	def set_threads(self):
+		self.n_threads = int(self.threads_le.text())
+		self.ThreadsWidget.close()
+
 
 	def open_experiment(self):
 		print('ok')
@@ -343,7 +371,7 @@ if __name__ == "__main__":
 
 	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 	from PyQt5.QtCore import Qt, QUrl
-	from PyQt5.QtGui import QIcon, QDesktopServices
+	from PyQt5.QtGui import QIcon, QDesktopServices, QIntValidator
 	from glob import glob
 	from superqt.fonticon import icon
 	from fonticon_mdi6 import MDI6
@@ -353,6 +381,7 @@ if __name__ == "__main__":
 	import subprocess
 	import os
 	from celldetective.gui.about import AboutWidget
+	import psutil
 
 	window = AppInitWindow(App)
 

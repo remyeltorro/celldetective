@@ -629,7 +629,7 @@ def get_signal_models_list(return_path=False):
 		return available_models, modelpath
 
 
-def relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}):
+def relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}, threads=1):
 
 	"""
 
@@ -672,6 +672,7 @@ def relabel_segmentation(labels, data, properties, column_labels={'track': "trac
 	df = df.sort_values(by=[column_labels['track'],column_labels['frame']])
 
 	new_labels = np.zeros_like(labels)
+
 	for t in tqdm(df[column_labels['frame']].unique()):
 		f = int(t)
 		tracks_at_t = df.loc[df[column_labels['frame']]==f, column_labels['track']].to_numpy()
@@ -686,7 +687,7 @@ def relabel_segmentation(labels, data, properties, column_labels={'track': "trac
 
 	return new_labels
 
-def control_tracking_btrack(position, prefix="Aligned", population="target", relabel=True, flush_memory=True):
+def control_tracking_btrack(position, prefix="Aligned", population="target", relabel=True, flush_memory=True, threads=1):
 
 	"""
 	Load the necessary data for visualization of bTrack trajectories in napari.
@@ -713,9 +714,9 @@ def control_tracking_btrack(position, prefix="Aligned", population="target", rel
 	"""
 
 	data,properties,graph,labels,stack = load_napari_data(position, prefix=prefix, population=population)
-	view_on_napari_btrack(data,properties,graph,labels=labels, stack=stack, relabel=relabel, flush_memory=flush_memory)
+	view_on_napari_btrack(data,properties,graph,labels=labels, stack=stack, relabel=relabel, flush_memory=flush_memory, threads=threads)
 
-def view_on_napari_btrack(data,properties,graph,stack=None,labels=None,relabel=True, flush_memory=True, position=None):
+def view_on_napari_btrack(data,properties,graph,stack=None,labels=None,relabel=True, flush_memory=True, position=None, threads=1):
 	
 	"""
 
@@ -751,7 +752,7 @@ def view_on_napari_btrack(data,properties,graph,stack=None,labels=None,relabel=T
 
 	if (labels is not None)*relabel:
 		print('Relabeling the cell masks with the track ID.')
-		labels = relabel_segmentation(labels, data, properties)
+		labels = relabel_segmentation(labels, data, properties, threads=threads)
 
 	vertices = data[:, 1:]
 	viewer = napari.Viewer()

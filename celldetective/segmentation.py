@@ -388,7 +388,7 @@ def filter_image(img, filters=None):
 	return img
 
 
-def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, return_labels=False, view_on_napari=False):
+def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, return_labels=False, view_on_napari=False, threads=1):
 
 	"""
 	Perform image segmentation at the specified position using a pre-trained model.
@@ -427,7 +427,7 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
 	
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells.py'])
-	cmd = f'python "{script_path}" --pos "{pos}" --model "{model_name}" --mode "{mode}" --use_gpu "{use_gpu}"'
+	cmd = f'python "{script_path}" --pos "{pos}" --model "{model_name}" --mode "{mode}" --use_gpu "{use_gpu}" --threads "{threads}"'
 	subprocess.call(cmd, shell=True)
 
 	if return_labels or view_on_napari:
@@ -442,7 +442,7 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	else:
 		return None
 
-def segment_from_threshold_at_position(pos, mode, config):
+def segment_from_threshold_at_position(pos, mode, config, threads=1):
 	# Space in path problem fixed!!!
 
 	pos = pos.replace('\\','/')
@@ -454,7 +454,7 @@ def segment_from_threshold_at_position(pos, mode, config):
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells_thresholds.py'])
-	cmd = f'python "{script_path}" --pos "{pos}" --config "{config}" --mode "{mode}"'
+	cmd = f'python "{script_path}" --pos "{pos}" --config "{config}" --mode "{mode}" --threads "{threads}"'
 	subprocess.call(cmd, shell=True)
 
 

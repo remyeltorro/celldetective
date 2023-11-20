@@ -1,7 +1,7 @@
 {
     "channels": [
         "brightfield_channel",
-        "live_nuclei_channel"
+        "adhesion_channel"
     ],
     "diameter": 30.0,
     "cellprob_threshold": 0.0,
@@ -25,5 +25,5 @@
         ]
     ],
     "model_type": "cellpose",
-    "spatial_calibration": 0.11498666666666665
+    "spatial_calibration": 0.16666666666666666
 }

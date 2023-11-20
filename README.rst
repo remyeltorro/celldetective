@@ -5,7 +5,7 @@ Celldetective is a package and software for single cell detection and measuremen
 
 - **Documentation:** https://celldetective.readthedocs.io
 - **Source code:** https://github.com/remyeltorro/celldetective
-- **Bug reports:** https://github.com/remyeltorro/celldetective/issues
+- **Bug reports:** https://github.com/remyeltorro/celldetective/issues/new/choose
 
 Installation
 ============

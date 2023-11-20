@@ -555,7 +555,7 @@ class ProcessPanel(QFrame):
 							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent.parent.n_threads)
 					else:
 
-						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=True, threads=self.parent.parent.n_threads)
+						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=self.parent.parent.use_gpu, threads=self.parent.parent.n_threads)
 
 				if self.track_action.isChecked():
 					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent.position_list.currentText()!="*":

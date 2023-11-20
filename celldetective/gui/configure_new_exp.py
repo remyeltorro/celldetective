@@ -440,6 +440,7 @@ class SetupConditionLabels(QWidget):
 		self.layout = QVBoxLayout()
 		self.layout.setContentsMargins(30,30,30,30)
 		self.setLayout(self.layout)
+		self.onlyFloat = QDoubleValidator()
 		self.populate()
 		center_window(self)
 
@@ -465,6 +466,7 @@ class SetupConditionLabels(QWidget):
 			hbox.addWidget(QLabel('concentration: '), 5)
 			hbox.addWidget(self.concentrations_cbs[i], 10)
 			self.concentrations_cbs[i].setPlaceholderText('e.g. 100 (pM)')
+			self.concentrations_cbs[i].setValidator(self.onlyFloat)
 			
 			hbox.addWidget(QLabel('pharmaceutical agents: '), 5)
 			hbox.addWidget(self.pharmaceutical_agents_cbs[i], 10)

@@ -21,7 +21,16 @@ class AppInitWindow(QMainWindow):
 		self.init_styles()
 		self.setWindowTitle("celldetective")
 
-		self.n_threads = psutil.cpu_count()
+		self.n_threads = min([8,psutil.cpu_count()])
+
+		try:
+			subprocess.check_output('nvidia-smi')
+			print('Nvidia GPU detected')			
+			self.use_gpu = True
+		except Exception: # this command not being found can raise quite a few different errors depending on the configuration
+			print('No Nvidia GPU in system!')
+			self.use_gpu = False
+
 		self.soft_path = get_software_location()
 		self.onlyInt = QIntValidator()
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','logo.png'])))
@@ -167,10 +176,19 @@ class AppInitWindow(QMainWindow):
 
 		self.threads_le = QLineEdit(str(self.n_threads))
 		self.threads_le.setValidator(self.onlyInt)
+
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('Parallel threads: '), 33)
 		hbox.addWidget(self.threads_le, 66)
 		layout.addLayout(hbox)
+
+		self.use_gpu_checkbox = QCheckBox()
+		hbox2 = QHBoxLayout()
+		hbox2.addWidget(QLabel('Use GPU: '), 33)
+		hbox2.addWidget(self.use_gpu_checkbox, 66)
+		layout.addLayout(hbox2)
+		if self.use_gpu:
+			self.use_gpu_checkbox.setChecked(True)
 
 		self.validateThreadBtn = QPushButton('Submit')
 		self.validateThreadBtn.setStyleSheet(self.button_style_sheet)
@@ -181,6 +199,7 @@ class AppInitWindow(QMainWindow):
 
 	def set_threads(self):
 		self.n_threads = int(self.threads_le.text())
+		self.use_gpu = bool(self.use_gpu_checkbox.isChecked())
 		self.ThreadsWidget.close()
 
 
@@ -369,7 +388,7 @@ if __name__ == "__main__":
 			sleep(0.001)
 			App.processEvents()
 
-	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
+	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 	from PyQt5.QtCore import Qt, QUrl
 	from PyQt5.QtGui import QIcon, QDesktopServices, QIntValidator
 	from glob import glob
@@ -382,6 +401,8 @@ if __name__ == "__main__":
 	import os
 	from celldetective.gui.about import AboutWidget
 	import psutil
+	import subprocess
+
 
 	window = AppInitWindow(App)
 

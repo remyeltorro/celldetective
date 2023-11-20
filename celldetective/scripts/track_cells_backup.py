@@ -20,7 +20,6 @@ import os
 from natsort import natsorted
 from art import tprint
 from tifffile import imread
-import threading
 
 tprint("Track")
 
@@ -28,13 +27,11 @@ parser = argparse.ArgumentParser(description="Segment a movie in position with t
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-p',"--position", required=True, help="Path to the position")
 parser.add_argument("--mode", default="target", choices=["target","effector","targets","effectors"],help="Cell population of interest")
-parser.add_argument("--threads", default="8",help="Number of parallel threads")
 
 args = parser.parse_args()
 process_arguments = vars(args)
 pos = str(process_arguments['position'])
 mode = str(process_arguments['mode'])
-n_threads = int(process_arguments['threads'])
 
 if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets"
@@ -133,32 +130,18 @@ img_num_channels = _get_img_num_per_channel(channel_indices, len_movie, nbr_chan
 #######################################
 
 timestep_dataframes = []
+for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
+	
+	# Load channels at time t
+	img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
+	lbl = imread(label_path[t])
 
-def measure_index(indices):
-	for t in tqdm(indices,desc="frame"):
-		
-		# Load channels at time t
-		img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
-		lbl = imread(label_path[t])
-
-		df_props = measure_features(img, lbl, features = features+['centroid'], border_dist=None, 
-										channels=channel_names, haralick_options=haralick_options, verbose=False, 
-									)
-		df_props.rename(columns={'centroid-1': 'x', 'centroid-0': 'y'},inplace=True)
-		df_props['t'] = int(t)
-		timestep_dataframes.append(df_props)
-
-# Multithreading
-indices = list(range(img_num_channels.shape[1]))
-chunks = np.array_split(indices, n_threads)
-threads = []
-for i in range(n_threads):
-	thread_i = threading.Thread(target=measure_index, args=[chunks[i]])
-	threads.append(thread_i)
-for th in threads:
-	th.start()
-for th in threads:
-	th.join()
+	df_props = measure_features(img, lbl, features = features+['centroid'], border_dist=None, 
+									channels=channel_names, haralick_options=haralick_options, verbose=False, 
+								)
+	df_props.rename(columns={'centroid-1': 'x', 'centroid-0': 'y'},inplace=True)
+	df_props['t'] = int(t)
+	timestep_dataframes.append(df_props)
 
 df = pd.concat(timestep_dataframes)	
 df.reset_index(inplace=True, drop=True)

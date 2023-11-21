@@ -138,10 +138,10 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 			signal = group[col].to_numpy()
 			signals[i,frames,j] = signal
 
-	# for i in range(5):
-	# 	print('pre model')
-	# 	plt.plot(signals[i,:,0])
-	# 	plt.show()
+	for i in range(5):
+		print('pre model')
+		plt.plot(signals[i,:,0])
+		plt.show()
 
 	model = SignalDetectionModel(pretrained=complete_path)
 	print('signal shape: ', signals.shape)

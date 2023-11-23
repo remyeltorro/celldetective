@@ -6,6 +6,8 @@ from os import sep
 from celldetective.utils import get_software_location
 #from PyQt5.QtCore import QEventLoop
 from time import time, sleep
+import os
+os.environ['QT_DEBUG_PLUGINS'] = '1'
 
 class AppInitWindow(QMainWindow):
 

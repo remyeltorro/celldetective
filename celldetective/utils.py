@@ -656,7 +656,7 @@ def _extract_labels_from_config(config,number_of_wells):
 
 	except Exception as e:
 		print(f"{e}: the well labels cannot be read from the concentration and cell_type fields")
-		labels = np.linspace(0,number_wells-1,number_wells,dtype=str)
+		labels = np.linspace(0,number_of_wells-1,number_of_wells,dtype=str)
 
 	return(labels)
 

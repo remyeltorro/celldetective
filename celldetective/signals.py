@@ -12,7 +12,7 @@ from tensorflow.config.experimental import list_physical_devices, set_memory_gro
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D
-
+from tensorflow.keras.callbacks import Callback
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import jaccard_score, balanced_accuracy_score
 from scipy.interpolate import interp1d
@@ -29,8 +29,22 @@ import random
 from celldetective.utils import color_from_status, color_from_class
 from math import floor, ceil
 from scipy.optimize import curve_fit
+import time
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
+
+
+class TimeHistory(Callback):
+	
+	def on_train_begin(self, logs={}):
+		self.times = []
+
+	def on_epoch_begin(self, epoch, logs={}):
+		self.epoch_time_start = time.time()
+
+	def on_epoch_end(self, epoch, logs={}):
+		self.times.append(time.time() - self.epoch_time_start)
+
 
 def analyze_signals(trajectories, model, interpolate_na=True,
 					selected_signals=None,
@@ -138,10 +152,10 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 			signal = group[col].to_numpy()
 			signals[i,frames,j] = signal
 
-	for i in range(5):
-		print('pre model')
-		plt.plot(signals[i,:,0])
-		plt.show()
+	# for i in range(5):
+	# 	print('pre model')
+	# 	plt.plot(signals[i,:,0])
+	# 	plt.show()
 
 	model = SignalDetectionModel(pretrained=complete_path)
 	print('signal shape: ', signals.shape)
@@ -335,7 +349,7 @@ class SignalDetectionModel(object):
 			pass
 	
 	def fit_from_directory(self, ds_folders, normalize=True, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, target_directory=None, augment=True, augmentation_factor=2, 
-						  validation_split=0.25, test_split=0.0, batch_size = 64, epochs=300, recompile_pretrained=False, learning_rate=0.01,
+						  validation_split=0.20, test_split=0.0, batch_size = 64, epochs=300, recompile_pretrained=False, learning_rate=0.01,
 						  loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
 		"""
 		
@@ -595,6 +609,8 @@ class SignalDetectionModel(object):
 		self.model_class = load_model(os.sep.join([self.model_folder,"classifier.h5"]))
 		self.model_class.load_weights(os.sep.join([self.model_folder,"classifier.h5"]))
 		
+		self.dico = {"history_classifier": self.history_classifier, "execution_time_classifier": self.cb[-1].times}
+
 		if hasattr(self, 'x_test'):
 			
 			predictions = self.model_class.predict(self.x_test).argmax(axis=1)
@@ -609,6 +625,8 @@ class SignalDetectionModel(object):
 
 			# Confusion matrix on test set
 			results = confusion_matrix(ground_truth,predictions)
+			self.dico.update({"test_IoU": IoU_score, "test_balanced_accuracy": balanced_accuracy, "test_confusion": results})
+
 			try:
 				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
 			except:
@@ -629,6 +647,8 @@ class SignalDetectionModel(object):
 
 			# Confusion matrix on validation set
 			results = confusion_matrix(ground_truth,predictions)
+			self.dico.update({"val_IoU": IoU_score, "val_balanced_accuracy": balanced_accuracy, "val_confusion": results})
+
 			try:
 				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
 			except:
@@ -691,12 +711,15 @@ class SignalDetectionModel(object):
 								verbose=1)			
 
 		self.plot_model_history(mode="regressor")
+		self.dico.update({"history_regressor": self.history_regressor, "execution_time_regressor": self.cb[-1].times})
 		
 
 		# Evaluate best model 
 		self.model_reg = load_model(os.sep.join([self.model_folder,"regressor.h5"]))
 		self.model_reg.load_weights(os.sep.join([self.model_folder,"regressor.h5"]))
 		self.evaluate_regression_model()
+		
+		np.save(os.sep.join([self.model_folder,"scores.npy"]), self.dico)
 		
 
 
@@ -770,6 +793,7 @@ class SignalDetectionModel(object):
 			test_error = mse(ground_truth, predictions).numpy()
 			print(f"MSE on test set: {test_error}...")
 			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"test_regression.png"]))
+			self.dico.update({"test_mse": test_error})
 
 		if hasattr(self, 'x_val'):
 			# Validation set
@@ -779,6 +803,7 @@ class SignalDetectionModel(object):
 			val_error = mse(ground_truth, predictions).numpy()
 			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"validation_regression.png"]))
 			print(f"MSE on validation set: {val_error}...")
+			self.dico.update({"val_mse": val_error})
 
 
 	def gather_callbacks(self, mode):
@@ -830,6 +855,9 @@ class SignalDetectionModel(object):
 		log_dir = self.model_folder+os.sep
 		cb_tb = TensorBoard(log_dir=log_dir, update_freq='batch')
 		self.cb.append(cb_tb)
+
+		cb_time = TimeHistory()
+		self.cb.append(cb_time)
 		
 		
 	

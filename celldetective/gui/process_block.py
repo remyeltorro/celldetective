@@ -14,6 +14,7 @@ from celldetective.signals import analyze_signals_at_position
 import numpy as np
 from glob import glob
 from natsort import natsorted
+from superqt import QLabeledDoubleSlider
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -488,7 +489,10 @@ class ProcessPanel(QFrame):
 				hbox_channel = QHBoxLayout()
 				hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
 				hbox_channel.addWidget(self.cellpose_channel_cb[k])
-				self.cellpose_channel_cb[k].addItems(self.exp_channels)
+				if k==1:
+					self.cellpose_channel_cb[k].addItems(list(self.exp_channels)+['None'])
+				else:
+					self.cellpose_channel_cb[k].addItems(list(self.exp_channels))					
 				idx = self.cellpose_channel_cb[k].findText(self.cellpose_channel_template[k])
 				self.cellpose_channel_cb[k].setCurrentIndex(idx)
 				layout.addLayout(hbox_channel)
@@ -497,6 +501,26 @@ class ProcessPanel(QFrame):
 			hbox.addWidget(QLabel('diameter [px]: '), 33)
 			hbox.addWidget(self.diameter_le, 66)
 			layout.addLayout(hbox)
+
+			self.flow_slider = QLabeledDoubleSlider()
+			self.flow_slider.setOrientation(1)
+			self.flow_slider.setRange(-6,6)
+			self.flow_slider.setValue(0.4)
+
+			hbox = QHBoxLayout()
+			hbox.addWidget(QLabel('flow threshold: '), 33)
+			hbox.addWidget(self.flow_slider, 66)
+			layout.addLayout(hbox)	
+
+			self.cellprob_slider = QLabeledDoubleSlider()
+			self.cellprob_slider.setOrientation(1)
+			self.cellprob_slider.setRange(-6,6)
+			self.cellprob_slider.setValue(0.)
+
+			hbox = QHBoxLayout()
+			hbox.addWidget(QLabel('cellprob threshold: '), 33)
+			hbox.addWidget(self.cellprob_slider, 66)
+			layout.addLayout(hbox)			
 
 			self.set_cellpose_scale_btn = QPushButton('set')
 			self.set_cellpose_scale_btn.clicked.connect(self.set_cellpose_scale)
@@ -667,14 +691,19 @@ class ProcessPanel(QFrame):
 	def set_cellpose_scale(self):
 
 		scale = self.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		flow_thresh = self.flow_slider.value()
+		cellprob_thresh = self.cellprob_slider.value()
 		model_complete_path = locate_segmentation_model(f'CP_{self.mode}')
 		input_config_path = model_complete_path+"config_input.json"
 		new_channels = [self.cellpose_channel_cb[i].currentText() for i in range(2)]
+		print(new_channels)
 		with open(input_config_path) as config_file:
 			input_config = json.load(config_file)
 		
 		input_config['spatial_calibration'] = scale
 		input_config['channels'] = new_channels
+		input_config['flow_threshold'] = flow_thresh
+		input_config['cellprob_threshold'] = cellprob_thresh
 		with open(input_config_path, 'w') as f:
 			json.dump(input_config, f, indent=4)
 

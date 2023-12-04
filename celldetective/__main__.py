@@ -23,7 +23,7 @@ class AppInitWindow(QMainWindow):
 		self.init_styles()
 		self.setWindowTitle("celldetective")
 
-		self.n_threads = min([8,psutil.cpu_count()])
+		self.n_threads = min([4,psutil.cpu_count()])
 
 		try:
 			subprocess.check_output('nvidia-smi')

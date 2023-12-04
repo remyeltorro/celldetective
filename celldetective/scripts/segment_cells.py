@@ -79,6 +79,7 @@ with open(model_complete_path+"config_input.json") as config_file:
 
 # Parse target channels
 required_channels = input_config["channels"]
+
 channel_indices = _extract_channel_indices_from_config(config, required_channels)
 print(f'Required channels: {required_channels} located at channel indices {channel_indices}.')
 required_spatial_calibration = input_config['spatial_calibration']
@@ -136,7 +137,7 @@ if model_type=='stardist':
 
 elif model_type=='cellpose':
 	print(model_complete_path+modelname, 'nchan',len(required_channels), required_channels)
-	model = CellposeModel(gpu=use_gpu, pretrained_model=model_complete_path+modelname, diam_mean=30.0, model_type=None, nchan=len(required_channels))
+	model = CellposeModel(gpu=use_gpu, pretrained_model=model_complete_path+modelname, model_type=None, nchan=len(required_channels)) #diam_mean=30.0, 
 	print(f'Cellpose model {modelname} successfully loaded.')
 
 # Loop over all frames and segment
@@ -149,6 +150,8 @@ def segment_index(indices):
 		f = normalize_per_channel([f], normalization_percentile_mode=normalization_percentile, normalization_values=normalization_values,
 									normalization_clipping=normalization_clip)
 		f = f[0]
+		if np.any(img_num_channels[:,t]==-1):
+			f[:,:,np.where(img_num_channels[:,t]==-1)[0]] = 0.
 
 		if model_type=="stardist":
 			Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)

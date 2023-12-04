@@ -514,13 +514,16 @@ def _extract_channel_indices_from_config(config, channels_to_extract):
 	# V2
 	channels = []
 	for c in channels_to_extract:
-		try:
-			c1 = int(ConfigSectionMap(config,"Channels")[c])
-			channels.append(c1)
-		except Exception as e:
-			print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
-			channels = None
-			break
+		if c!='None':
+			try:
+				c1 = int(ConfigSectionMap(config,"Channels")[c])
+				channels.append(c1)
+			except Exception as e:
+				print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
+				channels = None
+				break
+		else:
+			channels.append(None)
 
 	# LEGACY
 	if channels is None:
@@ -615,7 +618,10 @@ def _get_img_num_per_channel(channels_indices, len_movie, nbr_channels):
 
 	img_num_all_channels = []
 	for c in channels_indices:
-		indices = np.arange(len_movie*nbr_channels)[c::nbr_channels]
+		if c is not None:
+			indices = np.arange(len_movie*nbr_channels)[c::nbr_channels]
+		else:
+			indices = [-1]*len_movie
 		img_num_all_channels.append(indices)
 	img_num_all_channels = np.array(img_num_all_channels, dtype=int)	
 	return img_num_all_channels

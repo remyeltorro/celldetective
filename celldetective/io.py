@@ -1100,8 +1100,10 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_targets", os.sep])
 	elif mode=='effectors':
 		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_effectors", os.sep])
+	elif mode=='generic':
+		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_generic", os.sep])		
 
-	available_models = glob(modelpath+'*/')
+	available_models = natsorted(glob(modelpath+'*/'))
 	available_models = [m.replace('\\','/').split('/')[-2] for m in available_models]
 
 	if not return_path:
@@ -1113,11 +1115,11 @@ def locate_segmentation_model(name):
 	
 	modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation*", os.sep])
 	print(f'Looking for {name} in {modelpath}')
-	models = glob(modelpath+'*/')
+	models = glob(modelpath+f'*{os.sep}')
 
 	match=None
 	for m in models:
-		if name==m.replace('\\','/').split('/')[-2]:
+		if name==m.replace('\\',os.sep).split(os.sep)[-2]:
 			match = m
 			return match
 	return match

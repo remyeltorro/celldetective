@@ -368,12 +368,21 @@ class ProcessPanel(QFrame):
 
 		self.seg_model_list.clear()
 		self.seg_models = get_segmentation_models_list(mode=self.mode, return_path=False)
-		self.seg_models.insert(0,'Threshold')
 		thresh = 40
-		models_truncated = [m[:thresh - 3]+'...' if len(m)>thresh else m for m in self.seg_models]
-		self.seg_model_list.addItems(models_truncated)
+		self.models_truncated = [m[:thresh - 3]+'...' if len(m)>thresh else m for m in self.seg_models]
+		#self.seg_model_list.addItems(models_truncated)
+
+		self.seg_models_generic = get_segmentation_models_list(mode="generic", return_path=False)
+		self.seg_models.append('Threshold')
+		self.seg_models.extend(self.seg_models_generic)
+
+		#self.seg_models_generic.insert(0,'Threshold')
+		self.seg_model_list.addItems(self.seg_models)		
+
 		for i in range(len(self.seg_models)):
 			self.seg_model_list.setItemData(i, self.seg_models[i], Qt.ToolTipRole)
+
+		self.seg_model_list.insertSeparator(len(self.models_truncated))
 
 		
 		#if ("live_nuclei_channel" in self.exp_channels)*("dead_nuclei_channel" in self.exp_channels):
@@ -472,8 +481,12 @@ class ProcessPanel(QFrame):
 			if returnValue == QMessageBox.No:
 				return None
 		
-		model_name = self.seg_models[self.seg_model_list.currentIndex()]
-		if model_name==f'CP_{self.mode}' and not self.cellpose_calibrated:
+		self.model_name = self.seg_models[self.seg_model_list.currentIndex()]
+		if self.seg_model_list.currentIndex() > len(self.models_truncated):
+			self.model_name = self.seg_models[self.seg_model_list.currentIndex()-1]
+		print(self.model_name, self.seg_model_list.currentIndex())
+
+		if self.model_name.startswith('CP') and self.model_name in self.seg_models_generic and not self.cellpose_calibrated:
 
 			self.diamWidget = QWidget()
 			self.diamWidget.setWindowTitle('Estimate diameter')
@@ -484,6 +497,9 @@ class ProcessPanel(QFrame):
 
 			self.cellpose_channel_cb = [QComboBox() for i in range(2)]
 			self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
+			if self.model_name=="CP_nuclei":
+				self.cellpose_channel_template = ['live_nuclei_channel', 'None']
+
 
 			for k in range(2):
 				hbox_channel = QHBoxLayout()
@@ -578,8 +594,7 @@ class ProcessPanel(QFrame):
 							print(f"Segmentation from threshold config: {self.threshold_config}")
 							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent.parent.n_threads)
 					else:
-
-						segment_at_position(self.pos, self.mode, model_name, stack_prefix=self.parent.movie_prefix, use_gpu=self.parent.parent.use_gpu, threads=self.parent.parent.n_threads)
+						segment_at_position(self.pos, self.mode, self.model_name, stack_prefix=self.parent.movie_prefix, use_gpu=self.parent.parent.use_gpu, threads=self.parent.parent.n_threads)
 
 				if self.track_action.isChecked():
 					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent.position_list.currentText()!="*":
@@ -691,9 +706,11 @@ class ProcessPanel(QFrame):
 	def set_cellpose_scale(self):
 
 		scale = self.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		if self.model_name=="CP_nuclei":
+			scale = self.parent.PxToUm * float(self.diameter_le.text()) / 17.0
 		flow_thresh = self.flow_slider.value()
 		cellprob_thresh = self.cellprob_slider.value()
-		model_complete_path = locate_segmentation_model(f'CP_{self.mode}')
+		model_complete_path = locate_segmentation_model(self.model_name)
 		input_config_path = model_complete_path+"config_input.json"
 		new_channels = [self.cellpose_channel_cb[i].currentText() for i in range(2)]
 		print(new_channels)

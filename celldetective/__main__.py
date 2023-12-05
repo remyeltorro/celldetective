@@ -7,7 +7,7 @@ from celldetective.utils import get_software_location
 #from PyQt5.QtCore import QEventLoop
 from time import time, sleep
 import os
-os.environ['QT_DEBUG_PLUGINS'] = '1'
+#os.environ['QT_DEBUG_PLUGINS'] = '1'
 
 class AppInitWindow(QMainWindow):
 
@@ -23,7 +23,7 @@ class AppInitWindow(QMainWindow):
 		self.init_styles()
 		self.setWindowTitle("celldetective")
 
-		self.n_threads = min([4,psutil.cpu_count()])
+		self.n_threads = min([1,psutil.cpu_count()])
 
 		try:
 			subprocess.check_output('nvidia-smi')

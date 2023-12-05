@@ -159,3 +159,4 @@ cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks
 celldetective/recent.txt
+celldetective/celldetective/recent.txt

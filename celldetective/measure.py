@@ -379,7 +379,6 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 		df_props = rename_intensity_column(df_props, channels)
 	df_props.rename(columns={"label": "class_id"},inplace=True)
 	df_props['class_id'] = df_props['class_id'].astype(float)
-	df_props.to_csv('test.csv',index=False)
 
 	return df_props
 

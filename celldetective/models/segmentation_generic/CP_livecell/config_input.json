@@ -11,7 +11,7 @@
         true
     ],
     "normalization_clip": [
-        false,
+        true,
         true
     ],
     "normalization_values": [

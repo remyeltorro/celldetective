@@ -35,6 +35,7 @@ class ProcessPanel(QFrame):
 		self.threshold_config_effectors = None
 		self.wells = np.array(self.parent.wells,dtype=str)
 		self.cellpose_calibrated = False
+		self.stardist_calibrated = False
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -481,9 +482,10 @@ class ProcessPanel(QFrame):
 			if returnValue == QMessageBox.No:
 				return None
 		
-		self.model_name = self.seg_models[self.seg_model_list.currentIndex()]
 		if self.seg_model_list.currentIndex() > len(self.models_truncated):
 			self.model_name = self.seg_models[self.seg_model_list.currentIndex()-1]
+		else:
+			self.model_name = self.seg_models[self.seg_model_list.currentIndex()]
 		print(self.model_name, self.seg_model_list.currentIndex())
 
 		if self.model_name.startswith('CP') and self.model_name in self.seg_models_generic and not self.cellpose_calibrated:
@@ -545,6 +547,44 @@ class ProcessPanel(QFrame):
 			self.diamWidget.show()
 			center_window(self.diamWidget)
 			return None
+
+
+		if self.model_name.startswith('SD') and self.model_name in self.seg_models_generic and not self.stardist_calibrated:
+
+			self.diamWidget = QWidget()
+			self.diamWidget.setWindowTitle('Channels')
+			
+			layout = QVBoxLayout()
+			self.diamWidget.setLayout(layout)
+
+			self.stardist_channel_cb = [QComboBox() for i in range(1)]
+			self.stardist_channel_template = ['live_nuclei_channel']
+			max_i = 1
+			if self.model_name=="SD_versatile_he":
+				self.stardist_channel_template = ["H&E_1","H&E_2","H&E_3"]
+				self.stardist_channel_cb = [QComboBox() for i in range(3)]
+				max_i = 3
+
+			for k in range(max_i):
+				hbox_channel = QHBoxLayout()
+				hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
+				hbox_channel.addWidget(self.stardist_channel_cb[k])
+				if k==1:
+					self.stardist_channel_cb[k].addItems(list(self.exp_channels)+['None'])
+				else:
+					self.stardist_channel_cb[k].addItems(list(self.exp_channels))					
+				idx = self.stardist_channel_cb[k].findText(self.stardist_channel_template[k])
+				self.stardist_channel_cb[k].setCurrentIndex(idx)
+				layout.addLayout(hbox_channel)
+
+			self.set_stardist_scale_btn = QPushButton('set')
+			self.set_stardist_scale_btn.clicked.connect(self.set_stardist_scale)
+			layout.addWidget(self.set_stardist_scale_btn)
+
+			self.diamWidget.show()
+			center_window(self.diamWidget)
+			return None
+
 
 		for w_idx in self.well_index:
 
@@ -728,6 +768,31 @@ class ProcessPanel(QFrame):
 		print('model scale automatically computed: ', scale)
 		self.diamWidget.close()
 		self.process_population()
+
+	def set_stardist_scale(self):
+
+		# scale = self.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		# if self.model_name=="CP_nuclei":
+		# 	scale = self.parent.PxToUm * float(self.diameter_le.text()) / 17.0
+		# flow_thresh = self.flow_slider.value()
+		# cellprob_thresh = self.cellprob_slider.value()
+		model_complete_path = locate_segmentation_model(self.model_name)
+		input_config_path = model_complete_path+"config_input.json"
+		new_channels = [self.stardist_channel_cb[i].currentText() for i in range(len(self.stardist_channel_cb))]
+		with open(input_config_path) as config_file:
+			input_config = json.load(config_file)
+		
+		# input_config['spatial_calibration'] = scale
+		input_config['channels'] = new_channels
+		# input_config['flow_threshold'] = flow_thresh
+		# input_config['cellprob_threshold'] = cellprob_thresh
+		with open(input_config_path, 'w') as f:
+			json.dump(input_config, f, indent=4)
+
+		self.stardist_calibrated = True
+		self.diamWidget.close()
+		self.process_population()
+
 
 class NeighPanel(QFrame):
 	def __init__(self, parent):

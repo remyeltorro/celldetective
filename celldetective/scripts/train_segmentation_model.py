@@ -145,8 +145,14 @@ if model_type=='cellpose':
 	os.rmdir(os.sep.join([target_directory, model_name, 'models']))
 
 	diameter = model.diam_labels
-	input_spatial_calibration = spatial_calibration * diameter / 30.0
-	config_inputs = {"channels": target_channels, "diameter": 30.0, 'cellprob_threshold': 0., 'flow_threshold': 0.4,
+	if not os.path.split(pretrained)[-1]=='CP_nuclei':
+		standard_diameter = 30.0
+	else:
+		standard_diameter = 17.0
+
+	input_spatial_calibration = spatial_calibration #*diameter / standard_diameter
+
+	config_inputs = {"channels": target_channels, "diameter": standard_diameter, 'cellprob_threshold': 0., 'flow_threshold': 0.4,
 	'normalization_percentile': normalization_percentile, 'normalization_clip': normalization_clip,
 	'normalization_values': normalization_values, 'model_type': 'cellpose',
 	'spatial_calibration': input_spatial_calibration}

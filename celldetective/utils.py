@@ -616,6 +616,9 @@ def _extract_nbr_channels_from_config(config, return_names=False):
 
 def _get_img_num_per_channel(channels_indices, len_movie, nbr_channels):
 
+	len_movie = int(len_movie)
+	nbr_channels = int(nbr_channels)
+	
 	img_num_all_channels = []
 	for c in channels_indices:
 		if c is not None:
@@ -951,15 +954,16 @@ def normalize_per_channel(X, normalization_percentile_mode=True, normalization_v
 		norm_x = np.zeros_like(x, dtype=np.float32)
 		for k in range(x.shape[-1]):
 			chan = x[:,:,k]
-			if normalization_percentile_mode[k]:
-				min_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][0])
-				max_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][1])
-			else:
-				min_val = normalization_values[k][0]
-				max_val = normalization_values[k][1]
+			if not np.all(chan.flatten()==0):
+				if normalization_percentile_mode[k]:
+					min_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][0])
+					max_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][1])
+				else:
+					min_val = normalization_values[k][0]
+					max_val = normalization_values[k][1]
 
-			clip_option = normalization_clipping[k]
-			norm_x[:,:,k] = normalize_mi_ma(chan.astype(np.float32), min_val, max_val, clip=clip_option, eps=1e-20, dtype=np.float32)
+				clip_option = normalization_clipping[k]
+				norm_x[:,:,k] = normalize_mi_ma(chan.astype(np.float32), min_val, max_val, clip=clip_option, eps=1e-20, dtype=np.float32)
 		
 		X[i] = norm_x
 
@@ -996,14 +1000,24 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 					try:
 						ch_idx = []
 						for c in channels:
-							idx = config['channels'].index(c)
-							ch_idx.append(idx)
+							if c!='None':
+								idx = config['channels'].index(c)
+								ch_idx.append(idx)
+							else:
+								ch_idx.append(np.nan)
 						im_calib = config['spatial_calibration']
 					except Exception as e:
 						print(e,' channels and/or spatial calibration could not be found in the config... Skipping image.')
 						continue
 				
-				image = image[ch_idx]
+				ch_idx = np.array(ch_idx)
+				ch_idx_safe = np.copy(ch_idx)
+				ch_idx_safe[ch_idx_safe!=ch_idx_safe] = 0
+				ch_idx_safe = ch_idx_safe.astype(int)
+				print(ch_idx_safe)
+				image = image[ch_idx_safe]
+				image[np.where(ch_idx!=ch_idx)[0],:,:] = 0
+
 				image = np.moveaxis(image,0,-1)
 				assert image.ndim==3,'The image has a wrong number of dimensions. Abort.'
 	

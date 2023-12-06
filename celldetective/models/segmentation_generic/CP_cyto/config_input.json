@@ -1,7 +1,7 @@
 {
     "channels": [
-        "brightfield_channel",
-        "live_nuclei_channel"
+        "effector_fluo_channel",
+        "None"
     ],
     "diameter": 30.0,
     "cellprob_threshold": 0.0,
@@ -11,7 +11,7 @@
         true
     ],
     "normalization_clip": [
-        false,
+        true,
         true
     ],
     "normalization_values": [
@@ -25,5 +25,5 @@
         ]
     ],
     "model_type": "cellpose",
-    "spatial_calibration": 1.8333333333333333
+    "spatial_calibration": 0.3112
 }

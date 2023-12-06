@@ -117,7 +117,7 @@ scale = _estimate_scale_factor(spatial_calibration, required_spatial_calibration
 
 nbr_channels = _extract_nbr_channels_from_config(config)
 print(f'Number of channels in the input movie: {nbr_channels}')
-img_num_channels = _get_img_num_per_channel(channel_indices, len_movie, nbr_channels)
+img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
 # If everything OK, prepare output, load models
 print('Erasing previous segmentation folder.')

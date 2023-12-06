@@ -335,7 +335,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		self.normalization_max_value_le = [QLineEdit('99.99') for i in range(self.max_nbr_channels)]
 
 		self.channel_items = ['--', 'brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 
-							 'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2'
+							 'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2','None'
 							]
 		exp_ch = self.parent.parent.exp_channels
 		for c in exp_ch:
@@ -394,14 +394,20 @@ class ConfigSegmentationModelTraining(QMainWindow):
 
 	def showDialog_pretrained(self):
 
+		try:
+			self.cancel_pretrained.click()
+		except:
+			pass
+
 		self.pretrained_model = QFileDialog.getExistingDirectory(
 						self, "Open Directory",
-						os.sep.join([self.soft_path, 'celldetective', 'models', f'segmentation_{self.mode}','']),
+						os.sep.join([self.soft_path, 'celldetective', 'models', f'segmentation_generic','']),
 						QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
 						)
 
 		if self.pretrained_model is not None:
 		# 	self.foldername = self.file_dialog_pretrained.selectedFiles()[0]
+			print("pretrained model: ", self.pretrained_model, self.pretrained_model.split(os.sep))
 			subfiles = glob(os.sep.join([self.pretrained_model,"*"]))
 			if os.sep.join([self.pretrained_model,"config_input.json"]) in subfiles:
 				self.load_pretrained_config()
@@ -415,6 +421,38 @@ class ConfigSegmentationModelTraining(QMainWindow):
 				#self.recompile_option.setEnabled(False)	
 				self.cancel_pretrained.setVisible(False)
 		print(self.pretrained_model)
+
+		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
+		self.model_name = self.pretrained_model.split(os.sep)[-1]
+		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
+
+			self.diamWidget = QWidget()
+			self.diamWidget.setWindowTitle('Estimate diameter')
+			
+			layout = QVBoxLayout()
+			self.diamWidget.setLayout(layout)
+			self.diameter_le = QLineEdit('40')
+
+			hbox = QHBoxLayout()
+			hbox.addWidget(QLabel('diameter [px]: '), 33)
+			hbox.addWidget(self.diameter_le, 66)
+			layout.addLayout(hbox)
+
+			self.set_cellpose_scale_btn = QPushButton('set')
+			self.set_cellpose_scale_btn.clicked.connect(self.set_cellpose_scale)
+			layout.addWidget(self.set_cellpose_scale_btn)
+
+			self.diamWidget.show()
+			center_window(self.diamWidget)
+
+	def set_cellpose_scale(self):
+
+		scale = self.parent.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		if self.model_name=="CP_nuclei":
+			scale = self.parent.parent.PxToUm * float(self.diameter_le.text()) / 17.0
+		self.spatial_calib_le.setText(str(scale))
+		self.diamWidget.close()		
+
 
 	def showDialog_dataset(self):
 
@@ -466,6 +504,17 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		f = open(os.sep.join([self.pretrained_model,"config_input.json"]))
 		data = json.load(f)
 		channels = data["channels"]
+		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
+		self.model_name = self.pretrained_model.split(os.sep)[-1]
+		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
+			channels = ['brightfield_channel', 'live_nuclei_channel']
+			if self.model_name=="CP_nuclei":
+				channels = ['live_nuclei_channel', 'None']
+		if self.model_name.startswith('SD') and self.seg_folder=='segmentation_generic':
+			channels = ['live_nuclei_channel']
+			if self.model_name=="SD_versatile_he":
+				channels = ["H&E_1","H&E_2","H&E_3"]
+
 		normalization_percentile = data['normalization_percentile']
 		normalization_clip = data['normalization_clip']
 		normalization_values = data['normalization_values']

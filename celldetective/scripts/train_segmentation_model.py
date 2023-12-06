@@ -145,10 +145,11 @@ if model_type=='cellpose':
 	os.rmdir(os.sep.join([target_directory, model_name, 'models']))
 
 	diameter = model.diam_labels
-	if not os.path.split(pretrained)[-1]=='CP_nuclei':
-		standard_diameter = 30.0
-	else:
+
+	if pretrained is not None and os.path.split(pretrained)[-1]=='CP_nuclei':
 		standard_diameter = 17.0
+	else:
+		standard_diameter = 30.0
 
 	input_spatial_calibration = spatial_calibration #*diameter / standard_diameter
 

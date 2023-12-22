@@ -222,6 +222,7 @@ class TableUI(QMainWindow):
 		self.violin_check = QCheckBox('violin')
 		self.strip_check = QCheckBox('strip')
 		self.box_check = QCheckBox('Boxplot')
+		self.boxenplot_check = QCheckBox('Boxenplot')
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
@@ -230,6 +231,7 @@ class TableUI(QMainWindow):
 		layout.addWidget(self.violin_check)
 		layout.addWidget(self.strip_check)
 		layout.addWidget(self.box_check)
+		layout.addWidget(self.boxenplot_check)
 
 		self.hue_cb = QComboBox()
 		self.hue_cb.addItems(list(self.data.columns))
@@ -298,6 +300,10 @@ class TableUI(QMainWindow):
 
 		if self.box_check.isChecked():
 			sns.boxplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+			legend = False
+
+		if self.boxenplot_check.isChecked():
+			sns.boxenplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 			legend = False
 
 		if self.strip_check.isChecked():

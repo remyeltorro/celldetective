@@ -282,7 +282,7 @@ class ConfigMeasurements(QMainWindow):
 		layout.addWidget(self.feat_sep3)
 
 		# Haralick features parameters
-		self.activate_haralick_btn = QCheckBox('activate Haralick texture features')
+		self.activate_haralick_btn = QCheckBox('Measure Haralick texture features')
 		self.activate_haralick_btn.toggled.connect(self.show_haralick_options)
 
 		self.haralick_channel_choice = QComboBox()
@@ -313,6 +313,11 @@ class ConfigMeasurements(QMainWindow):
 		self.haralick_normalization_mode_btn.setIconSize(QSize(20, 20))		
 		self.haralick_normalization_mode_btn.setToolTip("Switch to absolute normalization values.")
 		self.percentile_mode = True
+
+		min_percentile_hbox = QHBoxLayout()
+		min_percentile_hbox.addWidget(self.haralick_percentile_min_le, 90)
+		min_percentile_hbox.addWidget(self.haralick_normalization_mode_btn, 10)
+		min_percentile_hbox.setContentsMargins(0,0,0,0)
 
 		self.haralick_percentile_min_lbl = QLabel('Min percentile: ')
 		self.haralick_percentile_max_lbl = QLabel('Max percentile: ')
@@ -358,8 +363,9 @@ class ConfigMeasurements(QMainWindow):
 
 		slider_min_percentile_layout = QHBoxLayout()
 		slider_min_percentile_layout.addWidget(self.haralick_percentile_min_lbl,40)
-		slider_min_percentile_layout.addWidget(self.haralick_percentile_min_le,55)
-		slider_min_percentile_layout.addWidget(self.haralick_normalization_mode_btn, 5)
+		#slider_min_percentile_layout.addWidget(self.haralick_percentile_min_le,55)
+		slider_min_percentile_layout.addLayout(min_percentile_hbox, 60)
+		#slider_min_percentile_layout.addWidget(self.haralick_normalization_mode_btn, 5)
 		self.haralick_layout.addLayout(slider_min_percentile_layout)
 
 		slider_max_percentile_layout = QHBoxLayout()

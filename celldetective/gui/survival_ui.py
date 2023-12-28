@@ -666,7 +666,9 @@ class ConfigSurvival(QWidget):
 					self.no_meta = True
 
 			if not self.no_meta:
+				self.df_pos_info = self.df_pos_info.dropna(subset=['stack_path'])
 				files = self.df_pos_info['stack_path'].values
+				print(files)
 				pos_loc = [pos_label in f for f in files]
 				self.df_pos_info.loc[pos_loc, 'x'] = coords[0]
 				self.df_pos_info.loc[pos_loc, 'y'] = coords[1]

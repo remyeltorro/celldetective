@@ -44,7 +44,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.soft_path = get_software_location()
 		self.footprint = 30
 		self.min_dist = 30
-		self.cell_properties = ['centroid','area', 'perimeter', 'eccentricity','intensity_mean']
+		self.cell_properties = ['centroid','area', 'perimeter', 'eccentricity','intensity_mean','solidity']
 
 		if self.mode=="targets":
 			self.config_out_name = "threshold_targets.json"

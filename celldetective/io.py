@@ -45,6 +45,14 @@ def get_spatial_calibration(experiment):
 	
 	return PxToUm
 
+def get_movie_shape(experiment):
+	
+	config = get_config(experiment)
+	shape_x = int(ConfigSectionMap(self.exp_config,"MovieSettings")["shape_x"])
+	shape_y = int(ConfigSectionMap(self.exp_config,"MovieSettings")["shape_y"])
+	
+	return shape_x, shape_y
+
 def get_temporal_calibration(experiment):
 	
 	config = get_config(experiment)

@@ -68,6 +68,7 @@ def compute_attention_weight(dist_matrix, cut_distance, opposite_cell_status, op
 			row = dist_matrix[:,i]
 		elif axis==0:
 			row = dist_matrix[i,:]
+		row[row==0.] = 1.0E06
 		nbr_opposite = len(row[row<=cut_distance])
 		
 		if not include_dead_weight:
@@ -169,9 +170,9 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 				for k in range(dist_map.shape[0]):
 					
 					col = dist_map[k,:]
-					neighs_B = np.array([ids_B[i] for i in np.where((col<=d)*(d!=0.))[0]])
-					status_neigh_B = np.array([status_B[i] for i in np.where((col<=d)*(d!=0.))[0]])
-					dist_B = [round(col[i],2) for i in np.where((col<=d)*(d!=0.))[0]]
+					neighs_B = np.array([ids_B[i] for i in np.where((col<=d)*(col>1.0E-05))[0]])
+					status_neigh_B = np.array([status_B[i] for i in np.where((col<=d)*(col>1.0E-05))[0]])
+					dist_B = [round(col[i],2) for i in np.where((col<=d)*(col>1.0E-05))[0]]
 					if len(dist_B)>0:
 						closest_B_cell = neighs_B[np.argmin(dist_B)]    
 					

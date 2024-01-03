@@ -45,14 +45,6 @@ def get_spatial_calibration(experiment):
 	
 	return PxToUm
 
-def get_movie_shape(experiment):
-	
-	config = get_config(experiment)
-	shape_x = int(ConfigSectionMap(self.exp_config,"MovieSettings")["shape_x"])
-	shape_y = int(ConfigSectionMap(self.exp_config,"MovieSettings")["shape_y"])
-	
-	return shape_x, shape_y
-
 def get_temporal_calibration(experiment):
 	
 	config = get_config(experiment)
@@ -167,6 +159,8 @@ def get_position_table(pos, population, return_path=False):
 
 def get_position_movie_path(pos, prefix=''):
 
+	if not pos.endswith(os.sep):
+		pos+=os.sep
 	movies = glob(pos+os.sep.join(['movie',prefix+'*.tif']))
 	if len(movies)>0:
 		stack_path = movies[0]

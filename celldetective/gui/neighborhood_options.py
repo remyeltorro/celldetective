@@ -50,7 +50,7 @@ class ConfigNeighborhoods(QMainWindow):
 		self.screen_height = self.parent.parent.parent.screen_height
 		center_window(self)
 
-		self.setMinimumWidth(720)
+		self.setMinimumWidth(750)
 		self.setMinimumHeight(int(0.5*self.screen_height))
 		self.setMaximumHeight(int(0.95*self.screen_height))
 		
@@ -204,7 +204,7 @@ class ConfigNeighborhoods(QMainWindow):
 
 		self.ContentsReference = QFrame()
 		layout = QVBoxLayout(self.ContentsReference)
-		layout.setContentsMargins(0,0,0,0)
+		layout.setContentsMargins(15,15,15,15)
 
 		pop_hbox = QHBoxLayout()
 		pop_hbox.addWidget(QLabel('population: '),30)
@@ -256,7 +256,7 @@ class ConfigNeighborhoods(QMainWindow):
 
 		self.ContentsNeigh = QFrame()
 		layout = QVBoxLayout(self.ContentsNeigh)
-		layout.setContentsMargins(0,0,0,0)
+		layout.setContentsMargins(15,15,15,15)
 
 		pop_hbox = QHBoxLayout()
 		pop_hbox.addWidget(QLabel('population: '),30)

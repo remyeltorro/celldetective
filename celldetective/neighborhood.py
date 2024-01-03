@@ -15,7 +15,7 @@ import re
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 
-def set_live_status(setA,setB,status):
+def set_live_status(setA,setB,status, not_status_option):
 	"""
 
 	Match neighbors in set A and B within a circle of radius d. 
@@ -38,10 +38,18 @@ def set_live_status(setA,setB,status):
 		if status[0] is None:
 			setA.loc[:,'live_status'] = 1
 			status[0] = 'live_status'
+		elif status[0] is not None and isinstance(not_status_option,list):
+			if not_status_option[0]:
+				setA.loc[:,'not_'+status[0]] = [not a if a==0 or a==1 else np.nan for a in setA.loc[:,status[0]].values]
+				status[0] = 'not_'+status[0]
 		if status[1] is None:
 			setB.loc[:,'live_status'] = 1
 			status[1] = 'live_status'
-			
+		elif status[1] is not None and isinstance(not_status_option,list):
+			if not_status_option[1]:
+				setB.loc[:,'not_'+status[1]] = [not a if a==0 or a==1 else np.nan for a in setB.loc[:,status[1]].values]
+				status[1] = 'not_'+status[1]
+
 		assert status[0] in list(setA.columns)
 		assert status[1] in list(setB.columns)
 		
@@ -76,7 +84,7 @@ def compute_attention_weight(dist_matrix, cut_distance, opposite_cell_status, op
 
 	return weights, closest_opposite
 
-def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None, compute_cum_sum=True, 
+def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None, not_status_option=None, compute_cum_sum=True, 
 							  attention_weight=True, symmetrize=True, include_dead_weight=False,
 							  column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
 	
@@ -105,7 +113,7 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 	"""
 
 	# Check live_status option
-	setA, setB, status = set_live_status(setA, setB, status)
+	setA, setB, status = set_live_status(setA, setB, status, not_status_option)
 
 	# Check distance option 
 	if not isinstance(distance, list):
@@ -240,8 +248,8 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 		
 	return setA, setB
 
-def compute_neighborhood_at_position(pos, distance, population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=False, clear_neigh=False,
-	neighborhood_kwargs={'mode': 'two-pop','status': None,'include_dead_weight': True,"compute_cum_sum": False,"attention_weight": True, 'symmetrize': True}):
+def compute_neighborhood_at_position(pos, distance, population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=False, clear_neigh=False, event_time_col=None,
+	neighborhood_kwargs={'mode': 'two-pop','status': None, 'not_status_option': None,'include_dead_weight': True,"compute_cum_sum": False,"attention_weight": True, 'symmetrize': True}):
 	
 	pos = pos.replace('\\','/')
 	pos = rf"{pos}"
@@ -290,17 +298,21 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
 		if neighborhood_kwargs['symmetrize']:
 			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
+		
+		df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col)
 
 	df_A.to_pickle(path_A.replace('.csv','.pkl'))
-	df_B.to_pickle(path_B.replace('.csv','.pkl'))
+	if not population[0]==population[1]:
+		df_B.to_pickle(path_B.replace('.csv','.pkl'))
 
 	unwanted = df_A.columns[df_A.columns.str.startswith('neighborhood_')]
 	df_A2 = df_A.drop(columns=unwanted)
 	df_A2.to_csv(path_A, index=False)
 
-	unwanted = df_B.columns[df_B.columns.str.startswith('neighborhood_')]
-	df_B_csv = df_B.drop(unwanted, axis=1, inplace=False)
-	df_B_csv.to_csv(path_B,index=False)
+	if not population[0]==population[1]:
+		unwanted = df_B.columns[df_B.columns.str.startswith('neighborhood_')]
+		df_B_csv = df_B.drop(unwanted, axis=1, inplace=False)
+		df_B_csv.to_csv(path_B,index=False)
 
 	if return_tables:
 		return df_A, df_B
@@ -401,6 +413,47 @@ def compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive','e
 
 	return neigh_table
 
+def mean_neighborhood_before_event(neigh_table, neigh_col, event_time_col):
+	
+	if 'position' in list(neigh_table.columns):
+		groupbycols = ['position','TRACK_ID']
+	else:
+		groupbycols = ['TRACK_ID']
+	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
+	
+	if event_time_col is None:
+		neigh_table.loc[:,'event_time_temp'] = neigh_table['FRAME'].max()
+		event_time_col = 'event_time_temp'
+	
+	for tid,group in neigh_table.groupby(groupbycols):
+
+		group = group.dropna(subset=neigh_col)
+		indices = list(group.index)
+
+		event_time_values = group[event_time_col].to_numpy()
+		if len(event_time_values)>0:
+			event_time = event_time_values[0]
+		else:
+			continue
+
+		if event_time<0.:
+			event_time = group['FRAME'].max()
+
+		valid_counts_intermediate = group.loc[group['FRAME']<=event_time,'intermediate_count_s1_'+neigh_col].to_numpy()
+		valid_counts_inclusive = group.loc[group['FRAME']<=event_time,'inclusive_count_s1_'+neigh_col].to_numpy()
+		valid_counts_exclusive = group.loc[group['FRAME']<=event_time,'exclusive_count_s1_'+neigh_col].to_numpy()
+
+		if len(valid_counts_intermediate[valid_counts_intermediate==valid_counts_intermediate])>0:
+			neigh_table.loc[indices, f'mean_count_intermediate_{neigh_col}_before_event'] = np.nanmean(valid_counts_intermediate)
+		if len(valid_counts_inclusive[valid_counts_inclusive==valid_counts_inclusive])>0:
+			neigh_table.loc[indices, f'mean_count_inclusive_{neigh_col}_before_event'] = np.nanmean(valid_counts_inclusive)
+		if len(valid_counts_exclusive[valid_counts_exclusive==valid_counts_exclusive])>0:
+			neigh_table.loc[indices, f'mean_count_exclusive_{neigh_col}_before_event'] = np.nanmean(valid_counts_exclusive)
+
+	if event_time_col=='event_time_temp':
+		neigh_table = neigh_table.drop(columns='event_time_temp')
+	return neigh_table
+
 # def mask_intersection_neighborhood(setA, labelsA, setB, labelsB, threshold_iou=0.5, viewpoint='B'):
 # 	# do whatever to match objects in A and B
 # 	return setA, setB
@@ -410,8 +463,8 @@ if __name__ == "__main__":
 	print('None')
 	pos = "/home/torro/Documents/Experiments/NKratio_Exp/W5/500"
 	
-	test,_ = compute_neighborhood_at_position(pos, [60,120], population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=True, clear_neigh=True,
-	neighborhood_kwargs={'mode': 'two-pop','status': ['class', None],'include_dead_weight': True,"compute_cum_sum": False,"attention_weight": True, 'symmetrize': False})
+	test,_ = compute_neighborhood_at_position(pos, [62], population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=True, clear_neigh=True,
+	neighborhood_kwargs={'mode': 'two-pop','status': ['class', None],'not_status_option': [True, False],'include_dead_weight': True,"compute_cum_sum": False,"attention_weight": True, 'symmetrize': False})
 	
 	#test = compute_neighborhood_metrics(test, 'neighborhood_self_circle_150_px', metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
 	print(test.columns)

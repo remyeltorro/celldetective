@@ -279,6 +279,40 @@ class GeometryChoice(QWidget):
 		self.close()
 
 
+class DistanceChoice(QWidget):
+
+	def __init__(self, parent):
+
+		super().__init__()
+		self.parent = parent
+		self.setWindowTitle("Set distances")
+		center_window(self)
+
+		# Create the QComboBox and add some items
+
+		self.dist_label = QLabel('Distance [px]: ')
+		self.dist_le = QLineEdit('10')
+
+		self.add_btn = QPushButton("Add")
+		self.add_btn.clicked.connect(self.add_current_feature)
+
+		# Create the layout
+		layout = QVBoxLayout(self)
+		dist_layout = QHBoxLayout()
+		dist_layout.addWidget(self.dist_label, 30)
+		dist_layout.addWidget(self.dist_le, 70)
+
+		layout.addLayout(dist_layout)
+		layout.addWidget(self.add_btn)
+
+	def add_current_feature(self):
+
+		value = self.dist_le.text()
+		values = [value]
+		self.parent.list_widget.addItems(values)
+		self.close()
+
+
 class ListWidget(QWidget):
 
 	"""

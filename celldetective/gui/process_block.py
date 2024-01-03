@@ -5,7 +5,7 @@ from fonticon_mdi6 import MDI6
 import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
 from celldetective.io import locate_segmentation_model
-from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
+from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
@@ -22,6 +22,7 @@ from celldetective.gui.gui_utils import center_window
 from tifffile import imwrite
 import json
 import psutil
+from celldetective.neighborhood import compute_neighborhood_at_position
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -804,6 +805,7 @@ class NeighPanel(QFrame):
 		self.parent = parent
 		self.exp_channels = self.parent.exp_channels
 		self.exp_dir = self.parent.exp_dir
+		self.wells = np.array(self.parent.wells,dtype=str)
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -886,40 +888,117 @@ class NeighPanel(QFrame):
 		self.config_distance_neigh_btn.setIconSize(QSize(20, 20))
 		self.config_distance_neigh_btn.setToolTip("Configure distance cut neighbourhood computation.")
 		self.config_distance_neigh_btn.setStyleSheet(self.parent.parent.button_select_all)
-		#self.config_distance_neigh_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
+		self.config_distance_neigh_btn.clicked.connect(self.open_config_neighborhood)
 		dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
 
 		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
 
 		# MASK INTERSECTION NEIGHBORHOOD
+		# mask_neigh_hbox = QHBoxLayout()
+		# mask_neigh_hbox.setContentsMargins(0,0,0,0)
+		# mask_neigh_hbox.setSpacing(0)
 
-		mask_neigh_hbox = QHBoxLayout()
-		mask_neigh_hbox.setContentsMargins(0,0,0,0)
-		mask_neigh_hbox.setSpacing(0)
-
-		self.mask_neigh_action = QCheckBox("MASK INTERSECTION")
-		self.mask_neigh_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			""")
-		self.mask_neigh_action.setIcon(icon(MDI6.domino_mask, color='black'))
-		self.mask_neigh_action.setToolTip("Match cells that are co-localizing.")
-		#self.segment_action.toggled.connect(self.enable_segmentation_model_list)
-		#self.to_disable.append(self.segment_action)
-		mask_neigh_hbox.addWidget(self.mask_neigh_action, 95)
+		# self.mask_neigh_action = QCheckBox("MASK INTERSECTION")
+		# self.mask_neigh_action.setStyleSheet("""
+		# 	font-size: 10px;
+		# 	padding-left: 10px;
+		# 	""")
+		# self.mask_neigh_action.setIcon(icon(MDI6.domino_mask, color='black'))
+		# self.mask_neigh_action.setToolTip("Match cells that are co-localizing.")
+		# #self.segment_action.toggled.connect(self.enable_segmentation_model_list)
+		# #self.to_disable.append(self.segment_action)
+		# mask_neigh_hbox.addWidget(self.mask_neigh_action, 95)
 		
-		self.config_mask_neigh_btn = QPushButton()
-		self.config_mask_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
-		self.config_mask_neigh_btn.setIconSize(QSize(20, 20))
-		self.config_mask_neigh_btn.setToolTip("Configure mask intersection computation.")
-		self.config_mask_neigh_btn.setStyleSheet(self.parent.parent.button_select_all)
-		#self.config_distance_neigh_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-		mask_neigh_hbox.addWidget(self.config_mask_neigh_btn,5)
+		# self.config_mask_neigh_btn = QPushButton()
+		# self.config_mask_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
+		# self.config_mask_neigh_btn.setIconSize(QSize(20, 20))
+		# self.config_mask_neigh_btn.setToolTip("Configure mask intersection computation.")
+		# self.config_mask_neigh_btn.setStyleSheet(self.parent.parent.button_select_all)
+		# #self.config_distance_neigh_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
+		# mask_neigh_hbox.addWidget(self.config_mask_neigh_btn,5)
 
-		self.grid_contents.addLayout(mask_neigh_hbox, 1,0,1,4)
+		# self.grid_contents.addLayout(mask_neigh_hbox, 1,0,1,4)
 
 		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
 		self.submit_btn = QPushButton("Submit")
 		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
-		#self.submit_btn.clicked.connect(self.process_population)
+		self.submit_btn.clicked.connect(self.process_neighborhood)
 		self.grid_contents.addWidget(self.submit_btn, 3, 0, 1, 4)
+
+	def open_config_neighborhood(self):
+
+		self.ConfigNeigh = ConfigNeighborhoods(self)
+		self.ConfigNeigh.show()
+
+	def process_neighborhood(self):
+		
+		if self.parent.well_list.currentText()=="*":
+			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
+		else:
+			self.well_index = [self.parent.well_list.currentIndex()]
+			print(f"Processing well {self.parent.well_list.currentText()}...")
+
+		# self.freeze()
+		# QApplication.setOverrideCursor(Qt.WaitCursor)
+
+		loop_iter=0
+
+		if self.parent.position_list.currentText()=="*":
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Question)
+			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+		
+		for w_idx in self.well_index:
+
+			pos = self.parent.positions[w_idx]
+			if self.parent.position_list.currentText()=="*":
+				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
+				print("Processing all positions...")
+			else:
+				pos_indices = natsorted([pos.index(self.parent.position_list.currentText())])
+				print(f"Processing position {self.parent.position_list.currentText()}...")
+
+			well = self.parent.wells[w_idx]
+
+			for pos_idx in pos_indices:
+				
+				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*{os.sep}"))[pos_idx]
+				print(f"Position {self.pos}...\nLoading stack movie...")
+
+				if not os.path.exists(self.pos + 'output' + os.sep):
+					os.mkdir(self.pos + 'output' + os.sep)
+				if not os.path.exists(self.pos + os.sep.join(['output','tables'])+os.sep):
+					os.mkdir(self.pos + os.sep.join(['output','tables'])+os.sep)
+
+				if self.dist_neigh_action.isChecked():
+				
+					config = self.exp_dir + os.sep.join(["configs","neighborhood_instructions.json"])
+					
+					if not os.path.exists(config):
+						print('config could not be found', config)
+						msgBox = QMessageBox()
+						msgBox.setIcon(QMessageBox.Warning)
+						msgBox.setText("Please define a neighborhood first.")
+						msgBox.setWindowTitle("Info")
+						msgBox.setStandardButtons(QMessageBox.Ok)
+						returnValue = msgBox.exec()
+						return None
+
+					with open(config, 'r') as f:
+						config = json.load(f)
+
+					compute_neighborhood_at_position(self.pos, 
+													config['distance'], 
+													population=config['population'], 
+													theta_dist=None, 
+													img_shape=(self.parent.shape_x,self.parent.shape_y), 
+													return_tables=False,
+													clear_neigh=config['clear_neigh'],
+													neighborhood_kwargs=config['neighborhood_kwargs'],
+													)
+		print('Done.')

@@ -2,13 +2,15 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from skimage.measure import regionprops_table
-from scipy.ndimage.morphology import distance_transform_edt
 from functools import reduce
 from mahotas.features import haralick
 from scipy.ndimage import zoom
 import os
 import subprocess
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features
+from celldetective.io import get_position_table
+from scipy.spatial.distance import cdist
+import re
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
@@ -46,9 +48,9 @@ def set_live_status(setA,setB,status):
 	setA = setA.reset_index(drop=True)
 	setB = setB.reset_index(drop=True)	
 
-	return setA, setB
+	return setA, setB, status
 
-def compute_attention_weight(dist_matrix, opposite_cell_status, opposite_cell_ids, axis=1, include_dead_weight=True):
+def compute_attention_weight(dist_matrix, cut_distance, opposite_cell_status, opposite_cell_ids, axis=1, include_dead_weight=True):
 	
 	weights = np.empty(dist_matrix.shape[axis])
 	closest_opposite = np.empty(dist_matrix.shape[axis])
@@ -58,10 +60,10 @@ def compute_attention_weight(dist_matrix, opposite_cell_status, opposite_cell_id
 			row = dist_matrix[:,i]
 		elif axis==0:
 			row = dist_matrix[i,:]
-		nbr_opposite = len(row[row<=d])
+		nbr_opposite = len(row[row<=cut_distance])
 		
 		if not include_dead_weight:
-			stat = opposite_cell_status[np.where(row<=d)[0]]
+			stat = opposite_cell_status[np.where(row<=cut_distance)[0]]
 			nbr_opposite = len(stat[stat==1])
 			index_subpop = np.argmin(row[opposite_cell_status==1])
 			closest_opposite[i] = opposite_cell_ids[opposite_cell_status==1][index_subpop]
@@ -72,7 +74,7 @@ def compute_attention_weight(dist_matrix, opposite_cell_status, opposite_cell_id
 			weight = 1./float(nbr_opposite)
 			weights[i] = weight
 
-	return weights, closest
+	return weights, closest_opposite
 
 def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None, compute_cum_sum=True, 
 							  attention_weight=True, symmetrize=True, include_dead_weight=False,
@@ -103,8 +105,8 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 	"""
 
 	# Check live_status option
-	setA, setB = set_live_status(setA, setB, status)
-	
+	setA, setB, status = set_live_status(setA, setB, status)
+
 	# Check distance option 
 	if not isinstance(distance, list):
 		distance = [distance]
@@ -121,20 +123,21 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 		for s in [setA,setB]:
 
 			# Check whether data can be tracked
-			if not 'TRACK_ID' in s.columns:
-				column_labels.update({'track': 'ID'})
+			temp_column_labels = column_labels.copy()
+
+			if not 'TRACK_ID' in list(s.columns):
+				temp_column_labels.update({'track': 'ID'})
 				compute_cum_sum = False # if no tracking data then cum_sum is not relevant
-			cl.append(column_labels)
+			cl.append(temp_column_labels)
 
 			# Remove nan tracks (cells that do not belong to a track)
 			s[neigh_col] = np.nan
 			s[neigh_col] = s[neigh_col].astype(object)
 			s.dropna(subset=[cl[-1]['track']],inplace=True)
 
-
 		# Loop over each available timestep
 		timeline = np.unique(np.concatenate([setA[cl[0]['time']].to_numpy(), setB[cl[1]['time']].to_numpy()])).astype(int)
-		for t in timeline:
+		for t in tqdm(timeline):
 
 			index_A = list(setA.loc[setA[cl[0]['time']]==t].index)
 			coordinates_A = setA.loc[setA[cl[0]['time']]==t,[cl[0]['x'], cl[0]['y']]].to_numpy()            
@@ -152,7 +155,7 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 				dist_map = cdist(coordinates_A, coordinates_B, metric="euclidean")
 				
 				if attention_weight:
-					weights, closest_A = compute_attention_weight(dist_map, status_A, ids_A, axis=1, include_dead_weight=include_dead_weight)
+					weights, closest_A = compute_attention_weight(dist_map, d, status_A, ids_A, axis=1, include_dead_weight=include_dead_weight)
 				
 				# Target centric
 				for k in range(dist_map.shape[0]):
@@ -237,7 +240,7 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 		
 	return setA, setB
 
-def compute_neighborhood_at_position(pos, distance, population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=False,
+def compute_neighborhood_at_position(pos, distance, population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=False, clear_neigh=False,
 	neighborhood_kwargs={'mode': 'two-pop','status': None,'include_dead_weight': True,"compute_cum_sum": False,"attention_weight": True, 'symmetrize': True}):
 	
 	pos = pos.replace('\\','/')
@@ -249,17 +252,28 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 
 	if not isinstance(distance, list):
 		distance = [distance]
+	if not theta_dist is None and not isinstance(theta_dist, list):
+		theta_dist = [theta_dist]
+
 	if theta_dist is None:
 		theta_dist = [0.9*d for d in distance]
 	assert len(theta_dist)==len(distance),'Incompatible number of distances and number of edge thresholds.'
 
 	if population[0]==population[1]:
 		neighborhood_kwargs.update({'mode': 'self'})
+	if population[1]!=population[0]:
+		neighborhood_kwargs.update({'mode': 'two-pop'})
 
 	df_A, path_A = get_position_table(pos, population=population[0], return_path=True)
 	df_B, path_B = get_position_table(pos, population=population[1], return_path=True)
 
-	df_A, df_B = distance_cut_neighborhood(df_A,df_B,neigh_dist,**neighborhood_kwargs)
+	if clear_neigh:
+		unwanted = df_A.columns[df_A.columns.str.contains('neighborhood')]
+		df_A = df_A.drop(columns=unwanted)
+		unwanted = df_B.columns[df_B.columns.str.contains('neighborhood')]
+		df_B = df_B.drop(columns=unwanted)		
+
+	df_A, df_B = distance_cut_neighborhood(df_A,df_B,distance,**neighborhood_kwargs)
 
 	for td,d in zip(theta_dist, distance):
 
@@ -270,20 +284,135 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 
 		edge_filter_A = (df_A['POSITION_X'] > td)&(df_A['POSITION_Y'] > td)&(df_A['POSITION_Y'] < (img_shape[0] - td))&(df_A['POSITION_X'] < (img_shape[1] - td))
 		edge_filter_B = (df_B['POSITION_X'] > td)&(df_B['POSITION_Y'] > td)&(df_B['POSITION_Y'] < (img_shape[0] - td))&(df_B['POSITION_X'] < (img_shape[1] - td))
-		df_A.loc[edge_filter_A, neigh_col] = np.nan
-		df_B.loc[edge_filter_B, neigh_col] = np.nan
+		df_A.loc[~edge_filter_A, neigh_col] = np.nan
+		df_B.loc[~edge_filter_B, neigh_col] = np.nan
+
+		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
+		if neighborhood_kwargs['symmetrize']:
+			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
 
 	df_A.to_pickle(path_A.replace('.csv','.pkl'))
 	df_B.to_pickle(path_B.replace('.csv','.pkl'))
 
+	unwanted = df_A.columns[df_A.columns.str.startswith('neighborhood_')]
+	df_A2 = df_A.drop(columns=unwanted)
+	df_A2.to_csv(path_A, index=False)
+
+	unwanted = df_B.columns[df_B.columns.str.startswith('neighborhood_')]
+	df_B_csv = df_B.drop(unwanted, axis=1, inplace=False)
+	df_B_csv.to_csv(path_B,index=False)
+
 	if return_tables:
 		return df_A, df_B
 
+def compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=False):
+
+	neigh_table = neigh_table.reset_index(drop=True)
+	if 'position' in list(neigh_table.columns):
+		groupbycols = ['position','TRACK_ID']
+	else:
+		groupbycols = ['TRACK_ID']
+	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
+
+	for tid,group in neigh_table.groupby(groupbycols):
+		group = group.dropna(subset=neigh_col)
+		indices = list(group.index)
+		neighbors = group[neigh_col].to_numpy()
+
+		if 'inclusive' in metrics:
+			n_inclusive = [len(n) for n in neighbors]
+
+		if 'intermediate' in metrics:
+			n_intermediate = np.zeros(len(neighbors))
+			n_intermediate[:] = np.nan
+
+		if 'exclusive' in metrics:
+			n_exclusive = np.zeros(len(neighbors))
+			n_exclusive[:] = np.nan
+
+		if decompose_by_status:
+
+			if 'inclusive' in metrics:
+				n_inclusive_status_0 = np.zeros(len(neighbors))
+				n_inclusive_status_0[:] = np.nan
+				n_inclusive_status_1 = np.zeros(len(neighbors))
+				n_inclusive_status_1[:] = np.nan
+
+			if 'intermediate' in metrics:
+				n_intermediate_status_0 = np.zeros(len(neighbors))
+				n_intermediate_status_0[:] = np.nan
+				n_intermediate_status_1 = np.zeros(len(neighbors))
+				n_intermediate_status_1[:] = np.nan
+
+			if 'exclusive' in metrics:
+				n_exclusive_status_0 = np.zeros(len(neighbors))
+				n_exclusive_status_0[:] = np.nan
+				n_exclusive_status_1 = np.zeros(len(neighbors))
+				n_exclusive_status_1[:] = np.nan
+
+		for t in range(len(neighbors)):
+
+			neighs_at_t = neighbors[t]
+			weights_at_t = [n['weight'] for n in neighs_at_t]
+			status_at_t = [n['status'] for n in neighs_at_t]
+			closest_at_t = [n['closest'] for n in neighs_at_t]
+
+			if 'intermediate' in metrics:
+				n_intermediate[t] = np.sum(weights_at_t)
+			if 'exclusive' in metrics:
+				n_exclusive[t] = sum([c==1.0 for c in closest_at_t])
+
+			if decompose_by_status:
+
+				if 'inclusive' in metrics:
+					n_inclusive_status_0[t] = sum([s==0.0 for s in status_at_t])
+					n_inclusive_status_1[t] = sum([s==1.0 for s in status_at_t])
+
+				if 'intermediate' in metrics:
+					weights_at_t = np.array(weights_at_t)
+					
+					# intermediate
+					weights_status_1 = weights_at_t[np.array([s==1.0 for s in status_at_t],dtype=bool)]
+					weights_status_0 = weights_at_t[np.array([s==0.0 for s in status_at_t],dtype=bool)]
+					n_intermediate_status_1[t] = np.sum(weights_status_1)
+					n_intermediate_status_0[t] = np.sum(weights_status_0)
+
+				if 'exclusive' in metrics:
+					n_exclusive_status_0[t] = sum([c==1.0 if s==0.0 else False for c,s in zip(closest_at_t,status_at_t)])
+					n_exclusive_status_1[t] = sum([c==1.0 if s==1.0 else False for c,s in zip(closest_at_t,status_at_t)])
+
+		if 'inclusive' in metrics:
+			neigh_table.loc[indices, 'inclusive_count_'+neigh_col] = n_inclusive
+		if 'intermediate' in metrics:
+			neigh_table.loc[indices, 'intermediate_count_'+neigh_col] = n_intermediate
+		if 'exclusive' in metrics:
+			neigh_table.loc[indices, 'exclusive_count_'+neigh_col] = n_exclusive
+
+		if decompose_by_status:
+			if 'inclusive' in metrics:
+				neigh_table.loc[indices, 'inclusive_count_s0_'+neigh_col] = n_inclusive_status_0
+				neigh_table.loc[indices, 'inclusive_count_s1_'+neigh_col] = n_inclusive_status_1
+			if 'intermediate' in metrics:
+				neigh_table.loc[indices, 'intermediate_count_s0_'+neigh_col] = n_intermediate_status_0
+				neigh_table.loc[indices, 'intermediate_count_s1_'+neigh_col] = n_intermediate_status_1
+			if 'exclusive' in metrics:	
+				neigh_table.loc[indices, 'exclusive_count_s0_'+neigh_col] = n_exclusive_status_0
+				neigh_table.loc[indices, 'exclusive_count_s1_'+neigh_col] = n_exclusive_status_1
+
+	return neigh_table
 
 # def mask_intersection_neighborhood(setA, labelsA, setB, labelsB, threshold_iou=0.5, viewpoint='B'):
 # 	# do whatever to match objects in A and B
 # 	return setA, setB
 
 if __name__ == "__main__":
+
 	print('None')
+	pos = "/home/torro/Documents/Experiments/NKratio_Exp/W5/500"
+	
+	test,_ = compute_neighborhood_at_position(pos, [60,120], population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=True, clear_neigh=True,
+	neighborhood_kwargs={'mode': 'two-pop','status': ['class', None],'include_dead_weight': True,"compute_cum_sum": False,"attention_weight": True, 'symmetrize': False})
+	
+	#test = compute_neighborhood_metrics(test, 'neighborhood_self_circle_150_px', metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
+	print(test.columns)
 	#print(segment(None,'test'))

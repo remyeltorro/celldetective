@@ -1,4 +1,4 @@
-CellDetective
+Celldetective
 =============
 
 Celldetective is a package and software for single cell detection and measurements with Python.

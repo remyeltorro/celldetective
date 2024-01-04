@@ -39,6 +39,7 @@ def set_live_status(setA,setB,status, not_status_option):
 			setA.loc[:,'live_status'] = 1
 			status[0] = 'live_status'
 		elif status[0] is not None and isinstance(not_status_option,list):
+			setA.loc[setA[status[0]]==2,status[0]] = 1 #already happened events become event
 			if not_status_option[0]:
 				setA.loc[:,'not_'+status[0]] = [not a if a==0 or a==1 else np.nan for a in setA.loc[:,status[0]].values]
 				status[0] = 'not_'+status[0]
@@ -46,13 +47,14 @@ def set_live_status(setA,setB,status, not_status_option):
 			setB.loc[:,'live_status'] = 1
 			status[1] = 'live_status'
 		elif status[1] is not None and isinstance(not_status_option,list):
+			setB.loc[setB[status[1]]==2,status[1]] = 1 #already happened events become event
 			if not_status_option[1]:
 				setB.loc[:,'not_'+status[1]] = [not a if a==0 or a==1 else np.nan for a in setB.loc[:,status[1]].values]
 				status[1] = 'not_'+status[1]
 
 		assert status[0] in list(setA.columns)
 		assert status[1] in list(setB.columns)
-		
+	
 	setA = setA.reset_index(drop=True)
 	setB = setB.reset_index(drop=True)	
 
@@ -157,7 +159,7 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 			coordinates_B = setB.loc[setB[cl[1]['time']]==t,[cl[1]['x'], cl[1]['y']]].to_numpy()
 			ids_B = setB.loc[setB[cl[1]['time']]==t,cl[1]['track']].to_numpy()
 			status_B = setB.loc[setB[cl[1]['time']]==t,status[1]].to_numpy()
-			
+
 			if len(ids_A) > 0 and len(ids_B) > 0:
 				
 				# compute distance matrix
@@ -170,9 +172,12 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 				for k in range(dist_map.shape[0]):
 					
 					col = dist_map[k,:]
-					neighs_B = np.array([ids_B[i] for i in np.where((col<=d)*(col>1.0E-05))[0]])
-					status_neigh_B = np.array([status_B[i] for i in np.where((col<=d)*(col>1.0E-05))[0]])
-					dist_B = [round(col[i],2) for i in np.where((col<=d)*(col>1.0E-05))[0]]
+					col[col==0.] = 1.0E06
+
+					neighs_B = np.array([ids_B[i] for i in np.where((col<=d))[0]])
+					status_neigh_B = np.array([status_B[i] for i in np.where((col<=d))[0]])
+					print(status_neigh_B)
+					dist_B = [round(col[i],2) for i in np.where((col<=d))[0]]
 					if len(dist_B)>0:
 						closest_B_cell = neighs_B[np.argmin(dist_B)]    
 					
@@ -219,7 +224,7 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 								sym_neigh[-1].update({'weight': weight_A, 'closest': closest_b})
 						
 						# Write the minimum info about neighborhing cell B
-						neigh_dico = {'id': neighs_B[n], 'distance': dist_B[n], 'status': status_B[n]}
+						neigh_dico = {'id': neighs_B[n], 'distance': dist_B[n], 'status': status_neigh_B[n]}
 						if attention_weight:
 							neigh_dico.update({'weight': weights[n_index], 'closest': closest})
 

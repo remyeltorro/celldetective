@@ -106,8 +106,8 @@ class ConfigSurvival(QWidget):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 
-		labels = [QLabel('population: '), QLabel('time of\ninterest: '), QLabel('time of\nreference: '), QLabel('class: '), QLabel('cmap: ')]
-		self.cb_options = [['targets','effectors'],['t0','first detection'], ['0','first detection', 't0'], ['class'], list(plt.colormaps())]
+		labels = [QLabel('population: '), QLabel('time of\ninterest: '), QLabel('time of\nreference: '), QLabel('cmap: ')] #QLabel('class: '), 
+		self.cb_options = [['targets','effectors'],['t0','first detection'], ['0','first detection', 't0'], list(plt.colormaps())] #['class'], 
 		self.cbs = [QComboBox() for i in range(len(labels))]
 		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 
@@ -150,15 +150,15 @@ class ConfigSurvival(QWidget):
 		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*']))
 		self.all_columns = []
 		for tab in tables:
-			cols = pd.read_csv(tab, nrows=1).columns.tolist()
+			cols = pd.read_csv(tab, nrows=1,encoding_errors='ignore').columns.tolist()
 			self.all_columns.extend(cols)
 		self.all_columns = np.unique(self.all_columns)
-		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
+		#class_idx = np.array([s.startswith('class_') for s in self.all_columns])
 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
-		class_columns = list(self.all_columns[class_idx])
-		for c in ['class_id', 'class_color']:
-			if c in class_columns:
-				class_columns.remove(c)
+		# class_columns = list(self.all_columns[class_idx])
+		# for c in ['class_id', 'class_color']:
+		# 	if c in class_columns:
+		# 		class_columns.remove(c)
 
 		time_columns = list(self.all_columns[time_idx])
 		
@@ -168,8 +168,8 @@ class ConfigSurvival(QWidget):
 		self.cbs[2].clear()
 		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
 
-		self.cbs[3].clear()
-		self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
+		# self.cbs[3].clear()
+		# self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
 		
 
 	def process_survival(self):
@@ -177,6 +177,12 @@ class ConfigSurvival(QWidget):
 		print('you clicked!!')
 		self.FrameToMin = float(self.time_calibration_le.text().replace(',','.'))
 		print(self.FrameToMin, 'set')
+
+		self.time_of_interest = self.cbs[1].currentText()
+		if self.time_of_interest=="t0":
+			self.class_of_interest = "class"
+		else:
+			self.class_of_interest = self.time_of_interest.replace('t_','class_')
 
 		# read instructions from combobox options
 		self.load_available_tables_local()
@@ -371,13 +377,14 @@ class ConfigSurvival(QWidget):
 			print('no table could be found...')
 		else:
 			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
+			#print(f"{self.df_well_info=}")
 
 	def compute_survival_functions(self):
 
 		# Per position survival
 		left_censored = False
 		for block,movie_group in self.df.groupby(['well','position']):
-			classes = movie_group.groupby('TRACK_ID')[self.cbs[3].currentText()].min().values
+			classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
 			times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
 			max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 			first_detections = None
@@ -425,10 +432,12 @@ class ConfigSurvival(QWidget):
 			well_first_detections = []
 
 			for block,movie_group in well_group.groupby('position'):
-				classes = movie_group.groupby('TRACK_ID')[self.cbs[3].currentText()].min().values
+
+				classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
 				times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
 				max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 				first_detections = None
+
 				if self.cbs[2].currentText()=='first detection':
 					
 					left_censored = True
@@ -449,7 +458,7 @@ class ConfigSurvival(QWidget):
 					first_detections = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].max().values
 
 				else:
-					continue
+					pass
 
 				well_classes.extend(classes)
 				well_times.extend(times)
@@ -459,14 +468,17 @@ class ConfigSurvival(QWidget):
 			
 			if len(well_first_detections)==0:
 				well_first_detections = None
-		  
+			
+			print(f"{well_classes=}; {well_times=}")
 			events, survival_times = switch_to_events_v2(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
+			print(f"{events=}; {survival_times=}")
 			ks = KaplanMeierFitter()
 			if len(survival_times)>0:
 				ks.fit(survival_times, event_observed=events)
 				print(ks.survival_function_)
 			else:
 				ks = None
+			print(f"{ks=}")
 			self.df_well_info.loc[self.df_well_info['well_path']==well,'survival_fit'] = ks
 
 		self.df_pos_info.loc[:,'select'] = True
@@ -489,7 +501,7 @@ class ConfigSurvival(QWidget):
 			if self.plot_options[i].isChecked():
 				self.plot_mode = self.radio_labels[i]
 
-		cmap_lbl = self.cbs[4].currentText()
+		cmap_lbl = self.cbs[-1].currentText()
 		self.cmap = getattr(mcm, cmap_lbl)
 
 		colors = np.array([self.cmap(i / len(self.df_pos_info)) for i in range(len(self.df_pos_info))])
@@ -567,7 +579,8 @@ class ConfigSurvival(QWidget):
 				else:
 					pass
 
-			for i in range(len(lines_well)):		
+			for i in range(len(lines_well)):	
+
 				if len(self.well_indices)<=1 and lines_well[i]==lines_well[i]:
 					try:
 						lines_well[i].plot_survival_function(ax=self.ax, label='pool', color="k")

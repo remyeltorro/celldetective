@@ -34,7 +34,7 @@ Read the tutorial here:
 
 https://celldetective.readthedocs.io/
 
-.. image:: article/figures/pipeline.png
+.. image:: article/figures/Figure1.png
     :width: 90%
     :align: center
     :alt: pipeline

@@ -1307,6 +1307,72 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 	return signal, time_of_interest/model_signal_length, cclass
 
 
+# def residual_block1D(x, number_of_filters,match_filter_size=True):
+
+# 	"""
+
+# 	Create a 1D residual block.
+
+# 	Parameters
+# 	----------
+# 	x : Tensor
+# 		Input tensor.
+# 	number_of_filters : int
+# 		Number of filters in the convolutional layers.
+# 	match_filter_size : bool, optional
+# 		Whether to match the filter size of the skip connection to the output. Default is True.
+
+# 	Returns
+# 	-------
+# 	Tensor
+# 		Output tensor of the residual block.
+
+# 	Notes
+# 	-----
+# 	This function creates a 1D residual block by performing the original mapping followed by adding a skip connection
+# 	and applying non-linear activation. The skip connection allows the gradient to flow directly to earlier layers and
+# 	helps mitigate the vanishing gradient problem. The residual block consists of three convolutional layers with
+# 	batch normalization and ReLU activation functions.
+
+# 	If `match_filter_size` is True, the skip connection is adjusted to have the same number of filters as the output.
+# 	Otherwise, the skip connection is kept as is.
+
+# 	Examples
+# 	--------
+# 	>>> inputs = Input(shape=(10, 3))
+# 	>>> x = residual_block1D(inputs, 64)
+# 	# Create a 1D residual block with 64 filters and apply it to the input tensor.
+	
+# 	"""
+
+
+# 	# Create skip connection
+# 	x_skip = x
+
+# 	# Perform the original mapping
+# 	x = Conv1D(number_of_filters, kernel_size=8, strides=1,padding="same")(x_skip)
+# 	x = BatchNormalization()(x)
+# 	x = Activation("relu")(x)
+
+# 	x = Conv1D(number_of_filters, kernel_size=5, strides=1,padding="same")(x)
+# 	x = BatchNormalization()(x)
+# 	x = Activation("relu")(x)
+
+# 	x = Conv1D(number_of_filters, kernel_size=3,padding="same")(x)
+# 	x = BatchNormalization()(x)
+
+# 	if match_filter_size:
+# 		x_skip = Conv1D(number_of_filters, kernel_size=1, padding="same")(x_skip)
+
+# 	# Add the skip connection to the regular mapping
+# 	x = Add()([x, x_skip])
+
+# 	# Nonlinearly activate the result
+# 	x = Activation("relu")(x)
+
+# 	# Return the result
+# 	return x
+
 def residual_block1D(x, number_of_filters,match_filter_size=True):
 
 	"""
@@ -1354,11 +1420,7 @@ def residual_block1D(x, number_of_filters,match_filter_size=True):
 	x = BatchNormalization()(x)
 	x = Activation("relu")(x)
 
-	x = Conv1D(number_of_filters, kernel_size=5, strides=1,padding="same")(x)
-	x = BatchNormalization()(x)
-	x = Activation("relu")(x)
-
-	x = Conv1D(number_of_filters, kernel_size=3,padding="same")(x)
+	x = Conv1D(number_of_filters, kernel_size=8, strides=1,padding="same")(x)
 	x = BatchNormalization()(x)
 
 	if match_filter_size:
@@ -1373,7 +1435,7 @@ def residual_block1D(x, number_of_filters,match_filter_size=True):
 	# Return the result
 	return x
 
-def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_collection=0,
+def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_collection=0, use_pooling=True, depth=2,
 				 header="classifier", model_signal_length = 128):
 
 	"""
@@ -1427,16 +1489,17 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 		return None
 
 	inputs = Input(shape=(model_signal_length,n_channels,))
-
-	for i in range(n_blocks):
-		if i==0:
-			x2 = residual_block1D(inputs,64)
-		else:
-			x2 = residual_block1D(x2,128)
+	x2 = Conv1D(64, kernel_size=16, strides=2, padding="same")(inputs)
+	x2 = BatchNormalization()(x2)
 	x2 = MaxPooling1D()(x2)
 
-	for i in range(n_blocks):
-		x2 = residual_block1D(x2,128)
+	n_filters = 64
+	for k in range(depth):
+		for i in range(n_blocks):
+				x2 = residual_block1D(x2,64)
+		n_filters *= 2
+		if use_pooling and k!=(depth-1):
+			x2 = MaxPooling1D()(x2)
 
 	x2 = GlobalAveragePooling1D()(x2)
 	if dense_collection>0:

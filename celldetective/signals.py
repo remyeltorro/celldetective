@@ -11,7 +11,7 @@ from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import Input, Model
-from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D
+from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D, Concatenate, ZeroPadding1D
 from tensorflow.keras.callbacks import Callback
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import jaccard_score, balanced_accuracy_score
@@ -1373,7 +1373,7 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 # 	# Return the result
 # 	return x
 
-def residual_block1D(x, number_of_filters,match_filter_size=True):
+def residual_block1D(x, number_of_filters, kernel_size=8, match_filter_size=True, connection='identity'):
 
 	"""
 
@@ -1416,15 +1416,22 @@ def residual_block1D(x, number_of_filters,match_filter_size=True):
 	x_skip = x
 
 	# Perform the original mapping
-	x = Conv1D(number_of_filters, kernel_size=8, strides=1,padding="same")(x_skip)
+	if connection=='identity':
+		x = Conv1D(number_of_filters, kernel_size=kernel_size, strides=1,padding="same")(x_skip)
+	elif connection=='projection':
+		x = ZeroPadding1D(padding=kernel_size//2)(x_skip)
+		x = Conv1D(number_of_filters, kernel_size=kernel_size, strides=2,padding="valid")(x)
 	x = BatchNormalization()(x)
 	x = Activation("relu")(x)
 
-	x = Conv1D(number_of_filters, kernel_size=8, strides=1,padding="same")(x)
+	x = Conv1D(number_of_filters, kernel_size=kernel_size, strides=1,padding="same")(x)
 	x = BatchNormalization()(x)
 
-	if match_filter_size:
+	if match_filter_size and connection=='identity':
 		x_skip = Conv1D(number_of_filters, kernel_size=1, padding="same")(x_skip)
+	elif match_filter_size and connection=='projection':
+		x_skip = Conv1D(number_of_filters, kernel_size=1, strides=2, padding="valid")(x_skip)
+
 
 	# Add the skip connection to the regular mapping
 	x = Add()([x, x_skip])
@@ -1478,7 +1485,6 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 	
 	"""
 
-
 	if header=="classifier":
 		final_activation = "softmax"
 		neurons_final = n_classes
@@ -1489,14 +1495,12 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 		return None
 
 	inputs = Input(shape=(model_signal_length,n_channels,))
-	x2 = Conv1D(64, kernel_size=16, strides=2, padding="same")(inputs)
-	x2 = BatchNormalization()(x2)
-	x2 = MaxPooling1D()(x2)
+	x2 = Conv1D(64, kernel_size=1,strides=1,padding='same')(inputs)
 
 	n_filters = 64
 	for k in range(depth):
-		for i in range(n_blocks):
-				x2 = residual_block1D(x2,64)
+		for i in range(n_slices):
+				x2 = residual_block1D(x2,n_filters, kernel_size=8)
 		n_filters *= 2
 		if use_pooling and k!=(depth-1):
 			x2 = MaxPooling1D()(x2)
@@ -1508,9 +1512,60 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 		x2 = Dropout(dropout_rate)(x2)
 
 	x2 = Dense(neurons_final,activation=final_activation,name=header)(x2)
-	model = Model(inputs, x2, name=header) 
+	model = Model(inputs, x2, name=header)
 
 	return model
+
+def MultiScaleResNetModel(n_channels, n_classes = 3, dropout_rate=0, dense_collection=0, use_pooling=True, depth=2,
+				 header="classifier", model_signal_length = 128):
+
+	if header=="classifier":
+		final_activation = "softmax"
+		neurons_final = n_classes
+	elif header=="regressor":
+		final_activation = "linear"
+		neurons_final = 1
+	else:
+		return None
+
+	inputs = Input(shape=(model_signal_length,n_channels,))
+	x = ZeroPadding1D(3)(inputs)
+	x = Conv1D(64, kernel_size=7, strides=2, padding="valid", use_bias=False)(x)
+	x = BatchNormalization()(x)
+	x = ZeroPadding1D(1)(x)
+	x_common = MaxPooling1D(pool_size=3, strides=2, padding='valid')(x)
+
+	# Block 1
+	x1 = residual_block1D(x_common, 64, kernel_size=7,connection='projection')
+	x1 = residual_block1D(x1, 128, kernel_size=7,connection='projection')
+	x1 = residual_block1D(x1, 256, kernel_size=7,connection='projection')
+	x1 = GlobalAveragePooling1D()(x1)
+
+	# Block 2
+	x2 = residual_block1D(x_common, 64, kernel_size=5,connection='projection')
+	x2 = residual_block1D(x2, 128, kernel_size=5,connection='projection')
+	x2 = residual_block1D(x2, 256, kernel_size=5,connection='projection')
+	x2 = GlobalAveragePooling1D()(x2)
+
+	# Block 3
+	x3 = residual_block1D(x_common, 64, kernel_size=3,connection='projection')
+	x3 = residual_block1D(x3, 128, kernel_size=3,connection='projection')
+	x3 = residual_block1D(x3, 256, kernel_size=3,connection='projection')
+	x3 = GlobalAveragePooling1D()(x3)
+
+	x_combined = Concatenate()([x1, x2, x3])
+	x_combined = Flatten()(x_combined)
+
+	if dense_collection>0:
+		x_combined = Dense(dense_collection)(x_combined)
+	if dropout_rate>0:
+		x_combined = Dropout(dropout_rate)(x_combined)
+
+	x_combined = Dense(neurons_final,activation=final_activation,name=header)(x_combined)
+	model = Model(inputs, x_combined, name=header) 
+
+	return model
+
 
 def train_signal_model(config):
 
@@ -2066,3 +2121,8 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 		return mean_signal, std_signal, actual_timeline, signal_matrix
 	else:
 		return mean_signal, std_signal, actual_timeline
+
+if __name__ == "__main__":
+
+	model = MultiScaleResNetModel(3, n_classes = 3, dropout_rate=0, dense_collection=1024, header="classifier", model_signal_length = 128)
+	print(model.summary())

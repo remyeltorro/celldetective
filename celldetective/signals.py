@@ -307,7 +307,7 @@ class SignalDetectionModel(object):
 		if 'normalization_values' in model_config:
 			self.normalization_values = model_config['normalization_values']
 		if 'normalization_percentile' in model_config:
-			self.normalization_clipping = model_config['normalization_clipping']
+			self.normalization_clip = model_config['normalization_clip']
 		if 'label' in model_config:
 			self.label = model_config['label']
 
@@ -369,6 +369,7 @@ class SignalDetectionModel(object):
 			self.normalization_values = normalization_values
 		if not hasattr(self, 'normalization_clip'):
 			self.normalization_clip = normalization_clip
+		print('Actual clip option:', self.normalization_clip)
 		
 		self.normalize = normalize
 		self.normalization_percentile, self. normalization_values, self.normalization_clip =  _interpret_normalization_parameters(self.n_channels, self.normalization_percentile, self.normalization_values, self.normalization_clip)

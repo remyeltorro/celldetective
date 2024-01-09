@@ -362,6 +362,13 @@ class SignalDetectionModel(object):
 		Load annotations in directory, create dataset, fit model
 		
 		"""
+
+		if not hasattr(self, 'normalization_percentile'):
+			self.normalization_percentile = normalization_percentile
+		if not hasattr(self, 'normalization_values'):
+			self.normalization_values = normalization_values
+		if not hasattr(self, 'normalization_clip'):
+			self.normalization_clip = normalization_clip
 		
 		self.normalize = normalize
 		self.normalization_percentile, self. normalization_values, self.normalization_clip =  _interpret_normalization_parameters(self.n_channels, self.normalization_percentile, self.normalization_values, self.normalization_clip)
@@ -409,7 +416,12 @@ class SignalDetectionModel(object):
 			recompile_pretrained=False, learning_rate=0.001, loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
 
 		self.normalize = normalize
-		self.normalize = normalize
+		if not hasattr(self, 'normalization_percentile'):
+			self.normalization_percentile = normalization_percentile
+		if not hasattr(self, 'normalization_values'):
+			self.normalization_values = normalization_values
+		if not hasattr(self, 'normalization_clip'):
+			self.normalization_clip = normalization_clip
 		self.normalization_percentile, self. normalization_values, self.normalization_clip =  _interpret_normalization_parameters(self.n_channels, self.normalization_percentile, self.normalization_values, self.normalization_clip)
 
 		self.x_train = x_train
@@ -1072,8 +1084,8 @@ def _interpret_normalization_parameters(n_channels, normalization_percentile, no
 		normalization_values = [normalization_values]*n_channels
 
 	assert len(normalization_values)==n_channels
-	assert len(normalization_clipping)==n_channels
-	assert len(normalization_percentile_mode)==n_channels
+	assert len(normalization_clip)==n_channels
+	assert len(normalization_percentile)==n_channels
 
 	return normalization_percentile, normalization_values, normalization_clip
 
@@ -1109,8 +1121,8 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 			min_val = normalization_values[k][0]
 			max_val = normalization_values[k][1]
 
-		signal_set[:,:,k] -= min_signal
-		signal_set[:,:,k] /= (max_signal - min_signal)
+		signal_set[:,:,k] -= min_val
+		signal_set[:,:,k] /= (max_val - min_val)
 
 		if normalization_clip[k]:
 			to_clip_low = []
@@ -1499,6 +1511,49 @@ def residual_block1D(x, number_of_filters, kernel_size=8, match_filter_size=True
 	# Return the result
 	return x
 
+# def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_collection=0, use_pooling=True, depth=2,
+# 				 header="classifier", model_signal_length = 128):
+
+# 	"""
+
+# 	Define a generic ResNet 1D encoder model.
+
+# 	Parameters
+# 	----------
+# 	n_channels : int
+# 		Number of input channels.
+# 	n_blocks : int
+# 		Number of residual blocks in the model.
+# 	n_classes : int, optional
+# 		Number of output classes. Default is 3.
+# 	dropout_rate : float, optional
+# 		Dropout rate to be applied. Default is 0.
+# 	dense_collection : int, optional
+# 		Number of neurons in the dense layer. Default is 0.
+# 	header : str, optional
+# 		Type of the model header. "classifier" for classification, "regressor" for regression. Default is "classifier".
+# 	model_signal_length : int, optional
+# 		Length of the input signal. Default is 128.
+
+# 	Returns
+# 	-------
+# 	keras.models.Model
+# 		ResNet 1D encoder model.
+
+# 	Notes
+# 	-----
+# 	This function defines a generic ResNet 1D encoder model with the specified number of input channels, residual
+# 	blocks, output classes, dropout rate, dense collection, and model header. The model architecture follows the
+# 	ResNet principles with 1D convolutional layers and residual connections. The final activation and number of
+# 	neurons in the output layer are determined based on the header type.
+
+# 	Examples
+# 	--------
+# 	>>> model = ResNetModel(n_channels=3, n_blocks=4, n_classes=2, dropout_rate=0.2)
+# 	# Define a ResNet 1D encoder model with 3 input channels, 4 residual blocks, and 2 output classes.
+	
+# 	"""
+
 def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_collection=0, use_pooling=True, depth=2,
 				 header="classifier", model_signal_length = 128):
 
@@ -1542,6 +1597,7 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 	
 	"""
 
+
 	if header=="classifier":
 		final_activation = "softmax"
 		neurons_final = n_classes
@@ -1552,12 +1608,14 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 		return None
 
 	inputs = Input(shape=(model_signal_length,n_channels,))
-	x2 = Conv1D(64, kernel_size=1,strides=1,padding='same')(inputs)
+	x2 = Conv1D(64, kernel_size=16, strides=2, padding="same")(inputs)
+	x2 = BatchNormalization()(x2)
+	x2 = MaxPooling1D()(x2)
 
 	n_filters = 64
 	for k in range(depth):
-		for i in range(n_slices):
-				x2 = residual_block1D(x2,n_filters, kernel_size=8)
+		for i in range(n_blocks):
+				x2 = residual_block1D(x2,64)
 		n_filters *= 2
 		if use_pooling and k!=(depth-1):
 			x2 = MaxPooling1D()(x2)
@@ -1569,9 +1627,40 @@ def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_colle
 		x2 = Dropout(dropout_rate)(x2)
 
 	x2 = Dense(neurons_final,activation=final_activation,name=header)(x2)
-	model = Model(inputs, x2, name=header)
+	model = Model(inputs, x2, name=header) 
 
 	return model
+
+	# if header=="classifier":
+	# 	final_activation = "softmax"
+	# 	neurons_final = n_classes
+	# elif header=="regressor":
+	# 	final_activation = "linear"
+	# 	neurons_final = 1
+	# else:
+	# 	return None
+
+	# inputs = Input(shape=(model_signal_length,n_channels,))
+	# x2 = Conv1D(64, kernel_size=1,strides=1,padding='same')(inputs)
+
+	# n_filters = 64
+	# for k in range(depth):
+	# 	for i in range(n_slices):
+	# 			x2 = residual_block1D(x2,n_filters, kernel_size=8)
+	# 	n_filters *= 2
+	# 	if use_pooling and k!=(depth-1):
+	# 		x2 = MaxPooling1D()(x2)
+
+	# x2 = GlobalAveragePooling1D()(x2)
+	# if dense_collection>0:
+	# 	x2 = Dense(dense_collection)(x2)
+	# if dropout_rate>0:
+	# 	x2 = Dropout(dropout_rate)(x2)
+
+	# x2 = Dense(neurons_final,activation=final_activation,name=header)(x2)
+	# model = Model(inputs, x2, name=header)
+
+	# return model
 
 def MultiScaleResNetModel(n_channels, n_classes = 3, dropout_rate=0, dense_collection=0, use_pooling=True, depth=2,
 				 header="classifier", model_signal_length = 128):

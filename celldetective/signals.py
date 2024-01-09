@@ -6,7 +6,7 @@ import json
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, CSVLogger
 from tensorflow.keras.losses import CategoricalCrossentropy, MeanSquaredError
-from tensorflow.keras.metrics import Precision
+from tensorflow.keras.metrics import Precision, Recall
 from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
 from tensorflow.keras.utils import to_categorical
@@ -14,7 +14,7 @@ from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D, Concatenate, ZeroPadding1D
 from tensorflow.keras.callbacks import Callback
 from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.metrics import jaccard_score, balanced_accuracy_score
+from sklearn.metrics import jaccard_score, balanced_accuracy_score, precision_score, recall_score
 from scipy.interpolate import interp1d
 from scipy.ndimage import shift
 
@@ -246,7 +246,7 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 
 class SignalDetectionModel(object):
 	
-	def __init__(self, path=None, pretrained=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_signal_length=128, n_channels=2, 
+	def __init__(self, path=None, pretrained=None, channel_option=["live_nuclei_channel"], model_signal_length=128, n_channels=1, 
 				n_conv=3, n_classes=3, dense_collection=128, dropout_rate=0.1, label=''):
 		
 		self.prep_gpu()
@@ -300,11 +300,16 @@ class SignalDetectionModel(object):
 		req_channels = model_config["channels"]
 		print(f"Required channels read from pretrained model: {req_channels}")
 		self.channel_option = req_channels
-
-		try:
+		if 'normalize' in model_config:
+			self.normalize = model_config['normalize']
+		if 'normalization_percentile' in model_config:
+			self.normalization_percentile = model_config['normalization_percentile']
+		if 'normalization_values' in model_config:
+			self.normalization_values = model_config['normalization_values']
+		if 'normalization_percentile' in model_config:
+			self.normalization_clipping = model_config['normalization_clipping']
+		if 'label' in model_config:
 			self.label = model_config['label']
-		except:
-			pass
 
 		self.n_channels = self.model_class.layers[0].input_shape[0][-1]
 		self.model_signal_length = self.model_class.layers[0].input_shape[0][-2]
@@ -348,9 +353,10 @@ class SignalDetectionModel(object):
 		except:
 			pass
 	
-	def fit_from_directory(self, ds_folders, normalize=True, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, target_directory=None, augment=True, augmentation_factor=2, 
-						  validation_split=0.20, test_split=0.0, batch_size = 64, epochs=300, recompile_pretrained=False, learning_rate=0.01,
-						  loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
+	def fit_from_directory(self, ds_folders, normalize=True, normalization_percentile=None, normalization_values = None, 
+						  normalization_clip = None, channel_option=["live_nuclei_channel"], model_name=None, target_directory=None, 
+						  augment=True, augmentation_factor=2, validation_split=0.20, test_split=0.0, batch_size = 64, epochs=300, 
+						  recompile_pretrained=False, learning_rate=0.01, loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
 		"""
 		
 		Load annotations in directory, create dataset, fit model
@@ -358,6 +364,8 @@ class SignalDetectionModel(object):
 		"""
 		
 		self.normalize = normalize
+		self.normalization_percentile, self. normalization_values, self.normalization_clip =  _interpret_normalization_parameters(self.n_channels, self.normalization_percentile, self.normalization_values, self.normalization_clip)
+
 		self.ds_folders = [rf'{d}' for d in ds_folders]
 		self.batch_size = batch_size
 		self.epochs = epochs
@@ -391,16 +399,19 @@ class SignalDetectionModel(object):
 		self.train_classifier()
 		self.train_regressor()
 
-		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length, 'label': self.label}
+		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length, 'label': self.label, 'normalize': self.normalize, 'normalization_percentile': self.normalization_percentile, 'normalization_values': self.normalization_values, 'normalization_clip': self.normalization_clip}
 		json_string = json.dumps(config_input)
 		with open(os.sep.join([self.model_folder,"config_input.json"]), 'w') as outfile:
 			outfile.write(json_string)
 
-	def fit(self, x_train, y_time_train, y_class_train, normalize=True, pad=True, validation_data=None, test_data=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, 
+	def fit(self, x_train, y_time_train, y_class_train, normalize=True, normalization_percentile=None, normalization_values = None, normalization_clip = None, pad=True, validation_data=None, test_data=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, 
 			target_directory=None, augment=True, augmentation_factor=3, validation_split=0.25, batch_size = 64, epochs=300,
 			recompile_pretrained=False, learning_rate=0.001, loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
 
 		self.normalize = normalize
+		self.normalize = normalize
+		self.normalization_percentile, self. normalization_values, self.normalization_clip =  _interpret_normalization_parameters(self.n_channels, self.normalization_percentile, self.normalization_values, self.normalization_clip)
+
 		self.x_train = x_train
 		self.y_class_train = y_class_train
 		self.y_time_train = y_time_train
@@ -420,7 +431,9 @@ class SignalDetectionModel(object):
 
 		if self.normalize:
 			self.y_time_train = self.y_time_train.astype(np.float32)/self.model_signal_length
-			self.x_train = normalize_signal_set(self.x_train, self.channel_option)
+			self.x_train = normalize_signal_set(self.x_train, self.channel_option, normalization_percentile=self.normalization_percentile, 
+												normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
+												)
 
 
 		if validation_data is not None:
@@ -434,7 +447,10 @@ class SignalDetectionModel(object):
 				self.y_time_val = validation_data[2]
 				if self.normalize:
 					self.y_time_val = self.y_time_val.astype(np.float32)/self.model_signal_length
-					self.x_val = normalize_signal_set(self.x_val, self.channel_option)
+					self.x_val = normalize_signal_set(self.x_val, self.channel_option, normalization_percentile=self.normalization_percentile, 
+												normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
+												)
+
 			except Exception as e:
 				print("Could not load validation data, error {e}...")
 		else:
@@ -451,7 +467,9 @@ class SignalDetectionModel(object):
 				self.y_time_test = test_data[2]
 				if self.normalize:
 					self.y_time_test = self.y_time_test.astype(np.float32)/self.model_signal_length
-					self.x_test = normalize_signal_set(self.x_test, self.channel_option)
+					self.x_test = normalize_signal_set(self.x_test, self.channel_option, normalization_percentile=self.normalization_percentile, 
+												normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
+												)
 			except Exception as e:
 				print("Could not load test data, error {e}...")
 
@@ -490,7 +508,9 @@ class SignalDetectionModel(object):
 			self.x = pad_to_model_length(self.x, self.model_signal_length)
 
 		if self.normalize:
-			self.x = normalize_signal_set(self.x, self.channel_option)
+			self.x = normalize_signal_set(self.x, self.channel_option, normalization_percentile=self.normalization_percentile, 
+												normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
+												)
 
 		# implement auto interpolation here!!
 		#self.x = self.interpolate_signals(self.x)
@@ -525,7 +545,9 @@ class SignalDetectionModel(object):
 			self.x = pad_to_model_length(self.x, self.model_signal_length)
 
 		if self.normalize:
-			self.x = normalize_signal_set(self.x, self.channel_option)
+			self.x = normalize_signal_set(self.x, self.channel_option, normalization_percentile=self.normalization_percentile, 
+												normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
+												)
 
 		assert self.x.shape[-1] == self.model_reg.layers[0].input_shape[0][-1], f"Shape mismatch between the input shape and the model input shape..."
 		assert self.x.shape[-2] == self.model_reg.layers[0].input_shape[0][-2], f"Shape mismatch between the input shape and the model input shape..."
@@ -569,12 +591,12 @@ class SignalDetectionModel(object):
 				self.model_class.set_weights(clone_model(self.model_class).get_weights())
 				self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
 							  loss=self.loss_class, 
-							  metrics=['accuracy', Precision()])
+							  metrics=['accuracy', Precision(), Recall()])
 		else:
 			print("Compiling the classifier...")
 			self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
 						  loss=self.loss_class, 
-						  metrics=['accuracy', Precision()])
+						  metrics=['accuracy', Precision(), Recall()])
 			
 		self.gather_callbacks("classifier")
 
@@ -620,12 +642,17 @@ class SignalDetectionModel(object):
 			title="Test data"
 			IoU_score = jaccard_score(ground_truth, predictions, average=None)
 			balanced_accuracy = balanced_accuracy_score(ground_truth, predictions)
+			precision = precision_score(ground_truth, predictions, average=None)
+			recall = recall_score(ground_truth, predictions, average=None)
+
 			print(f"Test IoU score: {IoU_score}")
 			print(f"Test Balanced accuracy score: {balanced_accuracy}")
+			print(f'Test Precision: {precision}')
+			print(f'Test Recall: {recall}')
 
 			# Confusion matrix on test set
 			results = confusion_matrix(ground_truth,predictions)
-			self.dico.update({"test_IoU": IoU_score, "test_balanced_accuracy": balanced_accuracy, "test_confusion": results})
+			self.dico.update({"test_IoU": IoU_score, "test_balanced_accuracy": balanced_accuracy, "test_confusion": results, 'test_precision': precision, 'test_recall': recall})
 
 			try:
 				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
@@ -642,12 +669,17 @@ class SignalDetectionModel(object):
 			# Validation scores
 			IoU_score = jaccard_score(ground_truth, predictions, average=None)
 			balanced_accuracy = balanced_accuracy_score(ground_truth, predictions)
+			precision = precision_score(ground_truth, predictions, average=None)
+			recall = recall_score(ground_truth, predictions, average=None)
+
 			print(f"Validation IoU score: {IoU_score}")
 			print(f"Validation Balanced accuracy score: {balanced_accuracy}")
+			print(f'Validation Precision: {precision}')
+			print(f'Validation Recall: {recall}')
 
 			# Confusion matrix on validation set
 			results = confusion_matrix(ground_truth,predictions)
-			self.dico.update({"val_IoU": IoU_score, "val_balanced_accuracy": balanced_accuracy, "val_confusion": results})
+			self.dico.update({"val_IoU": IoU_score, "val_balanced_accuracy": balanced_accuracy, "val_confusion": results, 'val_precision': precision, 'val_recall': recall})
 
 			try:
 				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
@@ -1011,7 +1043,9 @@ class SignalDetectionModel(object):
 		# Attempt per-set normalization
 		fluo = pad_to_model_length(fluo, self.model_signal_length)
 		if self.normalize:
-			fluo = normalize_signal_set(fluo, self.channel_option)
+			fluo = normalize_signal_set(fluo, self.channel_option, normalization_percentile=self.normalization_percentile, 
+										normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
+										)
 			
 		# Trivial normalization for time of interest
 		times_of_interest /= self.model_signal_length
@@ -1021,56 +1055,43 @@ class SignalDetectionModel(object):
 		self.y_time_set.extend(times_of_interest)
 		self.y_class_set.extend(classes)
 
-def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.99], percentile_dead=[0.5,99.999], percentile_generic=[0.01,99.99]):
+def _interpret_normalization_parameters(n_channels, normalization_percentile, normalization_values, normalization_clip):
+	
+	if normalization_percentile is None:
+		normalization_percentile = [True]*n_channels
+	if normalization_values is None:
+		normalization_values = [[0.1,99.9]]*n_channels
+	if normalization_clip is None:
+		normalization_clip = [False]*n_channels
+	
+	if isinstance(normalization_percentile, bool):
+		normalization_percentile = [normalization_percentile]*n_channels
+	if isinstance(normalization_clip, bool):
+		normalization_clip = [normalization_clip]*n_channels
+	if len(normalization_values)==2 and not isinstance(normalization_values[0], list):
+		normalization_values = [normalization_values]*n_channels
+
+	assert len(normalization_values)==n_channels
+	assert len(normalization_clipping)==n_channels
+	assert len(normalization_percentile_mode)==n_channels
+
+	return normalization_percentile, normalization_values, normalization_clip
+
+
+def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.99], percentile_dead=[0.5,99.999], percentile_generic=[0.01,99.99], normalization_percentile=None, normalization_values=None, normalization_clip=None):
 
 	"""
 
 	Normalize the signals from a set of single-cell signals.
 
-	Parameters
-	----------
-	signal_set : array-like
-		The set of single-cell signals to be normalized.
-	channel_option : list
-		The list of channel names specifying the channels in the signal set.
-	percentile_alive : list, optional
-		The percentile range to use for normalization of live nuclei or blue channel signals. Default is [0.01, 99.99].
-	percentile_dead : list, optional
-		The percentile range to use for normalization of dead nuclei or red channel signals. Default is [0.5, 99.99].
-	percentile_generic : list, optional
-		The percentile range to use for normalization of generic signals (other channels). Default is [0.01, 99.99].
-
-	Returns
-	-------
-	array-like
-		The normalized signal set.
-
-	Notes
-	-----
-	This function performs signal normalization on a set of single-cell signals based on the provided channel names and
-	percentile ranges. The normalization process is specific to different channel types: live nuclei/blue channels,
-	dead nuclei/red channels, and generic channels.
-
-	For channels specified as dead nuclei (using the string "dead_nuclei_channel" or containing "RED" in the channel name),
-	the function calculates the minimum and maximum percentiles within the specified percentile ranges on the initial and
-	final frames of the signal set. It then subtracts the minimum percentile value and divides by the range (max - min)
-	for each channel.
-
-	For channels specified as live nuclei (using the string "live_nuclei_channel" or containing "BLUE" in the channel name),
-	the function calculates the minimum and maximum percentiles within the specified percentile ranges on the initial frame
-	of the signal set. It then subtracts the minimum percentile value and divides by the range (max - min) for each channel.
-
-	For channels not specified as live or dead nuclei, the function calculates the minimum and maximum percentiles within
-	the specified percentile ranges for the entire signal set. It then subtracts the minimum percentile value and divides
-	by the range (max - min) for each channel.
-
-	Examples
-	--------
-	>>> signal_set = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
-	>>> channel_option = ["dead_nuclei_channel", "live_nuclei_channel", "generic_channel"]
-	>>> normalized_signals = normalize_signal_set(signal_set, channel_option)
-
 	"""
+
+	# Check normalization params are ok
+	n_channels = len(channel_option)
+	normalization_percentile, normalization_values, normalization_clip = _interpret_normalization_parameters(n_channels,
+																											normalization_percentile,
+																											normalization_values,
+																											normalization_clip)
 
 	for k,channel in enumerate(channel_option):
 
@@ -1079,45 +1100,81 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 			zeros_loc = np.where(signal_set[i,:,k]==0)
 			zero_values.append(zeros_loc)
 
-		if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
-			print('red normalization')
+		values = signal_set[:,:,k]
 
-			min_percentile_dead, max_percentile_dead = percentile_dead
-			min_set = signal_set[:,:5,k]
-			max_set = signal_set[:,:,k]
-			min_fluo_dead = np.nanpercentile(min_set[min_set!=0.], min_percentile_dead) # 5 % on initial frame where barely any dead are expected
-			max_fluo_dead = np.nanpercentile(max_set[max_set!=0.], max_percentile_dead) # 99th percentile on last fluo frame
-			signal_set[:,:,k] -= min_fluo_dead
-			signal_set[:,:,k] /= (max_fluo_dead - min_fluo_dead)
-
-		elif ("live_nuclei_channel" in channel and 'haralick' not in channel) or ("BLUE" in channel):
-		
-			print('blue normalization')
-			min_percentile_alive, max_percentile_alive = percentile_alive
-			values = signal_set[:,:5,k]
-			min_fluo_alive = np.nanpercentile(values[values!=0.], min_percentile_alive) # safe 0.5% of Hoescht on initial frame
-			max_fluo_alive = np.nanpercentile(values[values!=0.], max_percentile_alive)
-			signal_set[:,:,k] -= min_fluo_alive
-			signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
-
-		elif 0.8<np.mean(signal_set[:,:,k])<1.2:
-			print('detected normalized signal; assume min max in 0.5-1.5 range')
-			min_fluo_alive = 0.5
-			max_fluo_alive = 1.5
-			signal_set[:,:,k] -= min_fluo_alive
-			signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
-
+		if normalization_percentile[k]:
+			min_val = np.nanpercentile(values[values!=0.], normalization_values[k][0])
+			max_val = np.nanpercentile(values[values!=0.], normalization_values[k][1])
 		else:
+			min_val = normalization_values[k][0]
+			max_val = normalization_values[k][1]
 
-			min_percentile, max_percentile = percentile_generic
-			values = signal_set[:,:,k]
-			min_signal = np.nanpercentile(values[values!=0.], min_percentile)
-			max_signal= np.nanpercentile(values[values!=0.], max_percentile)
-			signal_set[:,:,k] -= min_signal
-			signal_set[:,:,k] /= (max_signal - min_signal)
+		signal_set[:,:,k] -= min_signal
+		signal_set[:,:,k] /= (max_signal - min_signal)
+
+		if normalization_clip[k]:
+			to_clip_low = []
+			to_clip_high = []
+			for i in range(len(signal_set)):
+				clip_low_loc = np.where(signal_set[i,:,k]<=0)
+				clip_high_loc = np.where(signal_set[i,:,k]>=1.0)
+				to_clip_low.append(clip_low_loc)
+				to_clip_high.append(clip_high_loc)
+
+			for i,z in enumerate(to_clip_low):
+				signal_set[i,z,k] = 0.
+			for i,z in enumerate(to_clip_high):
+				signal_set[i,z,k] = 1.					
 
 		for i,z in enumerate(zero_values):
 			signal_set[i,z,k] = 0.
+
+	# for k,channel in enumerate(channel_option):
+
+	# 	zero_values = []
+	# 	for i in range(len(signal_set)):
+	# 		zeros_loc = np.where(signal_set[i,:,k]==0)
+	# 		zero_values.append(zeros_loc)
+
+	# 	if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
+	# 		print('red normalization')
+
+	# 		min_percentile_dead, max_percentile_dead = percentile_dead
+	# 		min_set = signal_set[:,:5,k]
+	# 		max_set = signal_set[:,:,k]
+	# 		min_fluo_dead = np.nanpercentile(min_set[min_set!=0.], min_percentile_dead) # 5 % on initial frame where barely any dead are expected
+	# 		max_fluo_dead = np.nanpercentile(max_set[max_set!=0.], max_percentile_dead) # 99th percentile on last fluo frame
+	# 		signal_set[:,:,k] -= min_fluo_dead
+	# 		signal_set[:,:,k] /= (max_fluo_dead - min_fluo_dead)
+
+	# 	elif ("live_nuclei_channel" in channel and 'haralick' not in channel) or ("BLUE" in channel):
+		
+	# 		print('blue normalization')
+	# 		min_percentile_alive, max_percentile_alive = percentile_alive
+	# 		values = signal_set[:,:5,k]
+	# 		min_fluo_alive = np.nanpercentile(values[values!=0.], min_percentile_alive) # safe 0.5% of Hoescht on initial frame
+	# 		max_fluo_alive = np.nanpercentile(values[values!=0.], max_percentile_alive)
+	# 		signal_set[:,:,k] -= min_fluo_alive
+	# 		signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
+
+	# 	elif 0.8<np.mean(signal_set[:,:,k])<1.2:
+	# 		print('detected normalized signal; assume min max in 0.5-1.5 range')
+	# 		min_fluo_alive = 0.5
+	# 		max_fluo_alive = 1.5
+	# 		signal_set[:,:,k] -= min_fluo_alive
+	# 		signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
+
+	# 	else:
+
+	# 		min_percentile, max_percentile = percentile_generic
+	# 		values = signal_set[:,:,k]
+	# 		min_signal = np.nanpercentile(values[values!=0.], min_percentile)
+	# 		max_signal= np.nanpercentile(values[values!=0.], max_percentile)
+	# 		signal_set[:,:,k] -= min_signal
+	# 		signal_set[:,:,k] /= (max_signal - min_signal)
+
+	# 	for i,z in enumerate(zero_values):
+	# 		signal_set[i,z,k] = 0.
 
 	return signal_set
 

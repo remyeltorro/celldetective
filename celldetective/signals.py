@@ -247,7 +247,7 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 class SignalDetectionModel(object):
 	
 	def __init__(self, path=None, pretrained=None, channel_option=["live_nuclei_channel"], model_signal_length=128, n_channels=1, 
-				n_conv=3, n_classes=3, dense_collection=128, dropout_rate=0.1, label=''):
+				n_conv=3, n_classes=3, dense_collection=512, dropout_rate=0.1, label=''):
 		
 		self.prep_gpu()
 

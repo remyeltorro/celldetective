@@ -5,7 +5,7 @@ import json
 
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, CSVLogger
-from tensorflow.keras.losses import CategoricalCrossentropy, MeanSquaredError
+from tensorflow.keras.losses import CategoricalCrossentropy, MeanSquaredError, MeanAbsoluteError
 from tensorflow.keras.metrics import Precision, Recall
 from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
@@ -827,6 +827,7 @@ class SignalDetectionModel(object):
 		"""
 
 		mse = MeanSquaredError()
+		mae = MeanAbsoluteError()
 
 		if hasattr(self, 'x_test'):
 
@@ -834,20 +835,28 @@ class SignalDetectionModel(object):
 			predictions = self.model_reg.predict(self.x_test[np.argmax(self.y_class_test,axis=1)==0], batch_size=self.batch_size)[:,0]
 			ground_truth = self.y_time_test[np.argmax(self.y_class_test,axis=1)==0]
 			assert predictions.shape==ground_truth.shape,"Shape mismatch between predictions and ground truths..."
-			test_error = mse(ground_truth, predictions).numpy()
-			print(f"MSE on test set: {test_error}...")
+			
+			test_mse = mse(ground_truth, predictions).numpy()
+			test_mae = mae(ground_truth, predictions).numpy()
+			print(f"MSE on test set: {test_mse}...")
+			print(f"MAE on test set: {test_mae}...")
 			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"test_regression.png"]))
-			self.dico.update({"test_mse": test_error})
+			self.dico.update({"test_mse": test_mse, "test_mae": test_mae})
 
 		if hasattr(self, 'x_val'):
 			# Validation set
 			predictions = self.model_reg.predict(self.x_val[np.argmax(self.y_class_val,axis=1)==0], batch_size=self.batch_size)[:,0]
 			ground_truth = self.y_time_val[np.argmax(self.y_class_val,axis=1)==0]
 			assert predictions.shape==ground_truth.shape,"Shape mismatch between predictions and ground truths..."
-			val_error = mse(ground_truth, predictions).numpy()
+			
+			val_mse = mse(ground_truth, predictions).numpy()
+			val_mae = mae(ground_truth, predictions).numpy()
+
 			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"validation_regression.png"]))
-			print(f"MSE on validation set: {val_error}...")
-			self.dico.update({"val_mse": val_error})
+			print(f"MSE on validation set: {val_mse}...")
+			print(f"MAE on validation set: {val_mae}...")
+
+			self.dico.update({"val_mse": val_mse, "val_mae": val_mae})
 
 
 	def gather_callbacks(self, mode):

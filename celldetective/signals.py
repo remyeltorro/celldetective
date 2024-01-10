@@ -247,7 +247,7 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 class SignalDetectionModel(object):
 	
 	def __init__(self, path=None, pretrained=None, channel_option=["live_nuclei_channel"], model_signal_length=128, n_channels=1, 
-				n_conv=1, n_classes=3, dense_collection=512, dropout_rate=0.1, label=''):
+				n_conv=2, n_classes=3, dense_collection=512, dropout_rate=0.1, label=''):
 		
 		self.prep_gpu()
 
@@ -327,7 +327,7 @@ class SignalDetectionModel(object):
 		"""
 
 		self.model_class = ResNetModelCurrent(n_channels=self.n_channels,
-									self.n_conv,
+									n_slices=self.n_conv,
 									n_classes = self.n_classes,
 									dense_collection=self.dense_collection,
 									dropout_rate=self.dropout_rate, 
@@ -336,7 +336,7 @@ class SignalDetectionModel(object):
 									)
 
 		self.model_reg = ResNetModelCurrent(n_channels=self.n_channels,
-									self.n_conv,
+									n_slices=self.n_conv,
 									n_classes = self.n_classes,
 									dense_collection=self.dense_collection,
 									dropout_rate=self.dropout_rate, 
@@ -1521,48 +1521,6 @@ def residual_block1D(x, number_of_filters, kernel_size=8, match_filter_size=True
 	# Return the result
 	return x
 
-# def ResNetModel(n_channels, n_blocks, n_classes = 3, dropout_rate=0, dense_collection=0, use_pooling=True, depth=2,
-# 				 header="classifier", model_signal_length = 128):
-
-# 	"""
-
-# 	Define a generic ResNet 1D encoder model.
-
-# 	Parameters
-# 	----------
-# 	n_channels : int
-# 		Number of input channels.
-# 	n_blocks : int
-# 		Number of residual blocks in the model.
-# 	n_classes : int, optional
-# 		Number of output classes. Default is 3.
-# 	dropout_rate : float, optional
-# 		Dropout rate to be applied. Default is 0.
-# 	dense_collection : int, optional
-# 		Number of neurons in the dense layer. Default is 0.
-# 	header : str, optional
-# 		Type of the model header. "classifier" for classification, "regressor" for regression. Default is "classifier".
-# 	model_signal_length : int, optional
-# 		Length of the input signal. Default is 128.
-
-# 	Returns
-# 	-------
-# 	keras.models.Model
-# 		ResNet 1D encoder model.
-
-# 	Notes
-# 	-----
-# 	This function defines a generic ResNet 1D encoder model with the specified number of input channels, residual
-# 	blocks, output classes, dropout rate, dense collection, and model header. The model architecture follows the
-# 	ResNet principles with 1D convolutional layers and residual connections. The final activation and number of
-# 	neurons in the output layer are determined based on the header type.
-
-# 	Examples
-# 	--------
-# 	>>> model = ResNetModel(n_channels=3, n_blocks=4, n_classes=2, dropout_rate=0.2)
-# 	# Define a ResNet 1D encoder model with 3 input channels, 4 residual blocks, and 2 output classes.
-	
-# 	"""
 
 def MultiscaleResNetModel(n_channels, n_classes = 3, dropout_rate=0, dense_collection=0, use_pooling=True,
 				 header="classifier", model_signal_length = 128):
@@ -1666,7 +1624,6 @@ def ResNetModelCurrent(n_channels, n_slices, depth=2, use_pooling=True, n_classe
 	else:
 		return None
 
-	n_slices = 2
 	inputs = Input(shape=(model_signal_length,n_channels,))
 	x2 = Conv1D(64, kernel_size=1,strides=1,padding='same')(inputs)
 
@@ -2247,5 +2204,8 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 
 if __name__ == "__main__":
 
-	model = MultiScaleResNetModel(3, n_classes = 3, dropout_rate=0, dense_collection=1024, header="classifier", model_signal_length = 128)
+	# model = MultiScaleResNetModel(3, n_classes = 3, dropout_rate=0, dense_collection=1024, header="classifier", model_signal_length = 128)
+	# print(model.summary())
+	model = ResNetModelCurrent(1, 2, depth=2, use_pooling=True, n_classes = 3, dropout_rate=0.1, dense_collection=512,
+				 	   header="classifier", model_signal_length = 128)
 	print(model.summary())

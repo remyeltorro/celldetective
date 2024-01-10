@@ -269,7 +269,7 @@ class ConfigSignalModelTraining(QMainWindow):
 		layout.addLayout(modelname_layout)
 
 		classname_layout = QHBoxLayout()
-		classname_layout.addWidget(QLabel('class name: '), 30)
+		classname_layout.addWidget(QLabel('event name: '), 30)
 		self.class_name_le = QLineEdit()
 		self.class_name_le.setText("")
 		classname_layout.addWidget(self.class_name_le, 70)

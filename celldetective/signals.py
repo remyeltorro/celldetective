@@ -327,7 +327,7 @@ class SignalDetectionModel(object):
 		"""
 
 		self.model_class = ResNetModelCurrent(n_channels=self.n_channels,
-									n_blocks=self.n_conv,
+									self.n_conv,
 									n_classes = self.n_classes,
 									dense_collection=self.dense_collection,
 									dropout_rate=self.dropout_rate, 
@@ -336,7 +336,7 @@ class SignalDetectionModel(object):
 									)
 
 		self.model_reg = ResNetModelCurrent(n_channels=self.n_channels,
-									n_blocks=self.n_conv,
+									self.n_conv,
 									n_classes = self.n_classes,
 									dense_collection=self.dense_collection,
 									dropout_rate=self.dropout_rate, 

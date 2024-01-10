@@ -9,7 +9,7 @@ from tensorflow.keras.losses import CategoricalCrossentropy, MeanSquaredError, M
 from tensorflow.keras.metrics import Precision, Recall
 from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
-from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical, plot_model
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D, Concatenate, ZeroPadding1D, Flatten
 from tensorflow.keras.callbacks import Callback
@@ -1386,72 +1386,6 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 	return signal, time_of_interest/model_signal_length, cclass
 
 
-# def residual_block1D(x, number_of_filters,match_filter_size=True):
-
-# 	"""
-
-# 	Create a 1D residual block.
-
-# 	Parameters
-# 	----------
-# 	x : Tensor
-# 		Input tensor.
-# 	number_of_filters : int
-# 		Number of filters in the convolutional layers.
-# 	match_filter_size : bool, optional
-# 		Whether to match the filter size of the skip connection to the output. Default is True.
-
-# 	Returns
-# 	-------
-# 	Tensor
-# 		Output tensor of the residual block.
-
-# 	Notes
-# 	-----
-# 	This function creates a 1D residual block by performing the original mapping followed by adding a skip connection
-# 	and applying non-linear activation. The skip connection allows the gradient to flow directly to earlier layers and
-# 	helps mitigate the vanishing gradient problem. The residual block consists of three convolutional layers with
-# 	batch normalization and ReLU activation functions.
-
-# 	If `match_filter_size` is True, the skip connection is adjusted to have the same number of filters as the output.
-# 	Otherwise, the skip connection is kept as is.
-
-# 	Examples
-# 	--------
-# 	>>> inputs = Input(shape=(10, 3))
-# 	>>> x = residual_block1D(inputs, 64)
-# 	# Create a 1D residual block with 64 filters and apply it to the input tensor.
-	
-# 	"""
-
-
-# 	# Create skip connection
-# 	x_skip = x
-
-# 	# Perform the original mapping
-# 	x = Conv1D(number_of_filters, kernel_size=8, strides=1,padding="same")(x_skip)
-# 	x = BatchNormalization()(x)
-# 	x = Activation("relu")(x)
-
-# 	x = Conv1D(number_of_filters, kernel_size=5, strides=1,padding="same")(x)
-# 	x = BatchNormalization()(x)
-# 	x = Activation("relu")(x)
-
-# 	x = Conv1D(number_of_filters, kernel_size=3,padding="same")(x)
-# 	x = BatchNormalization()(x)
-
-# 	if match_filter_size:
-# 		x_skip = Conv1D(number_of_filters, kernel_size=1, padding="same")(x_skip)
-
-# 	# Add the skip connection to the regular mapping
-# 	x = Add()([x, x_skip])
-
-# 	# Nonlinearly activate the result
-# 	x = Activation("relu")(x)
-
-# 	# Return the result
-# 	return x
-
 def residual_block1D(x, number_of_filters, kernel_size=8, match_filter_size=True, connection='identity'):
 
 	"""
@@ -1630,7 +1564,7 @@ def ResNetModelCurrent(n_channels, n_slices, depth=2, use_pooling=True, n_classe
 	n_filters = 64
 	for k in range(depth):
 		for i in range(n_slices):
-				x2 = residual_block1D(x2,n_filters)
+				x2 = residual_block1D(x2,n_filters,kernel_size=8)
 		n_filters *= 2
 		if use_pooling and k!=(depth-1):
 			x2 = MaxPooling1D()(x2)
@@ -2209,3 +2143,4 @@ if __name__ == "__main__":
 	model = ResNetModelCurrent(1, 2, depth=2, use_pooling=True, n_classes = 3, dropout_rate=0.1, dense_collection=512,
 				 	   header="classifier", model_signal_length = 128)
 	print(model.summary())
+	#plot_model(model, to_file='test.png', show_shapes=True)

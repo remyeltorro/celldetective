@@ -124,7 +124,7 @@ class ConfigNewExperiment(QMainWindow):
 
 		self.SliderWells = QLabeledSlider(Qt.Horizontal, self)
 		self.SliderWells.setMinimum(1)
-		self.SliderWells.setMaximum(9)
+		self.SliderWells.setMaximum(32)
 		self.ms_grid.addWidget(self.SliderWells, 2, 0, 1, 3, alignment=Qt.AlignTop)
 
 		self.number_of_positions = QLabel("Number of positions per well:")
@@ -132,7 +132,7 @@ class ConfigNewExperiment(QMainWindow):
 
 		self.SliderPos = QLabeledSlider(Qt.Horizontal, self)
 		self.SliderPos.setMinimum(1)
-		self.SliderPos.setMaximum(48)
+		self.SliderPos.setMaximum(50)
 
 		self.ms_grid.addWidget(self.SliderPos, 4, 0, 1, 3)
 

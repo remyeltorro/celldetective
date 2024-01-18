@@ -88,7 +88,7 @@ def compute_attention_weight(dist_matrix, cut_distance, opposite_cell_status, op
 	return weights, closest_opposite
 
 def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None, not_status_option=None, compute_cum_sum=True, 
-							  attention_weight=True, symmetrize=True, include_dead_weight=False,
+							  attention_weight=True, symmetrize=True, include_dead_weight=True,
 							  column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
 	
 	"""
@@ -287,7 +287,7 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 		unwanted = df_B.columns[df_B.columns.str.contains('neighborhood')]
 		df_B = df_B.drop(columns=unwanted)		
 
-	df_A, df_B = distance_cut_neighborhood(df_A,df_B,distance,**neighborhood_kwargs)
+	df_A, df_B = distance_cut_neighborhood(df_A,df_B, distance,**neighborhood_kwargs)
 
 	for td,d in zip(theta_dist, distance):
 

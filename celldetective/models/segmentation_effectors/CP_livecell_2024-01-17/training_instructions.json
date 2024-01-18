@@ -1,0 +1,37 @@
+{
+    "model_name": "CP_livecell_2024-01-17",
+    "model_type": "cellpose",
+    "pretrained": "/home/limozin/Documents/GitHub/celldetective/celldetective/models/segmentation_generic/CP_livecell",
+    "spatial_calibration": 0.21783999999999998,
+    "channel_option": [
+        "brightfield_channel",
+        "None"
+    ],
+    "normalization_percentile": [
+        true,
+        true
+    ],
+    "normalization_clip": [
+        true,
+        true
+    ],
+    "normalization_values": [
+        [
+            1.0,
+            99.0
+        ],
+        [
+            1.0,
+            99.0
+        ]
+    ],
+    "ds": [
+        "/home/limozin/Desktop/primNK_w_MCF7/dataset"
+    ],
+    "augmentation_factor": 1.2,
+    "validation_split": 0.2,
+    "learning_rate": 0.001,
+    "batch_size": 8,
+    "epochs": 3000,
+    "target_directory": "/home/limozin/Documents/GitHub/celldetective/celldetective/models/segmentation_effectors"
+}

@@ -186,7 +186,7 @@ elif model_type=='stardist':
 		train_epochs = epochs,
 		#train_foreground_only=0.9,
 		train_loss_weights=(1,0.2),
-		train_reduce_lr = {'factor': 0.5, 'patience': 80, 'min_delta': 0},
+		train_reduce_lr = {'factor': 0.1, 'patience': 30, 'min_delta': 0},
 		unet_n_depth = 3,
 		train_batch_size = batch_size,
 	)

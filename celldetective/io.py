@@ -41,7 +41,7 @@ def get_spatial_calibration(experiment):
 	
 	
 	config = get_config(experiment)
-	PxToUm = float(ConfigSectionMap(self.exp_config,"MovieSettings")["pxtoum"])
+	PxToUm = float(ConfigSectionMap(exp_config,"MovieSettings")["pxtoum"])
 	
 	return PxToUm
 

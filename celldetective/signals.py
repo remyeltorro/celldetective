@@ -30,6 +30,7 @@ from celldetective.utils import color_from_status, color_from_class
 from math import floor, ceil
 from scipy.optimize import curve_fit
 import time
+import math
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
@@ -2019,6 +2020,57 @@ def sliding_msd(x, y, timeline, window, mode='bi', n_points_migration=7,  n_poin
 		
 	return s_msd, s_alpha
 
+def drift_msd(t, d, v):
+    return 4*d*t + v**2*t**2
+
+def sliding_msd_drift(x, y, timeline, window, mode='bi', n_points_migration=7,  n_points_transport=7, r2_threshold=0.75):
+
+	"""
+	"""
+
+	assert window > n_points_migration,'Please set a window larger than the number of fit points...'
+	
+	# modes = bi, forward, backward
+	s_diffusion = np.zeros(len(x))
+	s_diffusion[:] = np.nan
+	s_velocity = np.zeros(len(x))
+	s_velocity[:] = np.nan
+	dt = timeline[1] - timeline[0]
+	
+	if mode=='bi':
+		assert window%2==1,'Please set an odd window for the bidirectional mode'
+		lower_bound = window//2
+		upper_bound = len(x) - window//2 - 1
+	elif mode=='forward':
+		lower_bound = 0
+		upper_bound = len(x) - window
+	elif mode=='backward':
+		lower_bound = window
+		upper_bound = len(x)
+	
+	for t in range(lower_bound,upper_bound):
+		if mode=='bi':
+			x_sub = x[t-window//2:t+window//2+1]
+			y_sub = y[t-window//2:t+window//2+1]
+			msd,timelag = T_MSD(x_sub,y_sub,dt)
+			# dxdt[t] = (x[t+window//2+1] - x[t-window//2]) / (timeline[t+window//2+1] - timeline[t-window//2])
+		elif mode=='forward':
+			x_sub = x[t:t+window]
+			y_sub = y[t:t+window]
+			msd,timelag = T_MSD(x_sub,y_sub,dt)
+			# dxdt[t] = (x[t+window] - x[t]) /  (timeline[t+window] - timeline[t])
+		elif mode=='backward':
+			x_sub = x[t-window:t]
+			y_sub = y[t-window:t]
+			msd,timelag = T_MSD(x_sub,y_sub,dt)
+			# dxdt[t] = (x[t] - x[t-window]) /  (timeline[t] - timeline[t-window])
+
+		popt,pcov = curve_fit(drift_msd,timelag[:n_points_migration],msd[:n_points_migration])
+		#if not np.any([math.isinf(a) for a in pcov.flatten()]):
+		s_diffusion[t] = popt[0]
+		s_velocity[t] = popt[1]
+		
+	return s_diffusion, s_velocity
 
 def columnwise_mean(matrix, min_nbr_values = 1):
 	

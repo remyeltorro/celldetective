@@ -888,7 +888,7 @@ class SignalDetectionModel(object):
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_precision",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
-			callback_stop = EarlyStopping(monitor='val_precision', patience=1000)
+			callback_stop = EarlyStopping(monitor='val_precision', patience=200)
 			self.cb.append(callback_stop)
 			
 		elif mode=="regressor":
@@ -905,7 +905,7 @@ class SignalDetectionModel(object):
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_loss",mode="min",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
-			callback_stop = EarlyStopping(monitor='val_loss', patience=1000)
+			callback_stop = EarlyStopping(monitor='val_loss', patience=200)
 			self.cb.append(callback_stop)            
 		
 		log_dir = self.model_folder+os.sep

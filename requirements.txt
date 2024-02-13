@@ -17,3 +17,7 @@ fonticon-materialdesignicons6
 art
 lifelines
 setuptools
+scipy
+seaborn
+opencv=4.7.0
+liblapack

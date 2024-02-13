@@ -1,6 +1,10 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QButtonGroup, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, QRadioButton
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QButtonGroup, QComboBox, QFrame, \
+	QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, \
+	QRadioButton, QSpacerItem, QSizePolicy
+from PyQt5.QtCore import Qt, QSize, QRect
 from PyQt5.QtGui import QIcon, QDoubleValidator
+from sklearn.preprocessing import MinMaxScaler
+
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from superqt import QLabeledSlider
 from superqt.fonticon import icon
@@ -29,6 +33,7 @@ from matplotlib.cm import viridis, tab10
 import math
 
 
+
 class ConfigSignalPlot(QWidget):
 	
 	"""
@@ -42,7 +47,6 @@ class ConfigSignalPlot(QWidget):
 		self.parent = parent
 		self.setWindowTitle("Configure signal plot")
 		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
-
 		self.exp_dir = self.parent.exp_dir
 		self.soft_path = get_software_location()		
 		self.exp_config = self.exp_dir +"config.ini"
@@ -53,6 +57,8 @@ class ConfigSignalPlot(QWidget):
 		self.target_class = [0,1]
 		self.show_ci = True
 		self.show_cell_lines = False
+		self.ax2=None
+
 
 		print('Parent wells: ', self.wells)
 
@@ -65,8 +71,6 @@ class ConfigSignalPlot(QWidget):
 
 		self.screen_height = self.parent.parent.parent.screen_height
 		center_window(self)
-
-		self.setMinimumWidth(350)
 		#self.setMinimumHeight(int(0.8*self.screen_height))
 		#self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
@@ -102,7 +106,6 @@ class ConfigSignalPlot(QWidget):
 		main_layout = QVBoxLayout()
 		self.setLayout(main_layout)
 		main_layout.setContentsMargins(30,30,30,30)
-
 		panel_title = QLabel('Options')
 		panel_title.setStyleSheet("""
 			font-weight: bold;
@@ -207,17 +210,66 @@ class ConfigSignalPlot(QWidget):
 		self.feature_choice_widget.show()
 		center_window(self.feature_choice_widget)
 
+	def ask_for_features(self):
 
+		cols = np.array(list(self.df.columns))
+		is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
+		feats = cols[is_number(self.df.dtypes)]
+
+		self.feature_choice_widget = QWidget()
+		self.feature_choice_widget.setWindowTitle("Select numeric feature")
+		layout = QVBoxLayout()
+		self.feature_choice_widget.setLayout(layout)
+		self.feature_cb = QComboBox()
+		self.feature_cb.addItems(feats)
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('feature: '), 33)
+		hbox.addWidget(self.feature_cb, 66)
+		#hbox.addWidget((QLabel('Plot two features')))
+		layout.addLayout(hbox)
+		self.checkBox_feature = QCheckBox(self.feature_choice_widget)
+		self.checkBox_feature.setGeometry(QRect(170, 120, 81, 20))
+		self.checkBox_feature.setText('Plot two features')
+		#hbox.addWidget(self.checkBox_feature)
+		layout.addWidget(self.checkBox_feature, alignment=Qt.AlignCenter)
+		self.checkBox_feature.stateChanged.connect(self.enable_second_feature)
+
+		#layout = QVBoxLayout()
+		#self.feature_two_choice_widget.setLayout(layout)
+		self.feature_two_cb = QComboBox()
+		self.feature_two_cb.addItems(feats)
+		self.feature_two_cb.setEnabled(False)
+		hbox_two = QHBoxLayout()
+		hbox_two.addWidget(QLabel('feature two: '), 33)
+		hbox_two.addWidget(self.feature_two_cb, 66)
+		layout.addLayout(hbox_two)
+
+
+		self.set_feature_btn = QPushButton('set')
+		self.set_feature_btn.clicked.connect(self.compute_signals)
+		layout.addWidget(self.set_feature_btn)
+		self.feature_choice_widget.show()
+		center_window(self.feature_choice_widget)
+
+	def enable_second_feature(self):
+		if self.checkBox_feature.isChecked():
+			self.feature_two_cb.setEnabled(True)
+		else:
+			self.feature_two_cb.setEnabled(False)
 	def compute_signals(self):
 
 		if self.df is not None:
 			self.feature_selected = self.feature_cb.currentText()
+			if self.checkBox_feature.isChecked():
+				self.second_feature_selected=self.feature_two_cb.currentText()
+				print(self.second_feature_selected)
 			self.feature_choice_widget.close()
 			self.compute_signal_functions()
 			# prepare survival
 
 			# plot survival
 			self.survivalWidget = QWidget()
+			self.scroll = QScrollArea()
 			self.survivalWidget.setMinimumHeight(int(0.8*self.screen_height))
 			self.survivalWidget.setWindowTitle('signals')
 			self.plotvbox = QVBoxLayout(self.survivalWidget)
@@ -265,11 +317,14 @@ class ConfigSignalPlot(QWidget):
 
 
 			self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+			#self.setMinimumHeight(100)
 			self.survival_window = FigureCanvas(self.fig, title="Survival")
 			self.survival_window.setContentsMargins(0,0,0,0)
 			if self.df is not None:
 				self.initialize_axis()
 			plt.tight_layout()
+
+
 			self.fig.set_facecolor('none')  # or 'None'
 			self.fig.canvas.setStyleSheet("background-color: transparent;")
 			self.survival_window.canvas.draw()
@@ -319,17 +374,14 @@ class ConfigSignalPlot(QWidget):
 
 			#self.plot_options[0].setChecked(True)
 			self.plotvbox.addLayout(radio_hbox)
-
 			self.plotvbox.addLayout(plot_buttons_hbox)
 			self.plotvbox.addWidget(self.survival_window)
-
 			self.class_selection_lbl = QLabel('Select class')
 			self.class_selection_lbl.setStyleSheet("""
 				font-weight: bold;
 				padding: 0px;
 				""")
 			self.plotvbox.addWidget(self.class_selection_lbl, alignment=Qt.AlignCenter)
-			
 			class_selection_hbox = QHBoxLayout()
 			class_selection_hbox.setContentsMargins(30,30,30,30)
 			self.all_btn = QRadioButton('*')
@@ -381,9 +433,11 @@ class ConfigSignalPlot(QWidget):
 				self.ax_scatter.set_xticks([])
 				self.ax_scatter.set_yticks([])
 				plt.tight_layout()
+
 				self.fig_scatter.set_facecolor('none')  # or 'None'
 				self.fig_scatter.canvas.setStyleSheet("background-color: transparent;")
 				self.plotvbox.addWidget(self.position_scatter)
+
 
 
 			self.generate_pos_selection_widget()
@@ -391,7 +445,15 @@ class ConfigSignalPlot(QWidget):
 			# if self.df is not None and len(self.ks_estimators_per_position)>0:
 			# 	self.plot_survivals()
 			self.select_btn_group.buttons()[0].click()
-			self.survivalWidget.show()
+			self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+			self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+			#self.scroll.setWidgetResizable(True)
+			self.scroll.setWidget(self.survivalWidget)
+
+			self.scroll.setMinimumHeight(0.8*self.screen_height)
+			self.survivalWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+			self.scroll.show()
+
 
 	def process_signal(self):
 
@@ -401,7 +463,7 @@ class ConfigSignalPlot(QWidget):
 
 		# read instructions from combobox options
 		self.load_available_tables()
-		self.ask_for_feature()
+		self.ask_for_features()
 
 	def generate_pos_selection_widget(self):
 
@@ -487,8 +549,28 @@ class ConfigSignalPlot(QWidget):
 			well_signal_event, well_std_event, timeline_event, matrix_event = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)		
 			well_signal_no_event, well_std_no_event, timeline_no_event, matrix_no_event = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
 			self.mean_plots_timeline = timeline_all
-			self.df_pos_info.loc[self.df_pos_info['pos_path']==block[1],'signal'] = [{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
-																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline}]
+			# self.df_pos_info.loc[self.df_pos_info['pos_path']==block[1],'signal'] = [{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
+			# 																		'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline}]
+
+			if self.checkBox_feature.isChecked():
+				second_well_signal_mean, second_well_std_mean, second_timeline_all, second_matrix_all = mean_signal(movie_group, self.second_feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
+				second_well_signal_event, second_well_std_event, second_timeline_event, second_matrix_event = mean_signal(movie_group, self.second_feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)
+				second_well_signal_no_event, second_well_std_no_event, second_timeline_no_event, second_matrix_no_event = mean_signal(movie_group, self.second_feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
+				self.second_mean_plots_timeline = second_timeline_all
+				self.df_pos_info.loc[self.df_pos_info['pos_path'] == block[1], 'signal'] = [
+					{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
+					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline,'second_mean_all': second_well_signal_mean, 'second_std_all': second_well_std_mean, 'second_matrix_all': second_matrix_all,
+					'second_mean_event': second_well_signal_event, 'second_std_event': second_well_std_event,
+					'second_matrix_event': second_matrix_event, 'second_mean_no_event': second_well_signal_no_event,
+					'second_std_no_event': second_well_std_no_event, 'second_matrix_no_event': second_matrix_no_event,
+					'second_timeline': self.second_mean_plots_timeline}]
+			else:
+				self.df_pos_info.loc[self.df_pos_info['pos_path'] == block[1], 'signal'] = [
+					{'mean_all': well_signal_mean, 'std_all': well_std_mean, 'matrix_all': matrix_all,
+					 'mean_event': well_signal_event, 'std_event': well_std_event,
+					 'matrix_event': matrix_event, 'mean_no_event': well_signal_no_event,
+					 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event,
+					 'timeline': self.mean_plots_timeline}]
 
 		# Per well
 		for well,well_group in self.df.groupby('well'):
@@ -496,12 +578,25 @@ class ConfigSignalPlot(QWidget):
 			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
 			well_signal_event, well_std_event, timeline_event, matrix_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)			
 			well_signal_no_event, well_std_no_event, timeline_no_event, matrix_no_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
-			
-			self.df_well_info.loc[self.df_well_info['well_path']==well,'signal'] = [{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
+			if self.checkBox_feature.isChecked():
+				second_well_signal_mean, second_well_std_mean, second_timeline_all, second_matrix_all = mean_signal(movie_group, self.second_feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
+				second_well_signal_event, second_well_std_event, second_timeline_event, second_matrix_event = mean_signal(movie_group, self.second_feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)
+				second_well_signal_no_event, second_well_std_no_event, second_timeline_no_event, second_matrix_no_event = mean_signal(movie_group, self.second_feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
+				self.df_well_info.loc[self.df_well_info['well_path'] == well, 'signal'] = [
+					{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
+																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline,'second_mean_all': second_well_signal_mean, 'second_std_all': second_well_std_mean, 'second_matrix_all': second_matrix_all,
+					'second_mean_event': second_well_signal_event, 'second_std_event': second_well_std_event,
+					 'second_matrix_event': second_matrix_event, 'second_mean_no_event': second_well_signal_no_event,
+					 'second_std_no_event': second_well_std_no_event, 'second_matrix_no_event': second_matrix_no_event,
+					 'second_timeline': self.second_mean_plots_timeline}]
+			else:
+				self.df_well_info.loc[self.df_well_info['well_path']==well,'signal'] = [{'mean_all': well_signal_mean, 'std_all': well_std_mean,'matrix_all': matrix_all,'mean_event': well_signal_event, 'std_event': well_std_event,
 																					'matrix_event': matrix_event,'mean_no_event': well_signal_no_event, 'std_no_event': well_std_no_event, 'matrix_no_event': matrix_no_event, 'timeline':  self.mean_plots_timeline}]
 
 		self.df_pos_info.loc[:,'select'] = True
 		self.df_well_info.loc[:,'select'] = True
+		self.df_pos_info.to_csv('pos_info.csv')
+
 
 	def generate_synchronized_matrix(self, well_group, feature_selected, cclass, max_time):
 		
@@ -519,6 +614,8 @@ class ConfigSignalPlot(QWidget):
 				try:
 					timeline = track_group['FRAME'].to_numpy().astype(int)
 					feature = track_group[feature_selected].to_numpy()
+					if self.checkBox_feature.isChecked():
+						second_feature=track_group[self.second_feature_selected].to_numpy()
 					if self.cbs[2].currentText().startswith('t') and not self.abs_time_checkbox.isChecked():
 						t0 = math.floor(track_group[self.cbs[2].currentText()].to_numpy()[0])
 						timeline -= t0
@@ -539,6 +636,8 @@ class ConfigSignalPlot(QWidget):
 
 					loc_t = [np.where(mapping==t)[0][0] for t in timeline]
 					matrix[cid,loc_t] = feature
+					if second_feature:
+						matrix[cid,loc_t+1]=second_feature
 					print(timeline, loc_t)
 
 					cid+=1
@@ -571,6 +670,16 @@ class ConfigSignalPlot(QWidget):
 		self.ax.set_xlim(-(self.df['FRAME'].max()+2)*self.FrameToMin,(self.df['FRAME'].max()+2)*self.FrameToMin)
 		self.ax.set_xlabel('time [min]')
 		self.ax.set_ylabel(self.feature_selected)
+		if self.checkBox_feature.isChecked():
+			if self.ax2:
+				self.ax2.clear()
+				self.ax2.get_yaxis().set_visible(False)
+			self.ax2 = self.ax.twinx()
+			#self.ax2.plot([], color='red', label='Feature 2')
+			self.ax2.set_ylim(self.df[self.second_feature_selected].min(), self.df[self.second_feature_selected].max())
+			self.ax2.set_ylabel(self.second_feature_selected, color='red')
+			self.ax2.get_yaxis().set_visible(True)
+			#self.ax2.tick_params('y', colors='red')
 
 	def plot_survivals(self, id):
 
@@ -582,17 +691,31 @@ class ConfigSignalPlot(QWidget):
 			mean_signal = 'mean_all'
 			std_signal = 'std_all'
 			matrix = 'matrix_all'
+			if self.checkBox_feature.isChecked():
+				second_mean_signal='second_mean_all'
+				second_std_signal='second_std_all'
+				second_matrix='second_matrix_all'
 		elif self.target_class==[0]:
 			mean_signal = 'mean_event'
 			std_signal = 'std_event'
 			matrix = 'matrix_event'
+			if self.checkBox_feature.isChecked():
+				second_mean_signal='second_mean_event'
+				second_std_signal='second_std_event'
+				second_matrix='second_matrix_event'
 		else:
 			mean_signal = 'mean_no_event'
 			std_signal = 'std_no_event'
 			matrix = 'matrix_no_event'
+			if self.checkBox_feature.isChecked():
+				second_mean_signal='second_mean_no_event'
+				second_std_signal='second_std_no_event'
+				second_matrix='second_matrix_no_event'
 
 
 		colors = np.array([tab10(i / len(self.df_pos_info)) for i in range(len(self.df_pos_info))])
+		if self.checkBox_feature.isChecked():
+			second_colors = tab10(np.linspace(0.5, 1.5, len(self.df_pos_info)))
 		well_color = [tab10(i / len(self.df_well_info)) for i in range(len(self.df_well_info))]
 
 		if self.plot_mode=='pos':
@@ -604,8 +727,14 @@ class ConfigSignalPlot(QWidget):
 			for i in range(len(lines)):
 				if len(self.well_indices)<=1:
 					self.plot_line(lines[i], colors[pos_indices[i]], pos_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=matrix)
+					if self.checkBox_feature.isChecked():
+						self.plot_line(lines[i],second_colors[pos_indices[i]],pos_labels[i],second_mean_signal,std_signal=second_std_signal,ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=second_matrix)
+
+
 				else:
 					self.plot_line(lines[i], well_color[well_index[i]], pos_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=matrix)
+					if self.checkBox_feature.isChecked():
+						self.plot_line(lines[i],second_colors[pos_indices[i]],pos_labels[i],second_mean_signal,std_signal=second_std_signal,ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=second_matrix)
 
 		elif self.plot_mode=='well':
 			self.initialize_axis()
@@ -615,8 +744,13 @@ class ConfigSignalPlot(QWidget):
 			for i in range(len(lines)):	
 				if len(self.well_indices)<=1:
 					self.plot_line(lines[i], 'k', well_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
+					if self.checkBox_feature.isChecked():
+						self.plot_line(lines[i], 'k', well_labels[i], second_mean_signal, std_signal=second_std_signal,
+									   ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=second_matrix)
 				else:
 					self.plot_line(lines[i], well_color[well_index[i]], well_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
+					if self.checkBox_feature.isChecked():
+						self.plot_line(lines[i], well_color[well_index[i]], well_labels[i], second_mean_signal, std_signal=second_std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=second_matrix)
 
 		elif self.plot_mode=='both':
 			self.initialize_axis()
@@ -632,33 +766,59 @@ class ConfigSignalPlot(QWidget):
 			for i in range(len(lines_pos)):
 				if len(self.well_indices)<=1:
 					self.plot_line(lines_pos[i], colors[pos_indices[i]], pos_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
+					if self.checkBox_feature.isChecked():
+						self.plot_line(lines_pos[i], second_colors[pos_indices[i]], pos_labels[i], second_mean_signal,
+									   std_signal=second_std_signal, ci_option=self.show_ci,
+									   cell_lines_option=self.show_cell_lines, matrix=second_matrix)
+
 				else:
 					self.plot_line(lines_pos[i], well_color[well_index_pos[i]], None, mean_signal, std_signal=std_signal, ci_option=False)
+					if self.checkBox_feature.isChecked():
+						self.plot_line(lines_pos[i], well_color[well_index_pos[i]], None, second_mean_signal,
+									   std_signal=second_std_signal, ci_option=False)
 
-			for i in range(len(lines_well)):		
+			for i in range(len(lines_well)):
 				if len(self.well_indices)<=1:
 					self.plot_line(lines_well[i], 'k', 'pool', mean_signal, std_signal=std_signal, ci_option=False)
 				else:
 					self.plot_line(lines_well[i], well_color[well_index[i]], well_labels[i], mean_signal, std_signal=std_signal, ci_option=False)
-		
+		self.survival_window.setMinimumHeight(0.5*self.screen_height)
+		self.survival_window.setMinimumWidth(0.8 * self.survivalWidget.width())
+		self.survival_window.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
 		self.survival_window.canvas.draw()
 
 	def plot_line(self, line, color, label, mean_signal, ci_option=True, cell_lines_option=False, alpha_ci=0.5, alpha_cell_lines=0.5, std_signal=None, matrix=None):
-
 		try:
-			self.ax.plot(line['timeline']*self.FrameToMin, line[mean_signal], color=color, label=label)
-
+			if 'second' in str(mean_signal):
+				self.ax2.plot(line['timeline'] * self.FrameToMin, line[mean_signal], color=color, label=label)
+			else:
+				self.ax.plot(line['timeline']*self.FrameToMin, line[mean_signal], color=color, label=label)
 			if ci_option and std_signal is not None:
-				self.ax.fill_between(line['timeline']*self.FrameToMin,
+				if 'second' in str(mean_signal):
+					self.ax2.fill_between(line['timeline'] * self.FrameToMin,
+										 [a - b for a, b in zip(line[mean_signal], line[std_signal])],
+										 [a + b for a, b in zip(line[mean_signal], line[std_signal])],
+										 color=color,
+										 alpha=alpha_ci,
+										 )
+				else:
+					self.ax.fill_between(line['timeline']*self.FrameToMin,
 									[a-b for a,b in zip(line[mean_signal], line[std_signal])],
 									[a+b for a,b in zip(line[mean_signal], line[std_signal])],
 									color=color,
 									alpha=alpha_ci,
 									)
 			if cell_lines_option and matrix is not None:
+				print(mean_signal)
 				mat = line[matrix]
-				for i in range(mat.shape[0]):
-					self.ax.plot(line['timeline']*self.FrameToMin, mat[i,:], color=color, alpha=alpha_cell_lines)
+				if 'second' in str(mean_signal):
+					for i in range(mat.shape[0]):
+						self.ax2.plot(line['timeline'] * self.FrameToMin, mat[i, :], color=color, alpha=alpha_cell_lines)
+				else:
+					for i in range(mat.shape[0]):
+						self.ax.plot(line['timeline']*self.FrameToMin, mat[i,:], color=color, alpha=alpha_cell_lines)
+
 		except Exception as e:
 			print(f'Exception {e}')
 
@@ -867,3 +1027,5 @@ class ConfigSignalPlot(QWidget):
 			self.target_class = [1]
 
 		self.plot_survivals(0)
+
+

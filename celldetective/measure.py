@@ -1,5 +1,8 @@
+import sys
+
 import numpy as np
 import pandas as pd
+from scipy import ndimage
 from tqdm import tqdm
 from skimage.measure import regionprops_table
 from scipy.ndimage.morphology import distance_transform_edt
@@ -8,8 +11,9 @@ from mahotas.features import haralick
 from scipy.ndimage import zoom
 import os
 import subprocess
-from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features
-
+from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, \
+	remove_trajectory_measurements
+import cv2
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,
@@ -239,19 +243,27 @@ def contour_of_instance_segmentation(label, distance):
 	# Generate a binary mask containing the contour of the segmented instances with a maximum distance of 3 pixels.
 	
 	"""
+	if isinstance(distance,(list,tuple)) or distance >= 0 :
 
-
-	edt = distance_transform_edt(label)
+		edt = distance_transform_edt(label)
 	
-	if isinstance(distance, list) or isinstance(distance, tuple):
-		min_distance = distance[0]; max_distance = distance[1]
-	elif isinstance(distance, int) or isinstance(distance, float):
-		min_distance = 0.; max_distance = distance
+		if isinstance(distance, list) or isinstance(distance, tuple):
+			min_distance = distance[0]; max_distance = distance[1]
 
-	thresholded = (edt <= max_distance)*(edt>min_distance)
-	border_label = np.copy(label)
-	border_label[np.where(thresholded==0)] = 0
+		elif isinstance(distance, (int, float)):
+			min_distance = 0
+			max_distance = distance
 
+		thresholded = (edt <= max_distance) * (edt > min_distance)
+		border_label = np.copy(label)
+		border_label[np.where(thresholded == 0)] = 0
+
+	else:
+		size = (2*abs(int(distance))+1, 2*abs(int(distance))+1)
+		dilated_image = ndimage.grey_dilation(label, size=size)
+		border_label=np.copy(dilated_image)
+		matching_cells = np.logical_and(dilated_image != 0, label == dilated_image)
+		border_label[np.where(matching_cells == True)] = 0
 	return border_label
 
 def drop_tonal_features(features):
@@ -330,7 +342,6 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	df_props = pd.DataFrame(props)
 
 	if border_dist is not None:
-
 		# automatically drop all non intensity features
 		intensity_features_test = ['intensity' in s for s in features]
 		intensity_features = list(np.array(features)[np.array(intensity_features_test)])
@@ -342,7 +353,6 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 		intensity_features = np.append(intensity_features, 'label')
 
 		if (isinstance(border_dist, int) or isinstance(border_dist, float)):
-			
 			border_label = contour_of_instance_segmentation(label, border_dist)
 			props_border = regionprops_table(border_label, intensity_image=img, properties=intensity_features)
 			df_props_border = pd.DataFrame(props_border)
@@ -358,7 +368,10 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 				df_props_border_d = pd.DataFrame(props_border)
 				for c in df_props_border_d.columns:
 					if 'intensity' in c:
-						df_props_border_d = df_props_border_d.rename({c: c+f'_edge_{d}px'},axis=1)
+						if '-' in str(d):
+							df_props_border_d = df_props_border_d.rename({c: c + f'_outer_edge_{d}px'}, axis=1)
+						else:
+							df_props_border_d = df_props_border_d.rename({c: c + f'_edge_{d}px'}, axis=1)
 				df_props_border_list.append(df_props_border_d)
 
 			df_props_border = reduce(lambda  left,right: pd.merge(left,right,on=['label'],

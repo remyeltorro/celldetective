@@ -262,6 +262,7 @@ class SignalDetectionModel(object):
 		self.dropout_rate = dropout_rate
 		self.label = label
 
+
 		if self.pretrained is not None:
 			print(f"Load pretrained models from {path}...")
 			self.load_pretrained_model()
@@ -559,7 +560,7 @@ class SignalDetectionModel(object):
 			self.x = pad_to_model_length(self.x, self.model_signal_length)
 
 		if self.normalize:
-			self.x = normalize_signal_set(self.x, self.channel_option, normalization_percentile=self.normalization_percentile, 
+			self.x = normalize_signal_set(self.x, self.channel_option, normalization_percentile=self.normalization_percentile,
 												normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
 												)
 
@@ -1153,15 +1154,15 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 			signal_set[i,z,k] = 0.
 
 	# for k,channel in enumerate(channel_option):
-
+	#
 	# 	zero_values = []
 	# 	for i in range(len(signal_set)):
 	# 		zeros_loc = np.where(signal_set[i,:,k]==0)
 	# 		zero_values.append(zeros_loc)
-
+	#
 	# 	if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
 	# 		print('red normalization')
-
+	#
 	# 		min_percentile_dead, max_percentile_dead = percentile_dead
 	# 		min_set = signal_set[:,:5,k]
 	# 		max_set = signal_set[:,:,k]
@@ -1169,9 +1170,9 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 	# 		max_fluo_dead = np.nanpercentile(max_set[max_set!=0.], max_percentile_dead) # 99th percentile on last fluo frame
 	# 		signal_set[:,:,k] -= min_fluo_dead
 	# 		signal_set[:,:,k] /= (max_fluo_dead - min_fluo_dead)
-
+	#
 	# 	elif ("live_nuclei_channel" in channel and 'haralick' not in channel) or ("BLUE" in channel):
-		
+	#
 	# 		print('blue normalization')
 	# 		min_percentile_alive, max_percentile_alive = percentile_alive
 	# 		values = signal_set[:,:5,k]
@@ -1179,23 +1180,23 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 	# 		max_fluo_alive = np.nanpercentile(values[values!=0.], max_percentile_alive)
 	# 		signal_set[:,:,k] -= min_fluo_alive
 	# 		signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
-
+	#
 	# 	elif 0.8<np.mean(signal_set[:,:,k])<1.2:
 	# 		print('detected normalized signal; assume min max in 0.5-1.5 range')
 	# 		min_fluo_alive = 0.5
 	# 		max_fluo_alive = 1.5
 	# 		signal_set[:,:,k] -= min_fluo_alive
 	# 		signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
-
+	#
 	# 	else:
-
+	#
 	# 		min_percentile, max_percentile = percentile_generic
 	# 		values = signal_set[:,:,k]
 	# 		min_signal = np.nanpercentile(values[values!=0.], min_percentile)
 	# 		max_signal= np.nanpercentile(values[values!=0.], max_percentile)
 	# 		signal_set[:,:,k] -= min_signal
 	# 		signal_set[:,:,k] /= (max_signal - min_signal)
-
+	#
 	# 	for i,z in enumerate(zero_values):
 	# 		signal_set[i,z,k] = 0.
 

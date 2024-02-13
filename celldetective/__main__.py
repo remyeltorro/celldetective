@@ -27,12 +27,12 @@ class AppInitWindow(QMainWindow):
 
 		try:
 			subprocess.check_output('nvidia-smi')
-			print('Nvidia GPU detected')			
+			print('Nvidia GPU detected')
 			self.use_gpu = True
 		except Exception: # this command not being found can raise quite a few different errors depending on the configuration
 			print('No Nvidia GPU in system!')
 			self.use_gpu = False
-
+			
 		self.soft_path = get_software_location()
 		self.onlyInt = QIntValidator()
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','logo.png'])))

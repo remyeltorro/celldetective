@@ -727,8 +727,11 @@ class ConfigMeasurements(QMainWindow):
 			if len(values)>0:
 				distance = values[0].text()
 				if '-' in distance:
-					border_dist = distance.split('-')
-					border_dist = [float(d) for d in border_dist]
+					if distance[0] != '-':
+						border_dist = distance.split('-')
+						border_dist = [float(d) for d in border_dist]
+					else:
+						border_dist = float(distance)
 				elif distance.isnumeric():
 					border_dist = float(distance)
 

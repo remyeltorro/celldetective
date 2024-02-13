@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton,QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, QTabWidget, QVBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, \
+	QTabWidget, QVBoxLayout, QMessageBox, QScrollArea, QDesktopWidget
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
@@ -53,8 +54,15 @@ class ControlPanel(QMainWindow):
 		grid_process.addWidget(self.ProcessEffectors)
 		grid_process.addWidget(self.ProcessTargets)
 		grid_process.addWidget(self.NeighPanel)
-		
 		grid_analyze.addWidget(self.SurvivalBlock)
+
+		self.scroll=QScrollArea()
+		self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+		self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+		self.scroll.setWidgetResizable(True)
+		desktop = QDesktopWidget()
+		screen_height = desktop.screenGeometry().height()
+		self.scroll.setMinimumHeight(0.7*screen_height)
 
 
 		tabWidget = QTabWidget()
@@ -67,8 +75,8 @@ class ControlPanel(QMainWindow):
 
 		self.grid.addWidget(tabWidget, 7,0,1,3, alignment=Qt.AlignTop)
 		self.grid.setSpacing(5)
-
-		self.setCentralWidget(self.w)
+		self.scroll.setWidget(self.w)
+		self.setCentralWidget(self.scroll)
 		self.create_config_dir()
 
 	def init_wells_and_positions(self):

@@ -357,9 +357,12 @@ class ListWidget(QWidget):
 		items = []
 		for x in range(self.list_widget.count()):
 			if len(self.list_widget.item(x).text().split('-'))==2:
-				minn,maxx = self.list_widget.item(x).text().split('-')
-				to_add = [self.dtype(minn), self.dtype(maxx)]
-				items.append(to_add)
+				if self.list_widget.item(x).text()[0] == '-':
+					items.append(self.dtype(self.list_widget.item(x).text()))
+				else:
+					minn,maxx = self.list_widget.item(x).text().split('-')
+					to_add = [self.dtype(minn), self.dtype(maxx)]
+					items.append(to_add)
 			else:
 				items.append(self.dtype(self.list_widget.item(x).text()))
 		return items

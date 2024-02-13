@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, QMessageBox, QWidget, QLineEdit
+from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+	QMessageBox, QWidget, QLineEdit, QScrollArea
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
@@ -37,6 +38,8 @@ class ProcessPanel(QFrame):
 		self.wells = np.array(self.parent.wells,dtype=str)
 		self.cellpose_calibrated = False
 		self.stardist_calibrated = False
+
+
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -92,7 +95,6 @@ class ProcessPanel(QFrame):
 			self.parent.adjustSize()
 
 	def populate_contents(self):
-
 		self.ContentsFrame = QFrame()
 		self.grid_contents = QGridLayout(self.ContentsFrame)
 		self.grid_contents.setContentsMargins(0,0,0,0)

@@ -3,6 +3,8 @@ from PyQt5.QtCore import QEvent
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import matplotlib.pyplot as plt
+import celldetective.extra_properties as extra_properties
+from inspect import getmembers, isfunction
 
 def center_window(window):
 	
@@ -41,7 +43,7 @@ class FeatureChoice(QWidget):
 		self.combo_box = QComboBox(self)
 		center_window(self)
 
-		self.combo_box.addItems([	"area", 
+		standard_measurements = [	"area", 
 									"area_bbox",
 									"area_convex",
 									"area_filled",
@@ -59,7 +61,14 @@ class FeatureChoice(QWidget):
 									"intensity_mean",
 									"intensity_max",
 									"intensity_min",
-									])
+									]
+
+		extra_props = getmembers(extra_properties, isfunction)
+		extra_props = [extra_props[i][0] for i in range(len(extra_props))]
+		if len(extra_props)>0:
+			standard_measurements.extend(extra_props)
+
+		self.combo_box.addItems(standard_measurements)
 
 		self.add_btn = QPushButton("Add")
 		self.add_btn.clicked.connect(self.add_current_feature)

@@ -121,13 +121,15 @@ def rename_intensity_column(df, channels):
 		if len(channel_names)>1:
 			to_rename = {}
 			for k in range(len(intensity_columns)):
+				#print(intensity_columns[k])
 				
 				sections = np.array(re.split('-|_', intensity_columns[k]))
 				test_digit = np.array([s.isdigit() for s in sections])
-				index = int(sections[np.where(test_digit)[0]][0])
+				index = int(sections[np.where(test_digit)[0]][-1])
+
 				channel_name = channel_names[np.where(channel_indices==index)[0]][0]
 
-				new_name = np.delete(sections, np.where(test_digit)[0])
+				new_name = np.delete(sections, -1) #np.where(test_digit)[0]
 				new_name = '_'.join(list(new_name))
 				new_name = new_name.replace('intensity', channel_name)
 				to_rename.update({intensity_columns[k]: new_name.replace('-','_')})

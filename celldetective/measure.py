@@ -13,7 +13,11 @@ import os
 import subprocess
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, \
 	remove_trajectory_measurements
+import celldetective.extra_properties as extra_properties
+from celldetective.extra_properties import *
 import cv2
+from inspect import getmembers, isfunction
+
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,
@@ -338,7 +342,20 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 		if (channels is not None)*(img.ndim==3):
 			assert len(channels)==img.shape[-1],"Mismatch between the provided channel names and the shape of the image"
 
-	props = regionprops_table(label, intensity_image=img, properties=features)
+	extra_props = getmembers(extra_properties, isfunction)
+	extra_props = [extra_props[i][0] for i in range(len(extra_props))]
+	extra_props_list = []
+	feats = features.copy()
+	for f in features:
+		if f in extra_props:
+			feats.remove(f)
+			extra_props_list.append(getattr(extra_properties, f))
+	if len(extra_props_list)==0:
+		extra_props_list = None
+	else:
+		extra_props_list = tuple(extra_props_list)
+
+	props = regionprops_table(label, intensity_image=img, properties=feats, extra_properties=extra_props_list)
 	df_props = pd.DataFrame(props)
 
 	if border_dist is not None:

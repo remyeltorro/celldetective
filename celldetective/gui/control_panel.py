@@ -62,7 +62,7 @@ class ControlPanel(QMainWindow):
 		self.scroll.setWidgetResizable(True)
 		desktop = QDesktopWidget()
 		screen_height = desktop.screenGeometry().height()
-		self.scroll.setMinimumHeight(int(0.7*screen_height))
+		self.scroll.setMinimumHeight(int(0.4*screen_height))
 
 
 		tabWidget = QTabWidget()

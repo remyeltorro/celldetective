@@ -14,6 +14,7 @@ from btrack.datasets import cell_config
 from magicgui import magicgui
 from csbdeep.io import save_tiff_imagej_compatible
 from pathlib import Path, PurePath
+from shutil import copyfile
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config
 import json
 import threading
@@ -1281,6 +1282,140 @@ def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.
 		gc.collect()
 
 	return values
+
+
+def get_positions_in_well(well):
+	
+	"""
+	Retrieves the list of position directories within a specified well directory, 
+	formatted as a NumPy array of strings.
+
+	This function identifies position directories based on their naming convention, 
+	which must include a numeric identifier following the well's name. The well's name 
+	is expected to start with 'W' (e.g., 'W1'), followed by a numeric identifier. Position 
+	directories are assumed to be named with this numeric identifier directly after the well 
+	identifier, without the 'W'. For example, positions within well 'W1' might be named 
+	'101', '102', etc. This function will glob these directories and return their full 
+	paths as a NumPy array.
+
+	Parameters
+	----------
+	well : str
+		The path to the well directory from which to retrieve position directories.
+
+	Returns
+	-------
+	np.ndarray
+		An array of strings, each representing the full path to a position directory within 
+		the specified well. The array is empty if no position directories are found.
+
+	Notes
+	-----
+	- This function relies on a specific naming convention for wells and positions. It assumes
+	  that each well directory is prefixed with 'W' followed by a numeric identifier, and 
+	  position directories are named starting with this numeric identifier directly.
+
+	Examples
+	--------
+	>>> get_positions_in_well('/path/to/experiment/W1')
+	# This might return an array like array(['/path/to/experiment/W1/101', '/path/to/experiment/W1/102'])
+	if position directories '101' and '102' exist within the well 'W1' directory.
+	
+	"""
+
+	if well.endswith(os.sep):
+		well = well[:-1]
+
+	w_numeric = os.path.split(well)[-1].replace('W','')
+	positions = glob(os.sep.join([well,f'{w_numeric}*{os.sep}']))		
+
+	return np.array(positions,dtype=str)
+
+
+def extract_experiment_folder_output(experiment_folder, destination_folder):
+	
+	"""
+	Copies the output subfolder and associated tables from an experiment folder to a new location, 
+	making the experiment folder much lighter by only keeping essential data.
+	
+	This function takes the path to an experiment folder and a destination folder as input. 
+	It creates a copy of the experiment folder at the destination, but only includes the output subfolders 
+	and their associated tables for each well and position within the experiment. 
+	This operation significantly reduces the size of the experiment data by excluding non-essential files. 
+	
+	The structure of the copied experiment folder is preserved, including the configuration file, 
+	well directories, and position directories within each well. 
+	Only the 'output' subfolder and its 'tables' subdirectory are copied for each position.
+	
+	Parameters
+	----------
+	experiment_folder : str
+		The path to the source experiment folder from which to extract data. 		
+	destination_folder : str
+		The path to the destination folder where the reduced copy of the experiment 
+		will be created.
+	
+	Notes
+	-----
+	- This function assumes that the structure of the experiment folder is consistent, 
+	  with wells organized in subdirectories and each containing a position subdirectory. 
+	  Each position subdirectory should have an 'output' folder and a 'tables' subfolder within it.
+	  
+	- The function also assumes the existence of a configuration file in the root of the 
+	  experiment folder, which is copied to the root of the destination experiment folder.
+	  
+	Examples
+	--------
+	>>> extract_experiment_folder_output('/path/to/experiment_folder', '/path/to/destination_folder')
+	# This will copy the 'experiment_folder' to 'destination_folder', including only 
+	# the output subfolders and their tables for each well and position.
+	
+	"""
+	
+
+	if experiment_folder.endswith(os.sep):
+		experiment_folder = experiment_folder[:-1]
+	if destination_folder.endswith(os.sep):
+		destination_folder = destination_folder[:-1]
+	
+	exp_name = experiment_folder.split(os.sep)[-1]
+	output_path = os.sep.join([destination_folder, exp_name])
+	if not os.path.exists(output_path):
+		os.mkdir(output_path)
+
+	config = get_config(experiment_folder)
+	copyfile(config,os.sep.join([output_path,os.path.split(config)[-1]]))
+	
+	wells_src = get_experiment_wells(experiment_folder)
+	wells = [w.split(os.sep)[-2] for w in wells_src]
+
+	for k,w in enumerate(wells):
+		
+		well_output_path = os.sep.join([output_path,w])
+		if not os.path.exists(well_output_path):
+			os.mkdir(well_output_path)
+
+		positions = get_positions_in_well(wells_src[k])
+
+		for pos in positions:
+			pos_name = extract_position_name(pos)
+			output_pos = os.sep.join([well_output_path, pos_name])
+			if not os.path.exists(output_pos):
+				os.mkdir(output_pos)
+			output_folder = os.sep.join([output_pos, 'output'])
+			output_tables_folder = os.sep.join([output_folder, 'tables'])
+
+			if not os.path.exists(output_folder):
+				os.mkdir(output_folder)
+			
+			if not os.path.exists(output_tables_folder):
+				os.mkdir(output_tables_folder)  
+
+			tab_path = glob(pos+os.sep.join(['output','tables',f'*']))
+			
+			for t in tab_path:
+				copyfile(t,os.sep.join([output_tables_folder,os.path.split(t)[-1]]))
+
 
 
 if __name__ == '__main__':

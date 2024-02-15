@@ -17,6 +17,7 @@ import celldetective.extra_properties as extra_properties
 from celldetective.extra_properties import *
 import cv2
 from inspect import getmembers, isfunction
+from skimage.morphology import disk
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
@@ -264,10 +265,12 @@ def contour_of_instance_segmentation(label, distance):
 
 	else:
 		size = (2*abs(int(distance))+1, 2*abs(int(distance))+1)
-		dilated_image = ndimage.grey_dilation(label, size=size)
+		dilated_image = ndimage.grey_dilation(label, footprint=disk(int(abs(distance)))) #size=size, 
 		border_label=np.copy(dilated_image)
 		matching_cells = np.logical_and(dilated_image != 0, label == dilated_image)
 		border_label[np.where(matching_cells == True)] = 0
+		border_label[label!=0] = 0.
+
 	return border_label
 
 def drop_tonal_features(features):

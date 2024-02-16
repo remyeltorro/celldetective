@@ -8,6 +8,7 @@ from celldetective.gui.gui_utils import FigureCanvas, center_window
 import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
+import os
 
 class PandasModel(QAbstractTableModel):
 
@@ -64,9 +65,44 @@ class QueryWidget(QWidget):
 			print(e)
 			return None
 
+class RenameColWidget(QWidget):
+
+	def __init__(self, parent, column=None):
+
+		super().__init__()
+		self.parent = parent
+		self.column = column
+		if self.column is None:
+			self.column = ''
+
+		self.setWindowTitle("Rename column")
+		# Create the QComboBox and add some items
+		center_window(self)
+		
+		layout = QHBoxLayout(self)
+		layout.setContentsMargins(30,30,30,30)
+		self.new_col_name = QLineEdit()
+		self.new_col_name.setText(self.column)
+		layout.addWidget(self.new_col_name, 70)
+
+		self.submit_btn = QPushButton('rename')
+		self.submit_btn.clicked.connect(self.rename_col)
+		layout.addWidget(self.submit_btn, 30)
+
+	def rename_col(self):
+		
+		old_name = self.column
+		new_name = self.new_col_name.text()
+		self.parent.data = self.parent.data.rename(columns={old_name: new_name})
+		print(self.parent.data.columns)
+
+		self.parent.model = PandasModel(self.parent.data)
+		self.parent.table_view.setModel(self.parent.model)
+		self.close()
+
 
 class TableUI(QMainWindow):
-	def __init__(self, data, title, plot_mode="plot_track_signals", *args, **kwargs):
+	def __init__(self, data, title, population='targets',plot_mode="plot_track_signals", *args, **kwargs):
 
 		QMainWindow.__init__(self, *args, **kwargs)
 
@@ -75,6 +111,7 @@ class TableUI(QMainWindow):
 		center_window(self)
 		self.title = title
 		self.plot_mode = plot_mode
+		self.population = population
 		self.numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
 
 		self._createMenuBar()
@@ -95,6 +132,11 @@ class TableUI(QMainWindow):
 			self.save_as.triggered.connect(self.save_as_csv)
 			self.save_as.setShortcut("Ctrl+s")
 			self.fileMenu.addAction(self.save_as)
+
+			self.save_inplace = QAction("&Save inplace...", self)
+			self.save_inplace.triggered.connect(self.save_as_csv_inplace_per_pos)
+			#self.save_inplace.setShortcut("Ctrl+s")
+			self.fileMenu.addAction(self.save_inplace)
 
 			self.plot_action = QAction("&Plot...", self)
 			self.plot_action.triggered.connect(self.plot)
@@ -120,6 +162,11 @@ class TableUI(QMainWindow):
 			self.delete_action.setShortcut(Qt.Key_Delete)
 			self.editMenu.addAction(self.delete_action)
 
+			self.rename_col_action = QAction('&Rename...', self)
+			self.rename_col_action.triggered.connect(self.rename_column)
+			#self.rename_col_action.setShortcut(Qt.Key_Delete)
+			self.editMenu.addAction(self.rename_col_action)
+
 			self.derivative_action = QAction('&Differentiate...', self)
 			self.derivative_action.triggered.connect(self.differenciate_selected_feature)
 			self.derivative_action.setShortcut("Ctrl+D")
@@ -143,6 +190,38 @@ class TableUI(QMainWindow):
 		self.data = self.data.drop(list(cols[col_idx]),axis=1)
 		self.model = PandasModel(self.data)
 		self.table_view.setModel(self.model)
+
+	def rename_column(self):
+
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+
+		if len(col_idx)==0:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Question)
+			msgBox.setText(f"Please select a column first.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+			else:
+				return None
+			
+		cols = np.array(list(self.data.columns))
+		selected_col = str(cols[col_idx][0])
+
+		self.renameWidget = RenameColWidget(self, selected_col)
+		self.renameWidget.show()
+
+	def save_as_csv_inplace_per_pos(self):
+
+		print("Saving each table in its respective position folder...")
+		for pos,pos_group in self.data.groupby('position'):
+			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.population}.csv']), index=False)
+		print("Done...")
+
+
 
 	def differenciate_selected_feature(self):
 		

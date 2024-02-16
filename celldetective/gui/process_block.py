@@ -698,7 +698,7 @@ class ProcessPanel(QFrame):
 			plot_mode = 'plot_track_signals'
 			if 'TRACK_ID' not in list(self.df.columns):
 				plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent.well_list.currentText()}; Position {self.parent.position_list.currentText()}", plot_mode=plot_mode)
+			self.tab_ui = TableUI(self.df, f"Well {self.parent.well_list.currentText()}; Position {self.parent.position_list.currentText()}", population=self.mode, plot_mode=plot_mode)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')

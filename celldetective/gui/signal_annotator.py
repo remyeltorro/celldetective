@@ -417,8 +417,13 @@ class SignalAnnotator(QMainWindow):
 
 	def write_new_event_class(self):
 		
-		self.target_class = 'class_'+self.class_name_le.text()
-		self.target_time = 't_'+self.class_name_le.text()
+
+		if self.class_name_le.text()=='':
+			self.target_class = 'class'
+			self.target_time = 't0'
+		else:
+			self.target_class = 'class_'+self.class_name_le.text()
+			self.target_time = 't_'+self.class_name_le.text()
 
 		if self.target_class in list(self.df_tracks.columns):
 

@@ -1,8 +1,9 @@
-Welcome to ADCCFactory's documentation!
+Welcome to Celldetective's documentation!
 =======================================
 
-**ADCCFactory** is a python GUI and functional API to analyze complex mutichannel fluorescence images acquired in the context of antibody-dependent cell cytotoxicity (ADCC) experiments.
-The source code is publicly available on `GitHub <https://github.com/remyeltorro/ADCCFactory/>`_.
+**Celldetective** is a python GUI and functional API to analyze complex mutichannel fluorescence images acquired in the context of antibody-dependent cell cytotoxicity (ADCC) experiments.
+
+The source code is publicly available on `GitHub <https://github.com/remyeltorro/celldetective/>`_.
 
 
 .. note::
@@ -15,26 +16,35 @@ Contents
 .. toctree::
    :caption: Basics:
 
-   Quickstart
-   GUI
-   Visual_inspection_tool
+   overview
+   get-started
+   segment
+   track
+   measure
+   signals-and-events
+   neighborhood
+   analysis
    
 .. toctree::
    :caption: Data:
    
-   Population_model
-   Configuration_file
-   Microscopy
    Datasets
-   Models
+   Segmentation models
+   Signal models
 
+.. toctree::
+   :caption: Advanced:
+   
+   Annotate and train a segmentation model
+   Annotate and train a signal model 
 
 .. toctree::
    :caption: Examples:
    
    example_notebook   
+   ADCC analysis in GUI
    
-
+   
 .. toctree::
    :caption: API Reference:
    

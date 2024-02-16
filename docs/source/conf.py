@@ -52,7 +52,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_logo = "_static/logo.png"
 
-html_theme_options = {'style_nav_header_background': 'black'}
+html_theme_options = {'style_nav_header_background': '#b9c3cb'}
 
 
 # -- Options for EPUB output

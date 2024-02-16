@@ -1,7 +1,7 @@
-Quickstart
-==========
+Measure
+=======
 
-.. _quickstart:
+.. _measure:
 
 Installation
 ------------

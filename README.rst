@@ -5,15 +5,38 @@ Celldetective
    :align: center
    :width: 33%
 
-
 Celldetective is a package and software for single cell detection and measurements with Python.
 
 - **Documentation:** https://celldetective.readthedocs.io
 - **Source code:** https://github.com/remyeltorro/celldetective
 - **Bug reports:** https://github.com/remyeltorro/celldetective/issues/new/choose
 
+System requirements
+===================
+
+Hardware requirements
+---------------------
+
+RAM needed (8+? 16+?)
+CPU needed, GPU needed...
+GPU functionalities tested on NVIDIA RTX 3070 with 8 Gb of memory. 
+
+Software requirements
+---------------------
+
+
+
+Linux:
+Windows:
+MacOS: 
+
 Installation
 ============
+
+Stable release
+--------------
+
+Explain here how to install release...
 
 Via GitHub
 ----------
@@ -34,6 +57,9 @@ To run the latest development version without cloning the repository, you can al
 .. code-block:: bash
 
     pip install git+https//github.com/remyeltorro/celldetective.git
+
+Documentation
+=============
 
 Read the tutorial here:
 

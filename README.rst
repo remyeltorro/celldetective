@@ -1,8 +1,11 @@
 Celldetective
 =============
 
-<img src="https://github.com/remyeltorro/celldetective/blob/main/celldetective/icons/logo-large.png"
-     style="display:block;float:none;margin-left:auto;margin-right:auto;width:33%">
+.. raw:: html
+   <h1 align="center">
+   <a href="https://github.com/remyeltorro/celldetective/blob/main/celldetective/icons/logo-large.png"><img width="200" src="image link" alt="text"></a>
+   </h1>
+
 
 Celldetective is a package and software for single cell detection and measurements with Python.
 

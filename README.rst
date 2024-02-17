@@ -38,8 +38,8 @@ Stable release
 
 Explain here how to install release...
 
-Via GitHub
-----------
+Development version
+-------------------
 
 If you want to run the latest development version, you can clone the repository to your local machine and install celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
 

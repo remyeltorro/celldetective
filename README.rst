@@ -15,7 +15,7 @@ Overview
 --------
 
 .. image:: article/figures/Figure1.png
-    :width: 80%
+    :width: 60%
     :align: center
     :alt: pipeline
 

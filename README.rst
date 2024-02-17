@@ -5,11 +5,19 @@ Celldetective
    :align: center
    :width: 33%
 
-Celldetective is a package and software for single cell detection and measurements with Python.
+Celldetective is a package and software for single cell image analysis in python.
 
 - **Documentation:** https://celldetective.readthedocs.io
 - **Source code:** https://github.com/remyeltorro/celldetective
 - **Bug reports:** https://github.com/remyeltorro/celldetective/issues/new/choose
+
+Overview
+--------
+
+.. image:: article/figures/Figure1.png
+    :width: 80%
+    :align: center
+    :alt: pipeline
 
 System requirements
 ===================
@@ -64,8 +72,3 @@ Documentation
 Read the tutorial here:
 
 https://celldetective.readthedocs.io/
-
-.. image:: article/figures/Figure1.png
-    :width: 90%
-    :align: center
-    :alt: pipeline

@@ -30,6 +30,7 @@ Despite notable efforts in the development of user-friendly softwares that integ
 * **A library of segmentation and signal models**: we created specific models to investigate a co-culture of MCF-7 cells and primary NK cells, that are available directly is the software with a large collection of generalist models developed by the StarDist and Cellpose teams, which are a perfect starting point to segment single cells in a new biological system. 
 * **Accessible and open source** : Celldetective does not require any coding skills. The software, its models and datasets are made fully open source to encourage transparency and reproducibility.
 
+
 .. raw:: html
 
     <embed>
@@ -46,15 +47,16 @@ Hardware requirements
 
 RAM needed (8+? 16+?)
 CPU needed, GPU needed...
-GPU functionalities tested on NVIDIA RTX 3070 with 8 Gb of memory. 
+
+The GPU implementation was tested with a single NVIDIA GeForce RTX 3070, with 8 Gb of memory. Succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules.  
 
 Software requirements
 ---------------------
 
+The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS. 
 
-
-Linux:
-Windows:
+Linux: Ubuntu 20.04.6 LTS (Focal Fossa) and above
+Windows: 
 MacOS: 
 
 Installation

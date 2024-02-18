@@ -55,9 +55,9 @@ Software requirements
 
 The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS. 
 
-Linux: Ubuntu 20.04.6 LTS (Focal Fossa) and above
-Windows: 
-MacOS: 
+- Linux: Ubuntu 20.04.6 LTS (Focal Fossa) and above
+- Windows: 
+- MacOS: 
 
 Installation
 ============

@@ -1,9 +1,14 @@
 Celldetective
 =============
 
-.. image:: celldetective/icons/logo-large.png
-   :align: center
-   :width: 33%
+.. raw:: html
+
+    <embed>
+        <p align="center">
+        <img src="https://github.com/remyeltorro/celldetective/blob/main/celldetective/icons/logo-large.png" width="33%" />
+        </p>
+    </embed>
+
 
 Celldetective is a package and software for single-cell image analysis in python.
 
@@ -25,10 +30,13 @@ Despite notable efforts in the development of user-friendly softwares that integ
 * **A library of segmentation and signal models**: we created specific models to investigate a co-culture of MCF-7 cells and primary NK cells, that are available directly is the software with a large collection of generalist models developed by the StarDist and Cellpose teams, which are a perfect starting point to segment single cells in a new biological system. 
 * **Accessible and open source** : Celldetective does not require any coding skills. The software, its models and datasets are made fully open source to encourage transparency and reproducibility.
 
-.. image:: article/figures/Figure1.png
-    :width: 60%
-    :align: center
-    :alt: pipeline
+.. raw:: html
+
+    <embed>
+        <p align="center">
+        <img src="https://github.com/remyeltorro/celldetective/blob/main/article/figures/Figure1.png" width="60%" />
+        </p>
+    </embed>
 
 System requirements
 ===================

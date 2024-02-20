@@ -1,0 +1,561 @@
+{
+  "access": {
+    "embargo": {
+      "active": false,
+      "reason": null
+    },
+    "files": "public",
+    "record": "public",
+    "status": "open"
+  },
+  "created": "2024-02-20T10:44:16.176924+00:00",
+  "custom_fields": {
+    "code:codeRepository": "https://github.com/remyeltorro/celldetective",
+    "code:developmentStatus": {
+      "id": "active",
+      "title": {
+        "en": "Active"
+      }
+    },
+    "code:programmingLanguage": [
+      {
+        "id": "python",
+        "title": {
+          "en": "Python"
+        }
+      }
+    ]
+  },
+  "deletion_status": {
+    "is_deleted": false,
+    "status": "P"
+  },
+  "files": {
+    "count": 24,
+    "default_preview": "db_mcf7_nuclei_w_primary_NK.zip",
+    "enabled": true,
+    "entries": {
+      "CP.zip": {
+        "checksum": "md5:8759d036061b1101fb29cdab7ec2553e",
+        "ext": "zip",
+        "id": "dfb79c02-eec0-4877-978d-b4c5c7fef502",
+        "key": "CP.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24570028
+      },
+      "CP_cyto.zip": {
+        "checksum": "md5:f9b50b77833ba0aac5a108bf5eea141e",
+        "ext": "zip",
+        "id": "2457ecaf-4cf7-4b6e-8700-7db45225171b",
+        "key": "CP_cyto.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24589828
+      },
+      "CP_cyto2.zip": {
+        "checksum": "md5:9a9bee3bae47bca15379dfa6b09bef19",
+        "ext": "zip",
+        "id": "7ac1c98d-e83f-413d-8cb4-7a09a6284fe2",
+        "key": "CP_cyto2.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24582967
+      },
+      "CP_livecell.zip": {
+        "checksum": "md5:4a158688881c68de0d14117db2880930",
+        "ext": "zip",
+        "id": "24c81d38-b395-43f5-9416-ccff4e295500",
+        "key": "CP_livecell.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24607449
+      },
+      "CP_nuclei.zip": {
+        "checksum": "md5:479209924265c41bd04d50341b51da04",
+        "ext": "zip",
+        "id": "989cfa90-4151-4395-88cf-fae680ceb967",
+        "key": "CP_nuclei.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24566617
+      },
+      "CP_tissuenet.zip": {
+        "checksum": "md5:ea161f28b6159c492c7fa8a76970017c",
+        "ext": "zip",
+        "id": "592cef04-e2c6-4e52-94af-5202cbc26c7c",
+        "key": "CP_tissuenet.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24613186
+      },
+      "MCF7_bf_pi_cfse_h.zip": {
+        "checksum": "md5:e57d8bc0f24ce60548ee38715d1772c0",
+        "ext": "zip",
+        "id": "31d4fbed-c09a-41cf-bd01-826ac29a0004",
+        "key": "MCF7_bf_pi_cfse_h.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 9799393
+      },
+      "MCF7_h_pi.zip": {
+        "checksum": "md5:332591e958dcd41f00656801f712491e",
+        "ext": "zip",
+        "id": "68dd73dc-64c8-44d3-be9a-d282c4cf691d",
+        "key": "MCF7_h_pi.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 5329531
+      },
+      "MCF7_h_versatile.zip": {
+        "checksum": "md5:a155ee1a92b67b14da2b5ac06bab95cd",
+        "ext": "zip",
+        "id": "a2f07d95-1aa7-4494-9372-cbded27e9f9c",
+        "key": "MCF7_h_versatile.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 5324227
+      },
+      "NucCond.zip": {
+        "checksum": "md5:673951a63ad0ea0fbfa443cfa78b0102",
+        "ext": "zip",
+        "id": "225511e5-cb8c-4148-ae6a-e523e7f0e7e2",
+        "key": "NucCond.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 33259465
+      },
+      "SD_paper_dsb2018.zip": {
+        "checksum": "md5:1f1a5726c81f782bdaca14135c56765a",
+        "ext": "zip",
+        "id": "ef82d530-ec00-4577-8ac7-f9eab1190905",
+        "key": "SD_paper_dsb2018.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 5236495
+      },
+      "SD_versatile_fluo.zip": {
+        "checksum": "md5:49592e9f05a796d2787652e36c8ef6e2",
+        "ext": "zip",
+        "id": "6a8cc39c-92a2-4821-8312-453fac1b58a5",
+        "key": "SD_versatile_fluo.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 5325273
+      },
+      "SD_versatile_he.zip": {
+        "checksum": "md5:186bf4be5f78763dde9b181aa8f8d116",
+        "ext": "zip",
+        "id": "7a04bf27-338f-460f-9fdd-1e7f70ccf0a5",
+        "key": "SD_versatile_he.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 5300029
+      },
+      "db-si-NucCondensation.zip": {
+        "checksum": "md5:e9f565ddc96f99dad44cbe7b37db2d14",
+        "ext": "zip",
+        "id": "c404bf60-12b5-405d-9272-8a17488a6244",
+        "key": "db-si-NucCondensation.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 19184643
+      },
+      "db-si-NucPI.zip": {
+        "checksum": "md5:cf1654b9f8ccde262e8dcdbe78639a92",
+        "ext": "zip",
+        "id": "5e20a713-311a-46b8-9154-b4b0b3e644d7",
+        "key": "db-si-NucPI.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 19826406
+      },
+      "db_mcf7_nuclei_w_primary_NK.zip": {
+        "checksum": "md5:96fc34fa49ee8b0bac10e75983511616",
+        "ext": "zip",
+        "id": "e03fbc79-ee8a-44be-9b7c-1ab274f3d0c4",
+        "key": "db_mcf7_nuclei_w_primary_NK.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 136420712
+      },
+      "db_primary_NK_w_mcf7.zip": {
+        "checksum": "md5:e05e958a017291bae68de9a1833fa289",
+        "ext": "zip",
+        "id": "5dedc85f-9d3b-4ea4-a9c1-cd9eeb8b3180",
+        "key": "db_primary_NK_w_mcf7.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 613655269
+      },
+      "demo_adcc.zip": {
+        "checksum": "md5:353bc4159bee33e6d70136a1ccdb5f82",
+        "ext": "zip",
+        "id": "588767cb-8720-4c9e-bc33-fc2575b8f335",
+        "key": "demo_adcc.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 939668430
+      },
+      "demo_ricm.zip": {
+        "checksum": "md5:8a4a4449b76d43fff575eeb8db5ebc17",
+        "ext": "zip",
+        "id": "844c466f-68b7-4e01-9f5e-3acae2631ee2",
+        "key": "demo_ricm.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 286996594
+      },
+      "lysis_H_PI.zip": {
+        "checksum": "md5:f8553e793c70b64ebc7b4e4720dcde89",
+        "ext": "zip",
+        "id": "aa989022-23ff-48fa-84bc-70eb5eebabb1",
+        "key": "lysis_H_PI.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 30433310
+      },
+      "lysis_PI_area.zip": {
+        "checksum": "md5:2fc2aca5be0adfd5984a7669e79d9e42",
+        "ext": "zip",
+        "id": "e43f325e-d931-40ef-8f7c-0bb2d6caac65",
+        "key": "lysis_PI_area.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 33305370
+      },
+      "primNK_SD.zip": {
+        "checksum": "md5:2ad7fe0c30b0f94c00d4a742987ea0b1",
+        "ext": "zip",
+        "id": "0ecbe7ea-2e6f-4f6c-8267-029346ba32b7",
+        "key": "primNK_SD.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 5302361
+      },
+      "primNK_cfse.zip": {
+        "checksum": "md5:f7d96b6d071e0acc62cf67dc84c18f4e",
+        "ext": "zip",
+        "id": "f71ae25a-7a7f-4c7e-8bb1-40fdf474637e",
+        "key": "primNK_cfse.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24582170
+      },
+      "primNK_multimodal.zip": {
+        "checksum": "md5:9310e309f27663ac3c108f468233ac34",
+        "ext": "zip",
+        "id": "ce10030a-4df7-4b8b-9608-cd51ab58d7e6",
+        "key": "primNK_multimodal.zip",
+        "metadata": null,
+        "mimetype": "application/zip",
+        "size": 24346365
+      }
+    },
+    "order": [],
+    "total_bytes": 2350826118
+  },
+  "id": "10650279",
+  "is_draft": false,
+  "is_published": true,
+  "links": {
+    "access": "https://zenodo.org/api/records/10650279/access",
+    "access_links": "https://zenodo.org/api/records/10650279/access/links",
+    "access_request": "https://zenodo.org/api/records/10650279/access/request",
+    "access_users": "https://zenodo.org/api/records/10650279/access/users",
+    "archive": "https://zenodo.org/api/records/10650279/files-archive",
+    "archive_media": "https://zenodo.org/api/records/10650279/media-files-archive",
+    "communities": "https://zenodo.org/api/records/10650279/communities",
+    "communities-suggestions": "https://zenodo.org/api/records/10650279/communities-suggestions",
+    "doi": "https://doi.org/10.5281/zenodo.10650279",
+    "draft": "https://zenodo.org/api/records/10650279/draft",
+    "files": "https://zenodo.org/api/records/10650279/files",
+    "latest": "https://zenodo.org/api/records/10650279/versions/latest",
+    "latest_html": "https://zenodo.org/records/10650279/latest",
+    "media_files": "https://zenodo.org/api/records/10650279/media-files",
+    "parent": "https://zenodo.org/api/records/10650278",
+    "parent_doi": "https://zenodo.org/doi/10.5281/zenodo.10650278",
+    "parent_html": "https://zenodo.org/records/10650278",
+    "requests": "https://zenodo.org/api/records/10650279/requests",
+    "reserve_doi": "https://zenodo.org/api/records/10650279/draft/pids/doi",
+    "self": "https://zenodo.org/api/records/10650279",
+    "self_doi": "https://zenodo.org/doi/10.5281/zenodo.10650279",
+    "self_html": "https://zenodo.org/records/10650279",
+    "self_iiif_manifest": "https://zenodo.org/api/iiif/record:10650279/manifest",
+    "self_iiif_sequence": "https://zenodo.org/api/iiif/record:10650279/sequence/default",
+    "versions": "https://zenodo.org/api/records/10650279/versions"
+  },
+  "media_files": {
+    "count": 0,
+    "enabled": false,
+    "entries": {},
+    "order": [],
+    "total_bytes": 0
+  },
+  "metadata": {
+    "creators": [
+      {
+        "affiliations": [
+          {
+            "id": "055ymkj32",
+            "name": "Adhesion and Inflammation Lab"
+          },
+          {
+            "id": "0550dmh35",
+            "name": "Centre Interdisciplinaire de Nanoscience de Marseille"
+          }
+        ],
+        "person_or_org": {
+          "family_name": "Torro",
+          "given_name": "R\u00e9my",
+          "identifiers": [
+            {
+              "identifier": "0000-0002-4903-8304",
+              "scheme": "orcid"
+            }
+          ],
+          "name": "Torro, R\u00e9my",
+          "type": "personal"
+        },
+        "role": {
+          "id": "datacurator",
+          "title": {
+            "de": "DatenkuratorIn",
+            "en": "Data curator"
+          }
+        }
+      },
+      {
+        "affiliations": [
+          {
+            "id": "055ymkj32",
+            "name": "Adhesion and Inflammation Lab"
+          }
+        ],
+        "person_or_org": {
+          "family_name": "Diaz-Bello",
+          "given_name": "Beatriz",
+          "name": "Diaz-Bello, Beatriz",
+          "type": "personal"
+        },
+        "role": {
+          "id": "projectmember",
+          "title": {
+            "de": "Projektmitglied",
+            "en": "Project member"
+          }
+        }
+      },
+      {
+        "affiliations": [
+          {
+            "id": "055ymkj32",
+            "name": "Adhesion and Inflammation Lab"
+          }
+        ],
+        "person_or_org": {
+          "family_name": "El Arawi",
+          "given_name": "Dalia",
+          "identifiers": [
+            {
+              "identifier": "0000-0001-5196-7252",
+              "scheme": "orcid"
+            }
+          ],
+          "name": "El Arawi, Dalia",
+          "type": "personal"
+        },
+        "role": {
+          "id": "projectmember",
+          "title": {
+            "de": "Projektmitglied",
+            "en": "Project member"
+          }
+        }
+      },
+      {
+        "affiliations": [
+          {
+            "id": "055ymkj32",
+            "name": "Adhesion and Inflammation Lab"
+          }
+        ],
+        "person_or_org": {
+          "family_name": "Ammer",
+          "given_name": "Lorna",
+          "name": "Ammer, Lorna",
+          "type": "personal"
+        },
+        "role": {
+          "id": "projectmember",
+          "title": {
+            "de": "Projektmitglied",
+            "en": "Project member"
+          }
+        }
+      },
+      {
+        "affiliations": [
+          {
+            "id": "0494jpz02",
+            "name": "Centre de Recherche en Canc\u00e9rologie de Marseille"
+          }
+        ],
+        "person_or_org": {
+          "family_name": "Chames",
+          "given_name": "Patrick",
+          "name": "Chames, Patrick",
+          "type": "personal"
+        },
+        "role": {
+          "id": "projectmember",
+          "title": {
+            "de": "Projektmitglied",
+            "en": "Project member"
+          }
+        }
+      },
+      {
+        "affiliations": [
+          {
+            "id": "0550dmh35",
+            "name": "Centre Interdisciplinaire de Nanoscience de Marseille"
+          }
+        ],
+        "person_or_org": {
+          "family_name": "Sengupta",
+          "given_name": "Kheya",
+          "identifiers": [
+            {
+              "identifier": "0000-0002-1060-2713",
+              "scheme": "orcid"
+            }
+          ],
+          "name": "Sengupta, Kheya",
+          "type": "personal"
+        },
+        "role": {
+          "id": "projectmember",
+          "title": {
+            "de": "Projektmitglied",
+            "en": "Project member"
+          }
+        }
+      },
+      {
+        "affiliations": [
+          {
+            "id": "055ymkj32",
+            "name": "Adhesion and Inflammation Lab"
+          }
+        ],
+        "person_or_org": {
+          "family_name": "Limozin",
+          "given_name": "Laurent",
+          "identifiers": [
+            {
+              "identifier": "0000-0001-9523-8086",
+              "scheme": "orcid"
+            }
+          ],
+          "name": "Limozin, Laurent",
+          "type": "personal"
+        },
+        "role": {
+          "id": "projectleader",
+          "title": {
+            "de": "ProjektleiterIn",
+            "en": "Project leader"
+          }
+        }
+      }
+    ],
+    "description": "<h1>Overview</h1>\n<p>This repository contains datasets, models and demos associated to <a href=\"https://github.com/remyeltorro/celldetective\">Celldetective</a>, a software for single-cell analysis from multimodal time lapse microscopy images.&nbsp;</p>\n<h1>Demos</h1>\n<h2>Cell-cell interaction assay: ADCC</h2>\n<p>We imaged a co-culture of MCF-7 breast cancer cells (targets) and human primary NK cells (effectors), interacting in the presence of bispecific antibodies, to measure antibody dependent cellular cytotoxicity (ADCC). The nuclei of all cells are marked with the Hoechst nuclear stain, the dead nuclei with the propidium iodide nuclear stain, the cytoplasm of the NK cells with CFSE. The system in epifluorescence and brightfield at either 20 or 40X magnification. We provide a single position demo for the ADCC assay, as \"demo_adcc.zip\". After unzipping, the demo_adcc folder can be loaded in Celldetective for testing.&nbsp;</p>\n<h2>Cell-surface interaction assay: RICM</h2>\n<p>We imaged human primary NK cells engaging in spreading with a surface coated with a bispecific antibody similar to the one used in the ADCC assay (replacing the target cells with a flat surface). The system is imaged using the RICM technique. Images are normalized using a median estimate of the background, pooled from all the positions in a well and dividing the images by this estimate. Here, we provide a single position demo for the cell-surface interactiona assay imaged in RICM, as \"demo_ricm.zip\". As above, after unzipping, the experiment can be tested and processed in Celldetective.</p>\n<h1>Datasets</h1>\n<h2>Image annotations for segmentation</h2>\n<h3>Cell-cell interaction assay: ADCC</h3>\n<p>We generated two sets of annotations from images of a co-culture of MCF-7 breast cancer cells and human primary NK cells, interacting in the presence of bispecific antibodies, to measure antibody dependent cellular cytotoxicity (ADCC). Since there are two separate cell populations of interest, the targets (MCF-7) and effectors (NK cells), we curated two datasets. Each sample in a dataset consists of a multichannel image (up to five channels in the context of ADCC, among brightfield , Hoechst nuclear stain, PI nuclear stain, CFSE, LAMP1), the associated instance segmentation annotation for the population of interest and a json file summarizing the content of each channel and the spatial calibration of the image.&nbsp;These sample data are generated directly in Celldetective, using a custom napari plugin.</p>\n<ul>\n<li>db_mcf7_nuclei_w_primary_NK: MCF-7 cell nuclei are annotated specifically on images where primary NK cells, and RBCs co-exist. The annotation exploits up to four channels simultaneously.</li>\n<li>db_primary_NK_w_mcf7: human primary NK cells, with annotated cytoplasm (mostly from CFSE) but exploiting brightfield and Hoechst to segment out of focus or poorly labelled cells.</li>\n</ul>\n<p>These datasets are used to train several segmentation models to segment on one hand the MCF-7 nuclei and on the other hand the primary NK cells.</p>\n<h2>Single-cell signal annotations for classification and regression</h2>\n<h3>Cell-cell interaction assay: ADCC</h3>\n<p>We generated several signal classification/regression datasets with Celldetective to characterize the ADCC assay. Briefly, for a given event cells can be classified as \"the event occured during the observation\", \"no event occured during the observation\", \"the event already occured prior to observation\". If the event occurred during the observation, we can estimate when (the regression). Each single-cell is a dictionary with a collection of signals. The attribute \"class\" sets the class and \"t0\" the time of event (default is -1 for absence of event).&nbsp;</p>\n<ul>\n<li>db-si-NucPI: classification and regression of single-cells with respect to lysis events characterized by a strong PI increase upon lysis (also associated with decreasing nuclear area and sometimes a decreasing Hoechst)</li>\n<li>db-si-NucCondensation: classification and regression of single-cells with respect to nucleus shrinking events characterized by a decreasing nuclear area</li>\n</ul>\n<h1>Models</h1>\n<h2>Segmentation models</h2>\n<h3>Generalist models</h3>\n<p>We integrated in Celldetective select published models for cellular segmentation from StarDist and Cellpose. We wraped the models with an input configuration to help Celldetective handle the normalization, rescaling and channel selection upon inference.&nbsp;</p>\n<ul>\n<li>Cellpose: <em>cellpose</em>, <em>cyto</em>, <em>cyto2</em>, <em>livecell</em>, <em>tissuenet</em>, <em>nuclei</em></li>\n<li>StarDist: <em>paper_dsb2018</em>, <em>versatile_fluo</em>, <em>versatile_he</em></li>\n</ul>\n<h3>ADCC models</h3>\n<ul>\n<li>MCF-7 (in the presence of NKs): <em>MCF7_bf_pi_cfse_h</em>, <em>MCF7_bf_h_pi</em>, <em>MCF7_h_pi</em>, <em>MCF7_h_versatile</em></li>\n<li>NKs (in the presence of MCF-7): <em>primNK_multimodal</em>, <em>primNK_SD</em>, <em>primNK_cfse</em></li>\n</ul>\n<h2>Signal analysis models</h2>\n<p>We developed Deep Learning models that classify and regress the time of events from single-cell signals, applied to the ADCC assay.</p>\n<ul>\n<li>&nbsp;lysis detection: <em>lysis_H_PI</em>, <em>lysis_PI_area</em>,<em>. </em>Detect lysis events characterized at least by an increase of PI from one or more measurements (respectively PI+Hoechst and PI+nucleus area, trained on db-si-NucPI)</li>\n<li>nucleus shrinking detection:<em> NucCond</em>. Detect nucleus shrinking events from nuclear area signal (db-si-NucCondensation)</li>\n</ul>",
+    "publication_date": "2024-02-12",
+    "publisher": "Zenodo",
+    "resource_type": {
+      "id": "dataset",
+      "title": {
+        "de": "Datensatz",
+        "en": "Dataset"
+      }
+    },
+    "rights": [
+      {
+        "description": {
+          "en": ""
+        },
+        "icon": "cc-by-nc-icon",
+        "id": "cc-by-nc-4.0",
+        "props": {
+          "scheme": "spdx",
+          "url": "https://creativecommons.org/licenses/by-nc/4.0/legalcode"
+        },
+        "title": {
+          "en": "Creative Commons Attribution Non Commercial 4.0 International"
+        }
+      }
+    ],
+    "title": "Datasets, models and demos associated to \"Celldetective: an AI-enhanced image analysis tool for unraveling dynamic cell interactions\"",
+    "version": "1.0.0"
+  },
+  "parent": {
+    "access": {
+      "grants": [],
+      "links": [],
+      "owned_by": {
+        "user": 1068593
+      },
+      "settings": {
+        "accept_conditions_text": null,
+        "allow_guest_requests": false,
+        "allow_user_requests": false,
+        "secret_link_expiration": 0
+      }
+    },
+    "communities": {},
+    "id": "10650278",
+    "pids": {
+      "doi": {
+        "client": "datacite",
+        "identifier": "10.5281/zenodo.10650278",
+        "provider": "datacite"
+      }
+    }
+  },
+  "pids": {
+    "doi": {
+      "client": "datacite",
+      "identifier": "10.5281/zenodo.10650279",
+      "provider": "datacite"
+    },
+    "oai": {
+      "identifier": "oai:zenodo.org:10650279",
+      "provider": "oai"
+    }
+  },
+  "revision_id": 6,
+  "stats": {
+    "all_versions": {
+      "data_volume": 19186069.0,
+      "downloads": 2,
+      "unique_downloads": 2,
+      "unique_views": 3,
+      "views": 5
+    },
+    "this_version": {
+      "data_volume": 19186069.0,
+      "downloads": 2,
+      "unique_downloads": 2,
+      "unique_views": 3,
+      "views": 5
+    }
+  },
+  "status": "published",
+  "updated": "2024-02-20T10:45:25.680534+00:00",
+  "versions": {
+    "index": 1,
+    "is_latest": true,
+    "is_latest_draft": true
+  }
+}

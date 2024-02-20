@@ -15,7 +15,7 @@ from magicgui import magicgui
 from csbdeep.io import save_tiff_imagej_compatible
 from pathlib import Path, PurePath
 from shutil import copyfile
-from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config
+from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
 import json
 import threading
 
@@ -624,8 +624,13 @@ def get_signal_models_list(return_path=False):
 	"""
 
 	modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "signal_detection", os.sep])
+	repository_models = get_zenodo_files(cat=os.sep.join(["models","signal_detection"]))
+
 	available_models = glob(modelpath+f'*{os.sep}')
 	available_models = [m.replace('\\','/').split('/')[-2] for m in available_models]
+	for rm in repository_models:
+		if rm not in available_models:
+			available_models.append(rm)
 
 	if not return_path:
 		return available_models
@@ -1101,13 +1106,19 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 	
 	if mode=='targets':
 		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_targets", os.sep])
+		repository_models = get_zenodo_files(cat=os.sep.join(["models","segmentation_targets"]))
 	elif mode=='effectors':
 		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_effectors", os.sep])
+		repository_models = get_zenodo_files(cat=os.sep.join(["models","segmentation_effectors"]))	
 	elif mode=='generic':
 		modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation_generic", os.sep])		
+		repository_models = get_zenodo_files(cat=os.sep.join(["models","segmentation_generic"]))
 
 	available_models = natsorted(glob(modelpath+'*/'))
 	available_models = [m.replace('\\','/').split('/')[-2] for m in available_models]
+	for rm in repository_models:
+		if rm not in available_models:
+			available_models.append(rm)
 
 	if not return_path:
 		return available_models
@@ -1116,7 +1127,8 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 
 def locate_segmentation_model(name):
 	
-	modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "models", "segmentation*", os.sep])
+	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
+	modelpath = os.sep.join([main_dir, "models", "segmentation*", os.sep])
 	print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath+f'*{os.sep}')
 
@@ -1125,6 +1137,13 @@ def locate_segmentation_model(name):
 		if name==m.replace('\\',os.sep).split(os.sep)[-2]:
 			match = m
 			return match
+	# else no match, try zenodo
+	files, categories = get_zenodo_files()
+	if name in files:
+		index = files.index(name)
+		cat = categories[index]
+		download_zenodo_file(name, os.sep.join([main_dir, cat]))
+		match = os.sep.join([main_dir, cat, name])+os.sep
 	return match
 
 def normalize(frame, percentiles=(0.0,99.99), values=None, ignore_gray_value=0., clip=False, amplification=None, dtype=float):

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='celldetective',
-      version='0.0.0',
+      version='1.0.0',
       description='description',
       url='http://github.com/remyeltorro/celldetective',
       author='Rémy Torro',
@@ -9,7 +9,7 @@ setup(name='celldetective',
       license='MIT',
       packages=setuptools.find_packages(),
       zip_safe=False,
-      package_data={'celldetective': ['*','scripts/*','gui/*','models/*/*/*','models/*','models/*/*','icons/*']},
+      package_data={'celldetective': ['*','scripts/*','gui/*','models/*/*/*','models/*','models/*/*','icons/*','links/*','datasets/*', 'datasets/*/*']},
       entry_points = {
         'console_scripts': [
           'celldetective = celldetective.__main__:main']

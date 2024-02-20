@@ -425,6 +425,8 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 	pos = pos.replace('\\','/')
 	pos = rf'{pos}'
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+
+	name_path = locate_segmentation_model(model_name)
 	
 	script_path = os.sep.join([abs_path, 'scripts', 'segment_cells.py'])
 	cmd = f'python "{script_path}" --pos "{pos}" --model "{model_name}" --mode "{mode}" --use_gpu "{use_gpu}" --threads "{threads}"'

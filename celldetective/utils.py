@@ -1119,6 +1119,7 @@ def get_zenodo_files(cat=None):
 		return all_files_short,categories
 
 def download_zenodo_file(file, output_dir):
+	
 	zenodo_json = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "links", "zenodo.json"])
 	with open(zenodo_json,"r") as f:
 		zenodo_json = json.load(f)

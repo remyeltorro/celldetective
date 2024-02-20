@@ -18,7 +18,7 @@ from sklearn.metrics import jaccard_score, balanced_accuracy_score, precision_sc
 from scipy.interpolate import interp1d
 from scipy.ndimage import shift
 
-from celldetective.io import get_signal_models_list
+from celldetective.io import get_signal_models_list, locate_signal_model
 from celldetective.tracking import clean_trajectories
 from celldetective.utils import regression_plot, train_test_split, compute_weights
 import matplotlib.pyplot as plt
@@ -95,8 +95,8 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	"""
 
 
-	_,model_path = get_signal_models_list(return_path=True)
-	complete_path = model_path+model
+	model_path = locate_signal_model(model)
+	complete_path = model_path #+model
 	complete_path = rf"{complete_path}"
 	model_config_path = os.sep.join([complete_path,'config_input.json'])
 	model_config_path = rf"{model_config_path}"
@@ -281,14 +281,14 @@ class SignalDetectionModel(object):
 		
 		# Load keras model
 		try:
-			self.model_class = load_model(os.sep.join([self.pretrained,"classifier.h5"]))
+			self.model_class = load_model(os.sep.join([self.pretrained,"classifier.h5"]),compile=False)
 			self.model_class.load_weights(os.sep.join([self.pretrained,"classifier.h5"]))
 			print("Classifier successfully loaded...")
 		except Exception as e:
 			print(f"Error {e}...")
 			self.model_class = None
 		try:
-			self.model_reg = load_model(os.sep.join([self.pretrained,"regressor.h5"]))
+			self.model_reg = load_model(os.sep.join([self.pretrained,"regressor.h5"]),compile=False)
 			self.model_reg.load_weights(os.sep.join([self.pretrained,"regressor.h5"]))
 			print("Regressor successfully loaded...")
 		except Exception as e:

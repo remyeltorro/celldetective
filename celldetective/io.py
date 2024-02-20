@@ -638,6 +638,28 @@ def get_signal_models_list(return_path=False):
 		return available_models, modelpath
 
 
+def locate_signal_model(name):
+	
+	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
+	modelpath = os.sep.join([main_dir, "models", "signal_detection", os.sep])
+	print(f'Looking for {name} in {modelpath}')
+	models = glob(modelpath+f'*{os.sep}')
+
+	match=None
+	for m in models:
+		if name==m.replace('\\',os.sep).split(os.sep)[-2]:
+			match = m
+			return match
+	# else no match, try zenodo
+	files, categories = get_zenodo_files()
+	if name in files:
+		index = files.index(name)
+		cat = categories[index]
+		download_zenodo_file(name, os.sep.join([main_dir, cat]))
+		match = os.sep.join([main_dir, cat, name])+os.sep
+	return match
+
+
 def relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}, threads=1):
 
 	"""

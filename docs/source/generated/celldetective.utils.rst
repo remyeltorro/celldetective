@@ -21,8 +21,11 @@
       color_from_status
       compute_weights
       create_patch_mask
+      download_url_to_file
+      download_zenodo_file
       extract_experiment_channels
       get_software_location
+      get_zenodo_files
       load_image_dataset
       noise
       normalize_per_channel

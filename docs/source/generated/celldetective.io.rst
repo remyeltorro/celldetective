@@ -29,7 +29,9 @@
       get_position_movie_path
       get_position_table
       get_positions_in_well
+      get_segmentation_datasets_list
       get_segmentation_models_list
+      get_signal_datasets_list
       get_signal_models_list
       get_spatial_calibration
       get_stack_normalization_values
@@ -41,7 +43,10 @@
       load_napari_data
       load_tracking_data
       locate_labels
+      locate_segmentation_dataset
       locate_segmentation_model
+      locate_signal_dataset
+      locate_signal_model
       locate_stack
       locate_stack_and_labels
       normalize

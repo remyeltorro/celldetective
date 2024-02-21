@@ -987,7 +987,10 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 	X = []; Y = [];
 
 	for ds in datasets:
-		img_paths = list(set(glob(ds+os.sep+'*.tif')) - set(glob(ds+os.sep+f'*_{mask_suffix}.tif')))
+		print(f'Loading data from dataset {ds}...')
+		if not ds.endswith(os.sep):
+			ds+=os.sep
+		img_paths = list(set(glob(ds+'*.tif')) - set(glob(ds+f'*_{mask_suffix}.tif')))
 		for im in img_paths:
 			print(f'{im=}')
 			mask_path = os.sep.join([os.path.split(im)[0],os.path.split(im)[-1].replace('.tif', f'_{mask_suffix}.tif')])
@@ -1138,5 +1141,14 @@ def download_zenodo_file(file, output_dir):
 	file_to_rename = glob(os.sep.join([output_dir,file,"*[!.json][!.png][!.h5][!.csv][!.npy][!.tif][!.ini]"]))
 	if len(file_to_rename)>0 and not file_to_rename[0].endswith(os.sep):
 		os.rename(file_to_rename[0], os.sep.join([output_dir,file,file]))
+
+	if file=="db_mcf7_nuclei_w_primary_NK":
+		os.rename(os.sep.join([output_dir,file.replace('db_','')]), os.sep.join([output_dir,file]))
+	if file=="db_primary_NK_w_mcf7":
+		os.rename(os.sep.join([output_dir,file.replace('db_','')]), os.sep.join([output_dir,file]))
+	if file=='db-si-NucPI':
+		os.rename(os.sep.join([output_dir,'db2-NucPI']), os.sep.join([output_dir,file]))
+	if file=='db-si-NucCondensation':
+		os.rename(os.sep.join([output_dir,'db1-NucCondensation']), os.sep.join([output_dir,file]))
 
 	os.remove(path_to_zip_file)

@@ -878,7 +878,7 @@ class SignalDetectionModel(object):
 		
 		if mode=="classifier":
 			
-			reduce_lr = ReduceLROnPlateau(monitor='val_precision', factor=0.1, patience=50,
+			reduce_lr = ReduceLROnPlateau(monitor='val_precision', factor=0.5, patience=30,
 										  cooldown=10, min_lr=5e-10, min_delta=1.0E-10,
 										  verbose=1,mode="max")
 			self.cb.append(reduce_lr)
@@ -888,12 +888,12 @@ class SignalDetectionModel(object):
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_precision",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
-			callback_stop = EarlyStopping(monitor='val_precision', patience=200)
+			callback_stop = EarlyStopping(monitor='val_precision', patience=100)
 			self.cb.append(callback_stop)
 			
 		elif mode=="regressor":
 			
-			reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=50,
+			reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=30,
 										  cooldown=10, min_lr=5e-10, min_delta=1.0E-10,
 										  verbose=1,mode="min")
 			self.cb.append(reduce_lr)

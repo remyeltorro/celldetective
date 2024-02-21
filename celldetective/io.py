@@ -1168,6 +1168,86 @@ def locate_segmentation_model(name):
 		match = os.sep.join([main_dir, cat, name])+os.sep
 	return match
 
+
+def get_segmentation_datasets_list(return_path=False):
+	
+
+	datasets_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "datasets", "segmentation_annotations", os.sep])
+	repository_datasets = get_zenodo_files(cat=os.sep.join(["datasets","segmentation_annotations"]))
+
+	available_datasets = natsorted(glob(datasets_path+'*/'))
+	available_datasets = [m.replace('\\','/').split('/')[-2] for m in available_datasets]
+	for rm in repository_datasets:
+		if rm not in available_datasets:
+			available_datasets.append(rm)
+
+	if not return_path:
+		return available_datasets
+	else:
+		return available_datasets, datasets_path
+
+
+
+def locate_segmentation_dataset(name):
+	
+	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
+	modelpath = os.sep.join([main_dir, "datasets", "segmentation_annotations", os.sep])
+	print(f'Looking for {name} in {modelpath}')
+	models = glob(modelpath+f'*{os.sep}')
+
+	match=None
+	for m in models:
+		if name==m.replace('\\',os.sep).split(os.sep)[-2]:
+			match = m
+			return match
+	# else no match, try zenodo
+	files, categories = get_zenodo_files()
+	if name in files:
+		index = files.index(name)
+		cat = categories[index]
+		download_zenodo_file(name, os.sep.join([main_dir, cat]))
+		match = os.sep.join([main_dir, cat, name])+os.sep
+	return match
+
+
+def get_signal_datasets_list(return_path=False):
+	
+
+	datasets_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "datasets", "signal_annotations", os.sep])
+	repository_datasets = get_zenodo_files(cat=os.sep.join(["datasets","signal_annotations"]))
+
+	available_datasets = natsorted(glob(datasets_path+'*/'))
+	available_datasets = [m.replace('\\','/').split('/')[-2] for m in available_datasets]
+	for rm in repository_datasets:
+		if rm not in available_datasets:
+			available_datasets.append(rm)
+
+	if not return_path:
+		return available_datasets
+	else:
+		return available_datasets, datasets_path
+
+def locate_signal_dataset(name):
+	
+	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
+	modelpath = os.sep.join([main_dir, "datasets", "signal_annotations", os.sep])
+	print(f'Looking for {name} in {modelpath}')
+	models = glob(modelpath+f'*{os.sep}')
+
+	match=None
+	for m in models:
+		if name==m.replace('\\',os.sep).split(os.sep)[-2]:
+			match = m
+			return match
+	# else no match, try zenodo
+	files, categories = get_zenodo_files()
+	if name in files:
+		index = files.index(name)
+		cat = categories[index]
+		download_zenodo_file(name, os.sep.join([main_dir, cat]))
+		match = os.sep.join([main_dir, cat, name])+os.sep
+	return match
+
 def normalize(frame, percentiles=(0.0,99.99), values=None, ignore_gray_value=0., clip=False, amplification=None, dtype=float):
 
 	"""

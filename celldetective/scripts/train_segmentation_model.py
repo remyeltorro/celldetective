@@ -72,8 +72,10 @@ batch_size = training_instructions['batch_size']
 
 
 # Load dataset
+print(f'Datasets: {datasets}')
 X,Y = load_image_dataset(datasets, target_channels, train_spatial_calibration=spatial_calibration,
 						mask_suffix='labelled')
+print('Dataset loaded...')
 
 # Normalize images
 X = normalize_per_channel(X,

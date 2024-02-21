@@ -6,7 +6,7 @@ from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlid
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location
-from celldetective.io import interpret_tracking_configuration, load_frames
+from celldetective.io import interpret_tracking_configuration, load_frames, get_segmentation_datasets_list, locate_segmentation_dataset
 from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
 from celldetective.segmentation import train_segmentation_model
 import numpy as np
@@ -226,8 +226,8 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		include_dataset_layout = QHBoxLayout()
 		include_dataset_layout.addWidget(QLabel('include dataset: '),30)
 		self.dataset_cb = QComboBox()
-		available_datasets = glob(self.soft_path+'/celldetective/datasets/signals/*/')
-		signal_datasets = ['--'] + [d.split('/')[-2] for d in available_datasets]
+		available_datasets, self.datasets_path = get_segmentation_datasets_list(return_path=True)
+		signal_datasets = ['--'] + available_datasets #[d.split('/')[-2] for d in available_datasets]
 		self.dataset_cb.addItems(signal_datasets)
 		include_dataset_layout.addWidget(self.dataset_cb, 70)
 		layout.addLayout(include_dataset_layout)
@@ -599,8 +599,8 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		if self.dataset_folder is not None:
 			data_folders.append(self.dataset_folder)
 		if self.dataset_cb.currentText()!='--':
-			previous_dataset = glob(self.soft_path+'/celldetective/datasets/signals/*/')[self.dataset_cb.currentIndex()-1]
-			data_folders.append(previous_dataset)
+			dataset = locate_segmentation_dataset(self.dataset_cb.currentText()) #glob(self.soft_path+'/celldetective/datasets/signals/*/')[self.dataset_cb.currentIndex()-1]
+			data_folders.append(dataset)
 
 		aug_factor = round(self.augmentation_slider.value(),2)
 		val_split = round(self.validation_slider.value(),2)

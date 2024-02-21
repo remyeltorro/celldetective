@@ -3,134 +3,108 @@ Overview
 
 .. _overview:
 
+.. figure:: _static/logo.png
+    :width: 300px
+    :align: center
+    :alt: logo
+
+
+Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images.
+
+- **Documentation:** https://celldetective.readthedocs.io
+- **Source code:** https://github.com/remyeltorro/celldetective
+- **Bug reports:** https://github.com/remyeltorro/celldetective/issues/new/choose
+
+Description
+-----------
+
+Despite notable efforts in the development of user-friendly softwares that integrate state-of-the-art solutions to perform single cell analysis, very few are designed for time-lapse data and even less for multimodal problems where cells populations are mixed and can only be separated through the use of multimodal information. Few software solutions provide, to our knowledge, the extraction of response functions from single cell events such as the dynamic survival of a population directly in the GUI, as coding skills are usually required to do so. We want to study complex data which is often multimodal time lapse microscopy images of interacting cell populations, without loss of generality. With a high need for an easy-to-use, no-coding-skill-required software adapted to images and intended for biologists, we introduce **Celldetective**, an open-source python-based software with the following highlight features:
+
+* **Comprehensive single-cell image analysis** : Celldetective ships segmentation, tracking, and measurement modules, as well as event detection from single-cell signals, for up to two populations of interest.
+* **Integration of state-of-the-art solutions** : Celldetective harnesses state-of-the-art segmentation techniques (StarDist [#]_, Cellpose [#]_ , [#]_) and tracking algorithm (bTrack [#]_), as well as the napari viewer [#]_ where applicable. These algorithms are interfaced to be well integrated and accessible for the target audience, in the context of complex biological applications.
+* **A framework for event description and annotations** : we propose a broad and intuitive framework to annotate and automate the detection of events from single-cell signals through Deep Learning signal classification and regression. The event formulation is directly exploited to define population survival responses.
+* **A neighborhood scheme to study cell-cell interactions** : we introduce a neighborhood scheme to relate the spatio-temporal distribution and measurements of two cell populations, allowing the study of how cell-cell interactions affect single-cell and population responses.
+* **Deep Learning customization in GUI** : Celldetective facilitates the specialization of Deep Learning models or the creation of new ones adapted to user data, by facilitating the creation of training sets and the training of such models, without having to write a single line of code.
+* **In-software analysis** : Celldetective ships visualization tools to collapse single-cell signals with respect to an event, build survival curves, compare measurement distributions across biological conditions.
+* **A library of segmentation and signal models**: we created specific models to investigate a co-culture of MCF-7 cells and primary NK cells, that are available directly is the software with a large collection of generalist models developed by the StarDist and Cellpose teams, which are a perfect starting point to segment single cells in a new biological system. 
+* **Accessible and open source** : Celldetective does not require any coding skills. The software, its models and datasets are made fully open source to encourage transparency and reproducibility.
+
+
+.. figure:: _static/pipeline.png
+    :width: 600px
+    :align: center
+    :alt: pipeline
+
+
+System requirements
+-------------------
+
+Hardware requirements
+~~~~~~~~~~~~~~~~~~~~~
+
+RAM needed (8+? 16+?)
+CPU needed, GPU needed...
+
+The GPU implementation was tested with a single NVIDIA GeForce RTX 3070, with 8 Gb of memory. Succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules.  
+
+Software requirements
+~~~~~~~~~~~~~~~~~~~~~
+
+The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS. 
+
+- Linux: Ubuntu 20.04.6 LTS (Focal Fossa) and above
+- Windows: 
+- MacOS: 
+
 Installation
 ------------
 
-ADCCFactory can be installed using:
+Stable release
+~~~~~~~~~~~~~~
 
-.. code-block:: console
+Explain here how to install release...
 
-	$ pip install adccfactory
-	
-Running the GUI
----------------
+Development version
+~~~~~~~~~~~~~~~~~~~
 
-Once the pip installation is complete, open a terminal and run:
+If you want to run the latest development version, you can clone the repository to your local machine and install celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
 
-.. code-block:: console
+.. code-block:: bash
 
-	$ python -m adccfactory
+    # creates "celldetective" folder
+    git clone git://github.com/remyeltorro/celldetective.git
+    cd celldetective
 
-A first window of the GUI will open, asking for the path to the ADCC experiment folder to be loaded.
+    # install the celldetective package in editable/development mode
+    pip install -e .
 
+To run the latest development version without cloning the repository, you can also use this line:
 
-Configure your first experiment folder
---------------------------------------
+.. code-block:: bash
 
-ADCCFactory requires a specific folder tree, that mimics the organization of a `glass slide`_ into wells (main folders) and positions within the wells (subfolders). A configuration file, common to the whole experiment, is read to provide the relevant information unique to each experiment. 
+    pip install git+https//github.com/remyeltorro/celldetective.git
 
-.. _`glass slide`: Microscopy
+Documentation
+-------------
 
-.. figure:: _static/glass_slide_to_exp_folder.png
-    :align: center
-    :alt: exp_folder_mimics_glass_slide
-    
-    The experiment folder mimics the organization of the glass slide into wells and fields of view within wells.
+Read the tutorial here:
 
-To generate automatically such a folder tree, open ADCCFactory and go to File>New experiment... or press Ctrl+N.
+https://celldetective.readthedocs.io/
 
-.. figure:: _static/startup_new_exp.gif
-    :width: 400px
-    :align: center
-    :alt: startup_new_experiment
-    
-    Press Ctrl+N or go to File>New experiment... to configure a new experiment folder
-   
-A dialog window will ask you where you want to create the experiment folder. Then a second window will ask for complementary information needed to fill the configuration file.     
-   
-.. image:: _static/configure_experiment.png
-    :width: 350px
-    :align: center
-    :alt: configure_experiment
+How to cite?
+------------
 
-Once you press "Submit", these parameters create the experiment folder named "ExpLambda" in home/. At the root of the experiment folder is a configuration file that looks as follows:
+Explain here how to cite. 
 
-.. code-block:: ini
+Bibliography
+------------
 
-   # Configuration for ExpLambda/ following user input
-   
-   [MovieSettings]
-   pxtoum = 0.1
-   frametomin = 1.0
-   len_movie = 60
-   shape_x = 2048
-   shape_y = 2048
-   transmission = 0
-   blue_channel = 3
-   red_channel = 1
-   green_channel = -1
-   movie_prefix = Aligned
+.. [#] Schmidt, U., Weigert, M., Broaddus, C. & Myers, G. Cell Detection with Star-Convex Polygons. in Medical Image Computing and Computer Assisted Intervention – MICCAI 2018 (eds. Frangi, A. F., Schnabel, J. A., Davatzikos, C., Alberola-López, C. & Fichtinger, G.) 265–273 (Springer International Publishing, Cham, 2018). doi:10.1007/978-3-030-00934-2_30.
 
-   [SearchRadii]
-   search_radius_tc = 100
-   search_radius_nk = 75
+.. [#] Stringer, C., Wang, T., Michaelos, M. & Pachitariu, M. Cellpose: a generalist algorithm for cellular segmentation. Nat Methods 18, 100–106 (2021).
 
-   [BinningParameters]
-   time_dilation = 1
+.. [#] Pachitariu, M. & Stringer, C. Cellpose 2.0: how to train your own model. Nat Methods 19, 1634–1641 (2022).
 
-   [Thresholds]
-   cell_nbr_threshold = 10
-   intensity_measurement_radius = 26
-   intensity_measurement_radius_nk = 10
-   minimum_tracklength = 0
-   model_signal_length = 128
-   hide_frames_for_tracking = 
+.. [#] Ulicna, K., Vallardi, G., Charras, G. & Lowe, A. R. Automated Deep Lineage Tree Analysis Using a Bayesian Single Cell Tracking Approach. Frontiers in Computer Science 3, (2021).
 
-   [Labels]
-   concentrations = 0,1,10,100,100,10,1,0
-   cell_types = WT,WT,WT,WT,HER2+,HER2+,HER2+,HER2+
-
-   [Paths]
-   modelpath = /home/limozin/Documents/GitHub/ADCCFactory/models/
-
-   [Display]
-   blue_percentiles = 1,99
-   red_percentiles = 1,99.5
-   fraction = 4
-
-Detailed information about the role of each parameter is provided in "Configuration file".
-
-Drag and drop movies
---------------------
-
-.. note::
-
-   Unfortunately, putting the movies in their respective folders is a manual task
-
-The user can now drag and drop the movie associated to each field of view of each well in its respective folder (typical path: "ExpFolder/well/fov/movie/"). The movie should be in TIF format and be organized in time-X-Y-channel or channel-time-X-Y order. 
-
-We highly recommend that you align the movie beforehand using for example, the "Linear Stack Alignment with SIFT Multichannel" tool available in Fiji, when activating the PTBIOP update site [#]_ (see discussion here_). We also put `a macro`_ at your disposal to facilitate this preliminary step.
-
-.. _`a macro`: Align_Macro
-
-
-.. _here: https://forum.image.sc/t/registration-of-multi-channel-timelapse-with-linear-stack-alignment-with-sift/50209/16
-
-Usually, the alive target nucleus florescence channel works as a great reference for alignment, since the target cells are quasi-static. 
-
-.. figure:: _static/align_stack_sift.gif
-    :align: center
-    :alt: sift_align
-    
-    Demonstration of the of the SIFT multichannel tool on FIJI
-
-Load an experiment folder
--------------------------
-
-Once you have filled up an experiment folder with some ADCC movies, you can open ADCCFactory, browse to the folder and press "Submit" to open the Control Panel.
-
-
-References
-----------
-
-.. [#] https://www.epfl.ch/research/facilities/ptbiop/
+.. [#] Ahlers, J. et al. napari: a multi-dimensional image viewer for Python. Zenodo https://doi.org/10.5281/zenodo.8115575 (2023).

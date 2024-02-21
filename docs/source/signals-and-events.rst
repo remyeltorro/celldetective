@@ -3,134 +3,88 @@ Signals and events
 
 .. _signals_and_events:
 
-Installation
-------------
+Prerequisites
+-------------
 
-ADCCFactory can be installed using:
-
-.. code-block:: console
-
-	$ pip install adccfactory
-	
-Running the GUI
----------------
-
-Once the pip installation is complete, open a terminal and run:
-
-.. code-block:: console
-
-	$ python -m adccfactory
-
-A first window of the GUI will open, asking for the path to the ADCC experiment folder to be loaded.
+Perform segmentation, tracking and measurements for either target or effector cells. Select a single position.
 
 
-Configure your first experiment folder
---------------------------------------
+Principle
+---------
 
-ADCCFactory requires a specific folder tree, that mimics the organization of a `glass slide`_ into wells (main folders) and positions within the wells (subfolders). A configuration file, common to the whole experiment, is read to provide the relevant information unique to each experiment. 
+The single cell measurements described in the previous section are performed instantaneously, one image at a time, implying that there is not yet any integration of time or any description of dynamic phenomena. The time-dependence emerges naturally when these measurements are represented as single cell signals, *i.e.* 1D timeseries, over which we can hope to detect transitions characterizing the dynamic biological phenomena of interest. 
 
-.. _`glass slide`: Microscopy
+Our formulation for this problem is that cells can be classified into three categories with respect to an event : 
 
-.. figure:: _static/glass_slide_to_exp_folder.png
+#. Cells that exhibit an event of interest during the observation window: class “event”
+#. Cells that do not exhibit it: class “no event”)
+#. Cells that either exhibited the event before the observation started or else: class “else”
+
+Cells belonging to the first class, can be associated with a time :math:`t_\textrm{event}`. 
+
+
+Deep-learning signal analysis
+-----------------------------
+
+We provide several Deep-learning models that take select single-cell signals as their input and determine the event class and time of event (if any) for all cells. Exactly as for the segmentation models, we provide a zoo of such models that can be applied to positions or wells, in the signal analysis section. The result can be corrected and monitored in the signal annotator UI. 
+
+
+Single-cell signal visualization
+--------------------------------
+
+Single annotator configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Celldetective ships a powerful viewer for single-cell signals. If a single position is set and tracking has been performed for a cell population, the eye icon in the signal analysis section becomes active. 
+
+Click on the configuration button next to the eye to configure the image displayed and the animation parameters in the signal annotator. 
+
+The available options are:
+
+* a grayscale or a RGB composite representation of the microscopy images, with per-channel normalization to define in case of RGB composite
+* a fraction to control the rescaling applied to the images as they are loaded in memory. The smaller the fraction, the easier it will be to run the animation on a less powerful computer. 
+* a time interval to set the gap in milliseconds between each frame in the animation. 
+
+Upon saving, a small configuration file is saved in the experiment folder in such a way that the settings can be reloaded in later sessions. Click on the eye to proceed.
+
+
+Single annotator UI
+~~~~~~~~~~~~~~~~~~~
+
+.. figure:: _static/signal-annotator.gif
+    :width: 800px
     :align: center
-    :alt: exp_folder_mimics_glass_slide
-    
-    The experiment folder mimics the organization of the glass slide into wells and fields of view within wells.
+    :alt: signal_annotator
 
-To generate automatically such a folder tree, open ADCCFactory and go to File>New experiment... or press Ctrl+N.
+    Application on an ADCC system of MCF-7 breast cancer cells co-cultured with human primary NK cells where the Hoechst nuclear stain is blue, PI nuclear stain in red and CFSE marks the NK cells in green. Upon killing by the NK cells, the nuclei of MCF-7 cells turn red. 
 
-.. figure:: _static/startup_new_exp.gif
-    :width: 400px
-    :align: center
-    :alt: startup_new_experiment
-    
-    Press Ctrl+N or go to File>New experiment... to configure a new experiment folder
-   
-A dialog window will ask you where you want to create the experiment folder. Then a second window will ask for complementary information needed to fill the configuration file.     
-   
-.. image:: _static/configure_experiment.png
-    :width: 350px
-    :align: center
-    :alt: configure_experiment
+In this application, blue cell nuclei turn red when a target cell is killed by a cell from the green population. You can zoom in the animation, move around, and click on any single cell of interest. The center of mass of cells is coded by a dynamic double scatter plot. The cross symbol encodes the cell class. The circle around the cross shows the current cell status (whether the event happened before the current frame or not). Upon clicking, the signals are updated in the left side panel, to show the measurements of the selected cell. You can view simultaneously up to three signals. Since quantities can be wildly different, normalization and log-rescaling buttons can be triggered to rescale the signals.
 
-Once you press "Submit", these parameters create the experiment folder named "ExpLambda" in home/. At the root of the experiment folder is a configuration file that looks as follows:
-
-.. code-block:: ini
-
-   # Configuration for ExpLambda/ following user input
-   
-   [MovieSettings]
-   pxtoum = 0.1
-   frametomin = 1.0
-   len_movie = 60
-   shape_x = 2048
-   shape_y = 2048
-   transmission = 0
-   blue_channel = 3
-   red_channel = 1
-   green_channel = -1
-   movie_prefix = Aligned
-
-   [SearchRadii]
-   search_radius_tc = 100
-   search_radius_nk = 75
-
-   [BinningParameters]
-   time_dilation = 1
-
-   [Thresholds]
-   cell_nbr_threshold = 10
-   intensity_measurement_radius = 26
-   intensity_measurement_radius_nk = 10
-   minimum_tracklength = 0
-   model_signal_length = 128
-   hide_frames_for_tracking = 
-
-   [Labels]
-   concentrations = 0,1,10,100,100,10,1,0
-   cell_types = WT,WT,WT,WT,HER2+,HER2+,HER2+,HER2+
-
-   [Paths]
-   modelpath = /home/limozin/Documents/GitHub/ADCCFactory/models/
-
-   [Display]
-   blue_percentiles = 1,99
-   red_percentiles = 1,99.5
-   fraction = 4
-
-Detailed information about the role of each parameter is provided in "Configuration file".
-
-Drag and drop movies
---------------------
+In the top part of the left side panel, you select the event of interest. Changing the event updates the colors attributed to each cell marker in the animation. You can decide to create a brand new event and annotate cells (almost) from scratch: you set a initial class for all cells, to be modified. The class of a single-cell with respect to an event can be modified. Similarly, the time estimated in case of event can be changed to a different value. Don't forget to click on "Save" to save all modifications.
 
 .. note::
 
-   Unfortunately, putting the movies in their respective folders is a manual task
-
-The user can now drag and drop the movie associated to each field of view of each well in its respective folder (typical path: "ExpFolder/well/fov/movie/"). The movie should be in TIF format and be organized in time-X-Y-channel or channel-time-X-Y order. 
-
-We highly recommend that you align the movie beforehand using for example, the "Linear Stack Alignment with SIFT Multichannel" tool available in Fiji, when activating the PTBIOP update site [#]_ (see discussion here_). We also put `a macro`_ at your disposal to facilitate this preliminary step.
-
-.. _`a macro`: Align_Macro
+   Cells marked for suppression (key Del), are temporarily colored in black. Upon saving, they are removed completely and cannot be recovered again.
 
 
-.. _here: https://forum.image.sc/t/registration-of-multi-channel-timelapse-with-linear-stack-alignment-with-sift/50209/16
-
-Usually, the alive target nucleus florescence channel works as a great reference for alignment, since the target cells are quasi-static. 
-
-.. figure:: _static/align_stack_sift.gif
-    :align: center
-    :alt: sift_align
-    
-    Demonstration of the of the SIFT multichannel tool on FIJI
-
-Load an experiment folder
--------------------------
-
-Once you have filled up an experiment folder with some ADCC movies, you can open ADCCFactory, browse to the folder and press "Submit" to open the Control Panel.
+If all cells have been annotated for an event of interest, you can decide to export a training set for signal analysis with a Deep Learning model, by clicking on the export button on the right side of the "Save" button. 
 
 
-References
-----------
+Keyboard shortcuts 
+~~~~~~~~~~~~~~~~~~
 
-.. [#] https://www.epfl.ch/research/facilities/ptbiop/
+Here are some keyboard shortcuts to facilitate single-cell annotations with the signal annotator UI.
+
++---------------------+-----------------------------------------------+
+| Keyboard shortcuts  | Description                                   |
++=====================+===============================================+
+| l                   | show the last frame                           |
++---------------------+-----------------------------------------------+            
+| f                   | show the first frame                          |
++---------------------+-----------------------------------------------+
+| Esc                 | cancel cell selection                         |
++---------------------+-----------------------------------------------+
+| Del                 | mark cell for suppression                     |
++---------------------+-----------------------------------------------+
+| n                   | set cell class to no event                    |
++---------------------+-----------------------------------------------+

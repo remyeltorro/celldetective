@@ -3,15 +3,7 @@ Get started
 
 .. _get_started:
 
-Installation
-------------
 
-ADCCFactory can be installed using:
-
-.. code-block:: console
-
-	$ pip install adccfactory
-	
 Running the GUI
 ---------------
 
@@ -31,7 +23,7 @@ ADCCFactory requires a specific folder tree, that mimics the organization of a `
 
 .. _`glass slide`: Microscopy
 
-.. figure:: _static/glass_slide_to_exp_folder.png
+.. figure:: _static/glass-slide.png
     :align: center
     :alt: exp_folder_mimics_glass_slide
     
@@ -59,44 +51,29 @@ Once you press "Submit", these parameters create the experiment folder named "Ex
 
    # Configuration for ExpLambda/ following user input
    
-   [MovieSettings]
-   pxtoum = 0.1
-   frametomin = 1.0
-   len_movie = 60
-   shape_x = 2048
-   shape_y = 2048
-   transmission = 0
-   blue_channel = 3
-   red_channel = 1
-   green_channel = -1
-   movie_prefix = Aligned
+    [MovieSettings]
+    pxtoum = 0.3112
+    frametomin = 2.75
+    len_movie = 44
+    shape_x = 2048
+    shape_y = 2048
+    movie_prefix = Aligned
 
-   [SearchRadii]
-   search_radius_tc = 100
-   search_radius_nk = 75
+    [Channels]
+    brightfield_channel = 0
+    live_nuclei_channel = 3
+    dead_nuclei_channel = 1
+    effector_fluo_channel = 2
+    adhesion_channel = nan
+    fluo_channel_1 = nan
+    fluo_channel_2 = nan
 
-   [BinningParameters]
-   time_dilation = 1
+    [Labels]
+    cell_types = MCF7-HER2+primary NK,MCF7-HER2+primary NK
+    antibodies = None,Ab
+    concentrations = 0,100
+    pharmaceutical_agents = None,None
 
-   [Thresholds]
-   cell_nbr_threshold = 10
-   intensity_measurement_radius = 26
-   intensity_measurement_radius_nk = 10
-   minimum_tracklength = 0
-   model_signal_length = 128
-   hide_frames_for_tracking = 
-
-   [Labels]
-   concentrations = 0,1,10,100,100,10,1,0
-   cell_types = WT,WT,WT,WT,HER2+,HER2+,HER2+,HER2+
-
-   [Paths]
-   modelpath = /home/limozin/Documents/GitHub/ADCCFactory/models/
-
-   [Display]
-   blue_percentiles = 1,99
-   red_percentiles = 1,99.5
-   fraction = 4
 
 Detailed information about the role of each parameter is provided in "Configuration file".
 
@@ -118,11 +95,14 @@ We highly recommend that you align the movie beforehand using for example, the "
 
 Usually, the alive target nucleus florescence channel works as a great reference for alignment, since the target cells are quasi-static. 
 
-.. figure:: _static/align_stack_sift.gif
+
+.. figure:: _static/align-stack-sift.gif
     :align: center
     :alt: sift_align
     
     Demonstration of the of the SIFT multichannel tool on FIJI
+
+
 
 Load an experiment folder
 -------------------------

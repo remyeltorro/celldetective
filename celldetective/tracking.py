@@ -1040,18 +1040,25 @@ def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 	script_path = os.sep.join([abs_path, 'scripts', 'track_cells.py'])	
 	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}"'
 	subprocess.call(cmd, shell=True)
+
+	track_table = pos + os.sep.join(["output","tables",f"trajectories_{mode}.csv"])
+	if return_tracks:
+		df = pd.read_csv(track_table)
+		return df
+	else:
+		return None	
 	
-	# if return_labels or view_on_napari:
-	# 	labels = locate_labels(pos, population=mode)
-	# if view_on_napari:
-	# 	if stack_prefix is None:
-	# 		stack_prefix = ''
-	# 	stack = locate_stack(pos, prefix=stack_prefix)
-	# 	_view_on_napari(tracks=None, stack=stack, labels=labels)
-	# if return_labels:
-	# 	return labels
-	# else:
-	return None
+	# # if return_labels or view_on_napari:
+	# # 	labels = locate_labels(pos, population=mode)
+	# # if view_on_napari:
+	# # 	if stack_prefix is None:
+	# # 		stack_prefix = ''
+	# # 	stack = locate_stack(pos, prefix=stack_prefix)
+	# # 	_view_on_napari(tracks=None, stack=stack, labels=labels)
+	# # if return_labels:
+	# # 	return labels
+	# # else:
+	# return None
 
 def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
 	

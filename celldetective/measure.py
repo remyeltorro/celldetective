@@ -724,5 +724,10 @@ def measure_at_position(pos, mode, return_measurements=False):
 	script_path = os.sep.join([abs_path, 'scripts', 'measure_cells.py'])
 	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}"'
 	subprocess.call(cmd, shell=True)
-	
-	return None
+
+	table = pos + os.sep.join(["output","tables",f"trajectories_{mode}.csv"])
+	if return_measurements:
+		df = pd.read_csv(table)
+		return df
+	else:
+		return None	

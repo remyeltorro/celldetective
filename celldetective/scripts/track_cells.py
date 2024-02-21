@@ -36,6 +36,12 @@ pos = str(process_arguments['position'])
 mode = str(process_arguments['mode'])
 n_threads = int(process_arguments['threads'])
 
+if not os.path.exists(pos+"output"):
+	os.mkdir(pos+"output")
+
+if not os.path.exists(pos+os.sep.join(["output","tables"])):
+	os.mkdir(pos+os.sep.join(["output","tables"]))
+
 if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets"
 	instruction_file = os.sep.join(["configs", "tracking_instructions_targets.json"])

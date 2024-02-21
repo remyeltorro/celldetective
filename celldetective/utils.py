@@ -1139,7 +1139,7 @@ def download_zenodo_file(file, output_dir):
 		zip_ref.extractall(output_dir)
 	
 	file_to_rename = glob(os.sep.join([output_dir,file,"*[!.json][!.png][!.h5][!.csv][!.npy][!.tif][!.ini]"]))
-	if len(file_to_rename)>0 and not file_to_rename[0].endswith(os.sep):
+	if len(file_to_rename)>0 and not file_to_rename[0].endswith(os.sep) and not file.startswith('demo'):
 		os.rename(file_to_rename[0], os.sep.join([output_dir,file,file]))
 
 	if file=="db_mcf7_nuclei_w_primary_NK":

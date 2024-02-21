@@ -31,6 +31,7 @@ from math import floor, ceil
 from scipy.optimize import curve_fit
 import time
 import math
+import pandas as pd
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
@@ -230,7 +231,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 	return trajectories
 
-def analyze_signals_at_position(pos, model, mode, use_gpu=True):
+def analyze_signals_at_position(pos, model, mode, use_gpu=True, return_table=False):
 	
 	pos = pos.replace('\\','/')
 	pos = rf"{pos}"
@@ -242,7 +243,12 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True):
 	cmd = f'python "{script_path}" --pos "{pos}" --model "{model}" --mode "{mode}" --use_gpu "{use_gpu}"'
 	subprocess.call(cmd, shell=True)
 	
-	return None
+	table = pos + os.sep.join(["output","tables",f"trajectories_{mode}.csv"])
+	if return_table:
+		df = pd.read_csv(table)
+		return df
+	else:
+		return None		
 
 
 class SignalDetectionModel(object):

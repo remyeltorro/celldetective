@@ -129,6 +129,12 @@ class SegmentationModelLoader(QWidget):
 		self.base_block.addWidget(self.spatial_calib_le, 0,1,1,2,alignment=Qt.AlignRight)
 
 		self.channel_options = ["--","live_nuclei_channel", "dead_nuclei_channel", "effector_fluo_channel", "brightfield_channel", "adhesion_channel", "fluo_channel_1", "fluo_channel_2"]
+		exp_channels = self.parent.parent.exp_channels
+		for ec in exp_channels:
+			if ec not in self.channel_options:
+				self.channel_options.append(ec)
+		self.channel_options += ['None']
+
 		self.ch_1_label = QLabel("channel 1: ")
 		self.base_block.addWidget(self.ch_1_label, 1, 0, 1, 1, alignment=Qt.AlignLeft)
 		self.combo_ch1 = QComboBox()
@@ -384,6 +390,10 @@ class SegmentationModelLoader(QWidget):
 					channels.append(c.currentText())
 
 			model_type = "cellpose"
+			# cellpose requires at least two channels
+			if len(channels)==1:
+				channels += ['None']
+
 			diameter = float(self.cp_diameter_le.text().replace(',','.'))
 			cellprob_threshold = float(self.cp_cellprob_le.text().replace(',','.'))
 			flow_threshold = float(self.cp_flow_le.text().replace(',','.'))

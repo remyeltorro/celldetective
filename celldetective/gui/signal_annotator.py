@@ -201,6 +201,10 @@ class SignalAnnotator(QMainWindow):
 		self.del_shortcut.activated.connect(self.shortcut_suppr)
 		self.del_shortcut.setEnabled(False)
 
+		self.no_event_shortcut = QShortcut(QKeySequence("n"), self) #QKeySequence("s")
+		self.no_event_shortcut.activated.connect(self.shortcut_no_event)
+		self.no_event_shortcut.setEnabled(False)
+
 
 		# Cell signals
 		self.left_panel.addWidget(self.cell_fcanvas)
@@ -212,7 +216,7 @@ class SignalAnnotator(QMainWindow):
 		self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
 		self.normalize_features_btn.setIconSize(QSize(25, 25))
 		self.normalize_features_btn.setFixedSize(QSize(30, 30))
-		self.normalize_features_btn.setShortcut(QKeySequence('n'))
+		#self.normalize_features_btn.setShortcut(QKeySequence('n'))
 		self.normalize_features_btn.clicked.connect(self.normalize_features)
 
 		plot_buttons_hbox.addWidget(QLabel(''), 90)
@@ -621,6 +625,7 @@ class SignalAnnotator(QMainWindow):
 		self.correct_btn.setText('correct')
 		self.cancel_btn.setEnabled(False)
 		self.del_shortcut.setEnabled(False)
+		self.no_event_shortcut.setEnabled(False)
 
 		self.selection.pop(0)
 
@@ -1047,6 +1052,7 @@ class SignalAnnotator(QMainWindow):
 			self.correct_btn.setEnabled(True)
 			self.cancel_btn.setEnabled(True)
 			self.del_shortcut.setEnabled(True)
+			self.no_event_shortcut.setEnabled(True)
 
 			self.track_of_interest = self.tracks[self.framedata][ind]
 			print(f'You selected track {self.track_of_interest}.')
@@ -1075,6 +1081,11 @@ class SignalAnnotator(QMainWindow):
 	def shortcut_suppr(self):
 		self.correct_btn.click()
 		self.suppr_btn.click()
+		self.correct_btn.click()
+
+	def shortcut_no_event(self):
+		self.correct_btn.click()
+		self.no_event_btn.click()
 		self.correct_btn.click()
 
 	def configure_ylims(self):

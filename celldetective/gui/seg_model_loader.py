@@ -367,10 +367,13 @@ class SegmentationModelLoader(QWidget):
 			model_type = "stardist"
 			spatial_calib = float(self.spatial_calib_le.text().replace(',','.'))
 			normalize = self.normalize_checkbox.isChecked()
-			dico.update({"channels": channels, 
-						 "spatial_calibration": spatial_calib, 
+			dico.update({"channels": channels,
 						 "normalize": normalize,
-						})
+						 "spatial_calibration": spatial_calib,
+						 'normalization_percentile': norm_percentile,
+						 'normalization_clip': norm_clip,
+						 'normalization_values': normalization_values,
+						 })
 
 		elif self.cellpose_button.isChecked():
 			

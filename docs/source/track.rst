@@ -3,134 +3,40 @@ Track
 
 .. _track:
 
-Installation
+Prerequisite
 ------------
 
-ADCCFactory can be installed using:
-
-.. code-block:: console
-
-	$ pip install adccfactory
-	
-Running the GUI
----------------
-
-Once the pip installation is complete, open a terminal and run:
-
-.. code-block:: console
-
-	$ python -m adccfactory
-
-A first window of the GUI will open, asking for the path to the ADCC experiment folder to be loaded.
+You must segment the cells prior to tracking.
 
 
-Configure your first experiment folder
---------------------------------------
+I/O
+---
 
-ADCCFactory requires a specific folder tree, that mimics the organization of a `glass slide`_ into wells (main folders) and positions within the wells (subfolders). A configuration file, common to the whole experiment, is read to provide the relevant information unique to each experiment. 
+This modules takes the instance segmentation label images, the original microscopy images (if you asked for feature measurements) and outputs a trajectory table where each line represents a cell at a given timepoint.
 
-.. _`glass slide`: Microscopy
+Adapt the tracker to your cells
+-------------------------------
 
-.. figure:: _static/glass_slide_to_exp_folder.png
-    :align: center
-    :alt: exp_folder_mimics_glass_slide
-    
-    The experiment folder mimics the organization of the glass slide into wells and fields of view within wells.
+After segmentation, tracking the cells is a necessary step to attribute a unique label, an identity, to each cell in a movie. Since cells exhibit complex motion that often goes well beyond the scope of Brownian motion, we decided to interface the state-of-the art tracking method bTrack [#]_ , exploiting both the motion history and the appearance of the cells to make the best tracking hypotheses. 
 
-To generate automatically such a folder tree, open ADCCFactory and go to File>New experiment... or press Ctrl+N.
+bTrack requires a configuration file to set all of its motion and tracklet hypotheses. This configuration can be produced interactively using the bTrack-napari plugin in napari (click on the eye in either the segmentation or tracking module). Each cell passed to the tracker can be attached some features, which can be used to help with the tracking.
 
-.. figure:: _static/startup_new_exp.gif
+.. figure:: _static/tracking-options.png
     :width: 400px
     :align: center
-    :alt: startup_new_experiment
+    :alt: tracking_options
     
-    Press Ctrl+N or go to File>New experiment... to configure a new experiment folder
-   
-A dialog window will ask you where you want to create the experiment folder. Then a second window will ask for complementary information needed to fill the configuration file.     
-   
-.. image:: _static/configure_experiment.png
-    :width: 350px
-    :align: center
-    :alt: configure_experiment
-
-Once you press "Submit", these parameters create the experiment folder named "ExpLambda" in home/. At the root of the experiment folder is a configuration file that looks as follows:
-
-.. code-block:: ini
-
-   # Configuration for ExpLambda/ following user input
-   
-   [MovieSettings]
-   pxtoum = 0.1
-   frametomin = 1.0
-   len_movie = 60
-   shape_x = 2048
-   shape_y = 2048
-   transmission = 0
-   blue_channel = 3
-   red_channel = 1
-   green_channel = -1
-   movie_prefix = Aligned
-
-   [SearchRadii]
-   search_radius_tc = 100
-   search_radius_nk = 75
-
-   [BinningParameters]
-   time_dilation = 1
-
-   [Thresholds]
-   cell_nbr_threshold = 10
-   intensity_measurement_radius = 26
-   intensity_measurement_radius_nk = 10
-   minimum_tracklength = 0
-   model_signal_length = 128
-   hide_frames_for_tracking = 
-
-   [Labels]
-   concentrations = 0,1,10,100,100,10,1,0
-   cell_types = WT,WT,WT,WT,HER2+,HER2+,HER2+,HER2+
-
-   [Paths]
-   modelpath = /home/limozin/Documents/GitHub/ADCCFactory/models/
-
-   [Display]
-   blue_percentiles = 1,99
-   red_percentiles = 1,99.5
-   fraction = 4
-
-Detailed information about the role of each parameter is provided in "Configuration file".
-
-Drag and drop movies
---------------------
-
-.. note::
-
-   Unfortunately, putting the movies in their respective folders is a manual task
-
-The user can now drag and drop the movie associated to each field of view of each well in its respective folder (typical path: "ExpFolder/well/fov/movie/"). The movie should be in TIF format and be organized in time-X-Y-channel or channel-time-X-Y order. 
-
-We highly recommend that you align the movie beforehand using for example, the "Linear Stack Alignment with SIFT Multichannel" tool available in Fiji, when activating the PTBIOP update site [#]_ (see discussion here_). We also put `a macro`_ at your disposal to facilitate this preliminary step.
-
-.. _`a macro`: Align_Macro
+    **GUI to configure the tracking parameters.** A bTrack configuration can be modified in place, or other configurations can be loaded. Features can be passed to the tracker. Post processing modules clean up the raw trajectories for subsequent analysis.
 
 
-.. _here: https://forum.image.sc/t/registration-of-multi-channel-timelapse-with-linear-stack-alignment-with-sift/50209/16
+The tracking configuration window ships a text box to edit directly the current json bTrack configuration. In addition, you can import configurations that were produced with the napari-bTrack plugin, accessible directly in Celldetective, which is the recommended way to optimize a tracking configuration. 
 
-Usually, the alive target nucleus florescence channel works as a great reference for alignment, since the target cells are quasi-static. 
+You can decide to pass features to the tracking (choosing among morphological, tonal and textural features). If an intensity feature is chosen, the you can select which channels should be passed to bTrack.
 
-.. figure:: _static/align_stack_sift.gif
-    :align: center
-    :alt: sift_align
-    
-    Demonstration of the of the SIFT multichannel tool on FIJI
-
-Load an experiment folder
--------------------------
-
-Once you have filled up an experiment folder with some ADCC movies, you can open ADCCFactory, browse to the folder and press "Submit" to open the Control Panel.
+Upon submission, a subprocess loads the multichannel images and the masks one frame at a time, to extract all cell locations. If features were enabled, they are measured along the way. Then the tracking configuration is loaded, as well as all the cells from all time points. The potential features are all normalized independently, using a standard scaler. The tracking mode switches from ``motion`` to ``motion + visual`` depending on the presence of features. The tracking is performed and a ``csv`` table containing the tracks is generated in the ``output/tables`` subfolder of each position.
 
 
 References
 ----------
 
-.. [#] https://www.epfl.ch/research/facilities/ptbiop/
+.. [#] Ulicna, K., Vallardi, G., Charras, G. & Lowe, A. R. Automated Deep Lineage Tree Analysis Using a Bayesian Single Cell Tracking Approach. Frontiers in Computer Science 3, (2021).

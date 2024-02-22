@@ -3,134 +3,56 @@ Measure
 
 .. _measure:
 
-Installation
+Prerequisite
 ------------
 
-ADCCFactory can be installed using:
-
-.. code-block:: console
-
-	$ pip install adccfactory
-	
-Running the GUI
----------------
-
-Once the pip installation is complete, open a terminal and run:
-
-.. code-block:: console
-
-	$ python -m adccfactory
-
-A first window of the GUI will open, asking for the path to the ADCC experiment folder to be loaded.
+You must segment the cells prior to measurements. The cells can be tracked or not.
 
 
-Configure your first experiment folder
---------------------------------------
+I/O
+---
 
-ADCCFactory requires a specific folder tree, that mimics the organization of a `glass slide`_ into wells (main folders) and positions within the wells (subfolders). A configuration file, common to the whole experiment, is read to provide the relevant information unique to each experiment. 
 
-.. _`glass slide`: Microscopy
+The measurement module takes both the segmentation masks and microscopy images as input. If the cells were tracked prior to measurement, the trajectory table is appended with new columns corresponding to the measurements. Otherwise a look-alike table is output by the module, without a ``TRACK_ID`` column (replaced with a ``ID`` column).
 
-.. figure:: _static/glass_slide_to_exp_folder.png
+Options
+-------
+
+Mask-based measurements
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The segmentation mask is an obvious starting point to perform single-cell measurements that are tonal, textural and morphological. The mask provides a ROI over which a series of measurements can be performed at each time point. The mask can also be used to define sub sections. 
+
+One practical subsection that can be extracted from the euclidean transform of the mask is to perform a threshold on the distance to the mask boundary, leaving a contour that reflects that of the mask but smaller. With two threshold distances, it is possible to define a slice. This decomposition of the mask can be used to assess the peripherality of a fluorescence signal. 
+
+.. figure:: _static/measurements-ui.png
     :align: center
-    :alt: exp_folder_mimics_glass_slide
+    :alt: measurement_options
     
-    The experiment folder mimics the organization of the glass slide into wells and fields of view within wells.
+    **GUI to pilot single cell measurements, with a highlight on contour intensity measurements.** Mask-based measurements are picked from the list of region properties defined in ``regionprops``. The user can define and visualize contour bands, over which to compute tonal features. Here, the bands are shown for an image of MCF7 cell stained nuclei. The user can enable the computation of Haralick texture features and pilot isotropic measurements.
 
-To generate automatically such a folder tree, open ADCCFactory and go to File>New experiment... or press Ctrl+N.
 
-.. figure:: _static/startup_new_exp.gif
-    :width: 400px
+For morphological and tonal measurements, we rely on the scikit-image library and more specifically ``regionprops`` that provides a fast computation of features from masks.
+
+For texture measurements, we provide several options to measure the texture averaged over cell masks, with refined parameters. You can control carefully the image normalization and play with the distance, scale and # gray levels to make the computation time acceptable while not destroying texture information.
+
+.. figure:: _static/texture-measurements.png
     :align: center
-    :alt: startup_new_experiment
+    :alt: texture_options
     
-    Press Ctrl+N or go to File>New experiment... to configure a new experiment folder
-   
-A dialog window will ask you where you want to create the experiment folder. Then a second window will ask for complementary information needed to fill the configuration file.     
-   
-.. image:: _static/configure_experiment.png
-    :width: 350px
+    **GUI to pilot texture measurements.** A section of the measurement configuration window is dedicated to the measurement of the Haralick texture features. As it is computationally expansive, measuring the texture is optional. The user selects the channel of interest within all of the channels available in the loaded experiment. A slider sets the scale parameter to scale down the image before textural computations. The # gray levels field sets the :math:`n_{GL}` parameter. A switch button allows to turn the min/max percentile fields into min/max value fields. A distance field sets the distance over which to compute intensity co-occurrences. On the top right corner, two visualization tools allow to control respectively the histogram of the digitized image and the digitized image itself.
+
+Position-based measurements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The post-processing operations performed on the trajectories can introduce spatial locations for which there is no associated mask. Indeed, interpolating missing points in trajectories leaves open the question of how and what to measure in these new locations. An even more extreme case is track sustaining, which creates a completely new set of locations where the cell may not even exist. 
+
+In absence of orientational information, the best course of action was to go for an isotropic (circle or ring) measurement of intensities, centered on the positions, irrespective of whether they were interpolated or not. Therefore, for a complete track we could always expect a complete intensity measurement. Obviously, tuning the radius of this circle (or radii for the ring) is an important choice.
+
+.. figure:: _static/iso-measure.png
     :align: center
-    :alt: configure_experiment
-
-Once you press "Submit", these parameters create the experiment folder named "ExpLambda" in home/. At the root of the experiment folder is a configuration file that looks as follows:
-
-.. code-block:: ini
-
-   # Configuration for ExpLambda/ following user input
-   
-   [MovieSettings]
-   pxtoum = 0.1
-   frametomin = 1.0
-   len_movie = 60
-   shape_x = 2048
-   shape_y = 2048
-   transmission = 0
-   blue_channel = 3
-   red_channel = 1
-   green_channel = -1
-   movie_prefix = Aligned
-
-   [SearchRadii]
-   search_radius_tc = 100
-   search_radius_nk = 75
-
-   [BinningParameters]
-   time_dilation = 1
-
-   [Thresholds]
-   cell_nbr_threshold = 10
-   intensity_measurement_radius = 26
-   intensity_measurement_radius_nk = 10
-   minimum_tracklength = 0
-   model_signal_length = 128
-   hide_frames_for_tracking = 
-
-   [Labels]
-   concentrations = 0,1,10,100,100,10,1,0
-   cell_types = WT,WT,WT,WT,HER2+,HER2+,HER2+,HER2+
-
-   [Paths]
-   modelpath = /home/limozin/Documents/GitHub/ADCCFactory/models/
-
-   [Display]
-   blue_percentiles = 1,99
-   red_percentiles = 1,99.5
-   fraction = 4
-
-Detailed information about the role of each parameter is provided in "Configuration file".
-
-Drag and drop movies
---------------------
-
-.. note::
-
-   Unfortunately, putting the movies in their respective folders is a manual task
-
-The user can now drag and drop the movie associated to each field of view of each well in its respective folder (typical path: "ExpFolder/well/fov/movie/"). The movie should be in TIF format and be organized in time-X-Y-channel or channel-time-X-Y order. 
-
-We highly recommend that you align the movie beforehand using for example, the "Linear Stack Alignment with SIFT Multichannel" tool available in Fiji, when activating the PTBIOP update site [#]_ (see discussion here_). We also put `a macro`_ at your disposal to facilitate this preliminary step.
-
-.. _`a macro`: Align_Macro
-
-
-.. _here: https://forum.image.sc/t/registration-of-multi-channel-timelapse-with-linear-stack-alignment-with-sift/50209/16
-
-Usually, the alive target nucleus florescence channel works as a great reference for alignment, since the target cells are quasi-static. 
-
-.. figure:: _static/align_stack_sift.gif
-    :align: center
-    :alt: sift_align
+    :alt: iso_measurements
     
-    Demonstration of the of the SIFT multichannel tool on FIJI
+    **GUI to pilot isotropic measurements.** The last section of the measurement configuration window is dedicated to setting up isotropic tonal measurements. The user can define and manage as many circle and rings as desired. Then the operations to be performed on the intensities within the circle or ring are defined right below. By default, all measurements are applied to all available channels in the experiment.
 
-Load an experiment folder
--------------------------
-
-Once you have filled up an experiment folder with some ADCC movies, you can open ADCCFactory, browse to the folder and press "Submit" to open the Control Panel.
-
-
-References
-----------
-
-.. [#] https://www.epfl.ch/research/facilities/ptbiop/
+The isotropic measurements are interfaced in almost the same way as the contour measurements, with the exception that the operation to perform over the circle (or ring) ROI has to be defined below (among mean, standard deviation and others). Upon submission a subprocess in launched to take each multichannel frame one by one and perform first the mask measurements and second the isotropic measurements with the kernel defined here. In the example above, if its for three-channel microscopy data then 3 × 2 × 2 = 12 signals will be generated for each tracked single cell.

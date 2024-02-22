@@ -3,6 +3,11 @@ Segment
 
 .. _segment:
 
+I/O
+---
+
+The input to the segmentation module is a stack of microscopy images. The output is a stack of instance segmentation masks, delineating each cell of the images. It is save frame by frame in a ``labels_*population*`` subfolder of each position folder.
+
 Overview
 --------
 

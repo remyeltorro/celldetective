@@ -21,6 +21,32 @@ import threading
 
 def get_experiment_wells(experiment):
 	
+	"""
+	Retrieves the list of well directories from a given experiment directory, sorted 
+	naturally and returned as a NumPy array of strings.
+
+	Parameters
+	----------
+	experiment : str
+		The path to the experiment directory from which to retrieve well directories.
+
+	Returns
+	-------
+	np.ndarray
+		An array of strings, each representing the full path to a well directory within the specified 
+		experiment. The array is empty if no well directories are found.
+
+	Notes
+	-----
+	- The function assumes well directories are prefixed with 'W' and uses this to filter directories 
+	  within the experiment folder.
+
+	- Natural sorting is applied to the list of wells to ensure that the order is intuitive (e.g., 'W2' 
+	  comes before 'W10'). This sorting method is especially useful when dealing with numerical sequences 
+	  that are part of the directory names.
+	
+	"""
+
 	if not experiment.endswith(os.sep):
 		experiment += os.sep
 		
@@ -143,6 +169,42 @@ def extract_position_name(pos):
 
 def get_position_table(pos, population, return_path=False):
 	
+	"""
+	Retrieves the data table for a specified population at a given position, optionally returning the table's file path.
+
+	This function locates and loads a CSV data table associated with a specific population (e.g., 'targets', 'cells') 
+	from a specified position directory. The position directory should contain an 'output/tables' subdirectory where 
+	the CSV file named 'trajectories_{population}.csv' is expected to be found. If the file exists, it is loaded into 
+	a pandas DataFrame; otherwise, None is returned.
+
+	Parameters
+	----------
+	pos : str
+		The path to the position directory from which to load the data table.
+	population : str
+		The name of the population for which the data table is to be retrieved. This name is used to construct the 
+		file name of the CSV file to be loaded.
+	return_path : bool, optional
+		If True, returns a tuple containing the loaded data table (or None) and the path to the CSV file. If False, 
+		only the loaded data table (or None) is returned (default is False).
+
+	Returns
+	-------
+	pandas.DataFrame or None, or (pandas.DataFrame or None, str)
+		If return_path is False, returns the loaded data table as a pandas DataFrame, or None if the table file does 
+		not exist. If return_path is True, returns a tuple where the first element is the data table (or None) and the 
+		second element is the path to the CSV file.
+
+	Examples
+	--------
+	>>> df_pos = get_position_table('/path/to/position', 'targets')
+	# This will load the 'trajectories_targets.csv' table from the specified position directory into a pandas DataFrame.
+
+	>>> df_pos, table_path = get_position_table('/path/to/position', 'targets', return_path=True)
+	# This will load the 'trajectories_targets.csv' table and also return the path to the CSV file.
+	
+	"""
+	
 	if not pos.endswith(os.sep):
 		table = os.sep.join([pos,'output','tables',f'trajectories_{population}.csv'])
 	else:
@@ -172,6 +234,62 @@ def get_position_movie_path(pos, prefix=''):
 					
 def load_experiment_tables(experiment, population='targets', well_option='*',position_option='*', return_pos_info=False):
 	
+
+	"""
+	Loads and aggregates data tables for specified wells and positions within an experiment, 
+	optionally returning position information alongside the aggregated data table.
+
+	This function collects data from tables associated with specific population types across 
+	various wells and positions within an experiment. It uses the experiment's configuration 
+	to gather metadata such as movie prefix, concentrations, cell types, antibodies, and 
+	pharmaceutical agents. Users can specify which wells and positions to include in the 
+	aggregation through pattern matching, and whether to include detailed position information 
+	in the output.
+
+	Parameters
+	----------
+	experiment : str
+		The path to the experiment directory.
+	population : str, optional
+		The population type to filter the tables by (default is 'targets' among 'targets and "effectors').
+	well_option : str, optional
+		A pattern to specify which wells to include (default is '*', which includes all wells).
+	position_option : str, optional
+		A pattern to specify which positions to include (default is '*', which includes all positions).
+	return_pos_info : bool, optional
+		If True, returns a tuple where the first element is the aggregated data table and the 
+		second element is detailed position information (default is False).
+
+	Returns
+	-------
+	pandas.DataFrame or (pandas.DataFrame, pandas.DataFrame)
+		If return_pos_info is False, returns a pandas DataFrame aggregating the data from the 
+		specified tables. If return_pos_info is True, returns a tuple where the first element 
+		is the aggregated data table and the second element is a DataFrame with detailed position 
+		information.
+
+	Raises
+	------
+	FileNotFoundError
+		If the experiment directory does not exist or specified files within the directory cannot be found.
+	ValueError
+		If the specified well or position patterns do not match any directories.
+
+	Notes
+	-----
+	- This function assumes that the naming conventions and directory structure of the experiment 
+	  follow a specific format, as outlined in the experiment's configuration file.
+	- The function utilizes several helper functions to extract metadata, interpret well and 
+	  position patterns, and load individual position tables. Errors in these helper functions 
+	  may propagate up and affect the behavior of this function.
+
+	Examples
+	--------
+	>>> load_experiment_tables('/path/to/experiment', population='targets', well_option='W1', position_option='1-*')
+	# This will load and aggregate tables for the 'targets' population within well 'W1' and positions matching '1-*'.
+	
+	"""
+
 
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
@@ -1149,6 +1267,34 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 
 def locate_segmentation_model(name):
 	
+	"""
+	Locates a specified segmentation model within the local 'celldetective' directory or 
+	downloads it from Zenodo if not found locally.
+
+	This function attempts to find a segmentation model by name within a predefined directory 
+	structure starting from the 'celldetective/models/segmentation*' path. If the model is not 
+	found locally, it then tries to locate and download the model from Zenodo, placing it into 
+	the appropriate category directory within 'celldetective'. The function prints the search 
+	directory path and returns the path to the found or downloaded model.
+
+	Parameters
+	----------
+	name : str
+		The name of the segmentation model to locate.
+
+	Returns
+	-------
+	str or None
+		The full path to the located or downloaded segmentation model directory, or None if the 
+		model could not be found or downloaded.
+
+	Raises
+	------
+	FileNotFoundError
+		If the model cannot be found locally and also cannot be found or downloaded from Zenodo.
+
+	"""
+
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
 	modelpath = os.sep.join([main_dir, "models", "segmentation*", os.sep])
 	print(f'Looking for {name} in {modelpath}')
@@ -1171,6 +1317,29 @@ def locate_segmentation_model(name):
 
 def get_segmentation_datasets_list(return_path=False):
 	
+   """
+	Retrieves a list of available segmentation datasets from both the local 'celldetective/datasets/segmentation_annotations' 
+	directory and a Zenodo repository, optionally returning the path to the local datasets directory.
+
+	This function compiles a list of available segmentation datasets by first identifying datasets stored locally 
+	within a specified path related to the script's directory. It then extends this list with datasets available 
+	in a Zenodo repository, ensuring no duplicates are added. The function can return just the list of dataset 
+	names or, if specified, also return the path to the local datasets directory.
+
+	Parameters
+	----------
+	return_path : bool, optional
+		If True, the function returns a tuple containing the list of available dataset names and the path to the 
+		local datasets directory. If False, only the list of dataset names is returned (default is False).
+
+	Returns
+	-------
+	list or (list, str)
+		If return_path is False, returns a list of strings, each string being the name of an available dataset. 
+		If return_path is True, returns a tuple where the first element is this list and the second element is a 
+		string representing the path to the local datasets directory.
+	
+	"""
 
 	datasets_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "datasets", "segmentation_annotations", os.sep])
 	repository_datasets = get_zenodo_files(cat=os.sep.join(["datasets","segmentation_annotations"]))
@@ -1190,6 +1359,33 @@ def get_segmentation_datasets_list(return_path=False):
 
 def locate_segmentation_dataset(name):
 	
+	"""
+	Locates a specified segmentation dataset within the local 'celldetective/datasets/segmentation_annotations' directory 
+	or downloads it from Zenodo if not found locally.
+
+	This function attempts to find a segmentation dataset by name within a predefined directory structure. If the dataset 
+	is not found locally, it then tries to locate and download the dataset from Zenodo, placing it into the appropriate 
+	category directory within 'celldetective'. The function prints the search directory path and returns the path to the 
+	found or downloaded dataset.
+
+	Parameters
+	----------
+	name : str
+		The name of the segmentation dataset to locate.
+
+	Returns
+	-------
+	str or None
+		The full path to the located or downloaded segmentation dataset directory, or None if the dataset could not be 
+		found or downloaded.
+
+	Raises
+	------
+	FileNotFoundError
+		If the dataset cannot be found locally and also cannot be found or downloaded from Zenodo.
+	
+	"""
+
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
 	modelpath = os.sep.join([main_dir, "datasets", "segmentation_annotations", os.sep])
 	print(f'Looking for {name} in {modelpath}')
@@ -1211,7 +1407,30 @@ def locate_segmentation_dataset(name):
 
 
 def get_signal_datasets_list(return_path=False):
-	
+
+	"""
+	Retrieves a list of available signal datasets from both the local 'celldetective/datasets/signal_annotations' directory 
+	and a Zenodo repository, optionally returning the path to the local datasets directory.
+
+	This function compiles a list of available signal datasets by first identifying datasets stored locally within a specified 
+	path related to the script's directory. It then extends this list with datasets available in a Zenodo repository, ensuring 
+	no duplicates are added. The function can return just the list of dataset names or, if specified, also return the path to 
+	the local datasets directory.
+
+	Parameters
+	----------
+	return_path : bool, optional
+		If True, the function returns a tuple containing the list of available dataset names and the path to the local datasets 
+		directory. If False, only the list of dataset names is returned (default is False).
+
+	Returns
+	-------
+	list or (list, str)
+		If return_path is False, returns a list of strings, each string being the name of an available dataset. If return_path 
+		is True, returns a tuple where the first element is this list and the second element is a string representing the path 
+		to the local datasets directory.
+
+	"""	
 
 	datasets_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "datasets", "signal_annotations", os.sep])
 	repository_datasets = get_zenodo_files(cat=os.sep.join(["datasets","signal_annotations"]))
@@ -1229,6 +1448,33 @@ def get_signal_datasets_list(return_path=False):
 
 def locate_signal_dataset(name):
 	
+	"""
+	Locates a specified signal dataset within the local 'celldetective/datasets/signal_annotations' directory or downloads 
+	it from Zenodo if not found locally.
+
+	This function attempts to find a signal dataset by name within a predefined directory structure. If the dataset is not 
+	found locally, it then tries to locate and download the dataset from Zenodo, placing it into the appropriate category 
+	directory within 'celldetective'. The function prints the search directory path and returns the path to the found or 
+	downloaded dataset.
+
+	Parameters
+	----------
+	name : str
+		The name of the signal dataset to locate.
+
+	Returns
+	-------
+	str or None
+		The full path to the located or downloaded signal dataset directory, or None if the dataset could not be found or 
+		downloaded.
+
+	Raises
+	------
+	FileNotFoundError
+		If the dataset cannot be found locally and also cannot be found or downloaded from Zenodo.
+
+	"""
+
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
 	modelpath = os.sep.join([main_dir, "datasets", "signal_annotations", os.sep])
 	print(f'Looking for {name} in {modelpath}')
@@ -1329,6 +1575,58 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 						   values=None, ignore_gray_value=0., clip=False,
 						   amplification=None, dtype=float):
 	
+	"""
+	Normalizes a multichannel frame by adjusting the intensity values of each channel based on specified percentiles, 
+	direct value ranges, or amplification factors, with options to ignore a specific gray value and to clip the output.
+
+	Parameters
+	----------
+	multichannel_frame : ndarray
+		The input multichannel image frame to be normalized, expected to be a 3-dimensional array where the last dimension 
+		represents the channels.
+	percentiles : list of tuples or tuple, optional
+		Percentile ranges (low, high) for each channel used to scale the intensity values. If a single tuple is provided, 
+		it is applied to all channels. If None, the default percentile range of (0., 99.99) is used for each channel.
+	values : list of tuples or tuple, optional
+		Direct value ranges (min, max) for each channel to scale the intensity values. If a single tuple is provided, it 
+		is applied to all channels. This parameter overrides `percentiles` if provided.
+	ignore_gray_value : float, optional
+		A specific gray value to ignore during normalization (default is 0.).
+	clip : bool, optional
+		If True, clips the output values to the range [0, 1] or the specified `dtype` range if `dtype` is not float 
+		(default is False).
+	amplification : float, optional
+		A factor by which to amplify the intensity values after normalization. If None, no amplification is applied.
+	dtype : data-type, optional
+		The desired data-type for the output normalized frame. The default is float, but other types can be specified 
+		to change the range of the output values.
+
+	Returns
+	-------
+	ndarray
+		The normalized multichannel frame as a 3-dimensional array of the same shape as `multichannel_frame`.
+
+	Raises
+	------
+	AssertionError
+		If the input `multichannel_frame` does not have 3 dimensions, or if the length of `values` does not match the 
+		number of channels in `multichannel_frame`.
+
+	Notes
+	-----
+	- This function provides flexibility in normalization by allowing the use of percentile ranges, direct value ranges, 
+	  or amplification factors.
+	- The function makes a copy of the input frame to avoid altering the original data.
+	- When both `percentiles` and `values` are provided, `values` takes precedence for normalization.
+
+	Examples
+	--------
+	>>> multichannel_frame = np.random.rand(100, 100, 3)  # Example multichannel frame
+	>>> normalized_frame = normalize_multichannel(multichannel_frame, percentiles=((1, 99), (2, 98), (0, 100)))
+	# Normalizes each channel of the frame using specified percentile ranges.
+	
+	"""
+
 	mf = multichannel_frame.copy().astype(float)
 	assert mf.ndim==3,f'Wrong shape for the multichannel frame: {mf.shape}.'
 	if percentiles is None:
@@ -1356,6 +1654,57 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 	return mf
 
 def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
+
+	"""
+	Loads and optionally normalizes and rescales specified frames from a stack located at a given path.
+
+	This function reads specified frames from a stack file, applying systematic adjustments to ensure 
+	the channel axis is last. It supports optional normalization of the input frames and rescaling. An 
+	artificial pixel modification is applied to frames with uniform values to prevent errors during 
+	normalization.
+
+	Parameters
+	----------
+	img_nums : int or list of int
+		The index (or indices) of the image frame(s) to load from the stack.
+	stack_path : str
+		The file path to the stack from which frames are to be loaded.
+	scale : float, optional
+		The scaling factor to apply to the frames. If None, no scaling is applied (default is None).
+	normalize_input : bool, optional
+		Whether to normalize the loaded frames. If True, normalization is applied according to 
+		`normalize_kwargs` (default is True).
+	dtype : data-type, optional
+		The desired data-type for the output frames (default is float).
+	normalize_kwargs : dict, optional
+		Keyword arguments to pass to the normalization function (default is {"percentiles": (0., 99.99)}).
+
+	Returns
+	-------
+	ndarray or None
+		The loaded, and possibly normalized and rescaled, frames as a NumPy array. Returns None if there 
+		is an error in loading the frames.
+
+	Raises
+	------
+	Exception
+		Prints an error message if the specified frames cannot be loaded or if there is a mismatch between 
+		the provided experiment channel information and the stack format.
+
+	Notes
+	-----
+	- The function uses scikit-image for reading frames and supports multi-frame TIFF stacks.
+	- Normalization and scaling are optional and can be customized through function parameters.
+	- A workaround is implemented for frames with uniform pixel values to prevent normalization errors by 
+	  adding a 'fake' pixel.
+
+	Examples
+	--------
+	>>> frames = load_frames([0, 1, 2], '/path/to/stack.tif', scale=0.5, normalize_input=True, dtype=np.uint8)
+	# Loads the first three frames from '/path/to/stack.tif', normalizes them, rescales by a factor of 0.5, 
+	# and converts them to uint8 data type.
+	
+	"""
 
 	try:
 		frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
@@ -1385,6 +1734,53 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 
 
 def get_stack_normalization_values(stack, percentiles=None, ignore_gray_value=0.):
+
+	"""
+	Computes the normalization value ranges (minimum and maximum) for each channel in a 4D stack based on specified percentiles.
+
+	This function calculates the value ranges for normalizing each channel within a 4-dimensional stack, with dimensions 
+	expected to be in the order of Time (T), Y (height), X (width), and Channels (C). The normalization values are determined 
+	by the specified percentiles for each channel. An option to ignore a specific gray value during computation is provided, 
+	though its effect is not implemented in this snippet.
+
+	Parameters
+	----------
+	stack : ndarray
+		The input 4D stack with dimensions TYXC from which to calculate normalization values.
+	percentiles : tuple, list of tuples, optional
+		The percentile values (low, high) used to calculate the normalization ranges for each channel. If a single tuple 
+		is provided, it is applied to all channels. If a list of tuples is provided, each tuple is applied to the 
+		corresponding channel. If None, defaults to (0., 99.99) for each channel.
+	ignore_gray_value : float, optional
+		A gray value to potentially ignore during the calculation. This parameter is provided for interface consistency 
+		but is not utilized in the current implementation (default is 0.).
+
+	Returns
+	-------
+	list of tuples
+		A list where each tuple contains the (minimum, maximum) values for normalizing each channel based on the specified 
+		percentiles.
+
+	Raises
+	------
+	AssertionError
+		If the input stack does not have 4 dimensions, or if the length of the `percentiles` list does not match the number 
+		of channels in the stack.
+
+	Notes
+	-----
+	- The function assumes the input stack is in TYXC format, where T is the time dimension, Y and X are spatial dimensions, 
+	  and C is the channel dimension.
+	- Memory management via `gc.collect()` is employed after calculating normalization values for each channel to mitigate 
+	  potential memory issues with large datasets.
+
+	Examples
+	--------
+	>>> stack = np.random.rand(5, 100, 100, 3)  # Example 4D stack with 3 channels
+	>>> normalization_values = get_stack_normalization_values(stack, percentiles=((1, 99), (2, 98), (0, 100)))
+	# Calculates normalization ranges for each channel using the specified percentiles.
+	
+	"""
 
 	assert stack.ndim==4,f'Wrong number of dimensions for the stack, expect TYXC (4) got {stack.ndim}.'
 	if percentiles is None:

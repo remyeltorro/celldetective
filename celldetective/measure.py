@@ -275,6 +275,25 @@ def contour_of_instance_segmentation(label, distance):
 
 def drop_tonal_features(features):
 
+	"""
+	Removes features related to intensity from a list of feature names.
+
+	This function iterates over a list of feature names and removes any feature that includes the term 'intensity' in its name.
+	The operation is performed in-place, meaning the original list of features is modified directly.
+
+	Parameters
+	----------
+	features : list of str
+		A list of feature names from which intensity-related features are to be removed.
+
+	Returns
+	-------
+	list of str
+		The modified list of feature names with intensity-related features removed. Note that this operation modifies the 
+		input list in-place, so the return value is the same list object with some elements removed.
+	
+	"""
+
 	for f in features:
 		if 'intensity' in f:
 			features.remove(f)
@@ -716,6 +735,32 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
 def measure_at_position(pos, mode, return_measurements=False):
 	
+	"""
+	Executes a measurement script at a specified position directory, optionally returning the measured data.
+
+	This function calls an external Python script to perform measurements on data 
+	located in a specified position directory. The measurement mode determines the type of analysis performed by the script. 
+	The function can either return the path to the resulting measurements table or load and return the measurements as a 
+	pandas DataFrame.
+
+	Parameters
+	----------
+	pos : str
+		The path to the position directory where the measurements should be performed. The path should be a valid directory.
+	mode : str
+		The measurement mode to be used by the script. This determines the type of analysis performed (e.g., 'tracking', 
+		'feature_extraction').
+	return_measurements : bool, optional
+		If True, the function loads the resulting measurements from a CSV file into a pandas DataFrame and returns it. If 
+		False, the function returns None (default is False).
+
+	Returns
+	-------
+	pandas.DataFrame or None
+		If `return_measurements` is True, returns a pandas DataFrame containing the measurements. Otherwise, returns None.
+	
+	"""
+
 	pos = pos.replace('\\','/')
 	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'

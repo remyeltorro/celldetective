@@ -45,6 +45,58 @@ def switch_to_events(classes, times, max_times, first_detections=None, left_cens
 	
 def switch_to_events_v2(classes, event_times, max_times, origin_times=None, left_censored=True, FrameToMin=None):
 	
+
+	"""
+	Converts time-to-event data into a format suitable for survival analysis, optionally adjusting for left censorship 
+	and converting time units.
+
+	This function processes event data by classifying each event based on whether it occurred or was censored by the end 
+	of the observation period. It calculates the survival time for each event, taking into account the possibility of left 
+	censorship and the option to convert time units (e.g., from frames to minutes).
+
+	Parameters
+	----------
+	classes : array_like
+		An array indicating the class of each event (e.g., 0 for event, 1 for non-event, 2 for else).
+	event_times : array_like
+		An array of times at which events occurred. For non-events, this might represent the time of last observation.
+	max_times : array_like
+		An array of maximum observation times for each event.
+	origin_times : array_like, optional
+		An array of origin times for each event. If None, origin times are assumed to be zero, and `left_censored` is 
+		automatically set to False (default is None).
+	left_censored : bool, optional
+		Indicates whether to adjust for left censorship. If True, events with origin times are considered left-censored 
+		if the origin time is zero (default is True).
+	FrameToMin : float, optional
+		A conversion factor to transform survival times from frames (or any other unit) to minutes. If None, no conversion 
+		is applied (default is None).
+
+	Returns
+	-------
+	tuple of lists
+		A tuple containing two lists: `events` and `survival_times`. `events` is a list of binary indicators (1 for event 
+		occurrence, 0 for censorship), and `survival_times` is a list of survival times corresponding to each event or 
+		censorship.
+
+	Notes
+	-----
+	- The function assumes that `classes`, `event_times`, `max_times`, and `origin_times` (if provided) are all arrays of 
+	  the same length.
+	- This function is particularly useful in preparing time-to-event data for survival analysis models, especially when 
+	  dealing with censored data and needing to adjust time units.
+
+	Examples
+	--------
+	>>> classes = [0, 1, 0]
+	>>> event_times = [5, 10, 15]
+	>>> max_times = [20, 20, 20]
+	>>> origin_times = [0, 0, 5]
+	>>> events, survival_times = switch_to_events_v2(classes, event_times, max_times, origin_times, FrameToMin=0.5)
+	# This would process the events considering left censorship and convert survival times to minutes.
+	
+	"""
+
 	events = []
 	survival_times = []
 

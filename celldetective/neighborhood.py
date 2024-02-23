@@ -62,6 +62,37 @@ def set_live_status(setA,setB,status, not_status_option):
 
 def compute_attention_weight(dist_matrix, cut_distance, opposite_cell_status, opposite_cell_ids, axis=1, include_dead_weight=True):
 	
+	"""
+	Computes the attention weight for each cell based on its proximity to cells of an opposite type within a specified distance.
+
+	This function calculates the attention weight for cells by considering the distance to the cells of an opposite type
+	within a given cutoff distance. It optionally considers only the 'live' opposite cells based on their status. The function 
+	returns two arrays: one containing the attention weights and another containing the IDs of the closest opposite cells.
+
+	Parameters
+	----------
+	dist_matrix : ndarray
+		A 2D array representing the distance matrix between cells of two types.
+	cut_distance : float
+		The cutoff distance within which opposite cells will influence the attention weight.
+	opposite_cell_status : ndarray
+		An array indicating the status (e.g., live or dead) of each opposite cell. Only used when `include_dead_weight` is False.
+	opposite_cell_ids : ndarray
+		An array containing the IDs of the opposite cells.
+	axis : int, optional
+		The axis along which to compute the weights (default is 1). Axis 0 corresponds to rows, and axis 1 corresponds to columns.
+	include_dead_weight : bool, optional
+		If True, includes all opposite cells within the cutoff distance in the weight calculation, regardless of their status.
+		If False, only considers opposite cells that are 'live' (default is True).
+
+	Returns
+	-------
+	tuple of ndarrays
+		A tuple containing two arrays: `weights` and `closest_opposite`. `weights` is an array of attention weights for each cell,
+		and `closest_opposite` is an array of the IDs of the closest opposite cells within the cutoff distance.
+
+	"""
+
 	weights = np.empty(dist_matrix.shape[axis])
 	closest_opposite = np.empty(dist_matrix.shape[axis])
 
@@ -257,6 +288,46 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 def compute_neighborhood_at_position(pos, distance, population=['targets','effectors'], theta_dist=None, img_shape=(2048,2048), return_tables=False, clear_neigh=False, event_time_col=None,
 	neighborhood_kwargs={'mode': 'two-pop','status': None, 'not_status_option': None,'include_dead_weight': True,"compute_cum_sum": False,"attention_weight": True, 'symmetrize': True}):
 	
+	"""
+	Computes neighborhood metrics for specified cell populations within a given position, based on distance criteria and additional parameters.
+
+	This function assesses the neighborhood interactions between two specified cell populations (or within a single population) at a given position.
+	It computes various neighborhood metrics based on specified distances, considering the entire image or excluding edge regions.
+	The results are optionally cleared of previous neighborhood calculations and can be returned as updated tables.
+
+	Parameters
+	----------
+	pos : str
+		The path to the position directory where the analysis is to be performed.
+	distance : float or list of float
+		The distance(s) in pixels to define neighborhoods.
+	population : list of str, optional
+		Names of the cell populations to analyze. If a single population is provided, it is used for both populations in the analysis (default is ['targets', 'effectors']).
+	theta_dist : float or list of float, optional
+		Edge threshold(s) in pixels to exclude cells close to the image boundaries from the analysis. If not provided, defaults to 90% of each specified distance.
+	img_shape : tuple of int, optional
+		The dimensions (height, width) of the images in pixels (default is (2048, 2048)).
+	return_tables : bool, optional
+		If True, returns the updated data tables for both populations (default is False).
+	clear_neigh : bool, optional
+		If True, clears existing neighborhood columns from the data tables before computing new metrics (default is False).
+	event_time_col : str, optional
+		The column name indicating the event time for each cell, required if mean neighborhood metrics are to be computed before events.
+	neighborhood_kwargs : dict, optional
+		Additional keyword arguments for neighborhood computation, including mode, status options, and metrics (default includes mode 'two-pop', and symmetrization).
+
+	Returns
+	-------
+	pandas.DataFrame or (pandas.DataFrame, pandas.DataFrame)
+		If `return_tables` is True, returns the updated data tables for the specified populations. If only one population is analyzed, both returned data frames will be identical.
+
+	Raises
+	------
+	AssertionError
+		If the specified position path does not exist or if the number of distances and edge thresholds do not match.
+	
+	"""
+
 	pos = pos.replace('\\','/')
 	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
@@ -324,6 +395,51 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 		return df_A, df_B
 
 def compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=False):
+
+	"""
+	Computes and appends neighborhood metrics to a dataframe based on specified neighborhood characteristics.
+
+	This function iterates through a dataframe grouped by either 'TRACK_ID' or ['position', 'TRACK_ID'] (if 'position' column exists)
+	and computes various neighborhood metrics (inclusive, exclusive, intermediate counts) for each cell. It can also decompose these
+	metrics by cell status (e.g., live or dead) if specified.
+
+	Parameters
+	----------
+	neigh_table : pandas.DataFrame
+		A dataframe containing neighborhood information for each cell, including position, track ID, frame, and a specified neighborhood column.
+	neigh_col : str
+		The column name in `neigh_table` that contains neighborhood information (e.g., a list of neighbors with their attributes).
+	metrics : list of str, optional
+		The metrics to be computed from the neighborhood information. Possible values include 'inclusive', 'exclusive', and 'intermediate'.
+		Default is ['inclusive', 'exclusive', 'intermediate'].
+	decompose_by_status : bool, optional
+		If True, the metrics are computed separately for different statuses (e.g., live or dead) of the neighboring cells. Default is False.
+
+	Returns
+	-------
+	pandas.DataFrame
+		The input dataframe with additional columns for each of the specified metrics, and, if `decompose_by_status` is True, separate
+		metrics for each status.
+
+	Notes
+	-----
+	- 'inclusive' count refers to the total number of neighbors.
+	- 'exclusive' count refers to the number of neighbors that are closest.
+	- 'intermediate' count refers to the sum of weights attributed to neighbors, representing a weighted count.
+	- If `decompose_by_status` is True, metrics are appended with '_s0' or '_s1' to indicate the status they correspond to.
+
+	Examples
+	--------
+	>>> neigh_table = pd.DataFrame({
+	...     'TRACK_ID': [1, 1, 2, 2],
+	...     'FRAME': [1, 2, 1, 2],
+	...     'neighborhood_info': [{'weight': 1, 'status': 1, 'closest': 1}, ...]  # example neighborhood info
+	... })
+	>>> neigh_col = 'neighborhood_info'
+	>>> updated_neigh_table = compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive'], decompose_by_status=True)
+	# Computes the inclusive count of neighbors for each cell, decomposed by cell status.
+	
+	"""
 
 	neigh_table = neigh_table.reset_index(drop=True)
 	if 'position' in list(neigh_table.columns):

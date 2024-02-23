@@ -19,13 +19,6 @@ Despite notable efforts in the development of user-friendly software that integr
 * **Accessible and open source** : Celldetective does not require any coding skills. The software, its models and datasets are made fully open source to encourage transparency and reproducibility.
 
 
-..
-    _.. figure:: _static/pipeline.png
-        :width: 600px
-        :align: center
-        :alt: pipeline
-
-
 System requirements
 -------------------
 
@@ -42,9 +35,12 @@ Software requirements
 
 The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS. 
 
-- Linux: Ubuntu 20.04.6 LTS (Focal Fossa) and above
+- Linux: Ubuntu 20.04.6 LTS (Focal Fossa) (not tested on ulterior versions)
 - Windows: 
 - MacOS: 
+
+
+To use the software, you must install python, *e.g.* through `Anaconda <https://www.anaconda.com/download>`_. We developed and tested the software in Python 3.9.18. 
 
 
 How to cite?

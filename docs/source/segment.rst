@@ -6,7 +6,7 @@ Segment
 I/O
 ---
 
-The input to the segmentation module is a stack of microscopy images. The output is a stack of instance segmentation masks, delineating each cell of the images. It is save frame by frame in a ``labels_*population*`` subfolder of each position folder.
+The input to the segmentation module is a stack of microscopy images. The output is a stack of instance segmentation masks, delineating each cell of the images. It is saved frame by frame in a ``labels_*population*`` subfolder of each position folder.
 
 Overview
 --------
@@ -14,13 +14,13 @@ Overview
 The process of instance segmentation takes an image (multichannel or not) as its input and yields a label image (2D), where each segmented object is attributed a single label. 
 
 
-In Celldetective, you may want to segment specifically up to two cell populations of interest on the images (typically target and effector cells but it could be anything). Segmentation can be carried out using traditional segmentation pipelines (based on filters and thresholds) or using Deep-learning models trained for such task. Celldetective proposes both options and allows a cross-talk between the two. As illustrated below, the output of a traditional segmentation can be corrected and used as an input to a DL model directly in Celldetective. That is only one of many path to perform segmentation in Celldetective.
+In Celldetective, you may want to specifically segment up to two cell populations of interest on the images (typically target and effector cells but it could be anything). Segmentation can be carried out using traditional segmentation pipelines (based on filters and thresholds) or using Deep-learning models trained for such task. Celldetective proposes both options and allows a cross-talk between the two. As illustrated below, the output of a traditional segmentation can be corrected and used as an input to a DL model directly in Celldetective. That is only one of many paths to perform segmentation in Celldetective.
 
 .. figure:: _static/segmentation-options.png
     :align: center
     :alt: seg_options
     
-    **Overview of segmentation options in Celldetective.** Celldetective provides several entry points (black arrows) to perform segmentation, with the intent of segmenting specifically a cell population (left : effectors, right : targets). The masks output from each segmentation technique can be visualized and manually corrected in napari. Exporting these corrections into a paired image and masks dataset can be used either to fit a generalist model (transfer learning) or train one from scratch. Once the segmentation is satisfactory enough, the user can decide to proceed with the tracking a measurement modules.
+    **Overview of segmentation options in Celldetective.** Celldetective provides several entry points (black arrows) to perform segmentation, with the intent of segmenting specifically a cell population (left : effectors, right : targets). The masks output from each segmentation technique can be visualized and manually corrected in napari. Exporting these corrections into a paired image and masks dataset can be used either to fit a generalist model (transfer learning) or train one from scratch. Once the segmentation is satisfactory enough, the user can decide to proceed with the tracking and measurement modules.
 
 
 
@@ -42,7 +42,7 @@ We call this UI the ``Threshold Configuration Wizard``. In broad terms, this int
     :align: center
     :alt: threshold_config_wizard
     
-    **The threshold configuration wizard in action.** Application of the TCW to an image of HaCaT cell nuclei stained with DAPI from the dataset S-BSST265 [#]_  is loaded into the threshold configuration wizard of Celldetective. a) the raw image undergoes a series of preprocessing filters, namely a gauss filter with kernel (2×2) and a standard-deviation filter with a kernel (2×2). The upper and lower thresholds on the transformed intensities are set and the image is binarized. Peak detection parameters are optimized to the size of the nuclei. b) Post-watershed application, the original image and its instance segmentation are shown on the right side panel. Single object measurements are automatically performed to facilitate the identification and removal of false-positive detections. In this application, a filter based both on area and solidity effectively eliminates nuclei truncated at the edges and smaller objects.
+    **The threshold configuration wizard in action.** Application of the TCW to an image of HaCaT cell nuclei stained with DAPI from the dataset S-BSST265 [#]_  is loaded into the threshold configuration wizard of Celldetective. a) the raw image undergoes a series of preprocessing filters, namely a gauss filter with a kernel (2×2) and a standard-deviation filter with a kernel (2×2). The upper and lower thresholds on the transformed intensities are set and the image is binarized. Peak detection parameters are optimized to the size of the nuclei. b) Post-watershed application, the original image and its instance segmentation are shown on the right side panel. Single object measurements are automatically performed to facilitate the identification and removal of false-positive detections. In this application, a filter based both on area and solidity effectively eliminates nuclei truncated at the edges and smaller objects.
 
 
 This output is visualized and annotated in the napari viewer [#]_ , that we completed with simple plugins to manage corrections and export annotations. 
@@ -53,7 +53,7 @@ How to open the Threshold Configuration Wizard
 
 To launch the TCW, set a specific position within an experiment. Then for the population of interest, click on the ``UPLOAD`` button in the segmentation section. Toggle the threshold option. Click on the ``Threshold Config Wizard`` button to open it.
 
-Upon startup, the TCW loads the initial frame of the movie associated to the selected position, operating in virtual-stack mode where only one frame is in memory at a time. An automatic threshold binarization of the image is overlayed to the image, in semi-transparent magenta. You can choose a different channel, navigate to another time-point and re-adjust the image contrast. Once you are satisfied with the image selection, avoid modifying these settings until the configuration process is complete.
+Upon startup, the TCW loads the initial frame of the movie associated to the selected position, operating in virtual-stack mode where only one frame is in memory at a time. An automatic threshold binarization of the image is overlaid into the image, in semi-transparent magenta. You can choose a different channel, navigate to another time-point and re-adjust the image contrast. Once you are satisfied with the image selection, avoid modifying these settings until the configuration process is complete.
 
 Upon clicking on the ``Save`` button, all choices are written down in a ``json`` configuration file, saved automatically in a ``configs/`` sub-folder of the experiment folder, and the TCW closes automatically. The path to this configuration file is automatically loaded in the ``Upload model`` window, and it is up to you to click on ``Upload`` to effectively load it in Celldetective. 
 
@@ -78,7 +78,7 @@ Models
 
 Simultaneously, we propose Deep-learning segmentation models trained with the StarDist [#]_ or Cellpose [#]_ [#]_ algorithm. They are split in two families: 
 
-#. The generalist models: models published in the literature have been trained on thousands of images with one or two channels, on general tasks such as segmenting all nuclei visible on the images. In some cases, more than one modality was passed in the channel slots during training to force the model to generalize and be less sensitive to the modality. 
+#. The generalist models: models published in the literature that have been trained on thousands of images with one or two channels, on general tasks such as segmenting all nuclei visible on the images. In some cases, more than one modality was passed in the channel slots during training to force the model to generalize and be less sensitive to the modality. 
 #. Models specific to a cell population: models that we trained from scratch on brand new multimodal data to achieve more specific tasks such as detecting the nuclei of a population in the presence of another. In this configuration, accurate segmentation often requires to look at multiple channels at once, *i.e.* performing a multimodal interpretation.
 
 
@@ -122,7 +122,7 @@ We provide two simple plugins to:
     :align: center
     :alt: napari
     
-    **napari**. napari provides the basic requirements of image manipulation softwares, namely a brush, rubber, bucket and pipette, to work on the segmentation layer. In this RICM image of spreading NK cells, two couples of cells have been mistakenly segmented as one object and must be separated. On the right panel, two plugins specific to Celldetective allow 1) the export of the modified masks directly in the position folder, and 2) to create automatically an annotation consisting of the current multichannel frame, the modified mask and a configuration file specifying the modality content of the image and its spatial calibration.
+    **napari**. napari provides the basic requirements of image manipulation software, namely a brush, rubber, bucket and pipette, to work on the segmentation layer. In this RICM image of spreading NK cells, two couples of cells have been mistakenly segmented as one object and must be separated. On the right panel, two plugins specific to Celldetective allow 1) the export of the modified masks directly in the position folder, and 2) to create automatically an annotation consisting of the current multichannel frame, the modified mask and a configuration file specifying the modality content of the image and its spatial calibration.
 
 
 

@@ -3,6 +3,50 @@ Get started
 
 .. _get_started:
 
+
+Installation
+------------
+
+Stable release
+~~~~~~~~~~~~~~
+
+
+.. note::
+    The first release will be available once we open the GitHub repository to the public
+
+
+Development version
+~~~~~~~~~~~~~~~~~~~
+
+.. note::
+    Cloning the GitHub repository will be available once we open the repository to the public
+
+
+If you want to run the latest development version, you can clone the repository to your local machine and install Celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
+
+.. code-block:: bash
+
+    # creates "celldetective" folder
+    git clone git://github.com/remyeltorro/celldetective.git
+    cd celldetective
+
+    # install the celldetective package in editable/development mode
+    pip install -e .
+
+To run the latest development version without cloning the repository, you can also use this line:
+
+.. code-block:: bash
+
+    pip install git+https//github.com/remyeltorro/celldetective.git
+
+You can also download the repository as a compressed file. Unzip the file and open a terminal at the root of the folder. Run this line:
+
+.. code-block:: bash
+
+    pip install -r requirements.txt
+    pip install .
+
+
 Input
 -----
 
@@ -10,7 +54,7 @@ Celldetective processes multichannel time-lapse microscopy data, saved as ``tif`
 
 .. note::
 
-    With microscopy data acquired through :math:`\mu` Manager, it is quite common to have the channel dimension interlaced with the time dimension, to preserve the time-channel dimension separation
+    With microscopy data acquired through :math:`\mu` Manager [#]_ , it is quite common to have the channel dimension interlaced with the time dimension, to preserve the time-channel dimension separation
 
 
 .. note::
@@ -27,7 +71,7 @@ Once the pip installation is complete, open a terminal and run:
 
 .. code-block:: console
 
-	$ python -m adccfactory
+	$ python -m celldetective
 
 A startup image is displayed during the loading of the python libraries. Upon completion, the first window of the software opens. You can either create a new experiment (button New or shortcut Ctrl+N) or load one.
 
@@ -54,14 +98,14 @@ We designed a software that structures experimental data into nested well and po
 Since cells are microscopic objects, observed at high magnification, it is rarely possible to image all the cells at once. At best, experimentalists pick multiple positions within the well, in the hope that the sampling is representative enough of the whole well. In Celldetective, single-cell detection is always performed at the single position level, with the possibility of looping over many positions or wells. Higher representations, such as population responses, can pool the single-cell information from a whole well (*i.e.* multiple positions).
 
 
-A Celldetective experiment is only a folder plus a configuration file (written in the ``ini`` format). The experiment folder contains well folders (as many as there are wells). Naturally, each well folder contains as many position folders as there are positions per well. A position folder only contains a movie/ subfolder, where the user must drop the data associated to that position. By force of habit, processing a movie implies processing a position and vice versa.
+A Celldetective experiment is only a folder plus a configuration file (written in the ``ini`` format). The experiment folder contains well folders (as many as there are wells). Naturally, each well folder contains as many position folders as there are positions per well. A position folder only contains a movie/ subfolder, where the user must drop the data associated with that position. By force of habit, processing a movie implies processing a position and vice versa.
 
 
 .. figure:: _static/startup-window.png
     :align: center
     :alt: exp_folder_mimics_glass_slide
     
-    **Celldetective’s main GUI.** a) the startup window can be used to either (b) create a new experiment or (c) load an experiment. b) The new experiment utility guides the user in the making of an experiment configuration, providing all the necessary information to manipulate the experimental data. c) A control panel interfaces all the processing functions, to detect and measure single cells.
+    **Celldetective’s main GUI.** a) the startup window can be used to either (b) create a new experiment or (c) load an experiment. b) The new experiment utility guides the user in the making of an experiment configuration, providing all the necessary information to manipulate the experimental data. c) A control panel interfaces all the processing functions, to detect and measure single cells. The top part controls whether the processing modules should be applied to a position, a well or all wells and conditions sequentially.
 
 
 .. note::
@@ -87,7 +131,7 @@ To generate automatically such a folder tree, open Celldetective and go to ``Fil
 A dialog window will ask you where on the disk you want to put the experiment folder. A second window, displayed above, will ask for all information needed to fill the configuration file: number of wells, number of positions per well, spatio-temporal calibration, channel names and order...     
 
 
-Once you click on ``Submit``, a secondary window asks you to describe briefly each biological condition associated to each well.
+Once you click on ``Submit``, a secondary window asks you to describe briefly each biological condition associated with each well.
 
 .. figure:: _static/bio-cond-new-exp.png
     :align: center
@@ -151,7 +195,7 @@ Image preprocessing
 Registration
 ~~~~~~~~~~~~
 
-We highly recommend that you align the movie beforehand using for example, the "Linear Stack Alignment with SIFT Multichannel" tool available in Fiji, when activating the PTBIOP update site [#]_ (see discussion here_). We also put `a macro`_ at your disposal to facilitate this preliminary step.
+We highly recommend that you align the movie beforehand using for example, the "Linear Stack Alignment with SIFT Multichannel" tool available in Fiji [#]_ , when activating the PTBIOP update site [#]_ (see discussion here_). We also put `a macro`_ at your disposal to facilitate this preliminary step.
 
 .. _`a macro`: align_macro.html
 
@@ -169,10 +213,14 @@ We highly recommend that you align the movie beforehand using for example, the "
 Normalization
 ~~~~~~~~~~~~~
 
-Currently, Celldetective does not support image normalization, but it is possible to develop a pipeline that normalizes select channels in the stacks. If the pipeline creates a copy of the original stack in the position folder, then you just have to change de prefix in the experiment configuration, to measure intensities from the normalized stack instead of the original one.
+Currently, Celldetective does not support image normalization, but it is possible to develop a pipeline that normalizes selected channels in the stacks. If the pipeline creates a copy of the original stack in the position folder, then you just have to change de prefix in the experiment configuration, to measure intensities from the normalized stack instead of the original one.
 
 
 References
 ----------
+
+.. [#]  Arthur D Edelstein, Mark A Tsuchida, Nenad Amodaj, Henry Pinkard, Ronald D Vale, and Nico Stuurman (2014), Advanced methods of microscope control using μManager software. Journal of Biological Methods 2014 1(2):e11 <doi:10.14440/jbm.2014.36>
+
+.. [#] Schindelin, J., Arganda-Carreras, I., Frise, E., Kaynig, V., Longair, M., Pietzsch, T., … Cardona, A. (2012). Fiji: an open-source platform for biological-image analysis. Nature Methods, 9(7), 676–682. doi:10.1038/nmeth.2019
 
 .. [#] https://www.epfl.ch/research/facilities/ptbiop/

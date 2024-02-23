@@ -17,7 +17,7 @@ This modules takes the instance segmentation label images, the original microsco
 Adapt the tracker to your cells
 -------------------------------
 
-After segmentation, tracking the cells is a necessary step to attribute a unique identity, to each cell in a movie. Since cells exhibit complex motion that often goes well beyond the scope of Brownian motion, we decided to interface the state-of-the art tracking method bTrack [#]_ , exploiting both the motion history and the appearance of the cells to make the best tracking hypotheses. This tracker requires a configuration file to set all of the motion and tracklet connection hypotheses.
+After segmentation, tracking the cells is a necessary step to attribute a unique identity to each cell in a movie. Since cells exhibit complex motion that often goes well beyond the scope of Brownian motion, we decided to interface the state-of-the art tracking method bTrack [#]_ , exploiting both the motion history and the appearance of the cells to make the best tracking hypotheses. This tracker requires a configuration file to set all of the motion and tracklet connection hypotheses.
 
 The settings button in the tracking module allows to :
 

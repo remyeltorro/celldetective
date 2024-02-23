@@ -22,32 +22,42 @@ We provide an ImageJ macro to perform the registration of batches of ADCC movies
 .. code-block:: java
 
     run("Collect Garbage");
-    folder = getDirectory("Folder containing movies to align...");
-    files = getFileList(folder);
+    experiment = getDirectory("Experiment folder containing movies to align...");
+    wells = getFileList(experiment);
 
-    // User parameters
     octave_steps = "7";
-    target_channel = "3";
-    target_channel_int = 3;
+    target_channel = "4";
+    target_channel_int = 4;
+    prefix = "After"
 
-    for (i=0;i<files.length;i++){
+    for (i=0;i<wells.length;i++){
         
-        file = files[i];
-        print(file);
-        print(folder+"aligned/"+file);
+        well = wells[i];
         
-        if(endsWith(file, ".tif")){
-            open(file);
-            Stack.setChannel(target_channel_int);
-            run("Enhance Contrast", "saturated=0.35");
-            run("Linear Stack Alignment with SIFT MultiChannel", "registration_channel="+target_channel+" initial_gaussian_blur=1.60 steps_per_scale_octave="+octave_steps+" minimum_image_size=64 maximum_image_size=1024 feature_descriptor_size=4 feature_descriptor_orientation_bins=8 closest/next_closest_ratio=0.92 maximal_alignment_error=25 inlier_ratio=0.05 expected_transformation=Rigid interpolate");
+        if(endsWith(well, File.separator)){
+            positions = getFileList(experiment+well);
+            for (j=0;j<positions.length;j++) {
+                pos = positions[j];
+                movie = getFileList(experiment+well+pos+"movie"+File.separator);
+                for (k=0;k<movie.length;k++) {
+                    if (startsWith(movie[k], prefix)) {
+                        open(experiment+well+pos+"movie"+File.separator+movie[k]);
+                        Stack.setDisplayMode("grayscale");
+                        Stack.setChannel(target_channel_int);
+                        run("Enhance Contrast", "saturated=0.35");
+                        run("Linear Stack Alignment with SIFT MultiChannel", "registration_channel="+target_channel+" initial_gaussian_blur=1.60 steps_per_scale_octave="+octave_steps+" minimum_image_size=64 maximum_image_size=1024 feature_descriptor_size=4 feature_descriptor_orientation_bins=8 closest/next_closest_ratio=0.92 maximal_alignment_error=25 inlier_ratio=0.05 expected_transformation=Rigid interpolate");
+                        saveAs("Tiff", experiment+well+pos+"movie"+File.separator+"Aligned_"+movie[k]);
+                        close();
+                        close();
+                        run("Collect Garbage");
+                    }
+                }
             }
-        saveAs("Tiff", folder+"aligned/Aligned_"+file);
-        close();
-        close();
-        run("Collect Garbage");
-        
+            
+        }
     }
+
+    print("Done.");
 
 This code is a Fiji macro script that performs image alignment on TIFF files located in a specific folder. It prompts the user to select the folder, gets a list of .tif files in the folder and runs image alignment using Linear Stack Alignment with SIFT MultiChannel algorithm on each image. The aligned images are then saved in a subfolder with a prefix "Aligned_" added to the original file name. It also run "Collect Garbage" at the start and end of loop to free up memory.
 

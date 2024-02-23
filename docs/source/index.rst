@@ -12,6 +12,7 @@ Celldetective is a python package and software to perform single-cell analysis o
 - **Documentation:** https://celldetective.readthedocs.io
 - **Source code:** https://github.com/remyeltorro/celldetective
 - **Bug reports:** https://github.com/remyeltorro/celldetective/issues/new/choose
+- **Datasets, models and demos:** https://zenodo.org/records/10650279
 
 
 Contents
@@ -40,6 +41,7 @@ Contents
    :caption: Examples:
    
    example_notebook
+   adcc-example
    
    
 .. toctree::

@@ -12,7 +12,7 @@ Perform segmentation, tracking and measurements for either target or effector ce
 Principle
 ---------
 
-The single cell measurements described in the previous section are performed instantaneously, one image at a time, implying that there is not yet any integration of time or any description of dynamic phenomena. The time-dependence emerges naturally when these measurements are represented as single cell signals, *i.e.* 1D timeseries, over which we can hope to detect transitions characterizing the dynamic biological phenomena of interest. 
+The single cell measurements described in the previous section are performed instantaneously, one image at a time, implying that there is no integration of time or description of dynamic phenomena yet. The time-dependence emerges naturally when these measurements are represented as single cell signals, *i.e.* 1D timeseries, over which we can hope to detect transitions characterizing the dynamic biological phenomena of interest. 
 
 Our formulation for this problem is that cells can be classified into three categories with respect to an event : 
 
@@ -60,11 +60,11 @@ Single annotator UI
 
 In this application, blue cell nuclei turn red when a target cell is killed by a cell from the green population. You can zoom in the animation, move around, and click on any single cell of interest. The center of mass of cells is coded by a dynamic double scatter plot. The cross symbol encodes the cell class. The circle around the cross shows the current cell status (whether the event happened before the current frame or not). Upon clicking, the signals are updated in the left side panel, to show the measurements of the selected cell. You can view simultaneously up to three signals. Since quantities can be wildly different, normalization and log-rescaling buttons can be triggered to rescale the signals.
 
-In the top part of the left side panel, you select the event of interest. Changing the event updates the colors attributed to each cell marker in the animation. You can decide to create a brand new event and annotate cells (almost) from scratch: you set a initial class for all cells, to be modified. The class of a single-cell with respect to an event can be modified. Similarly, the time estimated in case of event can be changed to a different value. Don't forget to click on "Save" to save all modifications.
+In the top part of the left side panel, you select the event of interest. Changing the event updates the colors attributed to each cell marker in the animation. You can decide to create a brand new event and annotate cells (almost) from scratch: you set an initial class for all cells to be modified. The class of a single-cell with respect to an event can be modified. Similarly, the time estimated in the case of an event can be changed to a different value. Don't forget to click on "Save" to save all modifications.
 
 .. note::
 
-   Cells marked for suppression (key Del), are temporarily colored in black. Upon saving, they are removed completely and cannot be recovered again.
+   Cells marked for deletion (key Del), are temporarily colored in black. Upon saving, they are removed completely and cannot be recovered again.
 
 
 If all cells have been annotated for an event of interest, you can decide to export a training set for signal analysis with a Deep Learning model, by clicking on the export button on the right side of the "Save" button. 
@@ -84,7 +84,7 @@ Here are some keyboard shortcuts to facilitate single-cell annotations with the 
 +---------------------+-----------------------------------------------+
 | Esc                 | cancel cell selection                         |
 +---------------------+-----------------------------------------------+
-| Del                 | mark cell for suppression                     |
+| Del                 | mark cell for deletion                        |
 +---------------------+-----------------------------------------------+
 | n                   | set cell class to no event                    |
 +---------------------+-----------------------------------------------+

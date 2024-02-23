@@ -782,8 +782,8 @@ class ConfigSignalPlot(QWidget):
 					self.plot_line(lines_well[i], 'k', 'pool', mean_signal, std_signal=std_signal, ci_option=False)
 				else:
 					self.plot_line(lines_well[i], well_color[well_index[i]], well_labels[i], mean_signal, std_signal=std_signal, ci_option=False)
-		self.survival_window.setMinimumHeight(0.5*self.screen_height)
-		self.survival_window.setMinimumWidth(0.8 * self.survivalWidget.width())
+		self.survival_window.setMinimumHeight(int(0.5*self.screen_height))
+		self.survival_window.setMinimumWidth(int(0.8 * self.survivalWidget.width()))
 		self.survival_window.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
 		self.survival_window.canvas.draw()

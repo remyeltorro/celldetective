@@ -48,32 +48,45 @@ System requirements
 Hardware requirements
 ---------------------
 
-RAM needed (8+? 16+?)
-CPU needed, GPU needed...
+The software was tested on several machines, including:
 
-The GPU implementation was tested with a single NVIDIA GeForce RTX 3070, with 8 Gb of memory. Succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules.  
+- An Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz, with a single NVIDIA GeForce RTX 3070 (8 Gb of memory) and 16 Gb of memory
+- An Intel(R) Core(TM) i7-9750H CPU @ 2.60 GHz, with 16 Gb of memory
+
+In GPU mode, succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules. The GPU can be disabled in the startup window. The software does not require a GPU (but model inference will be longer).
+
+The memory must be sufficient to load a movie stack at once in order to visualize it in napari. Otherwise, processing is performed frame by frame, therefore the memory required is extremely low. 
 
 Software requirements
 ---------------------
 
-The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS. 
+The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS, but Tensorflow installation can rquire extra steps. 
 
-- Linux: Ubuntu 20.04.6 LTS (Focal Fossa) and above
-- Windows: 
-- MacOS: 
+- Linux: Ubuntu 20.04.6 LTS (Focal Fossa) (not tested on ulterior versions)
+- Windows: Windows 11 Home 23H2
+
+To use the software, you must install python, *e.g.* through `Anaconda <https://www.anaconda.com/download>`_. We developed and tested the software in Python 3.9.18. 
+
 
 Installation
 ============
 
 Stable release
---------------
+~~~~~~~~~~~~~~
 
-Explain here how to install release...
+
+.. note::
+    The first release will be available once we open the GitHub repository to the public
+
 
 Development version
--------------------
+~~~~~~~~~~~~~~~~~~~
 
-If you want to run the latest development version, you can clone the repository to your local machine and install celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
+.. note::
+    Cloning or installing from the GitHub repository will be available once we open the repository to the public
+
+
+If you want to run the latest development version, you can clone the repository to your local machine and install Celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
 
 .. code-block:: bash
 
@@ -89,6 +102,17 @@ To run the latest development version without cloning the repository, you can al
 .. code-block:: bash
 
     pip install git+https//github.com/remyeltorro/celldetective.git
+
+You can also download the repository as a compressed file. Unzip the file and open a terminal at the root of the folder (same level as the file ``requirements.txt``). We recommend that you create a python environment as Celldetective relies on many packages that may interfere with package requirements for other projects. Run the following lines to create an environment named "celldetective":
+
+.. code-block:: bash
+
+    conda create -n celldetective python=3.9.18 pyqt
+    conda activate celldetective
+    pip install -r requirements.txt
+    pip install .
+
+Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
 
 Documentation
 =============

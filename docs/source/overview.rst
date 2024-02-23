@@ -25,20 +25,23 @@ System requirements
 Hardware requirements
 ~~~~~~~~~~~~~~~~~~~~~
 
-RAM needed (8+? 16+?)
-CPU needed, GPU needed...
+The software was tested on several machines, including:
 
-The GPU implementation was tested with a single NVIDIA GeForce RTX 3070, with 8 Gb of memory. Succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules.  
+- An Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz, with a single NVIDIA GeForce RTX 3070 (8 Gb of memory) and 16 Gb of memory
+- An Intel(R) Core(TM) i7-9750H CPU @ 2.60 GHz, with 16 Gb of memory
+
+In GPU mode, succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules. The GPU can be disabled in the startup window. The software does not require a GPU (but model inference will be longer).
+
+The memory must be sufficient to load a movie stack at once in order to visualize it in napari. Otherwise, processing is performed frame by frame, therefore the memory required is extremely low. 
+
 
 Software requirements
 ~~~~~~~~~~~~~~~~~~~~~
 
-The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS. 
+The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was tested on MacOS, but Tensorflow installation can rquire extra steps. 
 
 - Linux: Ubuntu 20.04.6 LTS (Focal Fossa) (not tested on ulterior versions)
-- Windows: 
-- MacOS: 
-
+- Windows: Windows 11 Home 23H2
 
 To use the software, you must install python, *e.g.* through `Anaconda <https://www.anaconda.com/download>`_. We developed and tested the software in Python 3.9.18. 
 

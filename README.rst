@@ -5,7 +5,7 @@ Celldetective
 
     <embed>
         <p align="center">
-        <img src="https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/logo.png" width="33%" />
+        <img src="https://github.com/remyeltorro/celldetective/tree/main/docs/source/_static/logo.png" width="33%" />
         </p>
     </embed>
 

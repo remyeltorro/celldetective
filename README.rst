@@ -92,16 +92,6 @@ To run the latest development version without cloning the repository, you can al
 
 	pip install git+https//github.com/remyeltorro/celldetective.git
 
-You can also download the repository as a compressed file. Unzip the file and open a terminal at the root of the folder (same level as the file requirements.txt). We recommend that you create a python environment as Celldetective relies on many packages that may interfere with package requirements for other projects. Run the following lines to create an environment named "celldetective":
-
-.. code-block:: bash
-
-	conda create -n celldetective python=3.9.18 pyqt
-	conda activate celldetective
-	pip install -r requirements.txt
-	pip install .
-
-Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
 
 
 Documentation

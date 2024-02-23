@@ -1317,7 +1317,7 @@ def locate_segmentation_model(name):
 
 def get_segmentation_datasets_list(return_path=False):
 	
-   """
+	"""
 	Retrieves a list of available segmentation datasets from both the local 'celldetective/datasets/segmentation_annotations' 
 	directory and a Zenodo repository, optionally returning the path to the local datasets directory.
 
@@ -1341,7 +1341,7 @@ def get_segmentation_datasets_list(return_path=False):
 	
 	"""
 
-	# path
+	
 	datasets_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "datasets", "segmentation_annotations", os.sep])
 	repository_datasets = get_zenodo_files(cat=os.sep.join(["datasets","segmentation_annotations"]))
 

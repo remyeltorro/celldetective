@@ -32,16 +32,6 @@ Despite notable efforts in the development of user-friendly softwares that integ
 
 
 
-..
-
-    _.. raw:: html
-
-        <embed>
-            <p align="center">
-            <img src="https://github.com/remyeltorro/celldetective/blob/main/article/figures/Figure1.png" width="60%" />
-            </p>
-        </embed>
-
 System requirements
 ===================
 

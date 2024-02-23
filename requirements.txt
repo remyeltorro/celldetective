@@ -5,12 +5,11 @@ sphinx_rtd_theme
 sphinx==5.0.2
 jinja2<3.1
 ipykernel
-PyQt5==5.15.7
 stardist
 cellpose
 scikit-learn
 btrack
-tensorflow
+tensorflow==2.12.1
 napari
 tqdm
 mahotas
@@ -20,5 +19,6 @@ lifelines
 setuptools
 scipy
 seaborn
-opencv-python==4.7.0.72
+opencv-python-headless==4.7.0.72
+#PyQt5==5.15.7
 liblapack

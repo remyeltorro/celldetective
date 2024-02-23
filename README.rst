@@ -65,8 +65,7 @@ Installation
 Stable release
 --------------
 
-.. note::
-	The first release will be available once we open the GitHub repository to the public.
+The first release will be available once we open the GitHub repository to the public.
 
 
 Development version

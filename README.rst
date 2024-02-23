@@ -55,7 +55,7 @@ The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was 
 - Linux: Ubuntu 20.04.6 LTS (Focal Fossa) (not tested on ulterior versions)
 - Windows: Windows 11 Home 23H2
 
-To use the software, you must install python, *e.g.* through `Anaconda <https://www.anaconda.com/download>`_. We developed and tested the software in Python 3.9.18. 
+To use the software, you must install python, *e.g.* through Anaconda (https://www.anaconda.com/download). We developed and tested the software in Python 3.9.18. 
 
 
 Installation

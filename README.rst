@@ -5,7 +5,7 @@ Celldetective
 
     <embed>
         <p align="center">
-        <img src="https://github.com/remyeltorro/celldetective/tree/main/docs/source/_static/logo.png" width="33%" />
+        <img src="https://github.com/remyeltorro/celldetective/blob/main/celldetective/icons/logo-large.png" width="33%" />
         </p>
     </embed>
 
@@ -32,6 +32,16 @@ Despite notable efforts in the development of user-friendly softwares that integ
 
 
 
+..
+
+    _.. raw:: html
+
+        <embed>
+            <p align="center">
+            <img src="https://github.com/remyeltorro/celldetective/blob/main/article/figures/Figure1.png" width="60%" />
+            </p>
+        </embed>
+
 System requirements
 ===================
 
@@ -55,28 +65,21 @@ The software was developed simulateously on Ubuntu 20.04 and Windows 11. It was 
 - Linux: Ubuntu 20.04.6 LTS (Focal Fossa) (not tested on ulterior versions)
 - Windows: Windows 11 Home 23H2
 
-To use the software, you must install python, *e.g.* through Anaconda (https://www.anaconda.com/download). We developed and tested the software in Python 3.9.18. 
+To use the software, you must install python, *e.g.* through `Anaconda <https://www.anaconda.com/download>`_. We developed and tested the software in Python 3.9.18. 
 
 
 Installation
 ============
 
 Stable release
-~~~~~~~~~~~~~~
+--------------
 
-
-.. note::
-    The first release will be available once we open the GitHub repository to the public
-
+Explain here how to install release...
 
 Development version
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
-.. note::
-    Cloning or installing from the GitHub repository will be available once we open the repository to the public
-
-
-If you want to run the latest development version, you can clone the repository to your local machine and install Celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
+If you want to run the latest development version, you can clone the repository to your local machine and install celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
 
 .. code-block:: bash
 
@@ -92,17 +95,6 @@ To run the latest development version without cloning the repository, you can al
 .. code-block:: bash
 
     pip install git+https//github.com/remyeltorro/celldetective.git
-
-You can also download the repository as a compressed file. Unzip the file and open a terminal at the root of the folder (same level as the file ``requirements.txt``). We recommend that you create a python environment as Celldetective relies on many packages that may interfere with package requirements for other projects. Run the following lines to create an environment named "celldetective":
-
-.. code-block:: bash
-
-    conda create -n celldetective python=3.9.18 pyqt
-    conda activate celldetective
-    pip install -r requirements.txt
-    pip install .
-
-Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
 
 Documentation
 =============

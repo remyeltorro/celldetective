@@ -18,6 +18,10 @@ API
       celldetective.utils
 
 
+.. autosummary::
+   :toctree: stubs_autogen
+
+
 I/O
 ---
 

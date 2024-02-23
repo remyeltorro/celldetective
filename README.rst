@@ -65,12 +65,15 @@ Installation
 Stable release
 --------------
 
-
-The first release will be available once we open the GitHub repository to the public.
+.. note::
+	The first release will be available once we open the GitHub repository to the public.
 
 
 Development version
 -------------------
+
+From GitHub
+~~~~~~~~~~~
 
 Cloning or installing from the GitHub repository will be available once we open the repository to the public.
 
@@ -91,6 +94,9 @@ To run the latest development version without cloning the repository, you can al
 .. code-block:: bash
 
 	pip install git+https//github.com/remyeltorro/celldetective.git
+
+From a zip file
+~~~~~~~~~~~~~~~
 
 You can also download the repository as a compressed file. Unzip the file and open a terminal at the root of the folder (same level as the file requirements.txt). We recommend that you create a python environment as Celldetective relies on many packages that may interfere with package requirements for other projects. Run the following lines to create an environment named "celldetective":
 

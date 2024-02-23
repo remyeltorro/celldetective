@@ -119,7 +119,7 @@ https://celldetective.readthedocs.io/
 How to cite?
 ============
 
-Explain here how to cite. 
+Citation instructions will be updated once we obtain a DOI.
 
 Bibliography
 ============

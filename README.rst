@@ -44,7 +44,7 @@ The software was tested on several machines, including:
 - An Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz, with a single NVIDIA GeForce RTX 3070 (8 Gb of memory) and 16 Gb of memory
 - An Intel(R) Core(TM) i7-9750H CPU @ 2.60 GHz, with 16 Gb of memory
 
-In GPU mode, succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules. The GPU can be disabled in the startup window. The software does not require a GPU (but model inference will be longer).
+In GPU mode, succesive segmentation and DL signal analysis could be performed without saturating the GPU memory thanks to the subprocess formulation for the different modules. The GPU can be disabled in the startup window. The software does not require a GPU (but model inference will be longer). A typical analysis of a single movie with a GPU takes between 5 to 15 minutes. Depending on the number of cells and frames on the images, this computation time can increase to the order of half an hour on a CPU. 
 
 The memory must be sufficient to load a movie stack at once in order to visualize it in napari. Otherwise, processing is performed frame by frame, therefore the memory required is extremely low. 
 
@@ -106,6 +106,8 @@ You can also download the repository as a compressed file. Unzip the file and op
 	conda activate celldetective
 	pip install -r requirements.txt
 	pip install .
+
+The installation of the dependencies will take a few minutes (up to half an hour if the network is bad). The Celldetective package itself is light and installs in a few seconds.
 
 Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
 

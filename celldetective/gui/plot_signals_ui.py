@@ -450,7 +450,7 @@ class ConfigSignalPlot(QWidget):
 			#self.scroll.setWidgetResizable(True)
 			self.scroll.setWidget(self.survivalWidget)
 
-			self.scroll.setMinimumHeight(0.8*self.screen_height)
+			self.scroll.setMinimumHeight(int(0.8*self.screen_height))
 			self.survivalWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 			self.scroll.show()
 

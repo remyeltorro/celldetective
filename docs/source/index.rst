@@ -1,14 +1,18 @@
 Welcome to Celldetective's documentation!
-=======================================
+=========================================
 
-**Celldetective** is a python GUI and functional API to analyze complex mutichannel fluorescence images acquired in the context of antibody-dependent cell cytotoxicity (ADCC) experiments.
+.. figure:: _static/logo.png
+    :width: 300px
+    :align: center
+    :alt: logo
 
-The source code is publicly available on `GitHub <https://github.com/remyeltorro/celldetective/>`_.
 
+Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images.
 
-.. note::
+- **Documentation:** https://celldetective.readthedocs.io
+- **Source code:** https://github.com/remyeltorro/celldetective
+- **Bug reports:** https://github.com/remyeltorro/celldetective/issues/new/choose
 
-   This project is in its early documentation stage.
 
 Contents
 --------
@@ -24,25 +28,18 @@ Contents
    signals-and-events
    neighborhood
    analysis
-   
-.. toctree::
-   :caption: Data:
-   
-   Datasets
-   Segmentation models
-   Signal models
+
 
 .. toctree::
    :caption: Advanced:
    
-   Annotate and train a segmentation model
-   Annotate and train a signal model 
+   train-seg-models
+   train-signal-models
 
 .. toctree::
    :caption: Examples:
    
-   example_notebook   
-   ADCC analysis in GUI
+   example_notebook
    
    
 .. toctree::

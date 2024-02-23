@@ -11,11 +11,11 @@ sys.path.insert(0, os.path.abspath('../../examples/'))
 # -- Project information
 
 project = 'celldetective'
-copyright = '2023, Rémy Torro'
+copyright = '2024, Rémy Torro'
 author = 'Rémy Torro'
 
-release = '0.0'
-version = '0.0.0'
+release = '1.0'
+version = '1.0.0'
 
 # -- General configuration
 

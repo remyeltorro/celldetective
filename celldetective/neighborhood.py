@@ -225,7 +225,6 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 
 					neighs_B = np.array([ids_B[i] for i in np.where((col<=d))[0]])
 					status_neigh_B = np.array([status_B[i] for i in np.where((col<=d))[0]])
-					print(status_neigh_B)
 					dist_B = [round(col[i],2) for i in np.where((col<=d))[0]]
 					if len(dist_B)>0:
 						closest_B_cell = neighs_B[np.argmin(dist_B)]    

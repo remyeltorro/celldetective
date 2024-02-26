@@ -1092,15 +1092,18 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		print('exporting!')
 		t = viewer.dims.current_step[0]
 		labels_layer = viewer.layers['segmentation'].data[t] # at current time
-
+		fov_export = True
+		
 		if "Shapes" in viewer.layers:
-			# New mechanism to export crops defined by squares instead, when they exist
 			squares = viewer.layers['Shapes'].data
 			test_in_frame = np.array([squares[i][0,0]==t and len(squares[i])==4 for i in range(len(squares))])
 			squares = np.array(squares)
 			squares = squares[test_in_frame]
 			nbr_squares = len(squares)
 			print(f"Found {nbr_squares} ROIS")
+			if nbr_squares>0:
+				# deactivate field of view mode
+				fov_export = False
 
 			for k,sq in enumerate(squares):
 				xmin = int(sq[0,1])
@@ -1125,8 +1128,8 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 				info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.json"
 				with open(info_name, 'w') as f:
 					json.dump(info, f, indent=4)
-		else:
-			# Whole field of view export
+		
+		if fov_export:
 			frame = viewer.layers['Image'].data[t]
 			multichannel = [frame]
 			for i in range(len(channel_indices)-1):

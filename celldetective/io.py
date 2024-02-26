@@ -1093,27 +1093,56 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		t = viewer.dims.current_step[0]
 		labels_layer = viewer.layers['segmentation'].data[t] # at current time
 
-		frame = viewer.layers['Image'].data[t]
-		# if frame.ndim==2:
-		# 	frame = frame[np.newaxis,:,:]
+		if "Shapes" in viewer.layers:
+			# New mechanism to export crops defined by squares instead, when they exist
+			squares = viewer.layers['Shapes'].data
+			test_in_frame = np.array([squares[i][0,0]==t and len(squares[i])==4 for i in range(len(squares))])
+			squares = np.array(squares)
+			squares = squares[test_in_frame]
+			nbr_squares = len(squares)
+			print(f"Found {nbr_squares} ROIS")
 
-		multichannel = [frame]
-		for i in range(len(channel_indices)-1):
-			try:
-				frame = viewer.layers[f'Image [{i+1}]'].data[t]
-				multichannel.append(frame)
-			except:
-				pass
-		multichannel = np.array(multichannel)
-		print(multichannel.shape)
-
-		save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_labelled.tif", labels_layer, axes='YX')
-		save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", multichannel, axes='CYX')
-		info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
-		info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.json"
-		with open(info_name, 'w') as f:
-			json.dump(info, f, indent=4)
-		print('Done.')
+			for k,sq in enumerate(squares):
+				xmin = int(sq[0,1])
+				xmax = int(sq[2,1])
+				ymin = int(sq[0,2])
+				ymax = int(sq[1,2])
+				frame = viewer.layers['Image'].data[t][xmin:xmax,ymin:ymax]
+				if frame.shape[1] < 256 or frame.shape[0] < 256:
+					print("crop too small!")
+					continue
+				multichannel = [frame]
+				for i in range(len(channel_indices)-1):
+					try:
+						frame = viewer.layers[f'Image [{i+1}]'].data[t][xmin:xmax,ymin:ymax]
+						multichannel.append(frame)
+					except:
+						pass
+				multichannel = np.array(multichannel)        
+				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", labels_layer[xmin:xmax,ymin:ymax], axes='YX')
+				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.tif", multichannel, axes='CYX')
+				info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
+				info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.json"
+				with open(info_name, 'w') as f:
+					json.dump(info, f, indent=4)
+		else:
+			# Whole field of view export
+			frame = viewer.layers['Image'].data[t]
+			multichannel = [frame]
+			for i in range(len(channel_indices)-1):
+				try:
+					frame = viewer.layers[f'Image [{i+1}]'].data[t]
+					multichannel.append(frame)
+				except:
+					pass
+			multichannel = np.array(multichannel)		
+			save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_labelled.tif", labels_layer, axes='YX')
+			save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", multichannel, axes='CYX')
+			info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
+			info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.json"
+			with open(info_name, 'w') as f:
+				json.dump(info, f, indent=4)
+			print('Done.')
 
 	@magicgui(call_button='Save the modified labels')
 	def save_widget():

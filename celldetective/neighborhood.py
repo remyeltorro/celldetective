@@ -16,18 +16,36 @@ abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)
 
 
 def set_live_status(setA,setB,status, not_status_option):
-	"""
 
-	Match neighbors in set A and B within a circle of radius d. 
+	"""
+	Updates the live status for cells in two datasets based on specified status columns and options.
+
+	This function assigns a live status to cells in two datasets (setA and setB) based on the provided
+	status columns and options. If no status column is provided, all cells are marked as live. Otherwise,
+	the function updates the datasets based on the status criteria, potentially inverting the status
+	based on the `not_status_option`.
 
 	Parameters
 	----------
-	setA,setB : pandas DataFrame
-		Trajectory or position sets A and B.
+	setA : pandas.DataFrame
+		The first dataset containing trajectory or position information for cells.
+	setB : pandas.DataFrame
+		The second dataset containing trajectory or position information for cells.
 	status : list or None
-		status columns for the cells to keep in set A and B. 0 is remove, 1 is keep. 
+		A list containing the names of the columns in setA and setB that classify cells as alive (1) or dead (0).
+		If None, all cells are considered alive. The list should contain exactly two elements.
+	not_status_option : list
+		A list containing boolean values indicating whether to invert the status for setA and setB, respectively.
+		True means the status should be inverted; False means it should not.
+
+	Returns
+	-------
+	tuple
+		A tuple containing the updated setA and setB DataFrames, along with the final status column names
+		used to classify cells in each set.
 
 	"""
+
 
 	if status is None:
 		setA.loc[:,'live_status'] = 1
@@ -537,6 +555,34 @@ def compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive','e
 
 def mean_neighborhood_before_event(neigh_table, neigh_col, event_time_col):
 	
+	"""
+	Computes the mean neighborhood metrics for each cell track before a specified event time.
+
+	This function calculates the mean values of specified neighborhood metrics (inclusive, exclusive, intermediate)
+	for each cell track up to and including the frame of an event. The function requires the neighborhood metrics to
+	have been previously computed and appended to the input dataframe. It operates on grouped data based on position
+	and track ID, handling cases with or without position information.
+
+	Parameters
+	----------
+	neigh_table : pandas.DataFrame
+		A dataframe containing cell track data with precomputed neighborhood metrics and event time information.
+	neigh_col : str
+		The base name of the neighborhood metric columns in `neigh_table`.
+	event_time_col : str or None
+		The column name indicating the event time for each cell track. If None, the maximum frame number in the
+		dataframe is used as the event time for all tracks.
+
+	Returns
+	-------
+	pandas.DataFrame
+		The input dataframe with added columns for the mean neighborhood metrics before the event for each cell track.
+		The new columns are named as 'mean_count_{metric}_{neigh_col}_before_event', where {metric} is one of
+		'inclusive', 'exclusive', 'intermediate'.
+
+	"""
+
+
 	if 'position' in list(neigh_table.columns):
 		groupbycols = ['position','TRACK_ID']
 	else:

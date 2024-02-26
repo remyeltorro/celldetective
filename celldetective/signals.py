@@ -38,6 +38,48 @@ abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)
 
 class TimeHistory(Callback):
 	
+	"""
+	A custom Keras callback to log the duration of each epoch during training.
+
+	This callback records the time taken for each epoch during the model training process, allowing for
+	monitoring of training efficiency and performance over time. The times are stored in a list, with each
+	element representing the duration of an epoch in seconds.
+
+	Attributes
+	----------
+	times : list
+		A list of times (in seconds) taken for each epoch during the training. This list is populated as the
+		training progresses.
+
+	Methods
+	-------
+	on_train_begin(logs={})
+		Initializes the list of times at the beginning of training.
+
+	on_epoch_begin(epoch, logs={})
+		Records the start time of the current epoch.
+
+	on_epoch_end(epoch, logs={})
+		Calculates and appends the duration of the current epoch to the `times` list.
+
+	Notes
+	-----
+	- This callback is intended to be used with the `fit` method of Keras models.
+	- The time measurements are made using the `time.time()` function, which provides wall-clock time.
+
+	Examples
+	--------
+	>>> from keras.models import Sequential
+	>>> from keras.layers import Dense
+	>>> model = Sequential([Dense(10, activation='relu', input_shape=(20,)), Dense(1)])
+	>>> time_callback = TimeHistory()
+	>>> model.compile(optimizer='adam', loss='mean_squared_error')
+	>>> model.fit(x_train, y_train, epochs=10, callbacks=[time_callback])
+	>>> print(time_callback.times)
+	# This will print the time taken for each epoch during the training.
+	
+	"""
+
 	def on_train_begin(self, logs={}):
 		self.times = []
 
@@ -54,47 +96,48 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 					plot_outcome=False, output_dir=None):
 
 	"""
+	Analyzes signals from trajectory data using a specified signal detection model and configuration.
 
-	Perform signal analysis on trajectories using a trained model.
+	This function preprocesses trajectory data, selects specified signals, and applies a pretrained signal detection
+	model to predict classes and times of interest for each trajectory. It supports custom column labeling, interpolation
+	of missing values, and plotting of analysis outcomes.
 
 	Parameters
 	----------
 	trajectories : pandas.DataFrame
-		DataFrame containing the trajectories data.
+		DataFrame containing trajectory data with columns for track ID, frame, position, and signals.
 	model : str
-		Name of the trained signal detection model.
+		The name of the signal detection model to be used for analysis.
 	interpolate_na : bool, optional
-		Flag indicating whether to interpolate missing values in the trajectories. Default is True.
-	selected_signals : list, optional
-		List of selected signals to be used for analysis. If None, the required signals specified in the model
-		configuration will be automatically selected based on the available signals in the trajectories DataFrame.
-		Default is None.
+		Whether to interpolate missing values in the trajectories (default is True).
+	selected_signals : list of str, optional
+		A list of column names from `trajectories` representing the signals to be analyzed. If None, signals will
+		be automatically selected based on the model configuration (default is None).
 	column_labels : dict, optional
-		Dictionary containing the column labels for the trajectories DataFrame. Default is
-		{'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}.
+		A dictionary mapping the default column names ('track', 'time', 'x', 'y') to the corresponding column names
+		in `trajectories` (default is {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}).
+	plot_outcome : bool, optional
+		If True, generates and saves a plot of the signal analysis outcome (default is False).
+	output_dir : str, optional
+		The directory where the outcome plot will be saved. Required if `plot_outcome` is True (default is None).
 
 	Returns
 	-------
 	pandas.DataFrame
-		DataFrame containing the trajectories data with additional columns for the predicted class labels and
-		time of interest.
+		The input `trajectories` DataFrame with additional columns for predicted classes, times of interest, and
+		corresponding colors based on status and class.
+
+	Raises
+	------
+	AssertionError
+		If the model or its configuration file cannot be located.
 
 	Notes
 	-----
-	This function performs signal analysis on the trajectories using a trained signal detection model. The model
-	should be located in the models directory specified in the software. Call io.get_signal_models_list to get the list of models.
-	The trajectories DataFrame is expected to contain the required columns specified in the model configuration. If 
-	the `selected_signals` parameter is not provided, the function automatically selects the required signals 
-	based on the available signals in the trajectories DataFrame. The missing values in the trajectories can be interpolated 
-	if `interpolate_na` is set to True.
+	- The function relies on an external model configuration file (`config_input.json`) located in the model's directory.
+	- Signal selection and preprocessing are based on the requirements specified in the model's configuration.
 
-	Examples
-	--------
-	>>> signal_analysis(trajectories_df, model='my_model', interpolate_na=True, selected_signals=['signal1', 'signal2'])
-	# Perform signal analysis on trajectories using a trained model.
-	
 	"""
-
 
 	model_path = locate_signal_model(model)
 	complete_path = model_path #+model
@@ -233,6 +276,45 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 def analyze_signals_at_position(pos, model, mode, use_gpu=True, return_table=False):
 	
+	"""
+	Analyzes signals for a given position directory using a specified model and mode, with an option to use GPU acceleration.
+
+	This function executes an external Python script to analyze signals within the specified position directory, applying
+	a predefined model in a specified mode. It supports GPU acceleration for faster processing. Optionally, the function
+	can return the resulting analysis table as a pandas DataFrame.
+
+	Parameters
+	----------
+	pos : str
+		The file path to the position directory containing the data to be analyzed. The path must be valid and accessible.
+	model : str
+		The name of the model to use for signal analysis.
+	mode : str
+		The operation mode specifying how the analysis should be conducted.
+	use_gpu : bool, optional
+		Specifies whether to use GPU acceleration for the analysis (default is True).
+	return_table : bool, optional
+		If True, the function returns a pandas DataFrame containing the analysis results (default is False).
+
+	Returns
+	-------
+	pandas.DataFrame or None
+		If `return_table` is True, returns a DataFrame containing the analysis results. Otherwise, returns None.
+
+	Raises
+	------
+	AssertionError
+		If the specified position path does not exist.
+
+	Notes
+	-----
+	- The analysis is performed by an external script (`analyze_signals.py`) located in a specific directory relative
+	  to this function.
+	- The results of the analysis are expected to be saved in the "output/tables" subdirectory within the position
+	  directory, following a naming convention based on the analysis `mode`.
+
+	"""
+
 	pos = pos.replace('\\','/')
 	pos = rf"{pos}"
 	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
@@ -252,6 +334,79 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True, return_table=Fal
 
 
 class SignalDetectionModel(object):
+
+	"""
+	A class for creating and managing signal detection models for analyzing biological signals.
+
+	This class provides functionalities to load a pretrained signal detection model or create one from scratch,
+	preprocess input signals, train the model, and make predictions on new data.
+
+	Parameters
+	----------
+	path : str, optional
+		Path to the directory containing the model and its configuration. This is used when loading a pretrained model.
+	pretrained : str, optional
+		Path to the pretrained model to load. If specified, the model and its configuration are loaded from this path.
+	channel_option : list of str, optional
+		Specifies the channels to be used for signal analysis. Default is ["live_nuclei_channel"].
+	model_signal_length : int, optional
+		The length of the input signals that the model expects. Default is 128.
+	n_channels : int, optional
+		The number of channels in the input signals. Default is 1.
+	n_conv : int, optional
+		The number of convolutional layers in the model. Default is 2.
+	n_classes : int, optional
+		The number of classes for the classification task. Default is 3.
+	dense_collection : int, optional
+		The number of units in the dense layer of the model. Default is 512.
+	dropout_rate : float, optional
+		The dropout rate applied to the dense layer of the model. Default is 0.1.
+	label : str, optional
+		A label for the model, used in naming and organizing outputs. Default is ''.
+
+	Attributes
+	----------
+	model_class : keras Model
+		The classification model for predicting the class of signals.
+	model_reg : keras Model
+		The regression model for predicting the time of interest for signals.
+
+	Methods
+	-------
+	load_pretrained_model()
+		Loads the model and its configuration from the pretrained path.
+	create_models_from_scratch()
+		Creates new models for classification and regression from scratch.
+	prep_gpu()
+		Prepares GPU devices for training, if available.
+	fit_from_directory(ds_folders, ...)
+		Trains the model using data from specified directories.
+	fit(x_train, y_time_train, y_class_train, ...)
+		Trains the model using provided datasets.
+	predict_class(x, ...)
+		Predicts the class of input signals.
+	predict_time_of_interest(x, ...)
+		Predicts the time of interest for input signals.
+	plot_model_history(mode)
+		Plots the training history for the specified mode (classifier or regressor).
+	evaluate_regression_model()
+		Evaluates the regression model on test and validation data.
+	gather_callbacks(mode)
+		Gathers and prepares callbacks for training based on the specified mode.
+	generate_sets()
+		Generates training, validation, and test sets from loaded data.
+	augment_training_set()
+		Augments the training set with additional generated data.
+	load_and_normalize(subset)
+		Loads and normalizes signals from a subset of data.
+
+	Notes
+	-----
+	- This class is designed to work with biological signal data, such as time series from microscopy imaging.
+	- The model architecture and training configurations can be customized through the class parameters and methods.
+
+	"""
+
 	
 	def __init__(self, path=None, pretrained=None, channel_option=["live_nuclei_channel"], model_signal_length=128, n_channels=1, 
 				n_conv=2, n_classes=3, dense_collection=512, dropout_rate=0.1, label=''):
@@ -280,12 +435,23 @@ class SignalDetectionModel(object):
 	def load_pretrained_model(self):
 		
 		"""
-		
-		Load model from pretrained path and set as current model
-		
+		Loads a pretrained model and its configuration from the specified path.
+
+		This method attempts to load both the classification and regression models from the path specified during the
+		class instantiation. It also loads the model configuration from a JSON file and updates the model attributes
+		accordingly. If the models cannot be loaded, an error message is printed.
+
+		Raises
+		------
+		Exception
+			If there is an error loading the model or the configuration file, an exception is raised with details.
+
+		Notes
+		-----
+		- The models are expected to be saved in .h5 format with the filenames "classifier.h5" and "regressor.h5".
+		- The configuration file is expected to be named "config_input.json" and located in the same directory as the models.
 		"""
-		
-		# Load keras model
+
 		try:
 			self.model_class = load_model(os.sep.join([self.pretrained,"classifier.h5"]),compile=False)
 			self.model_class.load_weights(os.sep.join([self.pretrained,"classifier.h5"]))
@@ -329,9 +495,15 @@ class SignalDetectionModel(object):
 	def create_models_from_scratch(self):
 
 		"""
-		
-		Generate new ResNet models for classification and regression with the chosen specifications
+		Initializes new models for classification and regression based on the specified parameters.
 
+		This method creates new ResNet models for both classification and regression tasks using the parameters specified
+		during class instantiation. The models are configured but not compiled or trained.
+
+		Notes
+		-----
+		- The models are created using a custom ResNet architecture defined elsewhere in the codebase.
+		- The models are stored in the `model_class` and `model_reg` attributes of the class.
 		"""
 
 		self.model_class = ResNetModelCurrent(n_channels=self.n_channels,
@@ -354,6 +526,18 @@ class SignalDetectionModel(object):
 
 	def prep_gpu(self):
 		
+		"""
+		Prepares GPU devices for training by enabling memory growth.
+
+		This method attempts to identify available GPU devices and configures TensorFlow to allow memory growth on each
+		GPU. This prevents TensorFlow from allocating the total available memory on the GPU device upfront.
+		
+		Notes
+		-----
+		- This method should be called before any TensorFlow/Keras operations that might allocate GPU memory.
+		- If no GPUs are detected, the method will pass silently.
+		"""
+
 		try:
 			physical_devices = list_physical_devices('GPU')
 			for gpu in physical_devices:
@@ -365,11 +549,57 @@ class SignalDetectionModel(object):
 						  normalization_clip = None, channel_option=["live_nuclei_channel"], model_name=None, target_directory=None, 
 						  augment=True, augmentation_factor=2, validation_split=0.20, test_split=0.0, batch_size = 64, epochs=300, 
 						  recompile_pretrained=False, learning_rate=0.01, loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
-		"""
-		
-		Load annotations in directory, create dataset, fit model
 		
 		"""
+		Trains the model using data from specified directories.
+
+		This method prepares the dataset for training by loading and preprocessing data from specified directories,
+		then trains the classification and regression models.
+
+		Parameters
+		----------
+		ds_folders : list of str
+			List of directories containing the dataset files for training.
+		normalize : bool, optional
+			Whether to normalize the input signals (default is True).
+		normalization_percentile : list or None, optional
+			Percentiles for signal normalization (default is None).
+		normalization_values : list or None, optional
+			Specific values for signal normalization (default is None).
+		normalization_clip : bool, optional
+			Whether to clip the normalized signals (default is None).
+		channel_option : list of str, optional
+			Specifies the channels to be used for signal analysis (default is ["live_nuclei_channel"]).
+		model_name : str, optional
+			Name of the model for saving purposes (default is None).
+		target_directory : str, optional
+			Directory where the trained model and outputs will be saved (default is None).
+		augment : bool, optional
+			Whether to augment the training data (default is True).
+		augmentation_factor : int, optional
+			Factor by which to augment the training data (default is 2).
+		validation_split : float, optional
+			Fraction of the data to be used as validation set (default is 0.20).
+		test_split : float, optional
+			Fraction of the data to be used as test set (default is 0.0).
+		batch_size : int, optional
+			Batch size for training (default is 64).
+		epochs : int, optional
+			Number of epochs to train for (default is 300).
+		recompile_pretrained : bool, optional
+			Whether to recompile a pretrained model (default is False).
+		learning_rate : float, optional
+			Learning rate for the optimizer (default is 0.01).
+		loss_reg : str or keras.losses.Loss, optional
+			Loss function for the regression model (default is "mse").
+		loss_class : str or keras.losses.Loss, optional
+			Loss function for the classification model (default is CategoricalCrossentropy(from_logits=False)).
+
+		Notes
+		-----
+		- The method automatically splits the dataset into training, validation, and test sets according to the specified splits.
+		"""
+
 
 		if not hasattr(self, 'normalization_percentile'):
 			self.normalization_percentile = normalization_percentile
@@ -423,6 +653,20 @@ class SignalDetectionModel(object):
 	def fit(self, x_train, y_time_train, y_class_train, normalize=True, normalization_percentile=None, normalization_values = None, normalization_clip = None, pad=True, validation_data=None, test_data=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, 
 			target_directory=None, augment=True, augmentation_factor=3, validation_split=0.25, batch_size = 64, epochs=300,
 			recompile_pretrained=False, learning_rate=0.001, loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
+
+		"""
+		Trains the model using provided datasets.
+
+		Parameters
+		----------
+		Same as `fit_from_directory`, but instead of loading data from directories, this method accepts preloaded and
+		optionally preprocessed datasets directly.
+
+		Notes
+		-----
+		- This method provides an alternative way to train the model when data is already loaded into memory, offering
+		  flexibility for data preprocessing steps outside this class.
+		"""
 
 		self.normalize = normalize
 		if not hasattr(self, 'normalization_percentile'):
@@ -518,6 +762,34 @@ class SignalDetectionModel(object):
 
 	def predict_class(self, x, normalize=True, pad=True, return_one_hot=False, interpolate=True):
 
+		"""
+		Predicts the class of input signals using the trained classification model.
+
+		Parameters
+		----------
+		x : ndarray
+			The input signals for which to predict classes.
+		normalize : bool, optional
+			Whether to normalize the input signals (default is True).
+		pad : bool, optional
+			Whether to pad the input signals to match the model's expected signal length (default is True).
+		return_one_hot : bool, optional
+			Whether to return predictions in one-hot encoded format (default is False).
+		interpolate : bool, optional
+			Whether to interpolate the input signals (default is True).
+
+		Returns
+		-------
+		ndarray
+			The predicted classes for the input signals. If `return_one_hot` is True, predictions are returned in one-hot
+			encoded format, otherwise as integer labels.
+
+		Notes
+		-----
+		- The method processes the input signals according to the specified options to ensure compatibility with the model's
+		  input requirements.
+		"""
+
 		self.x = np.copy(x)
 		self.normalize = normalize
 		self.pad = pad
@@ -553,6 +825,32 @@ class SignalDetectionModel(object):
 
 	def predict_time_of_interest(self, x, class_predictions=None, normalize=True, pad=True):
 
+		"""
+		Predicts the time of interest for input signals using the trained regression model.
+
+		Parameters
+		----------
+		x : ndarray
+			The input signals for which to predict times of interest.
+		class_predictions : ndarray, optional
+			The predicted classes for the input signals. If provided, time of interest predictions are only made for
+			signals predicted to belong to a specific class (default is None).
+		normalize : bool, optional
+			Whether to normalize the input signals (default is True).
+		pad : bool, optional
+			Whether to pad the input signals to match the model's expected signal length (default is True).
+
+		Returns
+		-------
+		ndarray
+			The predicted times of interest for the input signals.
+
+		Notes
+		-----
+		- The method processes the input signals according to the specified options and uses the regression model to
+		  predict times at which a particular event of interest occurs.
+		"""
+
 		self.x = np.copy(x)
 		self.normalize = normalize
 		self.pad = pad
@@ -584,7 +882,25 @@ class SignalDetectionModel(object):
 
 	def interpolate_signals(self, x_set):
 
-		print(x_set.shape)
+		"""
+		Interpolates missing values in the input signal set.
+
+		Parameters
+		----------
+		x_set : ndarray
+			The input signal set with potentially missing values.
+
+		Returns
+		-------
+		ndarray
+			The input signal set with missing values interpolated.
+
+		Notes
+		-----
+		- This method is useful for preparing signals that have gaps or missing time points before further processing
+		  or model training.
+		"""
+
 		for i in range(len(x_set)):
 			for k in range(x_set.shape[-1]):
 				x = x_set[i,:,k]
@@ -599,9 +915,17 @@ class SignalDetectionModel(object):
 	def train_classifier(self):
 
 		"""
-		
-		Train a classifier model to detect events in the signals.
+		Trains the classifier component of the model to predict event classes in signals.
 
+		This method compiles the classifier model (if not pretrained or if recompilation is requested) and
+		trains it on the prepared dataset. The training process includes validation and early stopping based
+		on precision to prevent overfitting.
+
+		Notes
+		-----
+		- The classifier model predicts the class of each signal, such as live, dead, or miscellaneous.
+		- Training parameters such as epochs, batch size, and learning rate are specified during class instantiation.
+		- Model performance metrics and training history are saved for analysis.
 		"""
 
 		# if pretrained model
@@ -712,10 +1036,19 @@ class SignalDetectionModel(object):
 	def train_regressor(self):
 
 		"""
-		
-		Train a regressor model to estimate time of interest for the subset of target cells that have an event during the movies.
+		Trains the regressor component of the model to estimate the time of interest for events in signals.
 
+		This method compiles the regressor model (if not pretrained or if recompilation is requested) and
+		trains it on a subset of the prepared dataset containing signals with events. The training process
+		includes validation and early stopping based on mean squared error to prevent overfitting.
+
+		Notes
+		-----
+		- The regressor model estimates the time at which an event of interest occurs within each signal.
+		- Only signals predicted to have an event by the classifier model are used for regressor training.
+		- Model performance metrics and training history are saved for analysis.
 		"""
+
 
 		# Compile model
 		# if pretrained model
@@ -779,17 +1112,17 @@ class SignalDetectionModel(object):
 	def plot_model_history(self, mode="regressor"):
 
 		"""
-		
-		Plot the learning curves for the specified mode (regressor or classifier).
+		Generates and saves plots of the training history for the classifier or regressor model.
 
-		Args:
-		mode (str, optional): The mode to plot the learning curve for. Default is "regressor".
+		Parameters
+		----------
+		mode : str, optional
+			Specifies which model's training history to plot. Options are "classifier" or "regressor". Default is "regressor".
 
-		Note:
-		- If mode is set to "regressor", it will plot the loss curves for regressor training history.
-		- If mode is set to "classifier", it will plot the precision curves for classifier training history.
-		- Saves the plot as an image file in the model_folder.
-
+		Notes
+		-----
+		- Plots include loss and accuracy metrics over epochs for the classifier, and loss metrics for the regressor.
+		- The plots are saved as image files in the model's output directory.
 		"""
 
 		if mode=="regressor":
@@ -825,15 +1158,17 @@ class SignalDetectionModel(object):
 	def evaluate_regression_model(self):
 
 		"""
+		Evaluates the performance of the trained regression model on test and validation datasets.
 
-		Evaluate the regression model on the test and validation sets and save the regression plots.
+		This method calculates and prints mean squared error and mean absolute error metrics for the regression model's
+		predictions. It also generates regression plots comparing predicted times of interest to true values.
 
-		Note:
-		- Computes the Mean Squared Error (MSE) for the predictions of the model on the test (if it exists) and validation sets.
-		- Calls regression_plot to generate and save the regression plots for both sets.
-		- Saves the plots as image files in the model_folder.
-
+		Notes
+		-----
+		- Evaluation is performed on both test and validation datasets, if available.
+		- Regression plots and performance metrics are saved in the model's output directory.
 		"""
+
 
 		mse = MeanSquaredError()
 		mae = MeanAbsoluteError()
@@ -871,13 +1206,17 @@ class SignalDetectionModel(object):
 	def gather_callbacks(self, mode):
 
 		"""
+		Prepares a list of Keras callbacks for model training based on the specified mode.
 
-		Gather a list of callbacks based on the training mode.
-		
-		Parameters:
-			- mode: str
-				Training mode, either "classifier" or "regressor".
-		
+		Parameters
+		----------
+		mode : str
+			The training mode for which callbacks are being prepared. Options are "classifier" or "regressor".
+
+		Notes
+		-----
+		- Callbacks include learning rate reduction on plateau, early stopping, model checkpointing, and TensorBoard logging.
+		- The list of callbacks is stored in the class attribute `cb` and used during model training.
 		"""
 		
 		self.cb = []
@@ -926,10 +1265,17 @@ class SignalDetectionModel(object):
 	def generate_sets(self):
 		
 		"""
-		
-		Load, preprocess and split dataset
-		
+		Generates and preprocesses training, validation, and test sets from loaded annotations.
+
+		This method loads signal data from annotation files, normalizes and interpolates the signals, and splits
+		the dataset into training, validation, and test sets according to specified proportions.
+
+		Notes
+		-----
+		- Signal annotations are expected to be stored in .npy format and contain required channels and event information.
+		- The method applies specified normalization and interpolation options to prepare the signals for model training.
 		"""
+
 		
 		self.x_set = []
 		self.y_time_set = []
@@ -979,10 +1325,19 @@ class SignalDetectionModel(object):
 	def augment_training_set(self, time_shift=True):
 		
 		"""
-		
-		Augment training set
-		
+		Augments the training dataset with artificially generated data to increase model robustness.
+
+		Parameters
+		----------
+		time_shift : bool, optional
+			Specifies whether to include time-shifted versions of signals in the augmented dataset. Default is True.
+
+		Notes
+		-----
+		- Augmentation strategies include random time shifting and signal modifications to simulate variations in real data.
+		- The augmented dataset is used for training the classifier and regressor models to improve generalization.
 		"""
+
 		
 		nbr_augment = self.augmentation_factor*len(self.x_train)
 		randomize = np.arange(len(self.x_train))
@@ -1012,13 +1367,20 @@ class SignalDetectionModel(object):
 	def load_and_normalize(self, subset):
 		
 		"""
-		Load npy annotation set, reshape into a numpy array (MxTx2)
-		Remove dubious annotations
-		Normalize fluo and time of interest
-		To do: set 1, 2, 3 channels
-		
+		Loads a subset of signal data from an annotation file and applies normalization.
+
+		Parameters
+		----------
+		subset : str
+			The file path to the .npy annotation file containing signal data for a subset of observations.
+
+		Notes
+		-----
+		- The method extracts required signal channels from the annotation file and applies specified normalization
+		  and interpolation steps.
+		- Preprocessed signals are added to the global dataset for model training.
 		"""
-		
+			
 		set_k = np.load(subset,allow_pickle=True)
 		### here do a mapping between channel option and existing signals
 
@@ -1087,6 +1449,50 @@ class SignalDetectionModel(object):
 
 def _interpret_normalization_parameters(n_channels, normalization_percentile, normalization_values, normalization_clip):
 	
+	"""
+	Interprets and validates normalization parameters for each channel.
+
+	This function ensures the normalization parameters are correctly formatted and expanded to match
+	the number of channels in the dataset. It provides default values and expands single values into
+	lists to match the number of channels if necessary.
+
+	Parameters
+	----------
+	n_channels : int
+		The number of channels in the dataset.
+	normalization_percentile : list of bool or bool, optional
+		Specifies whether to normalize each channel based on percentile values. If a single bool is provided,
+		it is expanded to a list matching the number of channels. Default is True for all channels.
+	normalization_values : list of lists or list, optional
+		Specifies the percentile values [lower, upper] for normalization for each channel. If a single pair
+		is provided, it is expanded to match the number of channels. Default is [[0.1, 99.9]] for all channels.
+	normalization_clip : list of bool or bool, optional
+		Specifies whether to clip the normalized values for each channel to the range [0, 1]. If a single bool
+		is provided, it is expanded to a list matching the number of channels. Default is False for all channels.
+
+	Returns
+	-------
+	tuple
+		A tuple containing three lists: `normalization_percentile`, `normalization_values`, and `normalization_clip`,
+		each of length `n_channels`, representing the interpreted and validated normalization parameters for each channel.
+
+	Raises
+	------
+	AssertionError
+		If the lengths of the provided lists do not match `n_channels`.
+
+	Examples
+	--------
+	>>> n_channels = 2
+	>>> normalization_percentile = True
+	>>> normalization_values = [0.1, 99.9]
+	>>> normalization_clip = False
+	>>> params = _interpret_normalization_parameters(n_channels, normalization_percentile, normalization_values, normalization_clip)
+	>>> print(params)
+	# ([True, True], [[0.1, 99.9], [0.1, 99.9]], [False, False])
+	"""
+
+
 	if normalization_percentile is None:
 		normalization_percentile = [True]*n_channels
 	if normalization_values is None:
@@ -1111,9 +1517,52 @@ def _interpret_normalization_parameters(n_channels, normalization_percentile, no
 def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.99], percentile_dead=[0.5,99.999], percentile_generic=[0.01,99.99], normalization_percentile=None, normalization_values=None, normalization_clip=None):
 
 	"""
+	Normalizes a set of single-cell signals across specified channels using given percentile values or specific normalization parameters.
 
-	Normalize the signals from a set of single-cell signals.
+	This function applies normalization to each channel in the signal set based on the provided normalization parameters,
+	which can be defined globally or per channel. The normalization process aims to scale the signal values to a standard
+	range, improving the consistency and comparability of signal measurements across samples.
 
+	Parameters
+	----------
+	signal_set : ndarray
+		A 3D numpy array representing the set of signals to be normalized, with dimensions corresponding to (samples, time points, channels).
+	channel_option : list of str
+		A list specifying the channels included in the signal set and their corresponding normalization strategy based on channel names.
+	percentile_alive : list of float, optional
+		The percentile values [lower, upper] used for normalization of signals from channels labeled as 'alive'. Default is [0.01, 99.99].
+	percentile_dead : list of float, optional
+		The percentile values [lower, upper] used for normalization of signals from channels labeled as 'dead'. Default is [0.5, 99.999].
+	percentile_generic : list of float, optional
+		The percentile values [lower, upper] used for normalization of signals from channels not specifically labeled as 'alive' or 'dead'.
+		Default is [0.01, 99.99].
+	normalization_percentile : list of bool or None, optional
+		Specifies whether to normalize each channel based on percentile values. If None, the default percentile strategy is applied
+		based on `channel_option`. If a list, it should match the length of `channel_option`.
+	normalization_values : list of lists or None, optional
+		Specifies the percentile values [lower, upper] or fixed values [min, max] for normalization for each channel. Overrides
+		`percentile_alive`, `percentile_dead`, and `percentile_generic` if provided.
+	normalization_clip : list of bool or None, optional
+		Specifies whether to clip the normalized values for each channel to the range [0, 1]. If None, clipping is disabled by default.
+
+	Returns
+	-------
+	ndarray
+		The normalized signal set with the same shape as the input `signal_set`.
+
+	Notes
+	-----
+	- The function supports different normalization strategies for 'alive', 'dead', and generic signal channels, which can be customized
+	  via `channel_option` and the percentile parameters.
+	- Normalization parameters (`normalization_percentile`, `normalization_values`, `normalization_clip`) are interpreted and validated
+	  by calling `_interpret_normalization_parameters`.
+
+	Examples
+	--------
+	>>> signal_set = np.random.rand(100, 128, 2)  # 100 samples, 128 time points, 2 channels
+	>>> channel_option = ['alive', 'dead']
+	>>> normalized_signals = normalize_signal_set(signal_set, channel_option)
+	# Normalizes the signal set based on the default percentile values for 'alive' and 'dead' channels.
 	"""
 
 	# Check normalization params are ok
@@ -1122,7 +1571,6 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 																											normalization_percentile,
 																											normalization_values,
 																											normalization_clip)
-
 	for k,channel in enumerate(channel_option):
 
 		zero_values = []
@@ -1158,53 +1606,6 @@ def normalize_signal_set(signal_set, channel_option, percentile_alive=[0.01,99.9
 
 		for i,z in enumerate(zero_values):
 			signal_set[i,z,k] = 0.
-
-	# for k,channel in enumerate(channel_option):
-	#
-	# 	zero_values = []
-	# 	for i in range(len(signal_set)):
-	# 		zeros_loc = np.where(signal_set[i,:,k]==0)
-	# 		zero_values.append(zeros_loc)
-	#
-	# 	if ("dead_nuclei_channel" in channel and 'haralick' not in channel) or ("RED" in channel):
-	# 		print('red normalization')
-	#
-	# 		min_percentile_dead, max_percentile_dead = percentile_dead
-	# 		min_set = signal_set[:,:5,k]
-	# 		max_set = signal_set[:,:,k]
-	# 		min_fluo_dead = np.nanpercentile(min_set[min_set!=0.], min_percentile_dead) # 5 % on initial frame where barely any dead are expected
-	# 		max_fluo_dead = np.nanpercentile(max_set[max_set!=0.], max_percentile_dead) # 99th percentile on last fluo frame
-	# 		signal_set[:,:,k] -= min_fluo_dead
-	# 		signal_set[:,:,k] /= (max_fluo_dead - min_fluo_dead)
-	#
-	# 	elif ("live_nuclei_channel" in channel and 'haralick' not in channel) or ("BLUE" in channel):
-	#
-	# 		print('blue normalization')
-	# 		min_percentile_alive, max_percentile_alive = percentile_alive
-	# 		values = signal_set[:,:5,k]
-	# 		min_fluo_alive = np.nanpercentile(values[values!=0.], min_percentile_alive) # safe 0.5% of Hoescht on initial frame
-	# 		max_fluo_alive = np.nanpercentile(values[values!=0.], max_percentile_alive)
-	# 		signal_set[:,:,k] -= min_fluo_alive
-	# 		signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
-	#
-	# 	elif 0.8<np.mean(signal_set[:,:,k])<1.2:
-	# 		print('detected normalized signal; assume min max in 0.5-1.5 range')
-	# 		min_fluo_alive = 0.5
-	# 		max_fluo_alive = 1.5
-	# 		signal_set[:,:,k] -= min_fluo_alive
-	# 		signal_set[:,:,k] /= (max_fluo_alive - min_fluo_alive)
-	#
-	# 	else:
-	#
-	# 		min_percentile, max_percentile = percentile_generic
-	# 		values = signal_set[:,:,k]
-	# 		min_signal = np.nanpercentile(values[values!=0.], min_percentile)
-	# 		max_signal= np.nanpercentile(values[values!=0.], max_percentile)
-	# 		signal_set[:,:,k] -= min_signal
-	# 		signal_set[:,:,k] /= (max_signal - min_signal)
-	#
-	# 	for i,z in enumerate(zero_values):
-	# 		signal_set[i,z,k] = 0.
 
 	return signal_set
 
@@ -1370,11 +1771,45 @@ def random_time_shift(signal, time_of_interest, model_signal_length):
 def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=True, probability=0.8):
 
 	"""
+	Randomly augments single-cell signals to simulate variations in noise, intensity ratios, and event times.
 
-	Augment randomely each single cell signals to explore new noise,
-	 intensity ratios and times
+	This function applies random transformations to the input signal, including time shifts, intensity changes,
+	and the addition of Gaussian noise, with the aim of increasing the diversity of the dataset for training robust models.
+
+	Parameters
+	----------
+	signal : ndarray
+		A 1D numpy array representing the signal of a single cell to be augmented.
+	time_of_interest : float
+		The normalized time of interest (event time) for the signal, scaled to the range [0, 1].
+	cclass : ndarray
+		A one-hot encoded numpy array representing the class of the cell associated with the signal.
+	model_signal_length : int
+		The length of the signal expected by the model, used for scaling the time of interest.
+	time_shift : bool, optional
+		Specifies whether to apply random time shifts to the signal. Default is True.
+	probability : float, optional
+		The probability with which to apply the augmentation transformations. Default is 0.8.
+
+	Returns
+	-------
+	tuple
+		A tuple containing the augmented signal, the normalized time of interest, and the class of the cell.
+
+	Raises
+	------
+	AssertionError
+		If the time of interest is provided but invalid for time shifting.
+
+	Notes
+	-----
+	- Time shifting is not applied to cells of the class labeled as 'miscellaneous' (typically encoded as the class '2').
+	- The time of interest is rescaled based on the model's expected signal length before and after any time shift.
+	- Augmentation is applied with the specified probability to simulate realistic variability while maintaining
+	  some original signals in the dataset.
 
 	"""
+
 	if np.amax(time_of_interest)<=1.0:
 		time_of_interest *= model_signal_length
 
@@ -1555,8 +1990,55 @@ def MultiscaleResNetModel(n_channels, n_classes = 3, dropout_rate=0, dense_colle
 	return model
 
 def ResNetModelCurrent(n_channels, n_slices, depth=2, use_pooling=True, n_classes = 3, dropout_rate=0.1, dense_collection=512,
-				 	   header="classifier", model_signal_length = 128):
+					   header="classifier", model_signal_length = 128):
 	
+	"""
+	Creates a ResNet-based model tailored for signal classification or regression tasks.
+
+	This function constructs a 1D ResNet architecture with specified parameters. The model can be configured
+	for either classification or regression tasks, determined by the `header` parameter. It consists of
+	configurable ResNet blocks, global average pooling, optional dense layers, and dropout for regularization.
+
+	Parameters
+	----------
+	n_channels : int
+		The number of channels in the input signal.
+	n_slices : int
+		The number of slices (or ResNet blocks) to use in the model.
+	depth : int, optional
+		The depth of the network, i.e., how many times the number of filters is doubled. Default is 2.
+	use_pooling : bool, optional
+		Whether to use MaxPooling between ResNet blocks. Default is True.
+	n_classes : int, optional
+		The number of classes for the classification task. Ignored for regression. Default is 3.
+	dropout_rate : float, optional
+		The dropout rate for regularization. Default is 0.1.
+	dense_collection : int, optional
+		The number of neurons in the dense layer following global pooling. If 0, the dense layer is omitted. Default is 512.
+	header : str, optional
+		Specifies the task type: "classifier" for classification or "regressor" for regression. Default is "classifier".
+	model_signal_length : int, optional
+		The length of the input signal. Default is 128.
+
+	Returns
+	-------
+	keras.Model
+		The constructed Keras model ready for training or inference.
+
+	Notes
+	-----
+	- The model uses Conv1D layers for signal processing and applies global average pooling before the final classification
+	  or regression layer.
+	- The choice of `final_activation` and `neurons_final` depends on the task: "softmax" and `n_classes` for classification,
+	  and "linear" and 1 for regression.
+	- This function relies on a custom `residual_block1D` function for constructing ResNet blocks.
+
+	Examples
+	--------
+	>>> model = ResNetModelCurrent(n_channels=1, n_slices=2, depth=2, use_pooling=True, n_classes=3, dropout_rate=0.1, dense_collection=512, header="classifier", model_signal_length=128)
+	# Creates a ResNet model configured for classification with 3 classes.
+	"""
+
 	if header=="classifier":
 		final_activation = "softmax"
 		neurons_final = n_classes
@@ -1590,6 +2072,40 @@ def ResNetModelCurrent(n_channels, n_slices, depth=2, use_pooling=True, n_classe
 
 
 def train_signal_model(config):
+
+	"""
+	Initiates the training of a signal detection model using a specified configuration file.
+
+	This function triggers an external Python script to train a signal detection model. The training
+	configuration, including data paths, model parameters, and training options, are specified in a JSON
+	configuration file. The function asserts the existence of the configuration file before proceeding
+	with the training process.
+
+	Parameters
+	----------
+	config : str
+		The file path to the JSON configuration file specifying training parameters. This path must be valid
+		and the configuration file must be correctly formatted according to the expectations of the
+		'train_signal_model.py' script.
+
+	Raises
+	------
+	AssertionError
+		If the specified configuration file does not exist at the given path.
+
+	Notes
+	-----
+	- The external training script 'train_signal_model.py' is expected to be located in a predefined directory
+	  relative to this function and is responsible for the actual model training process.
+	- The configuration file should include details such as data directories, model architecture specifications,
+	  training hyperparameters, and any preprocessing steps required.
+
+	Examples
+	--------
+	>>> config_path = '/path/to/training_config.json'
+	>>> train_signal_model(config_path)
+	# This will execute the 'train_signal_model.py' script using the parameters specified in 'training_config.json'.
+	"""
 
 	config = config.replace('\\','/')
 	config = rf"{config}"
@@ -2028,11 +2544,96 @@ def sliding_msd(x, y, timeline, window, mode='bi', n_points_migration=7,  n_poin
 	return s_msd, s_alpha
 
 def drift_msd(t, d, v):
-    return 4*d*t + v**2*t**2
+
+	"""
+	Calculates the mean squared displacement (MSD) of a particle undergoing diffusion with drift.
+
+	The function computes the MSD for a particle that diffuses in a medium with a constant drift velocity.
+	The MSD is given by the formula: MSD = 4Dt + V^2t^2, where D is the diffusion coefficient, V is the drift
+	velocity, and t is the time.
+
+	Parameters
+	----------
+	t : float or ndarray
+		Time or an array of time points at which to calculate the MSD.
+	d : float
+		Diffusion coefficient of the particle.
+	v : float
+		Drift velocity of the particle.
+
+	Returns
+	-------
+	float or ndarray
+		The mean squared displacement of the particle at time t. Returns a single float value if t is a float,
+		or returns an array of MSD values if t is an ndarray.
+
+	Examples
+	--------
+	>>> drift_msd(t=5, d=1, v=2)
+	40
+	>>> drift_msd(t=np.array([1, 2, 3]), d=1, v=2)
+	array([ 6, 16, 30])
+	
+	Notes
+	-----
+	- This formula assumes that the particle undergoes normal diffusion with an additional constant drift component.
+	- The function can be used to model the behavior of particles in systems where both diffusion and directed motion occur.
+	"""
+
+	return 4*d*t + v**2*t**2
 
 def sliding_msd_drift(x, y, timeline, window, mode='bi', n_points_migration=7,  n_points_transport=7, r2_threshold=0.75):
 
 	"""
+	Computes the sliding mean squared displacement (MSD) with drift for particle trajectories.
+
+	This function calculates the diffusion coefficient and drift velocity of particles based on their 
+	x and y positions over time. It uses a sliding window approach to estimate the MSD at each point in time,
+	fitting the MSD to the equation MSD = 4Dt + V^2t^2 to extract the diffusion coefficient (D) and drift velocity (V).
+
+	Parameters
+	----------
+	x : ndarray
+		The x positions of the particle over time.
+	y : ndarray
+		The y positions of the particle over time.
+	timeline : ndarray
+		The time points corresponding to the x and y positions.
+	window : int
+		The size of the sliding window used to calculate the MSD at each point in time.
+	mode : str, optional
+		The mode of sliding window calculation. Options are 'bi' for bidirectional, 'forward', or 'backward'. Default is 'bi'.
+	n_points_migration : int, optional
+		The number of initial points from the calculated MSD to use for fitting the migration model. Default is 7.
+	n_points_transport : int, optional
+		The number of initial points from the calculated MSD to use for fitting the transport model. Default is 7.
+	r2_threshold : float, optional
+		The R-squared threshold used to validate the fit. Default is 0.75.
+
+	Returns
+	-------
+	tuple
+		A tuple containing two ndarrays: the estimated diffusion coefficients and drift velocities for each point in time.
+
+	Raises
+	------
+	AssertionError
+		If the window size is not larger than the number of fit points or if the window size is even when mode is 'bi'.
+
+	Notes
+	-----
+	- The function assumes a uniform time step between each point in the timeline.
+	- The 'bi' mode requires an odd-sized window to symmetrically calculate the MSD around each point in time.
+	- The curve fitting is performed using the `curve_fit` function from `scipy.optimize`, fitting to the `drift_msd` model.
+
+	Examples
+	--------
+	>>> x = np.random.rand(100)
+	>>> y = np.random.rand(100)
+	>>> timeline = np.arange(100)
+	>>> window = 11
+	>>> diffusion, velocity = sliding_msd_drift(x, y, timeline, window, mode='bi')
+	# Calculates the diffusion coefficient and drift velocity using a bidirectional sliding window.
 	"""
 
 	assert window > n_points_migration,'Please set a window larger than the number of fit points...'
@@ -2200,6 +2801,6 @@ if __name__ == "__main__":
 	# model = MultiScaleResNetModel(3, n_classes = 3, dropout_rate=0, dense_collection=1024, header="classifier", model_signal_length = 128)
 	# print(model.summary())
 	model = ResNetModelCurrent(1, 2, depth=2, use_pooling=True, n_classes = 3, dropout_rate=0.1, dense_collection=512,
-				 	   header="classifier", model_signal_length = 128)
+					   header="classifier", model_signal_length = 128)
 	print(model.summary())
 	#plot_model(model, to_file='test.png', show_shapes=True)

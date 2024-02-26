@@ -169,6 +169,52 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 def segment_from_thresholds(stack, target_channel=0, thresholds=None, view_on_napari=False, equalize_reference=None,
 							filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None):
 
+	"""
+	Segments objects from a stack of images based on provided thresholds and optional image processing steps.
+
+	This function applies instance segmentation to each frame in a stack of images. Segmentation is based on intensity 
+	thresholds, optionally preceded by image equalization and filtering. Identified objects can 
+	be distinguished by applying distance-based marker detection. The segmentation results can be optionally viewed in Napari.
+
+	Parameters
+	----------
+	stack : ndarray
+		A 4D numpy array representing the image stack with dimensions (T, Y, X, C) where T is the 
+		time dimension and C the channel dimension.
+	target_channel : int, optional
+		The channel index to be used for segmentation (default is 0).
+	thresholds : list of tuples, optional
+		A list of tuples specifying intensity thresholds for segmentation. Each tuple corresponds to a frame in the stack, 
+		with values (lower_threshold, upper_threshold). If None, global thresholds are determined automatically (default is None).
+	view_on_napari : bool, optional
+		If True, displays the original stack and segmentation results in Napari (default is False).
+	equalize_reference : int or None, optional
+		The index of a reference frame used for histogram equalization. If None, equalization is not performed (default is None).
+	filters : list of dict, optional
+		A list of dictionaries specifying filters to be applied pre-segmentation. Each dictionary should 
+		contain filter parameters (default is None).
+	marker_min_distance : int, optional
+		The minimum distance between markers used for distinguishing separate objects (default is 30).
+	marker_footprint_size : int, optional
+		The size of the footprint used for local maxima detection when generating markers (default is 20).
+	marker_footprint : ndarray or None, optional
+		An array specifying the footprint used for local maxima detection. Overrides `marker_footprint_size` if provided 
+		(default is None).
+	feature_queries : list of str or None, optional
+		A list of query strings used to select features of interest from the segmented objects (default is None).
+
+	Returns
+	-------
+	ndarray
+		A 3D numpy array (T, Y, X) of type int16, where each element represents the segmented object label at each pixel.
+
+	Notes
+	-----
+	- The segmentation process can be customized extensively via the parameters, allowing for complex segmentation tasks.
+
+	"""
+
+
 	masks = []
 	for t in tqdm(range(len(stack))):
 		instance_seg = segment_frame_from_thresholds(stack[t], target_channel=target_channel, thresholds=thresholds, equalize_reference=equalize_reference,
@@ -184,6 +230,44 @@ def segment_from_thresholds(stack, target_channel=0, thresholds=None, view_on_na
 def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equalize_reference=None,
 								  filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None, channel_names=None):
 	
+	"""
+	Segments objects within a single frame based on intensity thresholds and optional image processing steps.
+
+	This function performs instance segmentation on a single frame using intensity thresholds, with optional steps
+	including histogram equalization, filtering, and marker-based watershed segmentation. The segmented
+	objects can be further filtered based on specified features.
+
+	Parameters
+	----------
+	frame : ndarray
+		A 3D numpy array representing a single frame with dimensions (Y, X, C).
+	target_channel : int, optional
+		The channel index to be used for segmentation (default is 0).
+	thresholds : tuple of int, optional
+		A tuple specifying the intensity thresholds for segmentation, in the form (lower_threshold, upper_threshold).
+	equalize_reference : ndarray or None, optional
+		A 2D numpy array used as a reference for histogram equalization. If None, equalization is not performed (default is None).
+	filters : list of dict, optional
+		A list of dictionaries specifying filters to be applied to the image before segmentation. Each dictionary
+		should contain filter parameters (default is None).
+	marker_min_distance : int, optional
+		The minimum distance between markers used for distinguishing separate objects during watershed segmentation (default is 30).
+	marker_footprint_size : int, optional
+		The size of the footprint used for local maxima detection when generating markers for watershed segmentation (default is 20).
+	marker_footprint : ndarray or None, optional
+		An array specifying the footprint used for local maxima detection. Overrides `marker_footprint_size` if provided (default is None).
+	feature_queries : list of str or None, optional
+		A list of query strings used to select features of interest from the segmented objects for further filtering (default is None).
+	channel_names : list of str or None, optional
+		A list of channel names corresponding to the dimensions in `frame`, used in conjunction with `feature_queries` for feature selection (default is None).
+
+	Returns
+	-------
+	ndarray
+		A 2D numpy array of type int, where each element represents the segmented object label at each pixel.
+
+	"""
+
 	img = frame[:,:,target_channel]
 	if equalize_reference is not None:
 		img = match_histograms(img, equalize_reference)
@@ -198,6 +282,40 @@ def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equa
 
 
 def filter_on_property(labels, intensity_image=None, queries=None, channel_names=None):
+
+	"""
+	Filters segmented objects in a label image based on specified properties and queries.
+
+	This function evaluates each segmented object (label) in the input label image against a set of queries related to its 
+	morphological and intensity properties. Objects not meeting the criteria defined in the queries are removed from the label 
+	image. This allows for the exclusion of objects based on size, shape, intensity, or custom-defined properties.
+
+	Parameters
+	----------
+	labels : ndarray
+		A 2D numpy array where each unique non-zero integer represents a segmented object (label).
+	intensity_image : ndarray, optional
+		A 2D numpy array of the same shape as `labels`, providing intensity values for each pixel. This is used to calculate
+		intensity-related properties of the segmented objects if provided (default is None).
+	queries : str or list of str, optional
+		One or more query strings used to filter the segmented objects based on their properties. Each query should be a 
+		valid pandas query string (default is None).
+	channel_names : list of str or None, optional
+		A list of channel names corresponding to the dimensions in the `intensity_image`. This is used to rename intensity
+		property columns appropriately (default is None).
+
+	Returns
+	-------
+	ndarray
+		A 2D numpy array of the same shape as `labels`, with objects not meeting the query criteria removed.
+
+	Notes
+	-----
+	- The function computes a set of predefined morphological properties and, if `intensity_image` is provided, intensity properties.
+	- Queries should be structured according to pandas DataFrame query syntax and can reference any of the computed properties.
+	- If `channel_names` is provided, intensity property column names are renamed to reflect the corresponding channel.
+
+	"""
 
 	if queries is None:
 		return labels
@@ -240,6 +358,47 @@ def filter_on_property(labels, intensity_image=None, queries=None, channel_names
 
 
 def apply_watershed(binary_image, coords, distance):
+
+	"""
+	Applies the watershed algorithm to segment objects in a binary image using given markers and distance map.
+
+	This function uses the watershed segmentation algorithm to delineate objects in a binary image. Markers for watershed
+	are determined by the coordinates of local maxima, and the segmentation is guided by a distance map to separate objects
+	that are close to each other.
+
+	Parameters
+	----------
+	binary_image : ndarray
+		A 2D numpy array of type bool, where True represents the foreground objects to be segmented and False represents the background.
+	coords : ndarray
+		An array of shape (N, 2) containing the (row, column) coordinates of local maxima points that will be used as markers for the
+		watershed algorithm. N is the number of local maxima.
+	distance : ndarray
+		A 2D numpy array of the same shape as `binary_image`, containing the distance transform of the binary image. This map is used
+		to guide the watershed segmentation.
+
+	Returns
+	-------
+	ndarray
+		A 2D numpy array of type int, where each unique non-zero integer represents a segmented object (label).
+
+	Notes
+	-----
+	- The function assumes that `coords` are derived from the distance map of `binary_image`, typically obtained using
+	  peak local max detection on the distance transform.
+	- The watershed algorithm treats each local maximum as a separate object and segments the image by "flooding" from these points.
+	- This implementation uses the `skimage.morphology.watershed` function under the hood.
+
+	Examples
+	--------
+	>>> from skimage import measure, morphology
+	>>> binary_image = np.array([[0, 0, 1, 1], [0, 1, 1, 1], [1, 1, 1, 0], [0, 0, 0, 0]], dtype=bool)
+	>>> distance = morphology.distance_transform_edt(binary_image)
+	>>> coords = measure.peak_local_max(distance, indices=True)
+	>>> labels = apply_watershed(binary_image, coords, distance)
+	# Segments the objects in `binary_image` using the watershed algorithm.
+	
+	"""
 
 	mask = np.zeros(binary_image.shape, dtype=bool)
 	mask[tuple(coords.T)] = True
@@ -445,7 +604,51 @@ def segment_at_position(pos, mode, model_name, stack_prefix=None, use_gpu=True, 
 		return None
 
 def segment_from_threshold_at_position(pos, mode, config, threads=1):
-	# Space in path problem fixed!!!
+
+	"""
+	Executes a segmentation script on a specified position directory using a given configuration and mode.
+
+	This function calls an external Python script designed to segment images at a specified position directory.
+	The segmentation is configured through a JSON file and can operate in different modes specified by the user.
+	The function can leverage multiple threads to potentially speed up the processing.
+
+	Parameters
+	----------
+	pos : str
+		The file path to the position directory where images to be segmented are stored. The path must be valid.
+	mode : str
+		The operation mode for the segmentation script. The mode determines how the segmentation is performed and 
+		which algorithm or parameters are used.
+	config : str
+		The file path to the JSON configuration file that specifies parameters for the segmentation process. The 
+		path must be valid.
+	threads : int, optional
+		The number of threads to use for processing. Using more than one thread can speed up segmentation on 
+		systems with multiple CPU cores (default is 1).
+
+	Raises
+	------
+	AssertionError
+		If either the `pos` or `config` paths do not exist.
+
+	Notes
+	-----
+	- The external segmentation script (`segment_cells_thresholds.py`) is expected to be located in a specific 
+	  directory relative to this function.
+	- The segmentation process and its parameters, including modes and thread usage, are defined by the external 
+	  script and the configuration file.
+
+	Examples
+	--------
+	>>> pos = '/path/to/position'
+	>>> mode = 'default'
+	>>> config = '/path/to/config.json'
+	>>> segment_from_threshold_at_position(pos, mode, config, threads=2)
+	# This will execute the segmentation script on the specified position directory with the given mode and 
+	# configuration, utilizing 2 threads.
+	
+	"""
+
 
 	pos = pos.replace('\\','/')
 	pos = rf"{pos}"
@@ -461,6 +664,41 @@ def segment_from_threshold_at_position(pos, mode, config, threads=1):
 
 
 def train_segmentation_model(config):
+
+	"""
+	Trains a segmentation model based on a specified configuration file.
+
+	This function initiates the training of a segmentation model by calling an external Python script, 
+	which reads the training parameters and dataset information from a given JSON configuration file. 
+	The training process, including model architecture, training data, and hyperparameters, is defined 
+	by the contents of the configuration file.
+
+	Parameters
+	----------
+	config : str
+		The file path to the JSON configuration file that specifies training parameters and dataset 
+		information for the segmentation model. The path must be valid.
+
+	Raises
+	------
+	AssertionError
+		If the `config` path does not exist.
+
+	Notes
+	-----
+	- The external training script (`train_segmentation_model.py`) is assumed to be located in a specific 
+	  directory relative to this function.
+	- The segmentation model and training process are highly dependent on the details specified in the 
+	  configuration file, including the model architecture, loss functions, optimizer settings, and 
+	  training/validation data paths.
+
+	Examples
+	--------
+	>>> config = '/path/to/training_config.json'
+	>>> train_segmentation_model(config)
+	# Initiates the training of a segmentation model using the parameters specified in the given configuration file.
+	
+	"""
 
 	config = config.replace('\\','/')
 	config = rf"{config}"

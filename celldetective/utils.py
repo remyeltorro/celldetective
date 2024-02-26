@@ -439,6 +439,43 @@ def remove_redundant_features(features, reference_features, channel_names=None):
 
 def _estimate_scale_factor(spatial_calibration, required_spatial_calibration):
 
+    """
+    Estimates the scale factor needed to adjust spatial calibration to a required value.
+
+    This function calculates the scale factor by which spatial dimensions (e.g., in microscopy images)
+    should be adjusted to align with a specified calibration standard. This is particularly useful when
+    preparing data for analysis with models trained on data of a specific spatial calibration.
+
+    Parameters
+    ----------
+    spatial_calibration : float or None
+        The current spatial calibration factor of the data, expressed as units per pixel (e.g., micrometers per pixel).
+        If None, indicates that the current spatial calibration is unknown or unspecified.
+    required_spatial_calibration : float or None
+        The spatial calibration factor required for compatibility with the model or analysis standard, expressed
+        in the same units as `spatial_calibration`. If None, indicates no adjustment is required.
+
+    Returns
+    -------
+    float or None
+        The scale factor by which the current data should be rescaled to match the required spatial calibration,
+        or None if no scaling is necessary or if insufficient information is provided.
+
+    Notes
+    -----
+    - A scale factor close to 1 (within a tolerance defined by `epsilon`) indicates that no significant rescaling
+      is needed, and the function returns None.
+    - The function issues a warning if a significant rescaling is necessary, indicating the scale factor to be applied.
+
+    Examples
+    --------
+    >>> scale_factor = _estimate_scale_factor(spatial_calibration=0.5, required_spatial_calibration=0.25)
+    # Each frame will be rescaled by a factor 2.0 to match with the model training data...
+
+    >>> scale_factor = _estimate_scale_factor(spatial_calibration=None, required_spatial_calibration=0.25)
+    # Returns None due to insufficient information about current spatial calibration.
+    """
+
 	if (required_spatial_calibration is not None)*(spatial_calibration is not None):
 		scale = spatial_calibration / required_spatial_calibration
 	else:
@@ -454,6 +491,31 @@ def _estimate_scale_factor(spatial_calibration, required_spatial_calibration):
 
 def auto_find_gpu():
 
+    """
+    Automatically detects the presence of GPU devices in the system.
+
+    This function checks if any GPU devices are available for use by querying the system's physical devices.
+    It is a utility function to simplify the process of determining whether GPU-accelerated computing can be
+    leveraged in data processing or model training tasks.
+
+    Returns
+    -------
+    bool
+        True if one or more GPU devices are detected, False otherwise.
+
+    Notes
+    -----
+    - The function uses TensorFlow's `list_physical_devices` method to query available devices, specifically
+      looking for 'GPU' devices.
+    - This function is useful for dynamically adjusting computation strategies based on available hardware resources.
+    
+    Examples
+    --------
+    >>> has_gpu = auto_find_gpu()
+    >>> print(f"GPU available: {has_gpu}")
+    # GPU available: True or False based on the system's hardware configuration.
+    """
+
 	gpus = list_physical_devices('GPU')
 	if len(gpus)>0:
 		use_gpu = True
@@ -463,6 +525,49 @@ def auto_find_gpu():
 	return use_gpu
 
 def _extract_channel_indices(channels, required_channels):
+
+    """
+    Extracts the indices of required channels from a list of available channels.
+
+    This function is designed to match the channels required by a model or analysis process with the channels
+    present in the dataset. It returns the indices of the required channels within the list of available channels.
+    If the required channels are not found among the available channels, the function prints an error message and
+    returns None.
+
+    Parameters
+    ----------
+    channels : list of str or None
+        A list containing the names of the channels available in the dataset. If None, it is assumed that the
+        dataset channels are in the same order as the required channels.
+    required_channels : list of str
+        A list containing the names of the channels required by the model or analysis process.
+
+    Returns
+    -------
+    ndarray or None
+        An array of indices indicating the positions of the required channels within the list of available
+        channels. Returns None if there is a mismatch between required and available channels.
+
+    Notes
+    -----
+    - The function is useful for preprocessing steps where specific channels of multi-channel data are needed
+      for further analysis or model input.
+    - In cases where `channels` is None, indicating that the dataset does not specify channel names, the function
+      assumes that the dataset's channel order matches the order of `required_channels` and returns an array of
+      indices based on this assumption.
+
+    Examples
+    --------
+    >>> available_channels = ['DAPI', 'GFP', 'RFP']
+    >>> required_channels = ['GFP', 'RFP']
+    >>> indices = _extract_channel_indices(available_channels, required_channels)
+    >>> print(indices)
+    # [1, 2]
+
+    >>> indices = _extract_channel_indices(None, required_channels)
+    >>> print(indices)
+    # [0, 1]
+    """
 
 	if channels is not None:
 		channel_indices = []
@@ -519,6 +624,47 @@ def ConfigSectionMap(path,section):
 
 def _extract_channel_indices_from_config(config, channels_to_extract):
 
+    """
+    Extracts the indices of specified channels from a configuration object.
+
+    This function attempts to map required channel names to their respective indices as specified in a
+    configuration file. It supports two versions of configuration parsing: a primary method (V2) and a
+    fallback legacy method. If the required channels are not found using the primary method, the function
+    attempts to find them using the legacy configuration settings.
+
+    Parameters
+    ----------
+    config : ConfigParser object
+        The configuration object parsed from a .ini or similar configuration file that includes channel settings.
+    channels_to_extract : list of str
+        A list of channel names for which indices are to be extracted from the configuration settings.
+
+    Returns
+    -------
+    list of int or None
+        A list containing the indices of the specified channels as found in the configuration settings.
+        If a channel cannot be found, None is appended in its place. If an error occurs during the extraction
+        process, the function returns None.
+
+    Notes
+    -----
+    - This function is designed to be flexible, accommodating changes in configuration file structure by
+      checking multiple sections for the required information.
+    - The configuration file is expected to contain either "Channels" or "MovieSettings" sections with mappings
+      from channel names to indices.
+    - An error message is printed if a required channel cannot be found, advising the user to check the
+      configuration file.
+
+    Examples
+    --------
+    >>> config = ConfigParser()
+    >>> config.read('example_config.ini')
+    >>> channels_to_extract = ['GFP', 'RFP']
+    >>> channel_indices = _extract_channel_indices_from_config(config, channels_to_extract)
+    >>> print(channel_indices)
+    # [1, 2] or None if an error occurs or the channels are not found.
+    """
+
 	# V2
 	channels = []
 	for c in channels_to_extract:
@@ -547,6 +693,47 @@ def _extract_channel_indices_from_config(config, channels_to_extract):
 	return channels
 
 def _extract_nbr_channels_from_config(config, return_names=False):
+
+    """
+    Extracts the indices of specified channels from a configuration object.
+
+    This function attempts to map required channel names to their respective indices as specified in a
+    configuration file. It supports two versions of configuration parsing: a primary method (V2) and a
+    fallback legacy method. If the required channels are not found using the primary method, the function
+    attempts to find them using the legacy configuration settings.
+
+    Parameters
+    ----------
+    config : ConfigParser object
+        The configuration object parsed from a .ini or similar configuration file that includes channel settings.
+    channels_to_extract : list of str
+        A list of channel names for which indices are to be extracted from the configuration settings.
+
+    Returns
+    -------
+    list of int or None
+        A list containing the indices of the specified channels as found in the configuration settings.
+        If a channel cannot be found, None is appended in its place. If an error occurs during the extraction
+        process, the function returns None.
+
+    Notes
+    -----
+    - This function is designed to be flexible, accommodating changes in configuration file structure by
+      checking multiple sections for the required information.
+    - The configuration file is expected to contain either "Channels" or "MovieSettings" sections with mappings
+      from channel names to indices.
+    - An error message is printed if a required channel cannot be found, advising the user to check the
+      configuration file.
+
+    Examples
+    --------
+    >>> config = ConfigParser()
+    >>> config.read('example_config.ini')
+    >>> channels_to_extract = ['GFP', 'RFP']
+    >>> channel_indices = _extract_channel_indices_from_config(config, channels_to_extract)
+    >>> print(channel_indices)
+    # [1, 2] or None if an error occurs or the channels are not found.
+    """
 
 	# V2
 	nbr_channels = 0
@@ -624,6 +811,49 @@ def _extract_nbr_channels_from_config(config, return_names=False):
 
 def _get_img_num_per_channel(channels_indices, len_movie, nbr_channels):
 
+    """
+    Calculates the image frame numbers for each specified channel in a multi-channel movie.
+
+    Given the indices of channels of interest, the total length of the movie, and the number of channels,
+    this function computes the frame numbers corresponding to each channel throughout the movie. If a
+    channel index is specified as None, it assigns a placeholder value to indicate no frames for that channel.
+
+    Parameters
+    ----------
+    channels_indices : list of int or None
+        A list containing the indices of channels for which to calculate frame numbers. If an index is None,
+        it is interpreted as a channel with no frames to be processed.
+    len_movie : int
+        The total number of frames in the movie across all channels.
+    nbr_channels : int
+        The total number of channels in the movie.
+
+    Returns
+    -------
+    ndarray
+        A 2D numpy array where each row corresponds to a channel specified in `channels_indices` and contains
+        the frame numbers for that channel throughout the movie. If a channel index is None, the corresponding
+        row contains placeholder values (-1).
+
+    Notes
+    -----
+    - The function assumes that frames in the movie are interleaved by channel, with frames for each channel
+      appearing in a regular sequence throughout the movie.
+    - This utility is particularly useful for multi-channel time-lapse movies where analysis or processing
+      needs to be performed on a per-channel basis.
+
+    Examples
+    --------
+    >>> channels_indices = [0, 2, None]  # Indices for channels 1, 3, and a non-existing channel
+    >>> len_movie = 10  # Total frames for each channel
+    >>> nbr_channels = 3  # Total channels in the movie
+    >>> img_num_per_channel = _get_img_num_per_channel(channels_indices, len_movie, nbr_channels)
+    >>> print(img_num_per_channel)
+    # [[ 0  3  6  9 12 15 18 21 24 27]
+    #  [ 2  5  8 11 14 17 20 23 26 29]
+    #  [-1 -1 -1 -1 -1 -1 -1 -1 -1 -1]]
+    """
+
 	len_movie = int(len_movie)
 	nbr_channels = int(nbr_channels)
 	
@@ -678,6 +908,43 @@ def _extract_labels_from_config(config,number_of_wells):
 	return(labels)
 
 def extract_experiment_channels(config):
+
+    """
+    Extracts channel names and their indices from an experiment configuration.
+
+    This function attempts to parse channel information from a given configuration object, supporting
+    both a newer (V2) and a legacy format. It first tries to extract channel names and indices according
+    to the V2 format from the "Channels" section. If no channels are found or if the section does not
+    exist, it falls back to extracting specific channel information from the "MovieSettings" section
+    based on predefined channel names.
+
+    Parameters
+    ----------
+    config : ConfigParser object
+        The configuration object parsed from an experiment's .ini or similar configuration file.
+
+    Returns
+    -------
+    tuple
+        A tuple containing two numpy arrays: `channel_names` and `channel_indices`. `channel_names` includes
+        the names of the channels as specified in the configuration, and `channel_indices` includes their
+        corresponding indices. Both arrays are ordered according to the channel indices.
+
+    Notes
+    -----
+    - The function supports extracting a variety of channel types, including brightfield, live and dead nuclei
+      channels, effector fluorescence channels, adhesion channels, and generic fluorescence channels.
+    - If channel information cannot be parsed or if required fields are missing, the function returns empty arrays.
+    - This utility is particularly useful for preprocessing steps where specific channels of multi-channel
+      experimental data are needed for further analysis or model input.
+
+    Examples
+    --------
+    >>> config = ConfigParser()
+    >>> config.read('experiment_config.ini')
+    >>> channel_names, channel_indices = extract_experiment_channels(config)
+    # Extracts and sorts channel information based on indices from the experiment configuration.
+    """
 
 	# V2
 	channel_names = []
@@ -763,6 +1030,51 @@ def get_software_location():
 	return rf"{os.path.split(os.path.dirname(os.path.realpath(__file__)))[0]}"
 
 def remove_trajectory_measurements(trajectories, column_labels):
+
+    """
+    Filters a DataFrame of trajectory measurements to retain only essential tracking and classification columns.
+
+    Given a DataFrame containing detailed trajectory measurements and metadata for tracked objects, this
+    function reduces the DataFrame to include only a predefined set of essential columns necessary for
+    further analysis or visualization. The set of columns to retain includes basic tracking information,
+    spatial coordinates, classification results, and certain metadata.
+
+    Parameters
+    ----------
+    trajectories : pandas.DataFrame
+        The DataFrame containing trajectory measurements and metadata for each tracked object.
+    column_labels : dict
+        A dictionary mapping standard column names to their corresponding column names in the `trajectories` DataFrame.
+        Expected keys include 'track', 'time', 'x', 'y', among others.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A filtered DataFrame containing only the essential columns as defined by `columns_to_keep` and present
+        in `trajectories`.
+
+    Notes
+    -----
+    - The function dynamically adjusts the list of columns to retain based on their presence in the input DataFrame,
+      ensuring compatibility with DataFrames containing varying sets of measurements.
+    - Essential columns include tracking identifiers, time points, spatial coordinates (both pixel and physical units),
+      classification labels, state information, lineage metadata, and visualization attributes.
+
+    Examples
+    --------
+    >>> column_labels = {
+    ...     'track': 'TRACK_ID', 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'
+    ... }
+    >>> trajectories_df = pd.DataFrame({
+    ...     'TRACK_ID': [1, 1, 2],
+    ...     'FRAME': [0, 1, 0],
+    ...     'POSITION_X': [100, 105, 200],
+    ...     'POSITION_Y': [150, 155, 250],
+    ...     'velocity': [0.5, 0.5, 0.2],  # Additional column to be removed
+    ... })
+    >>> filtered_df = remove_trajectory_measurements(trajectories_df, column_labels)
+    # `filtered_df` will contain only the essential columns as per `column_labels` and predefined essential columns.
+    """
 
 	tracks = trajectories.copy()
 
@@ -913,10 +1225,66 @@ def augmenter(x, y, flip=True, gauss_blur=True, noise_option=True, shift=True,
 	channel_extinction=False, extinction_probability=0.1, clip=False, max_sigma_blur=4, 
 	apply_noise_probability=0.5, augment_probability=0.9):
 
-	"""
-	Augmentation routine for DL training.
+    """
+    Applies a series of augmentation techniques to images and their corresponding masks for deep learning training.
 
-	"""
+    This function randomly applies a set of transformations including flipping, rotation, Gaussian blur,
+    additive noise, shifting, and channel extinction to input images (x) and their masks (y) based on specified
+    probabilities. These augmentations introduce variability in the training dataset, potentially improving model
+    generalization.
+
+    Parameters
+    ----------
+    x : ndarray
+        The input image to be augmented, with dimensions (height, width, channels).
+    y : ndarray
+        The corresponding mask or label image for `x`, with the same spatial dimensions.
+    flip : bool, optional
+        Whether to randomly flip and rotate the images. Default is True.
+    gauss_blur : bool, optional
+        Whether to apply Gaussian blur to the images. Default is True.
+    noise_option : bool, optional
+        Whether to add random noise to the images. Default is True.
+    shift : bool, optional
+        Whether to randomly shift the images. Default is True.
+    channel_extinction : bool, optional
+        Whether to randomly set entire channels of the image to zero. Default is False.
+    extinction_probability : float, optional
+        The probability of an entire channel being set to zero. Default is 0.1.
+    clip : bool, optional
+        Whether to clip the noise-added images to stay within valid intensity values. Default is False.
+    max_sigma_blur : int, optional
+        The maximum sigma value for Gaussian blur. Default is 4.
+    apply_noise_probability : float, optional
+        The probability of applying noise to the image. Default is 0.5.
+    augment_probability : float, optional
+        The overall probability of applying any augmentation to the image. Default is 0.9.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the augmented image and mask `(x, y)`.
+
+    Raises
+    ------
+    AssertionError
+        If `extinction_probability` is not within the range [0, 1].
+
+    Notes
+    -----
+    - The augmentations are applied randomly based on the specified probabilities, allowing for
+      a diverse set of transformed images from the original inputs.
+    - This function is designed to be part of a preprocessing pipeline for training deep learning models,
+      especially in tasks requiring spatial invariance and robustness to noise.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.random.rand(128, 128, 3)  # Sample image
+    >>> y = np.random.randint(2, size=(128, 128))  # Sample binary mask
+    >>> x_aug, y_aug = augmenter(x, y)
+    # The returned `x_aug` and `y_aug` are augmented versions of `x` and `y`.
+    """
 
 	r = random.random()
 	if r<= augment_probability:
@@ -943,6 +1311,53 @@ def augmenter(x, y, flip=True, gauss_blur=True, noise_option=True, shift=True,
 
 def normalize_per_channel(X, normalization_percentile_mode=True, normalization_values=[0.1,99.99],normalization_clipping=False):
 	
+    """
+    Applies per-channel normalization to a list of multi-channel images.
+
+    This function normalizes each channel of every image in the list `X` based on either percentile values
+    or fixed min-max values. Optionally, it can also clip the normalized values to stay within the [0, 1] range.
+    The normalization can be applied in a percentile mode, where the lower and upper bounds for normalization
+    are determined based on the specified percentiles of the non-zero values in each channel.
+
+    Parameters
+    ----------
+    X : list of ndarray
+        A list of 3D numpy arrays, where each array represents a multi-channel image with dimensions
+        (height, width, channels).
+    normalization_percentile_mode : bool or list of bool, optional
+        If True (or a list of True values), normalization bounds are determined by percentiles specified
+        in `normalization_values` for each channel. If False, fixed `normalization_values` are used directly.
+        Default is True.
+    normalization_values : list of two floats or list of lists of two floats, optional
+        The percentile values [lower, upper] used for normalization in percentile mode, or the fixed
+        min-max values [min, max] for direct normalization. Default is [0.1, 99.99].
+    normalization_clipping : bool or list of bool, optional
+        Determines whether to clip the normalized values to the [0, 1] range for each channel. Default is False.
+
+    Returns
+    -------
+    list of ndarray
+        The list of normalized multi-channel images.
+
+    Raises
+    ------
+    AssertionError
+        If the input images do not have a channel dimension, or if the lengths of `normalization_values`,
+        `normalization_clipping`, and `normalization_percentile_mode` do not match the number of channels.
+
+    Notes
+    -----
+    - The normalization is applied in-place, modifying the input list `X`.
+    - This function is designed to handle multi-channel images commonly used in image processing and
+      computer vision tasks, particularly when different channels require separate normalization strategies.
+
+    Examples
+    --------
+    >>> X = [np.random.rand(100, 100, 3) for _ in range(5)]  # Example list of 5 RGB images
+    >>> normalized_X = normalize_per_channel(X)
+    # Normalizes each channel of each image based on the default percentile values [0.1, 99.99].
+    """
+
 	assert X[0].ndim==3,'Channel axis does not exist. Abort.'
 	n_channels = X[0].shape[-1]
 	if isinstance(normalization_percentile_mode, bool):
@@ -978,6 +1393,53 @@ def normalize_per_channel(X, normalization_percentile_mode=True, normalization_v
 	return X
 
 def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_suffix='labelled'):
+
+    """
+    Loads image and corresponding mask datasets, optionally applying spatial calibration adjustments.
+
+    This function iterates over specified datasets, loading image and mask pairs based on provided channels
+    and adjusting images according to a specified spatial calibration factor. It supports loading images with
+    multiple channels and applies necessary transformations to match the training spatial calibration.
+
+    Parameters
+    ----------
+    datasets : list of str
+        A list of paths to the datasets containing the images and masks.
+    channels : str or list of str
+        The channel(s) to be loaded from the images. If a string is provided, it is converted into a list.
+    train_spatial_calibration : float, optional
+        The spatial calibration (e.g., micrometers per pixel) used during model training. If provided, images
+        will be rescaled to match this calibration. Default is None, indicating no rescaling is applied.
+    mask_suffix : str, optional
+        The suffix used to identify mask files corresponding to the images. Default is 'labelled'.
+
+    Returns
+    -------
+    tuple of lists
+        A tuple containing two lists: `X` for images and `Y` for corresponding masks. Both lists contain
+        numpy arrays of loaded and optionally transformed images and masks.
+
+    Raises
+    ------
+    AssertionError
+        If the provided `channels` argument is not a list or if the number of loaded images does not match
+        the number of loaded masks.
+
+    Notes
+    -----
+    - The function assumes that mask filenames are derived from image filenames by appending a `mask_suffix`
+      before the file extension.
+    - Spatial calibration adjustment involves rescaling the images and masks to match the `train_spatial_calibration`.
+    - Only images with a corresponding mask and a valid configuration file specifying channel indices and
+      spatial calibration are loaded.
+
+    Examples
+    --------
+    >>> datasets = ['/path/to/dataset1', '/path/to/dataset2']
+    >>> channels = ['DAPI', 'GFP']
+    >>> X, Y = load_image_dataset(datasets, channels, train_spatial_calibration=0.65)
+    # Loads DAPI and GFP channels from specified datasets, rescaling images to match a spatial calibration of 0.65.
+    """
 
 	if isinstance(channels, str):
 		channels = [channels]

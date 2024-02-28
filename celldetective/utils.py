@@ -668,7 +668,7 @@ def _extract_channel_indices_from_config(config, channels_to_extract):
 	# V2
 	channels = []
 	for c in channels_to_extract:
-		if c!='None':
+		if c!='None' and c is not None:
 			try:
 				c1 = int(ConfigSectionMap(config,"Channels")[c])
 				channels.append(c1)

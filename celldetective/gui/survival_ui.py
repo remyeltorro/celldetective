@@ -384,8 +384,12 @@ class ConfigSurvival(QWidget):
 		# Per position survival
 		left_censored = False
 		for block,movie_group in self.df.groupby(['well','position']):
-			classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
-			times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
+			try:
+				classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
+				times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
+			except Exception as e:
+				print(e)
+				continue
 			max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 			first_detections = None
 			
@@ -432,9 +436,12 @@ class ConfigSurvival(QWidget):
 			well_first_detections = []
 
 			for block,movie_group in well_group.groupby('position'):
-
-				classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
-				times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
+				try:
+					classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
+					times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
+				except Exception as e:
+					print(e)
+					continue
 				max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 				first_detections = None
 
@@ -553,14 +560,21 @@ class ConfigSurvival(QWidget):
 
 		elif self.plot_mode=='both':
 			self.initialize_axis()
-			lines_pos = self.df_pos_info.loc[self.df_pos_info['select'],'survival_fit'].values
-			lines_well = self.df_well_info.loc[self.df_well_info['select'],'survival_fit'].values	
+			if 'survival_fit' in self.df_pos_info.columns:
+				lines_pos = self.df_pos_info.loc[self.df_pos_info['select'],'survival_fit'].values
+			else:
+				lines_pos = []
+			if 'survival_fit' in self.df_well_info.columns:
+				lines_well = self.df_well_info.loc[self.df_well_info['select'],'survival_fit'].values
+			else:
+				lines_well = []
 
 			pos_indices = self.df_pos_info.loc[self.df_pos_info['select'],'pos_index'].values
 			well_index_pos = self.df_pos_info.loc[self.df_pos_info['select'],'well_index'].values
 			well_index = self.df_well_info.loc[self.df_well_info['select'],'well_index'].values
 			well_labels = self.df_well_info.loc[self.df_well_info['select'],'well_name'].values
 			pos_labels = self.df_pos_info.loc[self.df_pos_info['select'],'pos_name'].values
+
 
 			for i in range(len(lines_pos)):
 				if len(self.well_indices)<=1 and lines_pos[i]==lines_pos[i]:

@@ -347,7 +347,15 @@ class ProcessPanel(QFrame):
 		test = self.parent.locate_selected_position()
 		if test:
 			print('Memory use: ', dict(psutil.virtual_memory()._asdict()))
-			control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode,flush_memory=True)
+			try:
+				control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode,flush_memory=True)
+			except Exception as e:
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Warning)
+				msgBox.setText(str(e))
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Ok)
+				returnValue = msgBox.exec()
 			gc.collect()
 
 	def check_signals(self):

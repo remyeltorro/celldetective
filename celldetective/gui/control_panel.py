@@ -78,6 +78,7 @@ class ControlPanel(QMainWindow):
 		self.scroll.setWidget(self.w)
 		self.setCentralWidget(self.scroll)
 		self.create_config_dir()
+		self.update_position_options()
 
 	def init_wells_and_positions(self):
 

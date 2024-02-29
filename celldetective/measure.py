@@ -389,7 +389,15 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 			if verbose:
 				print('No intensity feature was passed... Adding mean intensity for edge measurement...')
 			intensity_features = np.append(intensity_features, 'intensity_mean')
-		intensity_features = np.append(intensity_features, 'label')
+		
+		intensity_features = list(np.append(intensity_features, 'label'))
+
+		# Remove extra intensity properties from border measurements
+		new_intensity_features = intensity_features.copy()
+		for int_feat in intensity_features:
+			if int_feat in extra_props:
+				new_intensity_features.remove(int_feat)
+		intensity_features = new_intensity_features
 
 		if (isinstance(border_dist, int) or isinstance(border_dist, float)):
 			border_label = contour_of_instance_segmentation(label, border_dist)

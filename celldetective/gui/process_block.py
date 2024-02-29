@@ -95,7 +95,7 @@ class ProcessPanel(QFrame):
 			self.collapse_btn.setIconSize(QSize(20, 20))
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
-			self.parent.scroll.setMinimumHeight(min(int(880), self.parent.screen_height))
+			self.parent.scroll.setMinimumHeight(min(int(880), int(0.9*self.parent.screen_height)))
 			#self.parent.scroll.adjustSize()
 
 	def populate_contents(self):

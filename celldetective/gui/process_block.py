@@ -86,7 +86,7 @@ class ProcessPanel(QFrame):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.scroll.setMinimumHeight(int(470))
+			self.parent.scroll.setMinimumHeight(int(500))
 			#self.parent.w.adjustSize()
 			self.parent.adjustSize()
 			#self.parent.scroll.adjustSize()
@@ -95,7 +95,7 @@ class ProcessPanel(QFrame):
 			self.collapse_btn.setIconSize(QSize(20, 20))
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
-			self.parent.scroll.setMinimumHeight(min(int(880), int(0.9*self.parent.screen_height)))
+			self.parent.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent.screen_height)))
 			#self.parent.scroll.adjustSize()
 
 	def populate_contents(self):

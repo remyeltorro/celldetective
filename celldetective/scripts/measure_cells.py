@@ -171,6 +171,9 @@ else:
 #######################################
 
 timestep_dataframes = []
+if trajectories is None:
+	print('Use features as a substitute for the trajectory table.')
+
 for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 	
 	if file is not None:
@@ -187,7 +190,6 @@ for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
 		feature_table = measure_features(img, lbl, features = features, border_dist=border_distances, 
 										channels=channel_names, haralick_options=haralick_options, verbose=False)
 		if trajectories is None:
-			print('Use features as a substitute for the trajectory table.')
 			positions_at_t = feature_table[['centroid-1', 'centroid-0','class_id']].copy()
 			positions_at_t['ID'] = np.arange(len(positions_at_t))	# temporary ID for the cells, that will be reset at the end since they are not tracked
 			positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'},inplace=True)

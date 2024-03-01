@@ -7,6 +7,11 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from PyQt5.QtCore import Qt, QSize
 import os
+from sklearn.metrics import r2_score
+from scipy.optimize import curve_fit
+
+def step_function(t, t_shift, dt):
+	return 1/(1+np.exp(-(t-t_shift)/dt))
 
 class ClassifierWidget(QWidget):
 
@@ -213,17 +218,21 @@ class ClassifierWidget(QWidget):
 
 		name_map = {self.class_name: self.class_name_user}
 		self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
+		self.df.reset_index(inplace=True, drop=True)
+
+		#self.df.reset_index(inplace=True)
 		if 'TRACK_ID' in list(self.df.columns):
 			print('Tracks detected... save a status column...')
 			stat_col = self.class_name_user.replace('class','status')
 			self.df.loc[:,stat_col] = 1 - self.df[self.class_name_user].values
-			for tid,track in self.df.groupby('TRACK_ID'):
+			for tid,track in self.df.groupby(['position','TRACK_ID']):
 				indices = track[self.class_name_user].index
 				status_values = track[stat_col].to_numpy()
 				if np.all([s==0 for s in status_values]):
 					self.df.loc[indices, self.class_name_user] = 1
 				else:
 					self.df.loc[indices, self.class_name_user] = 2
+			self.estimate_time()
 
 		for pos,pos_group in self.df.groupby('position'):
 			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.mode}.csv']), index=False)
@@ -262,4 +271,41 @@ class ClassifierWidget(QWidget):
 
 		self.ax_props.autoscale()
 		self.propscanvas.canvas.draw_idle()
+
+	def estimate_time(self):
+
+		self.df = self.df.sort_values(by=['position','TRACK_ID'],ignore_index=True)
+		for tid,group in self.df.loc[self.df[self.class_name_user]==2].groupby(['position','TRACK_ID']):
+			indices = group.index
+			status_col = self.class_name_user.replace('class','status')
+			status_signal = group[status_col].values
+			timeline = group['FRAME'].values
+			
+			try:
+				popt, pcov = curve_fit(step_function, timeline, status_signal,p0=[self.df['FRAME'].max()//2, 0.5],maxfev=5000)
+				r2 = r2_score(status_signal, step_function(timeline, *popt))
+			except Exception as e:
+				print(e)
+				self.df.loc[indices, self.class_name_user] = 2.0
+				self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+				continue
+
+			if r2 > 0.7:
+				t0 = popt[0]
+				self.df.loc[indices, self.class_name_user.replace('class','t')] = t0
+				self.df.loc[indices, self.class_name_user] = 0.0
+			else:
+				self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+				self.df.loc[indices, self.class_name_user] = 2.0
+
+		print('Done.')
+
+
+
+
+
+
+
+
+
 

@@ -36,10 +36,12 @@ tprint("Train")
 parser = argparse.ArgumentParser(description="Train a signal model from instructions.",
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-c',"--config", required=True,help="Training instructions")
+parser.add_argument('-g',"--use_gpu", required=True, help="Use GPU")
 
 args = parser.parse_args()
 process_arguments = vars(args)
 instructions = str(process_arguments['config'])
+use_gpu = bool(process_arguments['use_gpu'])
 
 if os.path.exists(instructions):
 	with open(instructions, 'r') as f:
@@ -47,8 +49,6 @@ if os.path.exists(instructions):
 else:
 	print('Training instructions could not be found. Abort.')
 	os.abort()
-
-use_gpu = True
 
 model_name = training_instructions['model_name']
 target_directory = training_instructions['target_directory']
@@ -130,19 +130,23 @@ if model_type=='cellpose':
 
 	from cellpose.models import CellposeModel
 	from cellpose.io import logger_setup
+	import torch
 	
+	if not use_gpu:
+		device = torch.device("cpu")
+		
 	logger, log_file = logger_setup()
 	print(f'Pretrained model: ',pretrained)
 	if pretrained is not None:
 		pretrained_path = os.sep.join([pretrained,os.path.split(pretrained)[-1]])
 	else:
 		pretrained_path = pretrained
-	model = CellposeModel(gpu=use_gpu, model_type=None, pretrained_model=pretrained_path, diam_mean=30.0, nchan=X_aug[0].shape[0],)
+	
+	model = CellposeModel(gpu=use_gpu, model_type=None, pretrained_model=pretrained_path, diam_mean=30.0, nchan=X_aug[0].shape[0],) 
 	model.train(train_data=X_aug, train_labels=Y_aug, normalize=False, channels=None, batch_size=batch_size,
 				min_train_masks=1,save_path=target_directory+os.sep+model_name,n_epochs=epochs, model_name=model_name, learning_rate=learning_rate, test_data = X_val, test_labels=Y_val)
 
 	file_to_move = glob(os.sep.join([target_directory, model_name, 'models','*']))[0]
-	print(os.path.split(file_to_move)[-1])
 	shutil.move(file_to_move, os.sep.join([target_directory, model_name,''])+os.path.split(file_to_move)[-1])
 	os.rmdir(os.sep.join([target_directory, model_name, 'models']))
 

@@ -52,6 +52,7 @@ class AppInitWindow(QMainWindow):
 		self.create_locate_exp_hbox()
 		self.create_buttons_hbox()
 		self.setCentralWidget(central_widget)
+		self.reload_previous_gpu_threads()
 		self.show()
 
 	def create_locate_exp_hbox(self):
@@ -153,6 +154,19 @@ class AppInitWindow(QMainWindow):
 
 		self.DocumentationAction.triggered.connect(self.open_documentation)
 
+	def reload_previous_gpu_threads(self):
+
+		self.recentFileActs = []
+		self.threads_config_path = os.sep.join([self.soft_path,'celldetective','threads.json'])
+		if os.path.exists(self.threads_config_path):
+			with open(self.threads_config_path, 'r') as f:
+				self.threads_config = json.load(f)
+			if 'use_gpu' in self.threads_config:
+				self.use_gpu = bool(self.threads_config['use_gpu'])
+			if 'n_threads' in self.threads_config:
+				self.n_threads = int(self.threads_config['n_threads'])
+
+
 	def reload_previous_experiments(self):
 
 		recentExps = []
@@ -202,6 +216,9 @@ class AppInitWindow(QMainWindow):
 	def set_threads(self):
 		self.n_threads = int(self.threads_le.text())
 		self.use_gpu = bool(self.use_gpu_checkbox.isChecked())
+		dico = {"use_gpu": self.use_gpu, "n_threads": self.n_threads}
+		with open(self.threads_config_path, 'w') as f:
+			json.dump(dico, f, indent=4)
 		self.ThreadsWidget.close()
 
 
@@ -404,6 +421,7 @@ if __name__ == "__main__":
 	from celldetective.gui.about import AboutWidget
 	import psutil
 	import subprocess
+	import json
 
 
 	window = AppInitWindow(App)

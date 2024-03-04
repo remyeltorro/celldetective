@@ -879,7 +879,7 @@ def compute_instantaneous_diffusion(trajectories, column_labels={'track': "TRACK
 
 	return trajectories
 
-def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
+def track_at_position(pos, mode, return_tracks=False, view_on_napari=False, threads=1):
 	
 	pos = pos.replace('\\','/')
 	pos = rf"{pos}"
@@ -888,7 +888,7 @@ def track_at_position(pos, mode, return_tracks=False, view_on_napari=False):
 		pos += '/'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'track_cells.py'])	
-	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}"'
+	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}" --threads "{threads}"'
 	subprocess.call(cmd, shell=True)
 
 	track_table = pos + os.sep.join(["output","tables",f"trajectories_{mode}.csv"])

@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(description="Segment a movie in position with t
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-p',"--position", required=True, help="Path to the position")
 parser.add_argument("--mode", default="target", choices=["target","effector","targets","effectors"],help="Cell population of interest")
-parser.add_argument("--threads", default="8",help="Number of parallel threads")
+parser.add_argument("--threads", default="1",help="Number of parallel threads")
 
 args = parser.parse_args()
 process_arguments = vars(args)

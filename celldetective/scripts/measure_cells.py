@@ -19,6 +19,7 @@ import gc
 from natsort import natsorted
 from art import tprint
 from tifffile import imread
+import threading
 
 tprint("Measure")
 
@@ -26,11 +27,13 @@ parser = argparse.ArgumentParser(description="Measure features and intensities i
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-p',"--position", required=True, help="Path to the position")
 parser.add_argument("--mode", default="target", choices=["target","effector","targets","effectors"],help="Cell population of interest")
+parser.add_argument("--threads", default="1", help="Number of parallel threads")
 
 args = parser.parse_args()
 process_arguments = vars(args)
 pos = str(process_arguments['position'])
 mode = str(process_arguments['mode'])
+n_threads = int(process_arguments['threads'])
 
 column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}
 
@@ -174,41 +177,59 @@ timestep_dataframes = []
 if trajectories is None:
 	print('Use features as a substitute for the trajectory table.')
 
-for t in tqdm(range(img_num_channels.shape[1]),desc="frame"):
+
+def measure_index(indices):
 	
-	if file is not None:
-		img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
-	
-	if label_path is not None:
-		lbl = imread(label_path[t])
+	global column_labels
 
-	if trajectories is not None:
+	for t in tqdm(indices,desc="frame"):
+		
+		if file is not None:
+			img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
+		
+		if label_path is not None:
+			lbl = imread(label_path[t])
 
-		positions_at_t = trajectories.loc[trajectories[column_labels['time']]==t].copy()
+		if trajectories is not None:
 
-	if do_features:
-		feature_table = measure_features(img, lbl, features = features, border_dist=border_distances, 
-										channels=channel_names, haralick_options=haralick_options, verbose=False)
-		if trajectories is None:
-			positions_at_t = feature_table[['centroid-1', 'centroid-0','class_id']].copy()
-			positions_at_t['ID'] = np.arange(len(positions_at_t))	# temporary ID for the cells, that will be reset at the end since they are not tracked
-			positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'},inplace=True)
-			positions_at_t['FRAME'] = int(t)
-			column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'], 'y': column_labels['y']}
+			positions_at_t = trajectories.loc[trajectories[column_labels['time']]==t].copy()
 
-	if do_iso_intensities:
-		iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
+		if do_features:
+			feature_table = measure_features(img, lbl, features = features, border_dist=border_distances, 
+											channels=channel_names, haralick_options=haralick_options, verbose=False)
+			if trajectories is None:
+				positions_at_t = feature_table[['centroid-1', 'centroid-0','class_id']].copy()
+				positions_at_t['ID'] = np.arange(len(positions_at_t))	# temporary ID for the cells, that will be reset at the end since they are not tracked
+				positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'},inplace=True)
+				positions_at_t['FRAME'] = int(t)
+				column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'], 'y': column_labels['y']}
 
-	if do_iso_intensities and do_features:
-		measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
-	elif do_iso_intensities*(not do_features):
-		measurements_at_t = iso_table
-	elif do_features:
-		measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
+		if do_iso_intensities:
+			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
-	if measurements_at_t is not None:
-		measurements_at_t[column_labels['time']] = t
-		timestep_dataframes.append(measurements_at_t)
+		if do_iso_intensities and do_features:
+			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
+		elif do_iso_intensities*(not do_features):
+			measurements_at_t = iso_table
+		elif do_features:
+			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
+
+		if measurements_at_t is not None:
+			measurements_at_t[column_labels['time']] = t
+			timestep_dataframes.append(measurements_at_t)
+
+# Multithreading
+indices = list(range(img_num_channels.shape[1]))
+chunks = np.array_split(indices, n_threads)
+threads = []
+for i in range(n_threads):
+	thread_i = threading.Thread(target=measure_index, args=[chunks[i]])
+	threads.append(thread_i)
+for th in threads:
+	th.start()
+for th in threads:
+	th.join()
+
 
 if len(timestep_dataframes)>0:
 	df = pd.concat(timestep_dataframes)	
@@ -219,6 +240,8 @@ if len(timestep_dataframes)>0:
 
 	if column_labels['track'] in df.columns:
 		df = df.sort_values(by=[column_labels['track'], column_labels['time']])
+	else:
+		df = df.sort_values(by=column_labels['time'])
 	
 	df.to_csv(pos+os.sep.join(["output", "tables", table_name]), index=False)
 	print(f'Measurements successfully written in table {pos+os.sep.join(["output", "tables", table_name])}')

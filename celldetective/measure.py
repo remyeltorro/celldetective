@@ -741,7 +741,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 	positions['class_id'] = positions['class_id'].astype(float)
 	return positions
 
-def measure_at_position(pos, mode, return_measurements=False):
+def measure_at_position(pos, mode, return_measurements=False, threads=1):
 	
 	"""
 	Executes a measurement script at a specified position directory, optionally returning the measured data.
@@ -775,7 +775,7 @@ def measure_at_position(pos, mode, return_measurements=False):
 	if not pos.endswith('/'):
 		pos += '/'
 	script_path = os.sep.join([abs_path, 'scripts', 'measure_cells.py'])
-	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}"'
+	cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}" --threads "{threads}"'
 	subprocess.call(cmd, shell=True)
 
 	table = pos + os.sep.join(["output","tables",f"trajectories_{mode}.csv"])

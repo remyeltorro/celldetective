@@ -96,6 +96,8 @@ class ProcessPanel(QFrame):
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
 			self.parent.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent.screen_height)))
+			self.parent.scroll.setMinimumWidth(410)
+
 			#self.parent.scroll.adjustSize()
 
 	def populate_contents(self):

@@ -84,6 +84,7 @@ class ControlPanel(QMainWindow):
 		self.initial_width = self.size().width()
 		self.screen_height = desktop.screenGeometry().height()
 		self.screen_width = desktop.screenGeometry().width()
+		self.scroll.setMinimumWidth(410)
 
 	def init_wells_and_positions(self):
 

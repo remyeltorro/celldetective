@@ -409,10 +409,11 @@ class ConfigSegmentationModelTraining(QMainWindow):
 
 			self.pretrained_model = self.pretrained_model.replace('\\','/')
 			self.pretrained_model = rf"{self.pretrained_model}"
-
-			print("pretrained model: ", self.pretrained_model, self.pretrained_model.split('/'))
 			
 			subfiles = glob('/'.join([self.pretrained_model,"*"]))
+			subfiles = [s.replace('\\','/') for s in subfiles]
+			subfiles = [rf"{s}" for s in subfiles]
+
 			if '/'.join([self.pretrained_model,"config_input.json"]) in subfiles:
 				self.load_pretrained_config()
 				self.pretrained_lbl.setText(self.pretrained_model.split("/")[-1])

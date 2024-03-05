@@ -1106,10 +1106,15 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 				fov_export = False
 
 			for k,sq in enumerate(squares):
+				print(f"ROI: {sq}")
 				xmin = int(sq[0,1])
 				xmax = int(sq[2,1])
+				if xmax<xmin:
+					xmax,xmin = xmin,xmax
 				ymin = int(sq[0,2])
 				ymax = int(sq[1,2])
+				if ymin<ymax:
+					ymax,ymin = ymin,ymax
 				frame = viewer.layers['Image'].data[t][xmin:xmax,ymin:ymax]
 				if frame.shape[1] < 256 or frame.shape[0] < 256:
 					print("crop too small!")

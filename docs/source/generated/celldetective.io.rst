@@ -13,6 +13,7 @@
 
    .. autosummary::
    
+      auto_correct_masks
       auto_load_number_of_frames
       control_segmentation_napari
       control_tracking_btrack

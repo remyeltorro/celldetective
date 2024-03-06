@@ -1082,7 +1082,7 @@ def auto_correct_masks(masks):
 		bbox_area = props.loc[props['label']==cell, 'area_bbox'].values
 		area = props.loc[props['label']==cell, 'area'].values
 		
-		if bbox_area > 2*area:
+		if bbox_area > 2*area: #condition for anomaly
 
 			lbl = masks==cell
 			lbl = lbl.astype(int)

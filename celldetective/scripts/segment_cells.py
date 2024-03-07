@@ -36,8 +36,11 @@ process_arguments = vars(args)
 pos = str(process_arguments['position'])
 mode = str(process_arguments['mode'])
 use_gpu = process_arguments['use_gpu']
+n_threads = int(process_arguments['threads'])
+
 if use_gpu=='True' or use_gpu=='true' or use_gpu=='1':
 	use_gpu = True
+	n_threads = 1  # avoid misbehavior on GPU with multithreading
 else:
 	use_gpu = False
 

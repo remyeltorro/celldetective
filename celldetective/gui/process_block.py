@@ -663,10 +663,10 @@ class ProcessPanel(QFrame):
 						returnValue = msgBox.exec()
 						if returnValue == QMessageBox.No:
 							return None
-					track_at_position(self.pos, self.mode)
+					track_at_position(self.pos, self.mode, threads=self.parent.parent.n_threads)
 
 				if self.measure_action.isChecked():
-					measure_at_position(self.pos, self.mode)
+					measure_at_position(self.pos, self.mode, threads=self.parent.parent.n_threads)
 
 				table = os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])
 				if self.signal_analysis_action.isChecked() and os.path.exists(table):

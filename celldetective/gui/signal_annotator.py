@@ -521,7 +521,11 @@ class SignalAnnotator(QMainWindow):
 		self.correct_btn.setEnabled(False)
 		self.correct_btn.setText('correct')
 		self.cancel_btn.setEnabled(False)
-		self.selection.pop(0)
+		
+		try:
+			self.selection.pop(0)
+		except Exception as e:
+			print(e)
 
 		try:
 			for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):

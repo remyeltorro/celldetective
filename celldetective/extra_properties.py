@@ -32,4 +32,3 @@ def intensity_percentile_25(regionmask, intensity_image):
 
 def intensity_std(regionmask, intensity_image):
 	return np.nanstd(intensity_image[regionmask])
-

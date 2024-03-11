@@ -230,6 +230,9 @@ class ClassifierWidget(QWidget):
 				status_values = track[stat_col].to_numpy()
 				if np.all([s==0 for s in status_values]):
 					self.df.loc[indices, self.class_name_user] = 1
+				elif np.all([s==1 for s in status_values]):
+					self.df.loc[indices, self.class_name_user] = 2
+					self.df.loc[indices, self.class_name_user.replace('class','status')] = 2
 				else:
 					self.df.loc[indices, self.class_name_user] = 2
 			self.estimate_time()
@@ -282,7 +285,7 @@ class ClassifierWidget(QWidget):
 			timeline = group['FRAME'].values
 			
 			try:
-				popt, pcov = curve_fit(step_function, timeline, status_signal,p0=[self.df['FRAME'].max()//2, 0.5],maxfev=5000)
+				popt, pcov = curve_fit(step_function, timeline, status_signal,p0=[self.df['FRAME'].max()//2, 0.5],maxfev=10000)
 				r2 = r2_score(status_signal, step_function(timeline, *popt))
 			except Exception as e:
 				print(e)

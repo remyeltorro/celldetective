@@ -136,12 +136,17 @@ except IndexError:
 trajectories = pos+os.sep.join(['output','tables', table_name])
 if os.path.exists(trajectories):
 	trajectories = pd.read_csv(trajectories)
-	if clear_previous:
-		trajectories = remove_trajectory_measurements(trajectories, column_labels)
+	if 'TRACK_ID' not in list(trajectories.columns):
+		do_iso_intensities = False
+		intensity_measurement_radii = None
+	else:
+		if clear_previous:
+			trajectories = remove_trajectory_measurements(trajectories, column_labels)
 else:
 	trajectories = None
 	do_features = True
 	features += ['centroid']
+	do_iso_intensities = False
 
 if (features is not None) and (trajectories is not None):
 	features = remove_redundant_features(features, 
@@ -176,6 +181,8 @@ else:
 timestep_dataframes = []
 if trajectories is None:
 	print('Use features as a substitute for the trajectory table.')
+	if 'label' not in features:
+		features.append('label')
 
 
 def measure_index(indices):

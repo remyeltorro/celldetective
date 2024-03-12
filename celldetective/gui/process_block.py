@@ -6,7 +6,7 @@ from fonticon_mdi6 import MDI6
 import gc
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
 from celldetective.io import locate_segmentation_model
-from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
+from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI, SignalAnnotator2
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
@@ -911,6 +911,15 @@ class NeighPanel(QFrame):
 
 		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
 
+
+		self.visu_btn = QPushButton()
+		self.visu_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
+		self.visu_btn.setIconSize(QSize(20, 20))
+		self.visu_btn.clicked.connect(self.check_signals2)
+		self.visu_btn.setToolTip("Open signal annotator for two populations.")
+		self.visu_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.grid_contents.addWidget(self.visu_btn, 1,0,1,1)
+
 		# MASK INTERSECTION NEIGHBORHOOD
 		# mask_neigh_hbox = QHBoxLayout()
 		# mask_neigh_hbox.setContentsMargins(0,0,0,0)
@@ -1020,3 +1029,10 @@ class NeighPanel(QFrame):
 													neighborhood_kwargs=config['neighborhood_kwargs'],
 													)
 		print('Done.')
+	
+	def check_signals2(self):
+
+		test = self.parent.locate_selected_position()
+		if test:
+			self.SignalAnnotator2 = SignalAnnotator2(self)
+			self.SignalAnnotator2.show()

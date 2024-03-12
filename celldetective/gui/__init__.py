@@ -9,6 +9,7 @@ from .survival_ui import ConfigSurvival
 from .plot_signals_ui import ConfigSignalPlot
 from .signal_annotator_options import ConfigSignalAnnotator
 from .signal_annotator import SignalAnnotator
+from .signal_annotator2 import SignalAnnotator2
 from .retrain_signal_model_options import ConfigSignalModelTraining
 from .retrain_segmentation_model_options import ConfigSegmentationModelTraining
 from .thresholds_gui import ThresholdConfigWizard

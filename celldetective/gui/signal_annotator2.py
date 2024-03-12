@@ -42,7 +42,8 @@ class SignalAnnotator2(QMainWindow):
 		self.soft_path = get_software_location()
 		self.recently_modified = False
 		self.n_signals = 3
-		self.selection = []
+		self.target_selection = []
+		self.effector_selection = []
 
 		self.mode = "targets"
 		self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
@@ -529,7 +530,7 @@ class SignalAnnotator2(QMainWindow):
 
 		if self.time_target_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns and not self.status_target_name in self.df_targets.columns:
 			# only create the status column if it does not exist to not erase static classification results
-			self.make_status_column()
+			self.make_status_column_targets()
 		elif self.time_target_name in self.df_targets.columns and self.class_target_name in self.df_targets.columns:
 			# all good, do nothing
 			pass
@@ -551,40 +552,39 @@ class SignalAnnotator2(QMainWindow):
 
 	def compute_status_and_colors_effectors(self, i):
 
-		self.class_name = self.class_choice_cb.currentText()
-		self.expected_status = 'status'
-		suffix = self.class_name.replace('class','').replace('_','')
+		self.effector_class_name = self.effector_class_choice_cb.currentText()
+		self.expected_effector_status = 'status'
+		suffix = self.effector_class_name.replace('class','').replace('_','')
 		if suffix!='':
-			self.expected_status+='_'+suffix
-			self.expected_time = 't_'+suffix
+			self.expected_effector_status+='_'+suffix
+			self.expected_effector_time = 't_'+suffix
 		else:
-			self.expected_time = 't0'
+			self.expected_effector_time = 't0'
 
-		self.time_name = self.expected_time
-		self.status_name = self.expected_status
+		self.time_effector_name = self.expected_effector_time
+		self.status_effector_name = self.expected_effector_status
 
-		print('selection and expected names: ', self.class_name, self.expected_time, self.expected_status)
+		print('selection and expected names: ', self.effector_class_name, self.expected_effector_time, self.expected_effector_status)
 
-		if self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns and not self.status_name in self.df_tracks.columns:
+		if self.time_effector_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
 			# only create the status column if it does not exist to not erase static classification results
-			self.make_status_column()
-		elif self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns:
+			self.make_status_column_effectors()
+		elif self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns:
 			# all good, do nothing
 			pass
 		else:
-			if not self.status_name in self.df_tracks.columns:
-				self.df_tracks[self.status_name] = 0
-				self.df_tracks['status_color'] = color_from_status(0)
-				self.df_tracks['class_color'] = color_from_class(1)
+			if not self.effector_status_name in self.df_effectors.columns:
+				self.df_effectors[self.effector_status_name] = 0
+				self.df_effectors['status_color'] = color_from_status(0)
+				self.df_effectors['class_color'] = color_from_class(1)
 
-		if not self.class_name in self.df_tracks.columns:
-			self.df_tracks[self.class_name] = 1
-		if not self.time_name in self.df_tracks.columns:
-			self.df_tracks[self.time_name] = -1
+		if not self.class_name in self.df_effectors.columns:
+			self.df_effectors[self.effector_class_name] = 1
+		if not self.effector_time_name in self.df_effectors.columns:
+			self.df_effectors[self.effector_time_name] = -1
 
-		self.df_tracks['status_color'] = [color_from_status(i) for i in self.df_tracks[self.status_name].to_numpy()]					
-		self.df_tracks['class_color'] = [color_from_class(i) for i in self.df_tracks[self.class_name].to_numpy()]
-
+		self.df_effectors['status_color'] = [color_from_status(i) for i in self.df_effectors[self.effector_status_name].to_numpy()]					
+		self.df_effectors['class_color'] = [color_from_class(i) for i in self.df_effectors[self.effector_class_name].to_numpy()]
 
 		self.extract_scatter_from_trajectories_effectors()
 
@@ -608,14 +608,25 @@ class SignalAnnotator2(QMainWindow):
 		self.cancel_btn.setEnabled(False)
 		
 		try:
-			self.selection.pop(0)
+			self.target_selection.pop(0)
+		except Exception as e:
+			print(e)
+		try:
+			self.effector_selection.pop(0)
 		except Exception as e:
 			print(e)
 
 		try:
 			for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):
-				self.colors[t][idx,0] = self.previous_color[k][0]
-				self.colors[t][idx,1] = self.previous_color[k][1]
+				self.target_colors[t][idx,0] = self.previous_color[k][0]
+				self.target_colors[t][idx,1] = self.previous_color[k][1]
+		except Exception as e:
+			print(f'{e=}')
+
+		try:
+			for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):
+				self.effector_colors[t][idx,0] = self.previous_color[k][0]
+				self.effector_colors[t][idx,1] = self.previous_color[k][1]
 		except Exception as e:
 			print(f'{e=}')
 
@@ -980,15 +991,14 @@ class SignalAnnotator2(QMainWindow):
 
 
 
-	def make_status_column(self):
+	def make_status_column_targets(self):
 
-		print(self.class_name, self.time_name, self.status_name)
 		print('remaking the status column')
-		for tid, group in self.df_tracks.groupby('TRACK_ID'):
+		for tid, group in self.df_targets.groupby('TRACK_ID'):
 			
 			indices = group.index
-			t0 = group[self.time_name].to_numpy()[0]
-			cclass = group[self.class_name].to_numpy()[0]
+			t0 = group[self.target_time_name].to_numpy()[0]
+			cclass = group[self.target_class_name].to_numpy()[0]
 			timeline = group['FRAME'].to_numpy()
 			status = np.zeros_like(timeline)
 			if t0 > 0:
@@ -1000,9 +1010,34 @@ class SignalAnnotator2(QMainWindow):
 			status_color = [color_from_status(s) for s in status]
 			class_color = [color_from_class(cclass) for i in range(len(status))]
 
-			self.df_tracks.loc[indices, self.status_name] = status
-			self.df_tracks.loc[indices, 'status_color'] = status_color
-			self.df_tracks.loc[indices, 'class_color'] = class_color
+			self.df_targets.loc[indices, self.target_status_name] = status
+			self.df_targets.loc[indices, 'status_color'] = status_color
+			self.df_targets.loc[indices, 'class_color'] = class_color
+
+
+	def make_status_column_effectors(self):
+
+		print('remaking the status column')
+		for tid, group in self.df_effectors.groupby('TRACK_ID'):
+			
+			indices = group.index
+			t0 = group[self.effector_time_name].to_numpy()[0]
+			cclass = group[self.effector_class_name].to_numpy()[0]
+			timeline = group['FRAME'].to_numpy()
+			status = np.zeros_like(timeline)
+			if t0 > 0:
+				status[timeline>=t0] = 1.
+			if cclass==2:
+				status[:] = 2
+			if cclass>2:
+				status[:] = 42
+			status_color = [color_from_status(s) for s in status]
+			class_color = [color_from_class(cclass) for i in range(len(status))]
+
+			self.df_effectors.loc[indices, self.effector_status_name] = status
+			self.df_effectors.loc[indices, 'status_color'] = status_color
+			self.df_effectors.loc[indices, 'class_color'] = class_color
+
 
 	def generate_signal_choices(self):
 		
@@ -1081,7 +1116,7 @@ class SignalAnnotator2(QMainWindow):
 
 
 
-	def extract_scatter_from_trajectories(self):
+	def extract_scatter_from_trajectories_targets(self):
 
 		self.target_positions = []
 		self.target_colors = []
@@ -1092,6 +1127,9 @@ class SignalAnnotator2(QMainWindow):
 			self.target_positions.append(self.df_targets.loc[self.df_targets['FRAME']==t,['x_anim', 'y_anim']].to_numpy())
 			self.target_colors.append(self.df_targets.loc[self.df_targets['FRAME']==t,['class_color', 'status_color']].to_numpy())
 			self.target_tracks.append(self.df_targets.loc[self.df_targets['FRAME']==t, 'TRACK_ID'].to_numpy())
+
+
+	def extract_scatter_from_trajectories_effectors(self):
 
 		self.effector_positions = []
 		self.effector_colors = []
@@ -1276,46 +1314,95 @@ class SignalAnnotator2(QMainWindow):
 		
 		ind = event.ind
 
-		if len(ind)>1:
-			# More than one point in vicinity
-			datax,datay = [self.target_positions[self.framedata][i,0] for i in ind],[self.target_positions[self.framedata][i,1] for i in ind]
-			msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
-			dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
-			ind = [ind[np.argmin(dist)]]
-		
-
-		if len(ind)>0 and (len(self.selection)==0):
-			ind = ind[0]
-			self.selection.append(ind)
-			self.correct_btn.setEnabled(True)
-			self.cancel_btn.setEnabled(True)
-			self.del_shortcut.setEnabled(True)
-			self.no_event_shortcut.setEnabled(True)
-
-			self.target_track_of_interest = self.target_tracks[self.framedata][ind]
-			print(f'You selected track {self.target_track_of_interest}.')
-			self.give_cell_information()
-			self.plot_signals()
-
-			self.loc_t = []
-			self.loc_idx = []
-			for t in range(len(self.target_tracks)):
-				indices = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
-				if len(indices)>0:
-					self.loc_t.append(t)
-					self.loc_idx.append(indices[0])
+		label = event.artist.get_label()
+		if label == '_collection0':
+			pop = 'targets'
+		elif label == '_collection1':
+			pop = 'effectors'
 
 
-			self.previous_color = []
-			for t,idx in zip(self.loc_t,self.loc_idx):
-				self.previous_color.append(self.colors[t][idx].copy())
-				self.colors[t][idx] = 'lime'
-
-		elif len(ind)>0 and len(self.selection)==1:
-			self.cancel_btn.click()
-		else:
-			pass
+		if pop=='targets':
+			if len(ind)>1:
+				# More than one point in vicinity
+				datax,datay = [self.target_positions[self.framedata][i,0] for i in ind],[self.target_positions[self.framedata][i,1] for i in ind]
+				msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
+				dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
+				ind = [ind[np.argmin(dist)]]
 			
+
+			if len(ind)>0 and (len(self.target_selection)==0):
+				ind = ind[0]
+				self.target_selection.append(ind)
+				self.correct_btn.setEnabled(True)
+				self.cancel_btn.setEnabled(True)
+				self.del_shortcut.setEnabled(True)
+				self.no_event_shortcut.setEnabled(True)
+
+				self.target_track_of_interest = self.target_tracks[self.framedata][ind]
+				print(f'You selected track {self.target_track_of_interest}.')
+				self.give_cell_information()
+				self.plot_signals()
+
+				self.loc_t = []
+				self.loc_idx = []
+				for t in range(len(self.target_tracks)):
+					indices = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
+					if len(indices)>0:
+						self.loc_t.append(t)
+						self.loc_idx.append(indices[0])
+
+
+				self.previous_color = []
+				for t,idx in zip(self.loc_t,self.loc_idx):
+					self.previous_color.append(self.target_colors[t][idx].copy())
+					self.target_colors[t][idx] = 'lime'
+
+			elif len(ind)>0 and len(self.target_selection)==1:
+				self.cancel_btn.click()
+			else:
+				pass
+
+		elif pop=='effectors':
+			if len(ind)>1:
+				# More than one point in vicinity
+				datax,datay = [self.effector_positions[self.framedata][i,0] for i in ind],[self.effector_positions[self.framedata][i,1] for i in ind]
+				msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
+				dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
+				ind = [ind[np.argmin(dist)]]
+			
+
+			if len(ind)>0 and (len(self.effector_selection)==0):
+				ind = ind[0]
+				self.effector_selection.append(ind)
+				self.correct_btn.setEnabled(True)
+				self.cancel_btn.setEnabled(True)
+				self.del_shortcut.setEnabled(True)
+				self.no_event_shortcut.setEnabled(True)
+
+				self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
+				print(f'You selected track {self.effector_track_of_interest}.')
+				self.give_cell_information()
+				self.plot_signals()
+
+				self.loc_t = []
+				self.loc_idx = []
+				for t in range(len(self.effector_tracks)):
+					indices = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
+					if len(indices)>0:
+						self.loc_t.append(t)
+						self.loc_idx.append(indices[0])
+
+
+				self.previous_color = []
+				for t,idx in zip(self.loc_t,self.loc_idx):
+					self.previous_color.append(self.effector_colors[t][idx].copy())
+					self.effector_colors[t][idx] = 'lime'
+
+			elif len(ind)>0 and len(self.effector_selection)==1:
+				self.cancel_btn.click()
+			else:
+				pass
+							
 	def shortcut_suppr(self):
 		self.correct_btn.click()
 		self.suppr_btn.click()

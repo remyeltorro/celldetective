@@ -45,6 +45,7 @@ class SignalAnnotator2(QMainWindow):
 		self.target_selection = []
 		self.effector_selection = []
 
+		# Read instructions from target block for now...
 		self.mode = "targets"
 		self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
 		#self.trajectories_path = self.pos+'output/tables/trajectories_targets.csv'
@@ -53,17 +54,17 @@ class SignalAnnotator2(QMainWindow):
 		self.screen_width = self.parent.parent.parent.screen_width
 
 		# default params
-		self.class_name = 'class'
-		self.time_name = 't0'
-		self.status_name = 'status'
-		print('here no breaking')
+		self.target_class_name = 'class'
+		self.target_time_name = 't0'
+		self.target_status_name = 'status'
 
 		center_window(self)
 
 		self.locate_stack()
 		self.load_annotator_config()
 
-		self.locate_tracks()
+		self.locate_target_tracks()
+		self.locate_effector_tracks()
 
 		self.prepare_stack()
 
@@ -119,7 +120,7 @@ class SignalAnnotator2(QMainWindow):
 			pass
 
 		self.target_class_choice_cb.addItems(self.target_class_cols)
-		self.target_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors)
+		self.target_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
 		self.target_class_choice_cb.setCurrentIndex(0)
 
 		class_hbox.addWidget(self.target_class_choice_cb, 70)
@@ -160,8 +161,8 @@ class SignalAnnotator2(QMainWindow):
 		except Exception:
 			pass
 
-		self.effector_class_choice_cb.addItems(self.class_cols)
-		self.effector_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors)
+		self.effector_class_choice_cb.addItems(self.effector_class_cols)
+		self.effector_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
 		self.effector_class_choice_cb.setCurrentIndex(0)
 
 		class_hbox.addWidget(self.effector_class_choice_cb, 70)
@@ -280,11 +281,11 @@ class SignalAnnotator2(QMainWindow):
 
 		signal_choice_vbox = QVBoxLayout()
 		signal_choice_vbox.setContentsMargins(30,0,30,50)
-		for i in range(len(self.signal_choice_cb)):
+		for i in range(len(self.signal_choice_targets_cb)):
 			
 			hlayout = QHBoxLayout()
-			hlayout.addWidget(self.signal_choice_label[i], 20)
-			hlayout.addWidget(self.signal_choice_cb[i], 75)
+			hlayout.addWidget(self.signal_choice_targets_label[i], 20)
+			hlayout.addWidget(self.signal_choice_targets_cb[i], 75)
 			#hlayout.addWidget(self.log_btns[i], 5)
 			signal_choice_vbox.addLayout(hlayout)
 
@@ -526,12 +527,12 @@ class SignalAnnotator2(QMainWindow):
 		self.time_target_name = self.expected_target_time
 		self.status_target_name = self.expected_target_status
 
-		print('selection and expected names: ', self.class_target_name, self.expected_target_time, self.expected_target_status)
+		print('selection and expected names: ', self.target_class_name, self.target_expected_time, self.target_expected_status)
 
 		if self.time_target_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns and not self.status_target_name in self.df_targets.columns:
 			# only create the status column if it does not exist to not erase static classification results
 			self.make_status_column_targets()
-		elif self.time_target_name in self.df_targets.columns and self.class_target_name in self.df_targets.columns:
+		elif self.time_target_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns:
 			# all good, do nothing
 			pass
 		else:
@@ -546,27 +547,27 @@ class SignalAnnotator2(QMainWindow):
 			self.df_targets[self.time_target_name] = -1
 
 		self.df_targets['status_color'] = [color_from_status(i) for i in self.df_targets[self.status_target_name].to_numpy()]					
-		self.df_targets['class_color'] = [color_from_class(i) for i in self.df_targets[self.class_target_name].to_numpy()]
+		self.df_targets['class_color'] = [color_from_class(i) for i in self.df_targets[self.target_class_name].to_numpy()]
 
-		self.extract_scatter_from_trajectories_targets()
+		self.extract_scatter_from_target_trajectories()
 
 	def compute_status_and_colors_effectors(self, i):
 
 		self.effector_class_name = self.effector_class_choice_cb.currentText()
-		self.expected_effector_status = 'status'
+		self.effector_expected_status = 'status'
 		suffix = self.effector_class_name.replace('class','').replace('_','')
 		if suffix!='':
-			self.expected_effector_status+='_'+suffix
-			self.expected_effector_time = 't_'+suffix
+			self.effector_expected_status+='_'+suffix
+			self.effector_expected_time = 't_'+suffix
 		else:
-			self.expected_effector_time = 't0'
+			self.effector_expected_time = 't0'
 
-		self.time_effector_name = self.expected_effector_time
-		self.status_effector_name = self.expected_effector_status
+		self.effector_time_name = self.effector_expected_time
+		self.effector_status_name = self.effector_expected_status
 
-		print('selection and expected names: ', self.effector_class_name, self.expected_effector_time, self.expected_effector_status)
+		print('selection and expected names: ', self.effector_class_name, self.effector_expected_time, self.effector_expected_status)
 
-		if self.time_effector_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
+		if self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
 			# only create the status column if it does not exist to not erase static classification results
 			self.make_status_column_effectors()
 		elif self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns:
@@ -578,7 +579,7 @@ class SignalAnnotator2(QMainWindow):
 				self.df_effectors['status_color'] = color_from_status(0)
 				self.df_effectors['class_color'] = color_from_class(1)
 
-		if not self.class_name in self.df_effectors.columns:
+		if not self.effector_class_name in self.df_effectors.columns:
 			self.df_effectors[self.effector_class_name] = 1
 		if not self.effector_time_name in self.df_effectors.columns:
 			self.df_effectors[self.effector_time_name] = -1
@@ -586,7 +587,7 @@ class SignalAnnotator2(QMainWindow):
 		self.df_effectors['status_color'] = [color_from_status(i) for i in self.df_effectors[self.effector_status_name].to_numpy()]					
 		self.df_effectors['class_color'] = [color_from_class(i) for i in self.df_effectors[self.effector_class_name].to_numpy()]
 
-		self.extract_scatter_from_trajectories_effectors()
+		self.extract_scatter_from_effector_trajectories()
 
 
 	def contrast_slider_action(self):
@@ -617,16 +618,16 @@ class SignalAnnotator2(QMainWindow):
 			print(e)
 
 		try:
-			for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):
-				self.target_colors[t][idx,0] = self.previous_color[k][0]
-				self.target_colors[t][idx,1] = self.previous_color[k][1]
+			for k,(t,idx) in enumerate(zip(self.target_loc_t,self.target_loc_idx)):
+				self.target_colors[t][idx,0] = self.target_previous_color[k][0]
+				self.target_colors[t][idx,1] = self.target_previous_color[k][1]
 		except Exception as e:
 			print(f'{e=}')
 
 		try:
-			for k,(t,idx) in enumerate(zip(self.loc_t,self.loc_idx)):
-				self.effector_colors[t][idx,0] = self.previous_color[k][0]
-				self.effector_colors[t][idx,1] = self.previous_color[k][1]
+			for k,(t,idx) in enumerate(zip(self.effector_loc_t,self.effector_loc_idx)):
+				self.effector_colors[t][idx,0] = self.effector_previous_color[k][0]
+				self.effector_colors[t][idx,1] = self.effector_previous_color[k][1]
 		except Exception as e:
 			print(f'{e=}')
 
@@ -713,7 +714,7 @@ class SignalAnnotator2(QMainWindow):
 		self.df_tracks.loc[indices, 'class_color'] = class_color
 
 		#self.make_status_column()
-		self.extract_scatter_from_trajectories()
+		self.extract_scatter_from_target_trajectories()
 		self.give_cell_information()
 
 		self.correct_btn.disconnect()
@@ -727,7 +728,11 @@ class SignalAnnotator2(QMainWindow):
 		self.del_shortcut.setEnabled(False)
 		self.no_event_shortcut.setEnabled(False)
 
-		self.selection.pop(0)
+		try:
+			self.selection.pop(0)
+		except Exception as e:
+			print(e)
+
 
 		#self.fcanvas.canvas.draw()
 
@@ -762,16 +767,12 @@ class SignalAnnotator2(QMainWindow):
 			self.channels = np.array(self.channels)
 			self.nbr_channels = len(self.channels)
 
-	def locate_tracks(self):
-
-		"""
-		Locate the tracks.
-		"""
+	def locate_target_tracks(self):
 
 		population = 'targets'
-		self.trajectories_path =  self.pos+f'output/tables/trajectories_{population}.csv'
+		self.target_trajectories_path =  self.pos+f'output/tables/trajectories_{population}.csv'
 
-		if not os.path.exists(self.trajectories_path):
+		if not os.path.exists(self.target_trajectories_path):
 
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
@@ -784,55 +785,55 @@ class SignalAnnotator2(QMainWindow):
 		else:
 
 			# Load and prep tracks
-			self.df_targets = pd.read_csv(self.trajectories_path)
+			self.df_targets = pd.read_csv(self.target_trajectories_path)
 			self.df_targets = self.df_targets.sort_values(by=['TRACK_ID', 'FRAME'])
 
 			cols = np.array(self.df_targets.columns)
-			self.class_targets_cols = np.array([c.startswith('class') for c in list(self.df_targets.columns)])
-			self.class_targets_cols = list(cols[self.class_targets_cols])
+			self.target_class_cols = np.array([c.startswith('class') for c in list(self.df_targets.columns)])
+			self.target_class_cols = list(cols[self.target_class_cols])
 			try:
-				self.class_targets_cols.remove('class_id')
+				self.target_class_cols.remove('class_id')
 			except:
 				pass
 			try:
-				self.class_targets_cols.remove('class_color')
+				self.target_class_cols.remove('class_color')
 			except:
 				pass
-			if len(self.class_targets_cols)>0:
-				self.class_target_name = self.class_targets_cols[0]
-				self.expected_target_status = 'status'
-				suffix = self.class_target_name.replace('class','').replace('_','')
+			if len(self.target_class_cols)>0:
+				self.target_class_name = self.target_class_cols[0]
+				self.target_expected_status = 'status'
+				suffix = self.target_class_name.replace('class','').replace('_','')
 				if suffix!='':
-					self.expected_target_status+='_'+suffix
-					self.expected_target_time = 't_'+suffix
+					self.target_expected_status+='_'+suffix
+					self.target_expected_time = 't_'+suffix
 				else:
-					self.expected_target_time = 't0'
-				self.time_target_name = self.expected_target_time
-				self.status_target_name = self.expected_target_status
+					self.target_expected_time = 't0'
+				self.target_time_name = self.target_expected_time
+				self.target_status_name = self.target_expected_status
 			else:
-				self.class_target_name = 'class'
-				self.time_target_name = 't0'
-				self.status_target_name = 'status'
+				self.target_class_name = 'class'
+				self.target_time_name = 't0'
+				self.target_status_name = 'status'
 
-			if self.time_target_name in self.df_targets.columns and self.class_target_name in self.df_targets.columns and not self.status_target_name in self.df_targets.columns:
+			if self.target_time_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns and not self.target_status_name in self.df_targets.columns:
 				# only create the status column if it does not exist to not erase static classification results
-				self.make_status_column()
-			elif self.time_target_name in self.df_targets.columns and self.class_target_name in self.df_targets.columns:
+				self.make_target_status_column()
+			elif self.target_time_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns:
 				# all good, do nothing
 				pass
 			else:
-				if not self.status_target_name in self.df_targets.columns:
-					self.df_targets[self.status_target_name] = 0
+				if not self.target_status_name in self.df_targets.columns:
+					self.df_targets[self.target_status_name] = 0
 					self.df_targets['status_color'] = color_from_status(0)
 					self.df_targets['class_color'] = color_from_class(1)
 
-			if not self.class_name in self.df_targets.columns:
-				self.df_targets[self.class_target_name] = 1
-			if not self.time_target_name in self.df_targets.columns:
-				self.df_targets[self.time_target_name] = -1
+			if not self.target_class_name in self.df_targets.columns:
+				self.df_targets[self.target_class_name] = 1
+			if not self.target_time_name in self.df_targets.columns:
+				self.df_targets[self.target_time_name] = -1
 
-			self.df_targets['status_color'] = [color_from_status(i) for i in self.df_targets[self.status_target_name].to_numpy()]					
-			self.df_targets['class_color'] = [color_from_class(i) for i in self.df_targets[self.class_target_name].to_numpy()]
+			self.df_targets['status_color'] = [color_from_status(i) for i in self.df_targets[self.target_status_name].to_numpy()]					
+			self.df_targets['class_color'] = [color_from_class(i) for i in self.df_targets[self.target_class_name].to_numpy()]
 
 
 			self.df_targets = self.df_targets.dropna(subset=['POSITION_X', 'POSITION_Y'])
@@ -841,13 +842,13 @@ class SignalAnnotator2(QMainWindow):
 			self.df_targets['x_anim'] = self.df_targets['x_anim'].astype(int)
 			self.df_targets['y_anim'] = self.df_targets['y_anim'].astype(int)
 
-			self.extract_scatter_from_trajectories()
-			self.track_of_interest = self.df_targets['TRACK_ID'].min()
+			self.extract_scatter_from_target_trajectories()
+			self.target_track_of_interest = self.df_targets['TRACK_ID'].min()
 
 			self.loc_t = []
 			self.loc_idx = []
-			for t in range(len(self.tracks)):
-				indices = np.where(self.tracks[t]==self.track_of_interest)[0]
+			for t in range(len(self.target_tracks)):
+				indices = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
 				if len(indices)>0:
 					self.loc_t.append(t)
 					self.loc_idx.append(indices[0])
@@ -860,7 +861,7 @@ class SignalAnnotator2(QMainWindow):
 			# self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
 			# print(self.columns_to_rescale)
 			
-			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.class_cols
+			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.target_class_cols
 			cols = np.array(list(self.df_targets.columns))
 			time_cols = np.array([c.startswith('t_') for c in cols])
 			time_cols = list(cols[time_cols])
@@ -878,11 +879,12 @@ class SignalAnnotator2(QMainWindow):
 
 			#self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
+	def locate_effector_tracks(self):
 
 		population = 'effectors'
-		self.trajectories_path =  self.pos+f'output/tables/trajectories_{population}.csv'
+		self.effector_trajectories_path =  self.pos+f'output/tables/trajectories_{population}.csv'
 
-		if not os.path.exists(self.trajectories_path):
+		if not os.path.exists(self.effector_trajectories_path):
 
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
@@ -895,55 +897,55 @@ class SignalAnnotator2(QMainWindow):
 		else:
 
 			# Load and prep tracks
-			self.df_effectors = pd.read_csv(self.trajectories_path)
+			self.df_effectors = pd.read_csv(self.effector_trajectories_path)
 			self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
 
 			cols = np.array(self.df_effectors.columns)
-			self.class_effector_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
-			self.class_effector_cols = list(cols[self.class_effector_cols])
+			self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
+			self.effector_class_cols = list(cols[self.effector_class_cols])
 			try:
-				self.class_effector_cols.remove('class_id')
+				self.effector_class_cols.remove('class_id')
 			except:
 				pass
 			try:
-				self.class_effector_cols.remove('class_color')
+				self.effector_class_cols.remove('class_color')
 			except:
 				pass
-			if len(self.class_effector_cols)>0:
-				self.class_effector_name = self.class_effector_cols[0]
-				self.expected_effector_status = 'status'
-				suffix = self.class_effector_name.replace('class','').replace('_','')
+			if len(self.effector_class_cols)>0:
+				self.effector_class_name = self.effector_class_cols[0]
+				self.effector_expected_status = 'status'
+				suffix = self.effector_class_name.replace('class','').replace('_','')
 				if suffix!='':
-					self.expected_effector_status+='_'+suffix
-					self.expected_effector_time = 't_'+suffix
+					self.effector_expected_status+='_'+suffix
+					self.effector_expected_time = 't_'+suffix
 				else:
-					self.expected_effector_time = 't0'
-				self.time_effector_name = self.expected_effector_time
-				self.status_effector_name = self.expected_effector_status
+					self.effector_expected_time = 't0'
+				self.effector_time_name = self.effector_expected_time
+				self.effector_status_name = self.effector_expected_status
 			else:
-				self.class_effector_name = 'class'
-				self.time_effector_name = 't0'
-				self.status_effector_name = 'status'
+				self.effector_class_name = 'class'
+				self.effector_time_name = 't0'
+				self.effector_status_name = 'status'
 
-			if self.time_effector_name in self.df_effectors.columns and self.class_effector_name in self.df_effectors.columns and not self.status_effector_name in self.df_effectors.columns:
+			if self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
 				# only create the status column if it does not exist to not erase static classification results
-				self.make_status_column()
-			elif self.time_effector_name in self.df_effectors.columns and self.class_effector_name in self.df_effectors.columns:
+				self.make_effector_status_column()
+			elif self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns:
 				# all good, do nothing
 				pass
 			else:
-				if not self.status_effector_name in self.df_effectors.columns:
-					self.df_effectors[self.status_effector_name] = 0
+				if not self.effector_status_name in self.df_effectors.columns:
+					self.df_effectors[self.effector_status_name] = 0
 					self.df_effectors['status_color'] = color_from_status(0)
 					self.df_effectors['class_color'] = color_from_class(1)
 
-			if not self.class_effector_name in self.df_effectors.columns:
-				self.df_effectors[self.class_effector_name] = 1
-			if not self.time_effector_name in self.df_effectors.columns:
-				self.df_effectors[self.time_effector_name] = -1
+			if not self.effector_class_name in self.df_effectors.columns:
+				self.df_effectors[self.effector_class_name] = 1
+			if not self.effector_time_name in self.df_effectors.columns:
+				self.df_effectors[self.effector_time_name] = -1
 
-			self.df_effectors['status_color'] = [color_from_status(i) for i in self.df_effectors[self.status_effector_name].to_numpy()]					
-			self.df_effectors['class_color'] = [color_from_class(i) for i in self.df_effectors[self.class_effector_name].to_numpy()]
+			self.df_effectors['status_color'] = [color_from_status(i) for i in self.df_effectors[self.effector_status_name].to_numpy()]					
+			self.df_effectors['class_color'] = [color_from_class(i) for i in self.df_effectors[self.effector_class_name].to_numpy()]
 
 
 			self.df_effectors = self.df_effectors.dropna(subset=['POSITION_X', 'POSITION_Y'])
@@ -952,13 +954,13 @@ class SignalAnnotator2(QMainWindow):
 			self.df_effectors['x_anim'] = self.df_effectors['x_anim'].astype(int)
 			self.df_effectors['y_anim'] = self.df_effectors['y_anim'].astype(int)
 
-			self.extract_scatter_from_trajectories()
-			self.track_of_interest = self.df_effectors['TRACK_ID'].min()
+			self.extract_scatter_from_effector_trajectories()
+			self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
 
 			self.loc_t = []
 			self.loc_idx = []
-			for t in range(len(self.tracks)):
-				indices = np.where(self.tracks[t]==self.track_of_interest)[0]
+			for t in range(len(self.effector_tracks)):
+				indices = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
 				if len(indices)>0:
 					self.loc_t.append(t)
 					self.loc_idx.append(indices[0])
@@ -971,7 +973,7 @@ class SignalAnnotator2(QMainWindow):
 			# self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
 			# print(self.columns_to_rescale)
 			
-			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.class_cols
+			cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.effector_class_cols
 			cols = np.array(list(self.df_effectors.columns))
 			time_cols = np.array([c.startswith('t_') for c in cols])
 			time_cols = list(cols[time_cols])
@@ -991,7 +993,7 @@ class SignalAnnotator2(QMainWindow):
 
 
 
-	def make_status_column_targets(self):
+	def make_target_status_column(self):
 
 		print('remaking the status column')
 		for tid, group in self.df_targets.groupby('TRACK_ID'):
@@ -1015,7 +1017,7 @@ class SignalAnnotator2(QMainWindow):
 			self.df_targets.loc[indices, 'class_color'] = class_color
 
 
-	def make_status_column_effectors(self):
+	def make_effector_status_column(self):
 
 		print('remaking the status column')
 		for tid, group in self.df_effectors.groupby('TRACK_ID'):
@@ -1058,22 +1060,22 @@ class SignalAnnotator2(QMainWindow):
 			self.signal_choice_targets_cb[i].setCurrentIndex(i+1)
 			self.signal_choice_targets_cb[i].currentIndexChanged.connect(self.plot_signals)
 
-		# EFFECTORS
-		self.signal_choice_effectors_cb = [QComboBox() for i in range(self.n_signals)]
-		self.signal_choice_effectors_label = [QLabel(f'signal {i+1}: ') for i in range(self.n_signals)]
-		#self.log_btns = [QPushButton() for i in range(self.n_signals)]
+		# # EFFECTORS
+		# self.signal_choice_effectors_cb = [QComboBox() for i in range(self.n_signals)]
+		# self.signal_choice_effectors_label = [QLabel(f'signal {i+1}: ') for i in range(self.n_signals)]
+		# #self.log_btns = [QPushButton() for i in range(self.n_signals)]
 
-		signals = list(self.df_effectors.columns)
-		to_remove = ['TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index']
+		# signals = list(self.df_effectors.columns)
+		# to_remove = ['TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index']
 
-		for c in to_remove:
-			if c in signals:
-				signals.remove(c)
+		# for c in to_remove:
+		# 	if c in signals:
+		# 		signals.remove(c)
 
-		for i in range(len(self.signal_choice_effectors_cb)):
-			self.signal_choice_effectors_cb[i].addItems(['--']+signals)
-			self.signal_choice_effectors_cb[i].setCurrentIndex(i+1)
-			self.signal_choice_effectors_cb[i].currentIndexChanged.connect(self.plot_signals)
+		# for i in range(len(self.signal_choice_effectors_cb)):
+		# 	self.signal_choice_effectors_cb[i].addItems(['--']+signals)
+		# 	self.signal_choice_effectors_cb[i].setCurrentIndex(i+1)
+		# 	self.signal_choice_effectors_cb[i].currentIndexChanged.connect(self.plot_signals)
 
 
 	def plot_signals(self):
@@ -1089,9 +1091,9 @@ class SignalAnnotator2(QMainWindow):
 					self.lines[i].set_xdata([])
 					self.lines[i].set_ydata([])
 				else:
-					print(f'plot signal {signal_choice} for cell {self.track_of_interest}')
-					xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.track_of_interest, 'FRAME'].to_numpy()
-					ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.track_of_interest, signal_choice].to_numpy()
+					print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
+					xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
+					ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
 
 					xdata = xdata[ydata==ydata] # remove nan
 					ydata = ydata[ydata==ydata]
@@ -1104,7 +1106,7 @@ class SignalAnnotator2(QMainWindow):
 			self.configure_ylims()
 
 			min_val,max_val = self.cell_ax.get_ylim()
-			t0 = self.df_tracks.loc[self.df_targets['TRACK_ID']==self.track_of_interest, self.expected_target_time].to_numpy()[0]
+			t0 = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_expected_time].to_numpy()[0]
 			self.line_dt.set_xdata([t0, t0])
 			self.line_dt.set_ydata([min_val,max_val])
 
@@ -1114,9 +1116,7 @@ class SignalAnnotator2(QMainWindow):
 			print(f"{e=}")
 
 
-
-
-	def extract_scatter_from_trajectories_targets(self):
+	def extract_scatter_from_target_trajectories(self):
 
 		self.target_positions = []
 		self.target_colors = []
@@ -1129,7 +1129,7 @@ class SignalAnnotator2(QMainWindow):
 			self.target_tracks.append(self.df_targets.loc[self.df_targets['FRAME']==t, 'TRACK_ID'].to_numpy())
 
 
-	def extract_scatter_from_trajectories_effectors(self):
+	def extract_scatter_from_effector_trajectories(self):
 
 		self.effector_positions = []
 		self.effector_colors = []
@@ -1254,11 +1254,11 @@ class SignalAnnotator2(QMainWindow):
 		self.ax.clear()
 
 		self.im = self.ax.imshow(self.stack[0], cmap='gray')
-		self.target_status_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker="x", c=self.target_colors[0][:,1], s=50, picker=True, pickradius=100)
+		self.target_status_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker="x", c=self.target_colors[0][:,1], s=50, picker=True, pickradius=10)
 		self.target_class_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker='o', facecolors='none',edgecolors=self.target_colors[0][:,0], s=200)
 		
-		self.effector_status_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker="x", c=self.effector_colors[0][:,1], s=50, picker=True, pickradius=100)
-		self.effector_class_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker='o', facecolors='none',edgecolors=self.effector_colors[0][:,0], s=200)
+		self.effector_status_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker="x", c=self.effector_colors[0][:,1], s=50, picker=True, pickradius=10)
+		self.effector_class_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker='^', facecolors='none',edgecolors=self.effector_colors[0][:,0], s=200)
 		
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
@@ -1296,7 +1296,7 @@ class SignalAnnotator2(QMainWindow):
 		self.cell_fig.set_facecolor('none')  # or 'None'
 		self.cell_fig.canvas.setStyleSheet("background-color: transparent;")
 
-		self.lines = [self.cell_ax.plot([np.linspace(0,self.len_movie-1,self.len_movie)],[np.zeros((self.len_movie))])[0] for i in range(len(self.signal_choice_cb))]
+		self.lines = [self.cell_ax.plot([np.linspace(0,self.len_movie-1,self.len_movie)],[np.zeros((self.len_movie))])[0] for i in range(len(self.signal_choice_targets_cb))]
 		for i in range(len(self.lines)):
 			self.lines[i].set_label(f'signal {i}')
 
@@ -1315,10 +1315,14 @@ class SignalAnnotator2(QMainWindow):
 		ind = event.ind
 
 		label = event.artist.get_label()
-		if label == '_collection0':
+		print(f'{label=}')
+
+		if label == '_child1':
 			pop = 'targets'
-		elif label == '_collection1':
+		elif label == '_child3':
 			pop = 'effectors'
+		else:
+			return None
 
 
 		if pop=='targets':
@@ -1343,18 +1347,18 @@ class SignalAnnotator2(QMainWindow):
 				self.give_cell_information()
 				self.plot_signals()
 
-				self.loc_t = []
-				self.loc_idx = []
+				self.target_loc_t = []
+				self.target_loc_idx = []
 				for t in range(len(self.target_tracks)):
 					indices = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
 					if len(indices)>0:
-						self.loc_t.append(t)
-						self.loc_idx.append(indices[0])
+						self.target_loc_t.append(t)
+						self.target_loc_idx.append(indices[0])
 
 
-				self.previous_color = []
-				for t,idx in zip(self.loc_t,self.loc_idx):
-					self.previous_color.append(self.target_colors[t][idx].copy())
+				self.target_previous_color = []
+				for t,idx in zip(self.target_loc_t,self.target_loc_idx):
+					self.target_previous_color.append(self.target_colors[t][idx].copy())
 					self.target_colors[t][idx] = 'lime'
 
 			elif len(ind)>0 and len(self.target_selection)==1:
@@ -1384,19 +1388,19 @@ class SignalAnnotator2(QMainWindow):
 				self.give_cell_information()
 				self.plot_signals()
 
-				self.loc_t = []
-				self.loc_idx = []
+				self.effector_loc_t = []
+				self.effector_loc_idx = []
 				for t in range(len(self.effector_tracks)):
 					indices = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
 					if len(indices)>0:
-						self.loc_t.append(t)
-						self.loc_idx.append(indices[0])
+						self.effector_loc_t.append(t)
+						self.effector_loc_idx.append(indices[0])
 
 
-				self.previous_color = []
-				for t,idx in zip(self.loc_t,self.loc_idx):
-					self.previous_color.append(self.effector_colors[t][idx].copy())
-					self.effector_colors[t][idx] = 'lime'
+				self.effector_previous_color = []
+				for t,idx in zip(self.effector_loc_t,self.effector_loc_idx):
+					self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+					self.effector_colors[t][idx] = 'magenta'
 
 			elif len(ind)>0 and len(self.effector_selection)==1:
 				self.cancel_btn.click()
@@ -1418,8 +1422,8 @@ class SignalAnnotator2(QMainWindow):
 		try:
 			min_values = []
 			max_values = []
-			for i in range(len(self.signal_choice_cb)):
-				signal = self.signal_choice_cb[i].currentText()
+			for i in range(len(self.signal_choice_targets_cb)):
+				signal = self.signal_choice_targets_cb[i].currentText()
 				if signal=='--':
 					continue
 				else:

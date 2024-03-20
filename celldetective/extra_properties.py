@@ -5,13 +5,14 @@ If intensity is in function name, it will be replaced by the name of the channel
 
 """
 import json
-
+import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 from lmfit import models
 from scipy.spatial.distance import euclidean
 from distributed.protocol import scipy
 from scipy.ndimage.morphology import distance_transform_edt
+
 
 
 # Percentiles
@@ -68,44 +69,43 @@ def intensity_centroid_distance(regionmask, intensity_image):
 
 
 def intensity_peripheral(regionmask, intensity_image):
-    # print(regionmask)
-    # print(np.unique(regionmask))
-    # for cell in np.unique(regionmask):
-    # 	print(cell)
-    # print(regionmask)
+    warnings.filterwarnings('ignore', message="Polyfit may be poorly conditioned")
     cell_mask = regionmask.copy()
-    # print(cell_mask[np.where(cell_mask==True)].shape)
-    # print(intensity_image[np.where(cell_mask==True)].shape)
-    # print(intensity_image[np.where(cell_mask == True)])
-    # print(regionmask.shape)
-    # print(cell_mask.shape)
-    # print(cell_mask)
-    # cell_mask[np.where(cell_mask != cell)] = 0
     intensity = intensity_image.copy()
-    y = intensity[np.where(cell_mask == True)]
-    # print(len(y))
-    #print(type(y))
-    x = distance_transform_edt(cell_mask[np.where(cell_mask == True)])
-    #print(type(x))
+    y = intensity[cell_mask].flatten()
+    x = distance_transform_edt(cell_mask)
+    x = x[cell_mask].flatten()
     params = np.polyfit(x, y, 1)
     line = np.poly1d(params)
-    plt.scatter(x, y, label='Data', alpha=0.1)
-	#
-    # plt.plot(x, line(x), color='red', label='Linear Fit')
-    # plt.show()
-    # print(line.coefficients[0])
-    # print(line.coefficients[1])
+
     return line.coefficients[0], line.coefficients[1]
-# model = models.LinearModel()
-# result = model.fit(list(y), list(x))
-# slope = result.params['slope'].value
-# intercept = result.params['intercept'].value
 
-# Scatter plot of distances vs intensity values
-#     plt.scatter(x, y, label='Data',alpha=0.1)
-#
-#
-#     plt.plot(x, line(x), color='red', label='Linear Fit')
-# print(len(x))
 
-# plt.show()
+def intensity_centroid_distance_edge(regionmask, intensity_image):
+    edt = distance_transform_edt(regionmask)
+    min_distance = 0
+    max_distance = 0.1*edt.max()
+    thresholded = (edt <= max_distance) * (edt > min_distance)
+    edge_mask = np.copy(regionmask)
+    edge_mask[np.where(thresholded == 0)] = 0
+    y, x = np.mgrid[:edge_mask.shape[0], :edge_mask.shape[1]]
+    xtemp = x.copy()
+    ytemp = y.copy()
+    intensity_edge = intensity_image.copy()
+    intensity_edge[np.where(edge_mask == 0)] = 0.
+    sum_intensity_edge = np.sum(intensity_edge)
+    sum_regionmask = np.sum(regionmask)
+
+    if sum_intensity_edge != 0 and sum_regionmask != 0:
+        centroid_x = np.sum(xtemp * intensity_edge) / sum_intensity_edge
+        centroid_y = np.sum(ytemp * intensity_edge) / sum_intensity_edge
+        geometric_centroid_x = np.sum(xtemp * regionmask) / sum_regionmask
+        geometric_centroid_y = np.sum(ytemp * regionmask) / sum_regionmask
+
+        distance = euclidean((geometric_centroid_y, geometric_centroid_x), (centroid_y, centroid_x))
+        delta_x = geometric_centroid_x - centroid_x
+        delta_y = geometric_centroid_y - centroid_y
+        direction_arctan = np.arctan2(delta_y, delta_x) * 180 / np.pi
+        return distance, direction_arctan
+    else:
+        return np.nan, np.nan

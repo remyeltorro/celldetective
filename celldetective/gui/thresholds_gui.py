@@ -1141,7 +1141,7 @@ class ThresholdSpot(ThresholdConfigWizard):
         self.fig_contour, self.ax_contour = plt.subplots(figsize=(4, 6))
         self.fcanvas = FigureCanvas(self.fig_contour, title="Blob measurement", interactive=True)
         self.ax_contour.clear()
-        self.im = self.ax_contour.imshow(self.img, cmap='gray')
+        self.im = self.ax_contour.imshow(self.img[:, :, self.current_channel], cmap='gray')
         self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
         for circle in self.circles:
             self.ax_contour.add_artist(circle)

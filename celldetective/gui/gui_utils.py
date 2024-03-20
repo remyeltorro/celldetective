@@ -1,3 +1,4 @@
+import numpy as np
 from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
     QPushButton, QLabel, QHBoxLayout, QCheckBox
 from PyQt5.QtCore import QEvent
@@ -428,6 +429,20 @@ def color_from_status(status, recently_modified=False):
             return 'tab:olive'
         else:
             return 'k'
+
+def color_from_state(state, recently_modified=False):
+    unique_values = np.unique(state)
+    color_map={}
+    for value in unique_values:
+        color_map[value] = plt.cm.tab10(value)
+        if value == 99:
+            color_map[value] = 'k'
+    # colors = plt.cm.tab10(len(unique_values))
+    # color_map = dict(zip(unique_values, colors))
+    # print(color_map)
+    return color_map
+
+
 
 
 def color_from_class(cclass, recently_modified=False):

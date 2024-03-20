@@ -46,7 +46,6 @@ else:
 
 if not use_gpu:
 	os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-n_threads = int(process_arguments['threads'])
 
 modelname = str(process_arguments['model'])
 
@@ -129,25 +128,31 @@ if os.path.exists(os.sep.join([pos,label_folder])):
 os.mkdir(os.sep.join([pos,label_folder]))
 print(f'Folder {os.sep.join([pos,label_folder])} successfully generated.')
 
-if model_type=='stardist':
-	model = StarDist2D(None, name=modelname, basedir=Path(model_complete_path).parent)
-	model.config.use_gpu = use_gpu
-	model.use_gpu = use_gpu
-	#model._axes_tile_overlap("YXC")
-	#fov = np.array(model._axes_tile_overlap('YX'))
-	#print('Tile overlap: ', model._tile_overlap)
-	print(f"StarDist model {modelname} successfully loaded.")
-
-elif model_type=='cellpose':
-	print(model_complete_path+modelname, 'nchan',len(required_channels), required_channels)
-	model = CellposeModel(gpu=use_gpu, pretrained_model=model_complete_path+modelname, model_type=None, nchan=len(required_channels)) #diam_mean=30.0, 
-	print(f'Cellpose model {modelname} successfully loaded.')
 
 # Loop over all frames and segment
 def segment_index(indices):
 
+	if model_type=='stardist':
+		model = StarDist2D(None, name=modelname, basedir=Path(model_complete_path).parent)
+		model.config.use_gpu = use_gpu
+		model.use_gpu = use_gpu
+		print(f"StarDist model {modelname} successfully loaded.")
+
+	elif model_type=='cellpose':
+
+		import torch
+		if not use_gpu:
+			device = torch.device("cpu")
+		else:
+			device = torch.device("cuda")
+
+		model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=model_complete_path+modelname, model_type=None, nchan=len(required_channels)) #diam_mean=30.0,
+		model.diam_mean = 30.0
+		print(f'Cellpose model {modelname} successfully loaded.')
+
+
 	for t in tqdm(indices,desc="frame"):
-		
+
 		# Load channels at time t
 		f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=False)
 		f = normalize_per_channel([f], normalization_percentile_mode=normalization_percentile, normalization_values=normalization_values,
@@ -193,9 +198,13 @@ for th in threads:
 	th.join()
 
 print('Done.')
-del model
-gc.collect()
 
+try:
+	del model
+except:
+	pass
+
+gc.collect()
 
 
 

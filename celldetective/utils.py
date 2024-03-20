@@ -144,25 +144,31 @@ def rename_intensity_column(df, channels):
 					if sections[-2] == "0":
 						new_name = np.delete(measure, -1)
 						new_name = '_'.join(list(new_name))
-						new_name = new_name.replace('centroid', "centroid_distance_in_px")
+						if 'edge' in intensity_columns[k]:
+							new_name = new_name.replace('centroid_distance', "edge_centroid_distance_in_px")
+						else:
+							new_name = new_name.replace('centroid', "centroid_distance_in_px")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
 					elif sections[-2] == "1":
 						new_name = np.delete(measure, -1)
 						new_name = '_'.join(list(new_name))
-						new_name = new_name.replace('centroid', "angle")
+						if 'edge' in intensity_columns[k]:
+							new_name = new_name.replace('centroid_distance', "edge_angle")
+						else:
+							new_name = new_name.replace('centroid', "angle")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
 				if 'peripheral' in intensity_columns[k]:
 					# sections = np.array(re.split('-|_', intensity_columns[k]))
 					measure = np.array(re.split('-|_', new_name))
 					if sections[-2] == "0":
-						#new_name = np.delete(measure, -1)
+						new_name = np.delete(measure, -1)
 						new_name = '_'.join(list(measure))
-						new_name = new_name.replace('peripheral', "a")
+						new_name = new_name.replace('peripheral', "radial_gradient")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
 					elif sections[-2] == "1":
-						#new_name = np.delete(measure, -1)
+						new_name = np.delete(measure, -1)
 						new_name = '_'.join(list(measure))
-						new_name = new_name.replace('peripheral', "b")
+						new_name = new_name.replace('peripheral', "radial_intercept")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
 
 
@@ -178,15 +184,34 @@ def rename_intensity_column(df, channels):
 				to_rename.update({intensity_columns[k]: new_name.replace('-','_')})
 				if 'centroid' in intensity_columns[k]:
 					measure = np.array(re.split('-|_', new_name))
-					if measure[-1] == "0":
+					if sections[-2] == "0":
 						new_name = np.delete(measure, -1)
 						new_name = '_'.join(list(new_name))
-						new_name = new_name.replace('_distance', "")
+						if 'edge' in intensity_columns[k]:
+							new_name = new_name.replace('centroid_distance', "edge_centroid_distance_in_px")
+						else:
+							new_name = new_name.replace('centroid', "centroid_distance_in_px")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
-					if measure[-1] == "1":
+					if sections[-2] == "1":
 						new_name = np.delete(measure, -1)
 						new_name = '_'.join(list(new_name))
-						new_name = new_name.replace('centroid_distance', "direction")
+						if 'edge' in intensity_columns[k]:
+							new_name = new_name.replace('centroid_distance', "edge_angle")
+						else:
+							new_name = new_name.replace('centroid', "angle")
+						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
+				if 'peripheral' in intensity_columns[k]:
+					# sections = np.array(re.split('-|_', intensity_columns[k]))
+					measure = np.array(re.split('-|_', new_name))
+					if sections[-2] == "0":
+						#new_name = np.delete(measure, -1)
+						new_name = '_'.join(list(measure))
+						new_name = new_name.replace('peripheral', "radial_gradient")
+						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
+					elif sections[-2] == "1":
+						#new_name = np.delete(measure, -1)
+						new_name = '_'.join(list(measure))
+						new_name = new_name.replace('peripheral', "radial_intercept")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
 
 		df = df.rename(columns=to_rename)

@@ -602,6 +602,9 @@ class ConfigMeasurements(QMainWindow):
                     spot_detection = measurement_instructions['spot_detection']
                     if spot_detection is not None:
                         self.spot_check.setChecked(True)
+                        if 'channel' in spot_detection:
+                            idx = spot_detection['channel']
+                            self.spot_channel.setCurrentText(idx)
                         self.diameter_value.setText(str(spot_detection['diameter']))
                         self.threshold_value.setText(str(spot_detection['threshold']))
 

@@ -36,10 +36,12 @@ tprint("Train")
 parser = argparse.ArgumentParser(description="Train a signal model from instructions.",
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-c',"--config", required=True,help="Training instructions")
+parser.add_argument('-g',"--use_gpu", required=False, help="Use GPU")
 
 args = parser.parse_args()
 process_arguments = vars(args)
 instructions = str(process_arguments['config'])
+use_gpu = bool(process_arguments['use_gpu'])
 
 if os.path.exists(instructions):
 	with open(instructions, 'r') as f:
@@ -47,8 +49,6 @@ if os.path.exists(instructions):
 else:
 	print('Training instructions could not be found. Abort.')
 	os.abort()
-
-use_gpu = True
 
 model_name = training_instructions['model_name']
 target_directory = training_instructions['target_directory']
@@ -79,8 +79,8 @@ print('Dataset loaded...')
 
 # Normalize images
 X = normalize_per_channel(X,
-						  normalization_percentile_mode=normalization_percentile, 
-						  normalization_values=normalization_values, 
+						  normalization_percentile_mode=normalization_percentile,
+						  normalization_values=normalization_values,
 						  normalization_clipping=normalization_clip
 						  )
 
@@ -106,7 +106,7 @@ ind = rng.permutation(len(X))
 n_val = max(1, int(round(validation_split * len(ind))))
 ind_train, ind_val = ind[:-n_val], ind[-n_val:]
 X_val, Y_val = [X[i] for i in ind_val]  , [Y[i] for i in ind_val]
-X_trn, Y_trn = [X[i] for i in ind_train], [Y[i] for i in ind_train] 
+X_trn, Y_trn = [X[i] for i in ind_train], [Y[i] for i in ind_train]
 print('number of images: %3d' % len(X))
 print('- training:       %3d' % len(X_trn))
 print('- validation:     %3d' % len(X_val))
@@ -122,7 +122,7 @@ if model_type=='cellpose':
 		x_aug,y_aug = augmenter(X_trn[i], Y_trn[i])
 		X_aug.append(x_aug)
 		Y_aug.append(y_aug)
-	
+
 	# Channel axis in front for cellpose
 	X_aug = [np.moveaxis(x,-1,0) for x in X_aug]
 	X_val = [np.moveaxis(x,-1,0) for x in X_val]
@@ -130,19 +130,23 @@ if model_type=='cellpose':
 
 	from cellpose.models import CellposeModel
 	from cellpose.io import logger_setup
-	
+	import torch
+
+	if not use_gpu:
+		device = torch.device("cpu")
+
 	logger, log_file = logger_setup()
 	print(f'Pretrained model: ',pretrained)
 	if pretrained is not None:
 		pretrained_path = os.sep.join([pretrained,os.path.split(pretrained)[-1]])
 	else:
 		pretrained_path = pretrained
+
 	model = CellposeModel(gpu=use_gpu, model_type=None, pretrained_model=pretrained_path, diam_mean=30.0, nchan=X_aug[0].shape[0],)
 	model.train(train_data=X_aug, train_labels=Y_aug, normalize=False, channels=None, batch_size=batch_size,
 				min_train_masks=1,save_path=target_directory+os.sep+model_name,n_epochs=epochs, model_name=model_name, learning_rate=learning_rate, test_data = X_val, test_labels=Y_val)
 
 	file_to_move = glob(os.sep.join([target_directory, model_name, 'models','*']))[0]
-	print(os.path.split(file_to_move)[-1])
 	shutil.move(file_to_move, os.sep.join([target_directory, model_name,''])+os.path.split(file_to_move)[-1])
 	os.rmdir(os.sep.join([target_directory, model_name, 'models']))
 
@@ -164,15 +168,15 @@ if model_type=='cellpose':
 		outfile.write(json_input_config)
 
 elif model_type=='stardist':
-	
+
 	from stardist import calculate_extents, gputools_available
 	from stardist.models import Config2D, StarDist2D
-	
+
 	n_rays = 32
 	print(gputools_available())
-	
+
 	n_channel=X_trn[0].shape[-1]
-	
+
 	# Predict on subsampled grid for increased efficiency and larger field of view
 	grid = (2,2)
 	conf = Config2D (
@@ -192,7 +196,7 @@ elif model_type=='stardist':
 		unet_n_depth = 3,
 		train_batch_size = batch_size,
 	)
-	
+
 	if use_gpu:
 		from csbdeep.utils.tf import limit_gpu_memory
 		limit_gpu_memory(None, allow_growth=True)
@@ -228,7 +232,7 @@ elif model_type=='stardist':
 	model.optimize_thresholds(X_val,Y_val)
 
 	config_inputs = {"channels": target_channels, 'normalization_percentile': normalization_percentile,
-	'normalization_clip': normalization_clip, 'normalization_values': normalization_values, 
+	'normalization_clip': normalization_clip, 'normalization_values': normalization_values,
 	'model_type': 'stardist', 'spatial_calibration': spatial_calibration}
 
 	json_input_config = json.dumps(config_inputs, indent=4)
@@ -236,7 +240,6 @@ elif model_type=='stardist':
 		outfile.write(json_input_config)
 
 print('Done.')
-
 
 
 

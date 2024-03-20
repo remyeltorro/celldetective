@@ -168,7 +168,7 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
             positions_at_t = trajectories.loc[trajectories[column_labels['time']] == t].copy()
 
         if do_features:
-            feature_table = measure_features(img[:, :, 4], lbl, features=features, border_dist=border_distances,
+            feature_table = measure_features(img, lbl, features=features, border_dist=border_distances,
                                              channels=channel_names, haralick_options=haralick_options,
                                              verbose=False)
             if trajectories is None:

@@ -406,10 +406,15 @@ class ConfigSegmentationModelTraining(QMainWindow):
 						)
 
 		if self.pretrained_model is not None:
-		# 	self.foldername = self.file_dialog_pretrained.selectedFiles()[0]
-			print("pretrained model: ", self.pretrained_model, self.pretrained_model.split(os.sep))
-			subfiles = glob(os.sep.join([self.pretrained_model,"*"]))
-			if os.sep.join([self.pretrained_model,"config_input.json"]) in subfiles:
+
+			self.pretrained_model = self.pretrained_model.replace('\\','/')
+			self.pretrained_model = rf"{self.pretrained_model}"
+			
+			subfiles = glob('/'.join([self.pretrained_model,"*"]))
+			subfiles = [s.replace('\\','/') for s in subfiles]
+			subfiles = [rf"{s}" for s in subfiles]
+
+			if '/'.join([self.pretrained_model,"config_input.json"]) in subfiles:
 				self.load_pretrained_config()
 				self.pretrained_lbl.setText(self.pretrained_model.split("/")[-1])
 				self.cancel_pretrained.setVisible(True)
@@ -422,8 +427,8 @@ class ConfigSegmentationModelTraining(QMainWindow):
 				self.cancel_pretrained.setVisible(False)
 		print(self.pretrained_model)
 
-		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
-		self.model_name = self.pretrained_model.split(os.sep)[-1]
+		self.seg_folder = self.pretrained_model.split('/')[-2]
+		self.model_name = self.pretrained_model.split('/')[-1]
 		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
 
 			self.diamWidget = QWidget()
@@ -501,11 +506,11 @@ class ConfigSegmentationModelTraining(QMainWindow):
 
 	def load_pretrained_config(self):
 
-		f = open(os.sep.join([self.pretrained_model,"config_input.json"]))
+		f = open('/'.join([self.pretrained_model,"config_input.json"]))
 		data = json.load(f)
 		channels = data["channels"]
-		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
-		self.model_name = self.pretrained_model.split(os.sep)[-1]
+		self.seg_folder = self.pretrained_model.split('/')[-2]
+		self.model_name = self.pretrained_model.split('/')[-1]
 		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
 			channels = ['brightfield_channel', 'live_nuclei_channel']
 			if self.model_name=="CP_nuclei":
@@ -631,7 +636,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 
 		print(training_instructions)
 
-		model_folder = os.sep.join([self.software_models_dir,model_name, ''])
+		model_folder = '/'.join([self.software_models_dir,model_name, ''])
 		print(model_folder)
 		if not os.path.exists(model_folder):
 			os.mkdir(model_folder)
@@ -642,7 +647,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		with open(model_folder+"training_instructions.json", 'w') as f:
 			json.dump(training_instructions, f, indent=4)
 		
-		train_segmentation_model(model_folder+"training_instructions.json")
+		train_segmentation_model(model_folder+"training_instructions.json", use_gpu=self.parent.parent.parent.use_gpu)
 
 		# self.parent.refresh_signal_models()
 

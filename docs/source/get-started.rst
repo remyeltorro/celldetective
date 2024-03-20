@@ -50,6 +50,15 @@ You can also download the repository as a compressed file. Unzip the file and op
 
 Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
 
+.. note::
+    
+    The installation of ``mahotas`` on Windows requires Microsoft Visual C++ 14.0 or greater, which can be installed `here <https://visualstudio.microsoft.com/visual-cpp-build-tools/>`_. 
+
+.. note::
+    
+    To use your NVIDIA GPU, make sure to install the proper driver, CUDA and cuDNN libraries (*e.g.* through ``tensorflow[and-cuda]``).
+
+
 Input
 -----
 
@@ -78,7 +87,7 @@ Once the pip installation is complete, open a terminal and run:
 
 A startup image is displayed during the loading of the python libraries. Upon completion, the first window of the software opens. You can either create a new experiment (button New or shortcut Ctrl+N) or load one.
 
-.. note::
+.. warning::
 
     Do not open the terminal in the installation folder. Some software features will misbehave.
 

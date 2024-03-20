@@ -4,45 +4,34 @@ Functions must take regionmask as first argument and optionally intensity_image 
 If intensity is in function name, it will be replaced by the name of the channel. These measurements are applied automatically to all channels
 
 """
-import json
 import warnings
-import matplotlib.pyplot as plt
-import numpy as np
-from lmfit import models
-from scipy.spatial.distance import euclidean
-from distributed.protocol import scipy
-from scipy.ndimage.morphology import distance_transform_edt
 
+import numpy as np
+from scipy.ndimage import distance_transform_edt
+from scipy.spatial.distance import euclidean
 
 
 # Percentiles
 
 def intensity_percentile_99(regionmask, intensity_image):
-    return np.nanpercentile(intensity_image[regionmask], 99)
-
+	return np.nanpercentile(intensity_image[regionmask],99)
 
 def intensity_percentile_95(regionmask, intensity_image):
-    return np.nanpercentile(intensity_image[regionmask], 95)
-
+	return np.nanpercentile(intensity_image[regionmask],95)
 
 def intensity_percentile_90(regionmask, intensity_image):
-    return np.nanpercentile(intensity_image[regionmask], 90)
-
+	return np.nanpercentile(intensity_image[regionmask],90)
 
 def intensity_percentile_75(regionmask, intensity_image):
-    return np.nanpercentile(intensity_image[regionmask], 75)
-
+	return np.nanpercentile(intensity_image[regionmask],75)
 
 def intensity_percentile_50(regionmask, intensity_image):
-    return np.nanpercentile(intensity_image[regionmask], 50)
-
+	return np.nanpercentile(intensity_image[regionmask],50)
 
 def intensity_percentile_25(regionmask, intensity_image):
-    return np.nanpercentile(intensity_image[regionmask], 25)
-
+	return np.nanpercentile(intensity_image[regionmask],25)
 
 # STD
-
 
 def intensity_std(regionmask, intensity_image):
     return np.nanstd(intensity_image[regionmask])

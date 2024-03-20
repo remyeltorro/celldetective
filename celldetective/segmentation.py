@@ -663,7 +663,7 @@ def segment_from_threshold_at_position(pos, mode, config, threads=1):
 	subprocess.call(cmd, shell=True)
 
 
-def train_segmentation_model(config):
+def train_segmentation_model(config, use_gpu=True):
 
 	"""
 	Trains a segmentation model based on a specified configuration file.
@@ -705,7 +705,7 @@ def train_segmentation_model(config):
 	assert os.path.exists(config),f'Config {config} is not a valid path.'
 
 	script_path = os.sep.join([abs_path, 'scripts', 'train_segmentation_model.py'])
-	cmd = f'python "{script_path}" --config "{config}"'
+	cmd = f'python "{script_path}" --config "{config}" --use_gpu "{use_gpu}"'
 	subprocess.call(cmd, shell=True)
 
 if __name__ == "__main__":

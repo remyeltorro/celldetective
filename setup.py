@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='celldetective',
-      version='1.0.0',
+      version='1.0.1',
       description='description',
       url='http://github.com/remyeltorro/celldetective',
       author='Rémy Torro',

@@ -46,6 +46,7 @@ else:
 
 if not use_gpu:
 	os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+n_threads = int(process_arguments['threads'])
 
 modelname = str(process_arguments['model'])
 
@@ -150,9 +151,11 @@ def segment_index(indices):
 		model.diam_mean = 30.0
 		print(f'Cellpose model {modelname} successfully loaded.')
 
+# Loop over all frames and segment
+def segment_index(indices):
 
 	for t in tqdm(indices,desc="frame"):
-
+		
 		# Load channels at time t
 		f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=False)
 		f = normalize_per_channel([f], normalization_percentile_mode=normalization_percentile, normalization_values=normalization_values,
@@ -205,6 +208,7 @@ except:
 	pass
 
 gc.collect()
+
 
 
 

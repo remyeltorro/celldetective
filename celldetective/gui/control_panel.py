@@ -61,7 +61,7 @@ class ControlPanel(QMainWindow):
 		self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 		self.scroll.setWidgetResizable(True)
 		desktop = QDesktopWidget()
-		self.scroll.setMinimumHeight(470)
+		self.scroll.setMinimumHeight(500)
 		#self.scroll.setMinimumHeight(int(0.4*screen_height))
 
 		tabWidget = QTabWidget()
@@ -84,6 +84,7 @@ class ControlPanel(QMainWindow):
 		self.initial_width = self.size().width()
 		self.screen_height = desktop.screenGeometry().height()
 		self.screen_width = desktop.screenGeometry().width()
+		self.scroll.setMinimumWidth(410)
 
 	def init_wells_and_positions(self):
 

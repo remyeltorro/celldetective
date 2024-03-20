@@ -131,6 +131,13 @@ Your annotation should be complete: all cells must be segmented properly before 
 
 Set the frame of interest, click on the ``New shapes layer`` button, and draw a rectangle over the region of interest. If you trigger the ``Export the annotation of the current frame`` button, you will export the defined ROI instead of the complete field of view.
 
+.. figure:: _static/annotate-roi.gif
+    :align: center
+    :alt: roi_annotation
+    
+    **Exporting a ROI of annotations for segmentation.** In this demo, a false positive cell mask is removed. A rectangular ROI is defined at this given frame, locally to the modification. Upon export, only this crop is exported as a training sample.
+
+
 
 References
 ----------

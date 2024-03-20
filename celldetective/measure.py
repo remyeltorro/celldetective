@@ -4,6 +4,7 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+from lmfit import Parameters, Model
 import skimage.exposure
 import tifffile
 from lmfit import Parameters, Model, models
@@ -12,12 +13,14 @@ from scipy import ndimage
 from stardist import fill_label_holes
 from tqdm import tqdm
 from skimage.measure import regionprops_table
-from scipy.ndimage.morphology import distance_transform_edt, __all__
+from scipy.ndimage.morphology import distance_transform_edt
 from functools import reduce
 from mahotas.features import haralick
 from scipy.ndimage import zoom, binary_fill_holes
 import os
 import subprocess
+
+from celldetective.filters import std_filter, gauss_filter
 import datetime
 from skimage.draw import disk as dsk
 
@@ -32,12 +35,10 @@ from skimage.morphology import disk
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
-
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,
             features=None, intensity_measurement_radii=None, isotropic_operations=['mean'], border_distances=None,
-            haralick_options=None,
-            column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
-            clear_previous=False, normalisation_list=None):
+            haralick_options=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}, clear_previous=False):
+
     """
 
     Perform measurements on a stack of images or labels.
@@ -102,14 +103,15 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 
     """
 
+
     do_iso_intensities = True
     do_features = True
 
+
     # Check that conditions are satisfied to perform measurements
-    assert (labels is not None) or (stack is not None), 'Please pass a stack and/or labels... Abort.'
-    if (labels is not None) * (stack is not None):
-        assert labels.shape == stack.shape[
-                               :-1], f"Shape mismatch between the stack of shape {stack.shape} and the segmentation {labels.shape}..."
+    assert (labels is not None) or (stack is not None),'Please pass a stack and/or labels... Abort.'
+    if (labels is not None)*(stack is not None):
+        assert labels.shape==stack.shape[:-1],f"Shape mismatch between the stack of shape {stack.shape} and the segmentation {labels.shape}..."
 
     # Condition to compute features
     if labels is None:
@@ -122,11 +124,10 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
     # Condition to compute isotropic intensities
     if (stack is None) or (trajectories is None) or (intensity_measurement_radii is None):
         do_iso_intensities = False
-        print(
-            'Either no image, no positions or no radii were provided... Isotropic intensities will not be computed...')
+        print('Either no image, no positions or no radii were provided... Isotropic intensities will not be computed...')
 
     # Compensate for non provided channel names
-    if (stack is not None) * (channel_names is None):
+    if (stack is not None)*(channel_names is None):
         nbr_channels = stack.shape[-1]
         channel_names = [f'intensity-{k}' for k in range(nbr_channels)]
 
@@ -138,7 +139,7 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 
     if features is not None:
         features = remove_redundant_features(features, trajectories.columns,
-                                             channel_names=channel_names)
+                                            channel_names=channel_names)
 
     if features is None:
         features = []
@@ -153,7 +154,7 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 
     timestep_dataframes = []
 
-    for t in tqdm(range(nbr_frames), desc='frame'):
+    for t in tqdm(range(nbr_frames),desc='frame'):
 
         if stack is not None:
             img = stack[t]
@@ -165,43 +166,38 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
             lbl = None
 
         if trajectories is not None:
-            positions_at_t = trajectories.loc[trajectories[column_labels['time']] == t].copy()
+            positions_at_t = trajectories.loc[trajectories[column_labels['time']]==t].copy()
 
         if do_features:
-            feature_table = measure_features(img, lbl, features=features, border_dist=border_distances,
-                                             channels=channel_names, haralick_options=haralick_options,
-                                             verbose=False)
+            feature_table = measure_features(img, lbl, features = features, border_dist=border_distances,
+                                            channels=channel_names, haralick_options=haralick_options, verbose=False)
             if trajectories is None:
                 # Use the centroids as estimate for the location of the cells, to be passed to the measure_isotropic_intensity function.
-                positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
-                positions_at_t['ID'] = np.arange(
-                    len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
-                positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
+                positions_at_t = feature_table[['centroid-1', 'centroid-0','class_id']].copy()
+                positions_at_t['ID'] = np.arange(len(positions_at_t))	# temporary ID for the cells, that will be reset at the end since they are not tracked
+                positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'},inplace=True)
                 positions_at_t['FRAME'] = int(t)
-                column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'],
-                                 'y': column_labels['y']}
+                column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'], 'y': column_labels['y']}
 
         # Isotropic measurements (circle, ring)
         if do_iso_intensities:
-            iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names,
-                                                    intensity_measurement_radii=intensity_measurement_radii,
-                                                    column_labels=column_labels, operations=isotropic_operations,
-                                                    verbose=False)
+            iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii,
+                                                    column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
-        if do_iso_intensities * do_features:
+        if do_iso_intensities*do_features:
             measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
-        elif do_iso_intensities * (not do_features):
+        elif do_iso_intensities*(not do_features):
             measurements_at_t = iso_table
-        elif do_features * (trajectories is not None):
+        elif do_features*(trajectories is not None):
             measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
-        elif do_features * (trajectories is None):
+        elif do_features*(trajectories is None):
             measurements_at_t = positions_at_t
 
         timestep_dataframes.append(measurements_at_t)
 
     measurements = pd.concat(timestep_dataframes)
     if trajectories is not None:
-        measurements = measurements.sort_values(by=[column_labels['track'], column_labels['time']])
+        measurements = measurements.sort_values(by=[column_labels['track'],column_labels['time']])
         measurements = measurements.dropna(subset=[column_labels['track']])
     else:
         measurements['ID'] = np.arange(len(df))
@@ -210,19 +206,18 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 
     return measurements
 
+def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
 
-def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X',
-                                                    'y': 'POSITION_Y'}):
-    tab = tab.sort_values(by=[column_labels['track'], column_labels['time']])
+    tab = tab.sort_values(by=[column_labels['track'],column_labels['time']])
     if 'area' in tab.columns:
-        for tid, track_group in tab.groupby(column_labels['track']):
+        for tid,track_group in tab.groupby(column_labels['track']):
             indices = track_group.index
             area = track_group['area'].values
             timeline = track_group[column_labels['time']].values
-            if np.any(area == area):
-                t_first = timeline[area == area][0]
+            if np.any(area==area):
+                t_first = timeline[area==area][0]
                 cclass = 1
-                if t_first == 0:
+                if t_first==0:
                     t_first = 0
                     cclass = 2
             else:
@@ -235,6 +230,7 @@ def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time':
 
 
 def contour_of_instance_segmentation(label, distance):
+
     """
 
     Generate an instance mask containing the contour of the segmented objects.
@@ -266,13 +262,12 @@ def contour_of_instance_segmentation(label, distance):
     # Generate a binary mask containing the contour of the segmented instances with a maximum distance of 3 pixels.
 
     """
-    if isinstance(distance, (list, tuple)) or distance >= 0:
+    if isinstance(distance,(list,tuple)) or distance >= 0 :
 
         edt = distance_transform_edt(label)
 
         if isinstance(distance, list) or isinstance(distance, tuple):
-            min_distance = distance[0];
-            max_distance = distance[1]
+            min_distance = distance[0]; max_distance = distance[1]
 
         elif isinstance(distance, (int, float)):
             min_distance = 0
@@ -283,22 +278,40 @@ def contour_of_instance_segmentation(label, distance):
         border_label[np.where(thresholded == 0)] = 0
 
     else:
-        size = (2 * abs(int(distance)) + 1, 2 * abs(int(distance)) + 1)
-        dilated_image = ndimage.grey_dilation(label, footprint=disk(int(abs(distance))))  # size=size,
-        border_label = np.copy(dilated_image)
+        size = (2*abs(int(distance))+1, 2*abs(int(distance))+1)
+        dilated_image = ndimage.grey_dilation(label, footprint=disk(int(abs(distance)))) #size=size,
+        border_label=np.copy(dilated_image)
         matching_cells = np.logical_and(dilated_image != 0, label == dilated_image)
         border_label[np.where(matching_cells == True)] = 0
-        border_label[label != 0] = 0.
+        border_label[label!=0] = 0.
 
     return border_label
 
-
 def drop_tonal_features(features):
+
+    """
+    Removes features related to intensity from a list of feature names.
+
+    This function iterates over a list of feature names and removes any feature that includes the term 'intensity' in its name.
+    The operation is performed in-place, meaning the original list of features is modified directly.
+
+    Parameters
+    ----------
+    features : list of str
+        A list of feature names from which intensity-related features are to be removed.
+
+    Returns
+    -------
+    list of str
+        The modified list of feature names with intensity-related features removed. Note that this operation modifies the
+        input list in-place, so the return value is the same list object with some elements removed.
+
+    """
+
     for f in features:
         if 'intensity' in f:
             features.remove(f)
     return features
-
 
 def measure_features(img, label, features=['area', 'intensity_mean'], channels=None,
                      border_dist=None, haralick_options=None, verbose=True, normalisation_list=None,
@@ -396,6 +409,8 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
     props = regionprops_table(label, intensity_image=img, properties=feats, extra_properties=extra_props_list)
     df_props = pd.DataFrame(props)
 
+
+
     if spot_detection is not None:
         for index, channel in enumerate(channels):
             if channel == spot_detection['channel']:
@@ -427,23 +442,28 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
             if verbose:
                 print('No intensity feature was passed... Adding mean intensity for edge measurement...')
             intensity_features = np.append(intensity_features, 'intensity_mean')
-        intensity_features = np.append(intensity_features, 'label')
+        intensity_features = list(np.append(intensity_features, 'label'))
+
+        # Remove extra intensity properties from border measurements
+        new_intensity_features = intensity_features.copy()
+        for int_feat in intensity_features:
+            if int_feat in extra_props:
+                new_intensity_features.remove(int_feat)
+        intensity_features = new_intensity_features
 
         if (isinstance(border_dist, int) or isinstance(border_dist, float)):
             border_label = contour_of_instance_segmentation(label, border_dist)
-            props_border = regionprops_table(border_label, intensity_image=img, properties=intensity_features,
-                                             extra_properties=intensity_extra)
+            props_border = regionprops_table(border_label, intensity_image=img, properties=intensity_features)
             df_props_border = pd.DataFrame(props_border)
             for c in df_props_border.columns:
                 if 'intensity' in c:
-                    df_props_border = df_props_border.rename({c: c + f'_edge_{border_dist}px'}, axis=1)
+                    df_props_border = df_props_border.rename({c: c+f'_edge_{border_dist}px'},axis=1)
 
         if isinstance(border_dist, list):
             df_props_border_list = []
             for d in border_dist:
                 border_label = contour_of_instance_segmentation(label, d)
-                props_border = regionprops_table(border_label, intensity_image=img, properties=intensity_features,
-                                                 extra_properties=intensity_extra)
+                props_border = regionprops_table(border_label, intensity_image=img, properties=intensity_features)
                 df_props_border_d = pd.DataFrame(props_border)
                 for c in df_props_border_d.columns:
                     if 'intensity' in c:
@@ -453,40 +473,30 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
                             df_props_border_d = df_props_border_d.rename({c: c + f'_edge_{d}px'}, axis=1)
                 df_props_border_list.append(df_props_border_d)
 
-            df_props_border = reduce(lambda left, right: pd.merge(left, right, on=['label'],
-                                                                  how='outer'), df_props_border_list)
-        df_props = df_props.merge(df_props_border, how='outer', on='label')
+            df_props_border = reduce(lambda  left,right: pd.merge(left,right,on=['label'],
+                                            how='outer'), df_props_border_list)
 
-    # if radial_intensity and radial_channel is not None:
-    #     for channel in radial_channel:
-    #         index = np.where(channels == channel)[0]
-    #         model_results = radial_intensity_distribution(img, label, radial_intensity, channel, index[0])
-    #         df_radial_intensity=pd.DataFrame(model_results)
-    #         df_props = df_props.merge(df_radial_intensity, how='outer', on='label')
+        df_props = df_props.merge(df_props_border, how='outer', on='label')
 
     if haralick_options is not None:
         try:
             df_haralick = compute_haralick_features(img, label, channels=channels, **haralick_options)
-            df_props = df_props.merge(df_haralick, left_on='label', right_on='cell_id')
-        # df_props = df_props.drop(columns=['cell_label'])
+            df_props = df_props.merge(df_haralick, left_on='label',right_on='cell_id')
+            #df_props = df_props.drop(columns=['cell_label'])
         except Exception as e:
             print(e)
             pass
 
     if channels is not None:
-        # print(df_props)
         df_props = rename_intensity_column(df_props, channels)
-    df_props.rename(columns={"label": "class_id"}, inplace=True)
+    df_props.rename(columns={"label": "class_id"},inplace=True)
     df_props['class_id'] = df_props['class_id'].astype(float)
 
     return df_props
 
+def compute_haralick_features(img, labels, channels=None, target_channel=0, scale_factor=1, percentiles=(0.01,99.99), clip_values=None,
+                                n_intensity_bins=256, ignore_zero=True, return_mean=True, return_mean_ptp=False, distance=1, disable_progress_bar=False, return_norm_image_only=False, return_digit_image_only=False):
 
-def compute_haralick_features(img, labels, channels=None, target_channel=0, scale_factor=1, percentiles=(0.01, 99.99),
-                              clip_values=None,
-                              n_intensity_bins=256, ignore_zero=True, return_mean=True, return_mean_ptp=False,
-                              distance=1, disable_progress_bar=False,
-                              return_norm_image_only=False, return_digit_image_only=False):
     """
 
     Compute Haralick texture features on each segmented region of an image.
@@ -537,12 +547,11 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
 
     """
 
-    assert ((img.ndim == 2) | (
-            img.ndim == 3)), f'Invalid image shape to compute the Haralick features. Expected YXC, got {img.shape}...'
-    assert img.shape[:2] == labels.shape, f'Mismatch between image shape {img.shape} and labels shape {labels.shape}'
+    assert ((img.ndim==2)|(img.ndim==3)),f'Invalid image shape to compute the Haralick features. Expected YXC, got {img.shape}...'
+    assert img.shape[:2]==labels.shape,f'Mismatch between image shape {img.shape} and labels shape {labels.shape}'
 
-    if img.ndim == 2:
-        img = img[:, :, np.newaxis]
+    if img.ndim==2:
+        img = img[:,:,np.newaxis]
         target_channel = 0
         if isinstance(channels, list):
             modality = channels[0]
@@ -550,9 +559,9 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
             modality = channels
         else:
             print('Channel name unrecognized...')
-            modality = ''
-    elif img.ndim == 3:
-        assert target_channel is not None, "The image is multichannel. Please provide a target channel to compute the Haralick features. Abort."
+            modality=''
+    elif img.ndim==3:
+        assert target_channel is not None,"The image is multichannel. Please provide a target channel to compute the Haralick features. Abort."
         modality = channels[target_channel]
 
     haralick_labels = ["angular_second_moment",
@@ -570,38 +579,37 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
                        "information_measure_of_correlation_2",
                        "maximal_correlation_coefficient"]
 
-    haralick_labels = ['haralick_' + h + "_" + modality for h in haralick_labels]
-    if len(img.shape) == 3:
-        img = img[:, :, target_channel]
+    haralick_labels = ['haralick_'+h+"_"+modality for h in haralick_labels]
+    if len(img.shape)==3:
+        img = img[:,:,target_channel]
 
     # Rescale image and mask
-    img = zoom(img, [scale_factor, scale_factor], order=3).astype(float)
-    labels = zoom(labels, [scale_factor, scale_factor], order=0)
+    img = zoom(img,[scale_factor,scale_factor],order=3).astype(float)
+    labels = zoom(labels, [scale_factor,scale_factor],order=0)
 
     # Normalize image
     if clip_values is None:
-        min_value = np.nanpercentile(img[img != 0.].flatten(), percentiles[0])
-        max_value = np.nanpercentile(img[img != 0.].flatten(), percentiles[1])
+        min_value = np.nanpercentile(img[img!=0.].flatten(), percentiles[0])
+        max_value = np.nanpercentile(img[img!=0.].flatten(), percentiles[1])
     else:
-        min_value = clip_values[0];
-        max_value = clip_values[1]
+        min_value = clip_values[0]; max_value = clip_values[1]
 
     img -= min_value
-    img /= (max_value - min_value) / n_intensity_bins
-    img[img <= 0.] = 0.
-    img[img >= n_intensity_bins] = n_intensity_bins
+    img /= (max_value-min_value) / n_intensity_bins
+    img[img<=0.] = 0.
+    img[img>=n_intensity_bins] = n_intensity_bins
 
     if return_norm_image_only:
         return img
 
-    hist, bins = np.histogram(img.flatten(), bins=n_intensity_bins)
-    centered_bins = [bins[0]] + [bins[i] + (bins[i + 1] - bins[i]) / 2. for i in range(len(bins) - 1)]
+    hist,bins = np.histogram(img.flatten(),bins=n_intensity_bins)
+    centered_bins = [bins[0]] + [bins[i] + (bins[i+1] - bins[i])/2. for i in range(len(bins)-1)]
 
     digitized = np.digitize(img, bins)
     img_binned = np.zeros_like(img)
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
-            img_binned[i, j] = centered_bins[digitized[i, j] - 1]
+            img_binned[i,j] = centered_bins[digitized[i,j] - 1]
 
     img = img_binned.astype(int)
     if return_digit_image_only:
@@ -609,34 +617,33 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
 
     haralick_properties = []
 
-    for cell in tqdm(np.unique(labels)[1:], disable=disable_progress_bar):
+    for cell in tqdm(np.unique(labels)[1:],disable=disable_progress_bar):
 
-        mask = labels == cell
-        f = img * mask
-        features = haralick(f, ignore_zeros=ignore_zero, return_mean=return_mean, distance=distance)
+        mask = labels==cell
+        f = img*mask
+        features = haralick(f, ignore_zeros=ignore_zero,return_mean=return_mean,distance=distance)
 
         dictionary = {'cell_id': cell}
         for k in range(len(features)):
             dictionary.update({haralick_labels[k]: features[k]})
         haralick_properties.append(dictionary)
 
-    assert len(haralick_properties) == (len(np.unique(labels)) - 1), 'Some cells have not been measured...'
+    assert len(haralick_properties)==(len(np.unique(labels))-1),'Some cells have not been measured...'
 
     return pd.DataFrame(haralick_properties)
 
 
-def measure_isotropic_intensity(positions,  # Dataframe of cell positions @ t
-                                img,  # multichannel frame (YXC) @ t
-                                channels=None,  # channels, need labels to name measurements
-                                intensity_measurement_radii=None,
-                                # list of radii, single value is circle, tuple is ring?
-                                operations=['mean'],
-                                measurement_kernel=None,
-                                pbar=None,
-                                column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X',
-                                               'y': 'POSITION_Y'},
-                                verbose=True,
+def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
+                                 img,  # multichannel frame (YXC) @ t
+                                 channels=None, #channels, need labels to name measurements
+                                 intensity_measurement_radii=None, #list of radii, single value is circle, tuple is ring?
+                                 operations = ['mean'],
+                                 measurement_kernel = None,
+                                 pbar=None,
+                                 column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
+                                 verbose=True,
                                 ):
+
     """
 
     Measure isotropic intensity values around cell positions in an image.
@@ -696,92 +703,88 @@ def measure_isotropic_intensity(positions,  # Dataframe of cell positions @ t
 
     """
 
-    assert ((img.ndim == 2) | (
-            img.ndim == 3)), f'Invalid image shape to compute the Haralick features. Expected YXC, got {img.shape}...'
 
-    if img.ndim == 2:
-        img = img[:, :, np.newaxis]
+    assert ((img.ndim==2)|(img.ndim==3)),f'Invalid image shape to compute the Haralick features. Expected YXC, got {img.shape}...'
+
+    if img.ndim==2:
+        img = img[:,:,np.newaxis]
         if isinstance(channels, str):
             channels = [channels]
         else:
             if verbose:
                 print('Channel name unrecognized...')
-            channels = ['intensity']
-    elif img.ndim == 3:
-        assert channels is not None, "The image is multichannel. Please provide the list of channel names. Abort."
+            channels=['intensity']
+    elif img.ndim==3:
+        assert channels is not None,"The image is multichannel. Please provide the list of channel names. Abort."
 
     if isinstance(intensity_measurement_radii, int) or isinstance(intensity_measurement_radii, float):
         intensity_measurement_radii = [intensity_measurement_radii]
 
-    if (measurement_kernel is None) * (intensity_measurement_radii is not None):
+    if (measurement_kernel is None)*(intensity_measurement_radii is not None):
 
         for r in intensity_measurement_radii:
 
-            if isinstance(r, list):
-                mask = create_patch_mask(2 * max(r) + 1, 2 * max(r) + 1, ((2 * max(r)) // 2, (2 * max(r)) // 2),
-                                         radius=r)
+            if isinstance(r,list):
+                mask = create_patch_mask(2*max(r)+1,2*max(r)+1,((2*max(r))//2,(2*max(r))//2),radius=r)
             else:
-                mask = create_patch_mask(2 * r + 1, 2 * r + 1, ((2 * r) // 2, (2 * r) // 2), r)
+                mask = create_patch_mask(2*r+1,2*r+1,((2*r)//2,(2*r)//2),r)
 
-            pad_value_x = mask.shape[0] // 2 + 1
-            pad_value_y = mask.shape[1] // 2 + 1
-            frame_padded = np.pad(img, [(pad_value_x, pad_value_x), (pad_value_y, pad_value_y), (0, 0)])
+            pad_value_x = mask.shape[0]//2 + 1
+            pad_value_y = mask.shape[1]//2 + 1
+            frame_padded = np.pad(img, [(pad_value_x,pad_value_x),(pad_value_y,pad_value_y),(0,0)])
 
             # Find a way to measure intensity in mask
-            for tid, group in positions.groupby(column_labels['track']):
+            for tid,group in positions.groupby(column_labels['track']):
 
                 x = group[column_labels['x']].to_numpy()[0]
                 y = group[column_labels['y']].to_numpy()[0]
 
                 xmin = int(x)
-                xmax = int(x) + 2 * pad_value_y - 1
+                xmax = int(x) + 2*pad_value_y - 1
                 ymin = int(y)
-                ymax = int(y) + 2 * pad_value_x - 1
+                ymax = int(y) + 2*pad_value_x - 1
 
-                assert frame_padded[ymin:ymax, xmin:xmax,
-                       0].shape == mask.shape, "Shape mismatch between the measurement kernel and the image..."
+                assert frame_padded[ymin:ymax,xmin:xmax,0].shape == mask.shape,"Shape mismatch between the measurement kernel and the image..."
 
                 expanded_mask = np.expand_dims(mask, axis=-1)  # shape: (X, Y, 1)
-                crop = frame_padded[ymin:ymax, xmin:xmax]
+                crop = frame_padded[ymin:ymax,xmin:xmax]
                 projection = np.multiply(crop, expanded_mask)
 
                 for op in operations:
-                    func = eval('np.' + op)
-                    intensity_values = func(projection, axis=(0, 1), where=projection != 0.)
+                    func = eval('np.'+op)
+                    intensity_values = func(projection, axis=(0,1), where=projection!=0.)
                     for k in range(crop.shape[-1]):
-                        if isinstance(r, list):
-                            positions.loc[group.index, f'{channels[k]}_ring_{min(r)}_{max(r)}_{op}'] = intensity_values[
-                                k]
+                        if isinstance(r,list):
+                            positions.loc[group.index, f'{channels[k]}_ring_{min(r)}_{max(r)}_{op}'] = intensity_values[k]
                         else:
                             positions.loc[group.index, f'{channels[k]}_circle_{r}_{op}'] = intensity_values[k]
 
     elif (measurement_kernel is not None):
         # do something like this
         mask = measurement_kernel
-        pad_value_x = mask.shape[0] // 2 + 1
-        pad_value_y = mask.shape[1] // 2 + 1
-        frame_padded = np.pad(img, [(pad_value_x, pad_value_x), (pad_value_y, pad_value_y), (0, 0)])
+        pad_value_x = mask.shape[0]//2 + 1
+        pad_value_y = mask.shape[1]//2 + 1
+        frame_padded = np.pad(img, [(pad_value_x,pad_value_x),(pad_value_y,pad_value_y),(0,0)])
 
-        for tid, group in positions.groupby(column_labels['track']):
+        for tid,group in positions.groupby(column_labels['track']):
 
             x = group[column_labels['x']].to_numpy()[0]
             y = group[column_labels['y']].to_numpy()[0]
 
             xmin = int(x)
-            xmax = int(x) + 2 * pad_value_y - 1
+            xmax = int(x) + 2*pad_value_y - 1
             ymin = int(y)
-            ymax = int(y) + 2 * pad_value_x - 1
+            ymax = int(y) + 2*pad_value_x - 1
 
-            assert frame_padded[ymin:ymax, xmin:xmax,
-                   0].shape == mask.shape, "Shape mismatch between the measurement kernel and the image..."
+            assert frame_padded[ymin:ymax,xmin:xmax,0].shape == mask.shape,"Shape mismatch between the measurement kernel and the image..."
 
             expanded_mask = np.expand_dims(mask, axis=-1)  # shape: (X, Y, 1)
-            crop = frame_padded[ymin:ymax, xmin:xmax]
+            crop = frame_padded[ymin:ymax,xmin:xmax]
             projection = np.multiply(crop, expanded_mask)
 
             for op in operations:
-                func = eval('np.' + op)
-                intensity_values = func(projection, axis=(0, 1), where=projection != 0.)
+                func = eval('np.'+op)
+                intensity_values = func(projection, axis=(0,1), where=projection!=0.)
                 for k in range(crop.shape[-1]):
                     positions.loc[group.index, f'{channels[k]}_custom_kernel_{op}'] = intensity_values[k]
 
@@ -790,8 +793,8 @@ def measure_isotropic_intensity(positions,  # Dataframe of cell positions @ t
     positions['class_id'] = positions['class_id'].astype(float)
     return positions
 
-
 def measure_at_position(pos, mode, return_measurements=False, threads=1):
+
     """
     Executes a measurement script at a specified position directory, optionally returning the measured data.
 
@@ -818,16 +821,16 @@ def measure_at_position(pos, mode, return_measurements=False, threads=1):
 
     """
 
-    pos = pos.replace('\\', '/')
+    pos = pos.replace('\\','/')
     pos = rf"{pos}"
-    assert os.path.exists(pos), f'Position {pos} is not a valid path.'
+    assert os.path.exists(pos),f'Position {pos} is not a valid path.'
     if not pos.endswith('/'):
         pos += '/'
     script_path = os.sep.join([abs_path, 'scripts', 'measure_cells.py'])
     cmd = f'python "{script_path}" --pos "{pos}" --mode "{mode}" --threads "{threads}"'
     subprocess.call(cmd, shell=True)
 
-    table = pos + os.sep.join(["output", "tables", f"trajectories_{mode}.csv"])
+    table = pos + os.sep.join(["output","tables",f"trajectories_{mode}.csv"])
     if return_measurements:
         df = pd.read_csv(table)
         return df

@@ -418,10 +418,12 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
         blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
                                threshold=spot_detection['threshold'])
         df_spots = pd.DataFrame.from_dict(blobs, orient='index', columns=['count', 'spot_mean_intensity']).reset_index()
+        print(df_spots)
         # Rename columns
         df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
         df_props = df_props.merge(df_spots, how='outer', on='label')
-
+        df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
+        df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
 
 
     if border_dist is not None:
@@ -982,6 +984,7 @@ def blob_detection(image, label, threshold, diameter):
         max_sigma = math.sqrt(2) * min_sigma
         blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
                                          max_sigma=max_sigma)
+
         mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])
         if not np.any(mask):
             continue

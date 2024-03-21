@@ -125,6 +125,7 @@ class TableUI(QMainWindow):
 
 		self.model = PandasModel(data)
 		self.table_view.setModel(self.model)
+		self.table_view.resizeColumnsToContents()
 
 	def _createActions(self):
 

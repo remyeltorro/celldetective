@@ -18,6 +18,8 @@ from shutil import copyfile
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
 import json
 import threading
+from skimage.measure import regionprops_table
+
 
 def get_experiment_wells(experiment):
 	
@@ -1037,6 +1039,64 @@ def load_napari_data(position, prefix="Aligned", population="target"):
 	stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
 
 	return data,properties,graph,labels,stack
+
+from skimage.measure import label
+
+def auto_correct_masks(masks):
+
+	"""
+	Automatically corrects segmentation masks by splitting disconnected objects sharing the same label.
+
+	This function examines each labeled object in the input masks and splits objects whose bounding box
+	area is significantly larger than their actual area, indicating potential merging of multiple objects.
+	It uses geometric properties to identify such cases and applies a relabeling to separate merged objects.
+
+	Parameters
+	----------
+	masks : ndarray
+		A 2D numpy array representing the segmentation masks, where each object is labeled with a unique integer.
+
+	Returns
+	-------
+	ndarray
+		A 2D numpy array of the corrected segmentation masks with potentially merged objects separated and
+		relabeled.
+
+	Notes
+	-----
+	- The function uses bounding box area and actual object area to identify potentially merged objects.
+	  Objects are considered potentially merged if their bounding box area is more than twice their actual area.
+	- Relabeling of objects is done sequentially, adding to the maximum label number found in the original
+	  masks to ensure new labels do not overlap with existing ones.
+	- This function relies on `skimage.measure.label` for relabeling and `skimage.measure.regionprops_table`
+	  for calculating object properties.
+
+	"""
+
+	props = pd.DataFrame(regionprops_table(masks,properties=('label','area','area_bbox')))
+	max_lbl = props['label'].max()
+	corrected_lbl = masks.copy().astype(int)
+
+	for cell in props['label'].unique():
+
+		bbox_area = props.loc[props['label']==cell, 'area_bbox'].values
+		area = props.loc[props['label']==cell, 'area'].values
+
+		if bbox_area > 2*area: #condition for anomaly
+
+			lbl = masks==cell
+			lbl = lbl.astype(int)
+
+			relabelled = label(lbl,connectivity=2)
+			relabelled += max_lbl
+			relabelled[np.where(lbl==0)] = 0
+
+			corrected_lbl[np.where(relabelled != 0)] = relabelled[np.where(relabelled!=0)]
+
+		max_lbl = np.amax(corrected_lbl)
+
+	return corrected_lbl
+
 
 
 def control_segmentation_napari(position, prefix='Aligned', population="target", flush_memory=False):

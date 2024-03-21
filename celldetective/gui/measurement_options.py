@@ -489,10 +489,10 @@ class ConfigMeasurements(QMainWindow):
 
         print('Writing instructions...')
         measurement_options = {}
-        normalisation = self.normalise
-        if not normalisation:
-            normalisation = None
-        measurement_options.update({'normalisation': normalisation})
+        background_correction = self.background_correction
+        if not background_correction:
+            background_correction = None
+        measurement_options.update({'background_correction': background_correction})
         features = self.features_list.getItems()
         if not features:
             features = None
@@ -577,11 +577,11 @@ class ConfigMeasurements(QMainWindow):
             with open(self.measure_instructions_path, 'r') as f:
                 measurement_instructions = json.load(f)
                 print(measurement_instructions)
-                if 'normalisation' in measurement_instructions:
-                    self.normalise = measurement_instructions['normalisation']
-                    if (self.normalise is not None) and len(self.normalise) > 0:
+                if 'background_correction' in measurement_instructions:
+                    self.background_correction = measurement_instructions['background_correction']
+                    if (self.background_correction is not None) and len(self.background_correction) > 0:
                         self.normalisation_list.clear()
-                        for norm_params in self.normalise:
+                        for norm_params in self.background_correction:
                             normalisation_description = ""
                             for index, (key, value) in enumerate(norm_params.items()):
                                 if index > 0:
@@ -945,7 +945,7 @@ class ConfigMeasurements(QMainWindow):
 
     def populate_normalisation_tabs(self):
         layout = QVBoxLayout(self.normalisation_frame)
-        self.normalisation_lbl = QLabel("NORMALISATION")
+        self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
         self.normalisation_lbl.setStyleSheet("""
 			font-weight: bold;
 			padding: 0px;
@@ -961,13 +961,13 @@ class ConfigMeasurements(QMainWindow):
         self.tab1.setLayout(self.populate_local_norm_tab())
         self.tab2.setLayout(self.populate_field_norm_tab())
         layout.addWidget(self.tabs)
-        self.norm_list_lbl = QLabel('Normalisation to perform:')
+        self.norm_list_lbl = QLabel('Background correction to perform:')
         hbox = QHBoxLayout()
         hbox.addWidget(self.norm_list_lbl)
         self.del_norm_btn = QPushButton("")
         self.del_norm_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
         self.del_norm_btn.setIcon(icon(MDI6.trash_can, color="black"))
-        self.del_norm_btn.setToolTip("Remove normalisation")
+        self.del_norm_btn.setToolTip("Remove background correction")
         self.del_norm_btn.setIconSize(QSize(20, 20))
         hbox.addWidget(self.del_norm_btn, alignment=Qt.AlignRight)
         layout.addLayout(hbox)
@@ -1198,11 +1198,11 @@ class ConfigMeasurements(QMainWindow):
             return True
 
     def display_message_box(self, missing_info):
-        QMessageBox.about(self, "Message Box Title", "Please " + missing_info + " for normalisation")
+        QMessageBox.about(self, "Message Box Title", "Please " + missing_info + " for background correction")
 
     def channel_already_in_list(self):
         response = QMessageBox.question(self, "Message Box Title",
-                                        "The normalisation parameters for this channel already exist, "
+                                        "The background correction parameters for this channel already exist, "
                                         "continuing will erase the previous configurations. Are you sure you want to "
                                         "proceed?",
                                         QMessageBox.No | QMessageBox.Yes, QMessageBox.No)
@@ -1219,7 +1219,7 @@ class ConfigMeasurements(QMainWindow):
                                                  clip=self.tab2_clip.isChecked(),
                                                  mode=self.tab2_dropdown.currentText())
         self.fig, self.ax = plt.subplots()
-        self.normalised_img = FigureCanvas(self.fig, "Normalised image preview")
+        self.normalised_img = FigureCanvas(self.fig, "Corrected background image preview")
         self.ax.clear()
         self.ax.imshow(normalised, cmap='gray')
         self.normalised_img.canvas.draw()

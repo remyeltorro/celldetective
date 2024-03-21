@@ -41,7 +41,7 @@ def intensity_median(regionmask, intensity_image):
     return np.nanmedian(intensity_image[regionmask])
 
 
-def intensity_centroid_distance(regionmask, intensity_image):
+def intensity_centre_of_mass_displacement(regionmask, intensity_image):
     y, x = np.mgrid[:regionmask.shape[0], :regionmask.shape[1]]
     xtemp = x.copy()
     ytemp = y.copy()
@@ -57,7 +57,7 @@ def intensity_centroid_distance(regionmask, intensity_image):
     return distance, direction_arctan
 
 
-def intensity_peripheral(regionmask, intensity_image):
+def intensity_radial_gradient(regionmask, intensity_image):
     warnings.filterwarnings('ignore', message="Polyfit may be poorly conditioned")
     cell_mask = regionmask.copy()
     intensity = intensity_image.copy()
@@ -70,7 +70,7 @@ def intensity_peripheral(regionmask, intensity_image):
     return line.coefficients[0], line.coefficients[1]
 
 
-def intensity_centroid_distance_edge(regionmask, intensity_image):
+def intensity_centre_of_mass_displacement_edge(regionmask, intensity_image):
     edt = distance_transform_edt(regionmask)
     min_distance = 0
     max_distance = 0.1*edt.max()

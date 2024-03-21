@@ -65,32 +65,32 @@ nbr_channels = len(channel_names)
 # from tracking instructions, fetch btrack config, features, haralick, clean_traj, idea: fetch custom timeline?
 instr_path = PurePath(expfolder,Path(f"{instruction_file}"))
 if os.path.exists(instr_path):
-    print(f"Tracking instructions for the {mode} population has been successfully located.")
-    with open(instr_path, 'r') as f:
-        instructions = json.load(f)
-        print("Reading the following instructions: ", instructions)
-    if 'normalisation' in instructions:
-        normalisation = instructions['normalisation']
+	print(f"Tracking instructions for the {mode} population has been successfully located.")
+	with open(instr_path, 'r') as f:
+		instructions = json.load(f)
+		print("Reading the following instructions: ", instructions)
+	if 'background_correction' in instructions:
+		background_correction = instructions['background_correction']
 
-    if 'features' in instructions:
-        features = instructions['features']
-    else:
-        features = None
+	if 'features' in instructions:
+		features = instructions['features']
+	else:
+		features = None
 
-    if 'border_distances' in instructions:
-        border_distances = instructions['border_distances']
-    else:
-        border_distances = None
+	if 'border_distances' in instructions:
+		border_distances = instructions['border_distances']
+	else:
+		border_distances = None
 
-    if 'spot_detection' in instructions:
-        spot_detection = instructions['spot_detection']
-    else:
-        spot_detection = None
+	if 'spot_detection' in instructions:
+		spot_detection = instructions['spot_detection']
+	else:
+		spot_detection = None
 
-    if 'haralick_options' in instructions:
-        haralick_options = instructions['haralick_options']
-    else:
-        haralick_options = None
+	if 'haralick_options' in instructions:
+		haralick_options = instructions['haralick_options']
+	else:
+		haralick_options = None
 
 	if 'intensity_measurement_radii' in instructions:
 		intensity_measurement_radii = instructions['intensity_measurement_radii']
@@ -208,34 +208,34 @@ def measure_index(indices):
 
 			positions_at_t = trajectories.loc[trajectories[column_labels['time']]==t].copy()
 
-        if do_features:
-            feature_table = measure_features(img, lbl, features=features, border_dist=border_distances,
-                                             channels=channel_names, haralick_options=haralick_options, verbose=False,
-                                             normalisation_list=normalisation, spot_detection=spot_detection)
+		if do_features:
+			feature_table = measure_features(img, lbl, features=features, border_dist=border_distances,
+											 channels=channel_names, haralick_options=haralick_options, verbose=False,
+											 normalisation_list=background_correction, spot_detection=spot_detection)
 
-            if trajectories is None:
-                positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
-                positions_at_t['ID'] = np.arange(
-                    len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
-                positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
-                positions_at_t['FRAME'] = int(t)
-                column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'],
-                                 'y': column_labels['y']}
+			if trajectories is None:
+				positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
+				positions_at_t['ID'] = np.arange(
+					len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
+				positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
+				positions_at_t['FRAME'] = int(t)
+				column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'],
+								 'y': column_labels['y']}
 
 
 		if do_iso_intensities:
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
-        if do_iso_intensities and do_features:
-            measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
-        elif do_iso_intensities * (not do_features):
-            measurements_at_t = iso_table
-        elif do_features:
-            measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
+		if do_iso_intensities and do_features:
+			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
+		elif do_iso_intensities * (not do_features):
+			measurements_at_t = iso_table
+		elif do_features:
+			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
 
-        if measurements_at_t is not None:
-            measurements_at_t[column_labels['time']] = t
-            timestep_dataframes.append(measurements_at_t)
+		if measurements_at_t is not None:
+			measurements_at_t[column_labels['time']] = t
+			timestep_dataframes.append(measurements_at_t)
 
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))

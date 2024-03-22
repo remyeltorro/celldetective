@@ -1334,6 +1334,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.create_cell_signal_canvas()
 
         self.populate_widget()
+        self.changed_class()
 
         self.setMinimumWidth(int(0.8 * self.screen_width))
         # self.setMaximumHeight(int(0.8*self.screen_height))
@@ -1359,6 +1360,10 @@ class MeasureAnnotator(SignalAnnotator):
         self.im = self.ax.imshow(self.img, cmap='gray')
         self.status_scatter = self.ax.scatter(self.positions[0][:, 0], self.positions[0][:, 1], marker="o",
                                               facecolors='none', edgecolors=self.colors[0][:, 0], s=200, picker=True)
+        if self.status_name in self.df_tracks.columns:
+            print('hello')
+
+            self.status_scatter.set_edgecolors(self.colors[0][:, 0])
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_aspect('equal')
@@ -1579,8 +1584,6 @@ class MeasureAnnotator(SignalAnnotator):
 
         self.class_choice_cb.addItems(self.class_cols)
         self.class_choice_cb.currentIndexChanged.connect(self.changed_class)
-        self.class_choice_cb.setCurrentIndex(0)
-
         class_hbox.addWidget(self.class_choice_cb, 70)
 
         self.add_class_btn = QPushButton('')

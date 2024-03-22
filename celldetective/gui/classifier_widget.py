@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QComboBox
+from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QComboBox, \
+	QCheckBox
 from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class
 import numpy as np
 import matplotlib.pyplot as plt
@@ -106,6 +107,12 @@ class ClassifierWidget(QWidget):
 		hbox_classify.addWidget(self.submit_query_btn, 20)
 		layout.addLayout(hbox_classify)
 
+		self.time_corr = QCheckBox('Time correlated event')
+		if "TRACK_ID" in self.df.columns:
+			self.time_corr.setEnabled(True)
+		else:
+			self.time_corr.setEnabled(False)
+		layout.addWidget(self.time_corr,alignment=Qt.AlignCenter)
 		self.submit_btn = QPushButton('apply')
 		self.submit_btn.clicked.connect(self.submit_classification)
 		layout.addWidget(self.submit_btn, 30)
@@ -166,7 +173,7 @@ class ClassifierWidget(QWidget):
 			try:
 				self.selection = self.df.query(query).index
 				print(self.selection)
-				self.df.loc[self.selection,self.class_name] = 0
+				self.df.loc[self.selection, self.class_name] = 0
 			except Exception as e:
 				print(e)
 				print(self.df.columns)
@@ -200,42 +207,65 @@ class ClassifierWidget(QWidget):
 
 	def submit_classification(self):
 		print('submit')
+		if self.time_corr.isChecked():
+			self.class_name_user = 'class_'+self.name_le.text()
+			print(f'User defined class name: {self.class_name_user}.')
+			if self.class_name_user in self.df.columns:
 
-		self.class_name_user = 'class_'+self.name_le.text()
-		print(f'User defined class name: {self.class_name_user}.')
-		if self.class_name_user in self.df.columns:
-
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Information)
-			msgBox.setText(f"The class column {self.class_name_user} already exists in the table.\nProceeding will reclassify. Do you want to continue?")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Yes:
-				pass
-			else:
-				return None
-
-		name_map = {self.class_name: self.class_name_user}
-		self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
-		self.df.reset_index(inplace=True, drop=True)
-
-		#self.df.reset_index(inplace=True)
-		if 'TRACK_ID' in list(self.df.columns):
-			print('Tracks detected... save a status column...')
-			stat_col = self.class_name_user.replace('class','status')
-			self.df.loc[:,stat_col] = 1 - self.df[self.class_name_user].values
-			for tid,track in self.df.groupby(['position','TRACK_ID']):
-				indices = track[self.class_name_user].index
-				status_values = track[stat_col].to_numpy()
-				if np.all([s==0 for s in status_values]):
-					self.df.loc[indices, self.class_name_user] = 1
-				elif np.all([s==1 for s in status_values]):
-					self.df.loc[indices, self.class_name_user] = 2
-					self.df.loc[indices, self.class_name_user.replace('class','status')] = 2
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Information)
+				msgBox.setText(f"The class column {self.class_name_user} already exists in the table.\nProceeding will reclassify. Do you want to continue?")
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Yes:
+					pass
 				else:
-					self.df.loc[indices, self.class_name_user] = 2
-			self.estimate_time()
+					return None
+
+			name_map = {self.class_name: self.class_name_user}
+			self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
+			self.df.reset_index(inplace=True, drop=True)
+
+			#self.df.reset_index(inplace=True)
+			if 'TRACK_ID' in self.df.columns:
+				print('Tracks detected... save a status column...')
+				stat_col = self.class_name_user.replace('class','status')
+				self.df.loc[:,stat_col] = 1 - self.df[self.class_name_user].values
+				for tid,track in self.df.groupby(['position','TRACK_ID']):
+					indices = track[self.class_name_user].index
+					status_values = track[stat_col].to_numpy()
+					if np.all([s==0 for s in status_values]):
+						self.df.loc[indices, self.class_name_user] = 1
+					elif np.all([s==1 for s in status_values]):
+						self.df.loc[indices, self.class_name_user] = 2
+						self.df.loc[indices, self.class_name_user.replace('class','status')] = 2
+					else:
+						self.df.loc[indices, self.class_name_user] = 2
+				self.estimate_time()
+		else:
+			self.group_name_user = 'group_' + self.name_le.text()
+			print(f'User defined characteristic group name: {self.group_name_user}.')
+			if self.group_name_user in self.df.columns:
+
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Information)
+				msgBox.setText(
+					f"The group column {self.group_name_user} already exists in the table.\nProceeding will reclassify. Do you want to continue?")
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Yes:
+					pass
+				else:
+					return None
+
+			name_map = {self.class_name: self.group_name_user}
+			self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
+			print(self.df.columns)
+			self.df[self.group_name_user] = self.df[self.group_name_user].replace({0: 1, 1: 0})
+			self.df.reset_index(inplace=True, drop=True)
+
 
 		for pos,pos_group in self.df.groupby('position'):
 			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.mode}.csv']), index=False)

@@ -411,21 +411,25 @@ class ControlPanel(QMainWindow):
 					self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv'])):
+					self.ProcessEffectors.check_measurements_btn.setEnabled(True)
 					self.ProcessEffectors.check_signals_btn.setEnabled(True)
 					#self.ProcessEffectors.signal_analysis_action.setEnabled(True)
 					self.ProcessEffectors.view_tab_btn.setEnabled(True)
 
 				else:
+					self.ProcessEffectors.check_measurements_btn.setEnabled(False)
 					self.ProcessEffectors.check_signals_btn.setEnabled(False)
 					#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
 					self.ProcessEffectors.view_tab_btn.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_targets.csv'])):
+					self.ProcessTargets.check_measurements_btn.setEnabled(True)
 					self.ProcessTargets.check_signals_btn.setEnabled(True)
 					#self.ProcessTargets.signal_analysis_action.setEnabled(True)
 					self.ProcessTargets.view_tab_btn.setEnabled(True)
 
 				else:
+					self.ProcessTargets.check_measurements_btn.setEnabled(False)
 					self.ProcessTargets.check_signals_btn.setEnabled(False)
 					#self.ProcessTargets.signal_analysis_action.setEnabled(False)
 					self.ProcessTargets.view_tab_btn.setEnabled(False)

@@ -4,6 +4,8 @@ from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
+
+from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
 from celldetective.io import locate_segmentation_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
@@ -142,12 +144,21 @@ class ProcessPanel(QFrame):
 		#self.to_disable.append(self.measure_action_tc)
 
 		self.classify_btn = QPushButton()
-		self.classify_btn.setIcon(icon(MDI6.scatter_plot,color="black"))
+		self.classify_btn.setIcon(icon(MDI6.scatter_plot, color="black"))
 		self.classify_btn.setIconSize(QSize(20, 20))
 		self.classify_btn.setToolTip("Classify data.")
 		self.classify_btn.setStyleSheet(self.parent.parent.button_select_all)
 		self.classify_btn.clicked.connect(self.open_classifier_ui)
 		measure_layout.addWidget(self.classify_btn, 5) #4,2,1,1, alignment=Qt.AlignRight
+
+		self.check_measurements_btn=QPushButton()
+		self.check_measurements_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
+		self.check_measurements_btn.setIconSize(QSize(20, 20))
+		self.check_measurements_btn.setToolTip("View measurement output.")
+		self.check_measurements_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.check_measurements_btn.clicked.connect(self.check_measurements)
+		measure_layout.addWidget(self.check_measurements_btn, 5)
+
 
 		self.measurements_config_btn = QPushButton()
 		self.measurements_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
@@ -371,6 +382,12 @@ class ProcessPanel(QFrame):
 			self.SignalAnnotator = SignalAnnotator(self)
 			self.SignalAnnotator.show()		
 
+	def check_measurements(self):
+
+		test = self.parent.locate_selected_position()
+		if test:
+			self.MeasureAnnotator = MeasureAnnotator(self)
+			self.MeasureAnnotator.show()
 
 	def enable_segmentation_model_list(self):
 		if self.segment_action.isChecked():

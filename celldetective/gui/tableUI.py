@@ -56,9 +56,9 @@ class QueryWidget(QWidget):
 
 	def filter_table(self):
 		try:
-			query_text = self.query_le.text().replace('class','`class`')
+			query_text = self.query_le.text().replace('class', '`class`')
 			tab = self.parent.data.query(query_text)
-			self.subtable = TableUI(tab,query_text, plot_mode="scatter")
+			self.subtable = TableUI(tab, query_text, plot_mode="scatter")
 			self.subtable.show()
 			self.close()
 		except Exception as e:
@@ -125,6 +125,7 @@ class TableUI(QMainWindow):
 
 		self.model = PandasModel(data)
 		self.table_view.setModel(self.model)
+		self.table_view.resizeColumnsToContents()
 
 	def _createActions(self):
 
@@ -196,7 +197,7 @@ class TableUI(QMainWindow):
 		x = self.table_view.selectedIndexes()
 		col_idx = np.unique(np.array([l.column() for l in x]))
 
-		if len(col_idx)==0:
+		if len(col_idx) == 0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
 			msgBox.setText(f"Please select a column first.")
@@ -300,8 +301,8 @@ class TableUI(QMainWindow):
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
 		self.strip_check = QCheckBox('strip')
-		self.box_check = QCheckBox('Boxplot')
-		self.boxenplot_check = QCheckBox('Boxenplot')
+		self.box_check = QCheckBox('Boxplot') #BOXPLOT NOT WORKING
+		self.boxenplot_check = QCheckBox('Boxenplot') #NOT WORKING EITHER
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
@@ -447,8 +448,7 @@ class TableUI(QMainWindow):
 	# 		return array
 
 	def plot(self):
-
-		if self.plot_mode=="static":
+		if self.plot_mode == "static":
 	
 			x = self.table_view.selectedIndexes()
 			col_idx = [l.column() for l in x]
@@ -491,13 +491,13 @@ class TableUI(QMainWindow):
 				# self.histogram_window.show()
 
 
-			elif len(unique_cols)==2:
+			elif len(unique_cols) == 2:
 
 				print("two columns, plot mode")
 				x1 = self.test_bool(self.data.iloc[row_idx, unique_cols[0]])
 				x2 = self.test_bool(self.data.iloc[row_idx, unique_cols[1]])
 
-				self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+				self.fig, self.ax = plt.subplots(1, 1, figsize=(4,3))
 				self.scatter_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				self.ax.scatter(x1,x2)
@@ -512,7 +512,7 @@ class TableUI(QMainWindow):
 			else:
 				print("please select less columns")
 
-		elif self.plot_mode=="plot_timeseries":
+		elif self.plot_mode == "plot_timeseries":
 			print("mode plot frames")
 			x = self.table_view.selectedIndexes()
 			col_idx = np.array([l.column() for l in x])
@@ -520,10 +520,10 @@ class TableUI(QMainWindow):
 			column_names = self.data.columns
 			unique_cols = np.unique(col_idx)
 
-			fig,ax = plt.subplots(1,1,figsize=(7,5.5))
+			fig, ax = plt.subplots(1, 1, figsize=(7, 5.5))
 			for k in range(len(unique_cols)):
 
-				row_idx_i = row_idx[np.where(col_idx==unique_cols[k])[0]]
+				row_idx_i = row_idx[np.where(col_idx == unique_cols[k])[0]]
 				y = self.data.iloc[row_idx_i, unique_cols[k]]
 				ax.plot(self.data["timeline"][row_idx_i], y, label=column_names[unique_cols[k]])
 
@@ -533,7 +533,7 @@ class TableUI(QMainWindow):
 			plt.tight_layout()
 			plt.show(block=False)
 
-		elif self.plot_mode=="plot_track_signals":
+		elif self.plot_mode == "plot_track_signals":
 
 			print("mode plot track signals")
 			print('we plot here')
@@ -544,11 +544,11 @@ class TableUI(QMainWindow):
 			column_names = self.data.columns
 			unique_cols = np.unique(col_idx)
 
-			if len(unique_cols)>2:
-				fig,ax = plt.subplots(1,1,figsize=(7,5.5))
+			if len(unique_cols) > 2:
+				fig,ax = plt.subplots(1, 1, figsize=(7, 5.5))
 				for k in range(len(unique_cols)):
 
-					row_idx_i = row_idx[np.where(col_idx==unique_cols[k])[0]]
+					row_idx_i = row_idx[np.where(col_idx == unique_cols[k])[0]]
 					y = self.data.iloc[row_idx_i, unique_cols[k]]
 					print(unique_cols[k])
 					for w,well_group in self.data.groupby('well_name'):
@@ -562,9 +562,9 @@ class TableUI(QMainWindow):
 				plt.tight_layout()
 				plt.show(block=False)
 
-			if len(unique_cols)==2:
+			if len(unique_cols) == 2:
 
-				self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+				self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
 				self.scatter_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				for tid,group in self.data.groupby('TRACK_ID'):
@@ -577,9 +577,9 @@ class TableUI(QMainWindow):
 				self.scatter_wdw.canvas.draw()
 				self.scatter_wdw.show()
 
-			if len(unique_cols)==1:
+			if len(unique_cols) == 1:
 				
-				self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+				self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
 				self.plot_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				

@@ -46,6 +46,7 @@ else:
 
 if not use_gpu:
 	os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+n_threads = int(process_arguments['threads'])
 
 modelname = str(process_arguments['model'])
 
@@ -146,10 +147,12 @@ def segment_index(indices):
 		else:
 			device = torch.device("cuda")
 
-		model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=model_complete_path+modelname, model_type=None, nchan=len(required_channels)) #diam_mean=30.0, 
+		model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=model_complete_path+modelname, model_type=None, nchan=len(required_channels)) #diam_mean=30.0,
 		model.diam_mean = 30.0
 		print(f'Cellpose model {modelname} successfully loaded.')
 
+# Loop over all frames and segment
+def segment_index(indices):
 
 	for t in tqdm(indices,desc="frame"):
 		

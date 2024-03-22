@@ -1043,7 +1043,7 @@ def load_napari_data(position, prefix="Aligned", population="target"):
 from skimage.measure import label
 
 def auto_correct_masks(masks):
-	
+
 	"""
 	Automatically corrects segmentation masks by splitting disconnected objects sharing the same label.
 
@@ -1076,27 +1076,27 @@ def auto_correct_masks(masks):
 	props = pd.DataFrame(regionprops_table(masks,properties=('label','area','area_bbox')))
 	max_lbl = props['label'].max()
 	corrected_lbl = masks.copy().astype(int)
-	
+
 	for cell in props['label'].unique():
-		
+
 		bbox_area = props.loc[props['label']==cell, 'area_bbox'].values
 		area = props.loc[props['label']==cell, 'area'].values
-		
+
 		if bbox_area > 2*area: #condition for anomaly
 
 			lbl = masks==cell
 			lbl = lbl.astype(int)
-			
+
 			relabelled = label(lbl,connectivity=2)
 			relabelled += max_lbl
-			relabelled[np.where(lbl==0)] = 0            
+			relabelled[np.where(lbl==0)] = 0
 
 			corrected_lbl[np.where(relabelled != 0)] = relabelled[np.where(relabelled!=0)]
-	
+
 		max_lbl = np.amax(corrected_lbl)
-	
+
 	return corrected_lbl
-			
+
 
 
 def control_segmentation_napari(position, prefix='Aligned', population="target", flush_memory=False):

@@ -820,7 +820,11 @@ def relabel_segmentation(labels, data, properties, column_labels={'track': "trac
 
 
 	n_threads = threads
-	df = pd.DataFrame(data,columns=[column_labels['track'],column_labels['frame'],column_labels['y'],column_labels['x']])
+	if data.shape[1]==4:
+		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['frame'],column_labels['y'],column_labels['x']])
+	elif data.shape[1]==5:
+		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['frame'],"z",column_labels['y'],column_labels['x']])		
+		df = df.drop(columns=['z'])
 	df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
 	df = df.sort_values(by=[column_labels['track'],column_labels['frame']])
 
@@ -979,14 +983,26 @@ def view_on_napari_btrack(data,properties,graph,stack=None,labels=None,relabel=T
 		print('Relabeling the cell masks with the track ID.')
 		labels = relabel_segmentation(labels, data, properties, threads=threads)
 
-	vertices = data[:, 1:]
+	print("data", data)
+	if data.shape[1]==4:
+		vertices = data[:, 1:]
+	elif data.shape[1]==5:
+		vertices = data[:,[1,3,4]]
+
+	print(data.shape)
+	print("vertices: ",vertices.shape, vertices[0])
+
 	viewer = napari.Viewer()
 	if stack is not None:
 		viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
 	if labels is not None:
 		viewer.add_labels(labels, name='segmentation',opacity=0.4)
 	viewer.add_points(vertices, size=4, name='points', opacity=0.3)
-	viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
+	if data.shape[1]==5:
+		viewer.add_tracks(data[:,[0,1,3,4]], properties=properties, graph=graph, name='tracks')
+	else:
+		viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
+
 	viewer.show(block=True)
 	
 	if flush_memory:

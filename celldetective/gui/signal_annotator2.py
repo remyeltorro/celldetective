@@ -1502,7 +1502,7 @@ class SignalAnnotator2(QMainWindow):
 		effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}\n"
 		effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}\n"
 
-		self.cell_info.setText(target_cell_selected+target_cell_class+target_cell_time+effector_cell_selected+effector_cell_class+effector_cell_time)
+		self.cell_info.setText("Target selected: "+target_cell_selected+target_cell_class+target_cell_time+'Effector selected: '+effector_cell_selected+effector_cell_class+effector_cell_time)
 
 
 	def save_trajectories(self):

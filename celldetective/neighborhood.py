@@ -368,6 +368,10 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 
 	df_A, path_A = get_position_table(pos, population=population[0], return_path=True)
 	df_B, path_B = get_position_table(pos, population=population[1], return_path=True)
+	if df_B is None:
+		return None
+	if df_A is None:
+		return None
 
 	if clear_neigh:
 		unwanted = df_A.columns[df_A.columns.str.contains('neighborhood')]

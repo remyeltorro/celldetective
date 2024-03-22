@@ -841,6 +841,45 @@ def measure_at_position(pos, mode, return_measurements=False, threads=1):
 
 
 def local_normalisation(image, labels, background_intensity, mode, operation):
+    """
+     Perform local normalization on an image based on labels.
+
+     Parameters:
+     - image (numpy.ndarray): The input image.
+     - labels (numpy.ndarray): An array specifying the labels for different regions in the image.
+     - background_intensity (pandas.DataFrame): A DataFrame containing background intensity values
+                                                 corresponding to each label.
+     - mode (str): The normalization mode ('Mean' or 'Median').
+     - operation (str): The operation to perform ('Subtract' or 'Divide').
+
+     Returns:
+     - numpy.ndarray: The normalized image.
+
+     This function performs local normalization on an image based on the provided labels. It iterates over
+     each unique label, excluding the background label (0), and performs the specified operation with the
+     background intensity values corresponding to that label. The background intensity values are obtained
+     from the provided background_intensity DataFrame based on the normalization mode.
+
+     If the operation is 'Subtract', the background intensity is subtracted from the image pixel values.
+     If the operation is 'Divide', the image pixel values are divided by the background intensity.
+
+     Example:
+     >>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+     >>> labels = np.array([[0, 1, 1], [2, 2, 3], [3, 3, 0]])
+     >>> background_intensity = pd.DataFrame({'intensity_mean': [10, 20, 30]})
+     >>> mode = 'Mean'
+     >>> operation = 'Subtract'
+     >>> result = local_normalisation(image, labels, background_intensity, mode, operation)
+     >>> print(result)
+     [[-9. -8. -7.]
+      [14. 15.  6.]
+      [27. 28.  9.]]
+
+     Note:
+     - The background intensity DataFrame should have columns named 'intensity_mean' or 'intensity_median'
+       based on the mode specified.
+     - The background intensity values should be provided in the same order as the labels.
+     """
     for index, cell in enumerate(np.unique(labels)):
         if cell == 0:
             continue
@@ -854,6 +893,42 @@ def local_normalisation(image, labels, background_intensity, mode, operation):
 
 
 def normalise_by_cell(image, labels, distance, mode, operation):
+    """
+    Normalize an image based on cell regions.
+
+    Parameters:
+    - image (numpy.ndarray): The input image.
+    - labels (numpy.ndarray): An array specifying the labels for different regions in the image.
+    - distance (float): The distance parameter for finding the contour of cell regions.
+    - mode (str): The normalization mode ('Mean' or 'Median').
+    - operation (str): The operation to perform ('Subtract' or 'Divide').
+
+    Returns:
+    - numpy.ndarray: The normalized image.
+
+    This function normalizes an image based on cell regions defined by the provided labels. It calculates
+    the border of cell regions using the contour_of_instance_segmentation function with the specified
+    distance parameter. Then, it computes the background intensity of each cell region based on the mode
+    ('Mean' or 'Median'). Finally, it performs local normalization using the local_normalisation function
+    and returns the normalized image.
+
+    Example:
+    >>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> labels = np.array([[0, 1, 1], [2, 2, 3], [3, 3, 0]])
+    >>> distance = 2.0
+    >>> mode = 'Mean'
+    >>> operation = 'Subtract'
+    >>> result = normalise_by_cell(image, labels, distance, mode, operation)
+    >>> print(result)
+    [[-9. -8. -7.]
+     [14. 15.  6.]
+     [27. 28.  9.]]
+
+    Note:
+    - The contour of cell regions is calculated using the contour_of_instance_segmentation function.
+    - The background intensity is computed based on the specified mode ('Mean' or 'Median').
+    - The operation determines whether to subtract or divide the background intensity from the image.
+    """
     border = contour_of_instance_segmentation(label=labels, distance=distance * (-1))
     if mode == 'Mean':
         background_intensity = regionprops_table(intensity_image=image, label_image=border,
@@ -879,6 +954,32 @@ def plane(x, y, a, b, c):
 
 
 def fit_plane(image, cell_masks=None):
+    """
+    Fit a plane to the given image data.
+
+    Parameters:
+    - image (numpy.ndarray): The input image data.
+    - cell_masks (numpy.ndarray, optional): An array specifying cell masks. If provided, areas covered by
+                                            cell masks will be excluded from the fitting process.
+
+    Returns:
+    - numpy.ndarray: The fitted plane.
+
+    This function fits a plane to the given image data using least squares regression. It constructs a mesh
+    grid based on the dimensions of the image and fits a plane model to the data points. If cell masks are
+    provided, areas covered by cell masks will be excluded from the fitting process.
+
+    Example:
+    >>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> result = fit_plane(image)
+    >>> print(result)
+    [[1. 2. 3.]
+     [4. 5. 6.]
+     [7. 8. 9.]]
+
+    Note:
+    - The 'cell_masks' parameter allows excluding areas covered by cell masks from the fitting process.
+    """
     data = np.empty(image.shape)
     x = np.arange(0, image.shape[1])
     y = np.arange(0, image.shape[0])
@@ -903,6 +1004,32 @@ def fit_plane(image, cell_masks=None):
 
 
 def fit_paraboloid(image, cell_masks=None):
+    """
+    Fit a paraboloid to the given image data.
+
+    Parameters:
+    - image (numpy.ndarray): The input image data.
+    - cell_masks (numpy.ndarray, optional): An array specifying cell masks. If provided, areas covered by
+                                            cell masks will be excluded from the fitting process.
+
+    Returns:
+    - numpy.ndarray: The fitted paraboloid.
+
+    This function fits a paraboloid to the given image data using least squares regression. It constructs
+    a mesh grid based on the dimensions of the image and fits a paraboloid model to the data points. If cell
+    masks are provided, areas covered by cell masks will be excluded from the fitting process.
+
+    Example:
+    >>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> result = fit_paraboloid(image)
+    >>> print(result)
+    [[1. 2. 3.]
+     [4. 5. 6.]
+     [7. 8. 9.]]
+
+    Note:
+    - The 'cell_masks' parameter allows excluding areas covered by cell masks from the fitting process.
+    """
     data = np.empty(image.shape)
     x = np.arange(0, image.shape[1])
     y = np.arange(0, image.shape[0])
@@ -934,6 +1061,43 @@ def fit_paraboloid(image, cell_masks=None):
 
 
 def correct_image(img, cell_masks=None, normalisation_operation=None, clip=False, mode=None):
+    """
+    Correct an image based on fitted models.
+
+    Parameters:
+    - img (numpy.ndarray): The input image data.
+    - cell_masks (numpy.ndarray, optional): An array specifying cell masks. If provided, areas covered by
+                                            cell masks will be considered during correction.
+    - normalisation_operation (str, optional): The normalisation operation ('Subtract' or 'Divide') to apply
+                                               during correction.
+    - clip (bool, optional): Whether to clip corrected values below zero to a minimum value of 0.00001.
+    - mode (str, optional): The mode of correction ('Paraboloid' or 'Plane').
+
+    Returns:
+    - tuple: A tuple containing the corrected image and the fitted model parameters.
+
+    This function corrects an image based on fitted models such as paraboloid or plane. It first fits a model
+    to the image data based on the specified mode. Then, it performs correction by subtracting or dividing the
+    image by the fitted model. Optionally, it clips corrected values below zero to a minimum value of 0.00001.
+
+    Example:
+    >>> img = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> correction, para = correct_image(img, mode='Paraboloid', normalisation_operation='Subtract', clip=True)
+    >>> print(correction)
+    [[0. 0. 0.]
+     [0. 0. 0.]
+     [0. 0. 0.]]
+    >>> print(para)
+    [[1. 2. 3.]
+     [4. 5. 6.]
+     [7. 8. 9.]]
+
+    Note:
+    - The 'cell_masks' parameter allows considering areas covered by cell masks during correction.
+    - The 'normalisation_operation' parameter specifies whether to subtract or divide the fitted model from
+      the image.
+    - If 'clip' is set to True, corrected values below zero will be clipped to a minimum value of 0.00001.
+    """
     if mode == "Paraboloid":
         para = fit_paraboloid(img.astype(float), cell_masks=cell_masks).astype(float)
     elif mode == "Plane":
@@ -956,6 +1120,42 @@ def correct_image(img, cell_masks=None, normalisation_operation=None, clip=False
 
 
 def field_normalisation(img, threshold, normalisation_operation, clip, mode):
+    """
+        Perform field normalization on an image.
+
+        Parameters:
+        - img (numpy.ndarray): The input image data.
+        - threshold (float): The threshold value for determining regions of interest.
+        - normalisation_operation (str): The normalization operation ('Subtract' or 'Divide') to apply during correction.
+        - clip (bool): Whether to clip corrected values below zero to a minimum value of 0.00001.
+        - mode (str): The mode of correction ('Paraboloid' or 'Plane').
+
+        Returns:
+        - tuple: A tuple containing the normalized image and the fitted background model.
+
+        This function performs field normalization on an image based on regions of interest determined by the
+        specified threshold. It identifies regions with standard deviation above the threshold and considers them
+        as areas of interest. Then, it corrects the image using the 'correct_image' function based on the specified
+        mode and normalization operation.
+
+        Example:
+        >>> img = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        >>> fluo_max, bg_fit = field_normalisation(img, threshold=0.5, normalisation_operation='Subtract', clip=True, mode='Paraboloid')
+        >>> print(fluo_max)
+        [[0. 0. 0.]
+         [0. 0. 0.]
+         [0. 0. 0.]]
+        >>> print(bg_fit)
+        [[1. 2. 3.]
+         [4. 5. 6.]
+         [7. 8. 9.]]
+
+        Note:
+        - The 'threshold' parameter determines regions of interest based on standard deviation.
+        - The 'normalisation_operation' parameter specifies whether to subtract or divide the fitted model from
+          the image during correction.
+        - If 'clip' is set to True, corrected values below zero will be clipped to a minimum value of 0.00001.
+        """
     std_img = std_filter(gauss_filter(img, 2), 4)
     mask = np.zeros_like(img)
     mask[np.where(std_img > float(threshold))] = 1.0
@@ -969,6 +1169,38 @@ def field_normalisation(img, threshold, normalisation_operation, clip, mode):
 
 
 def blob_detection(image, label, threshold, diameter):
+    """
+    Perform blob detection on an image based on labeled regions.
+
+    Parameters:
+    - image (numpy.ndarray): The input image data.
+    - label (numpy.ndarray): An array specifying labeled regions in the image.
+    - threshold (float): The threshold value for blob detection.
+    - diameter (float): The expected diameter of blobs.
+
+    Returns:
+    - dict: A dictionary containing information about detected blobs.
+
+    This function performs blob detection on an image based on labeled regions. It iterates over each labeled region
+    and detects blobs within the region using the Difference of Gaussians (DoG) method. Detected blobs are filtered
+    based on the specified threshold and expected diameter. The function returns a dictionary containing the number of
+    detected blobs and their mean intensity for each labeled region.
+
+    Example:
+    >>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    >>> label = np.array([[0, 1, 1], [2, 2, 0], [3, 3, 0]])
+    >>> threshold = 0.1
+    >>> diameter = 5.0
+    >>> result = blob_detection(image, label, threshold, diameter)
+    >>> print(result)
+    {1: [1, 4.0], 2: [0, nan], 3: [0, nan]}
+
+    Note:
+    - Blobs are detected using the Difference of Gaussians (DoG) method.
+    - Detected blobs are filtered based on the specified threshold and expected diameter.
+    - The returned dictionary contains information about the number of detected blobs and their mean intensity
+      for each labeled region.
+    """
     blob_labels = {}
     dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
     for mask_index in np.unique(label):

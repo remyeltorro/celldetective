@@ -52,7 +52,7 @@ class ConfigMeasurements(QMainWindow):
         self.setWindowIcon(QIcon(os.sep.join(['celldetective', 'icons', 'mexican-hat.png'])))
         self.mode = self.parent.mode
         self.exp_dir = self.parent.exp_dir
-        self.normalise = []
+        self.background_correction = []
         if self.mode == "targets":
             self.config_name = "btrack_config_targets.json"
             self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_targets.json"
@@ -1137,7 +1137,7 @@ class ConfigMeasurements(QMainWindow):
                 elif self.tab2_divide.isChecked():
                     norm_params["operation"] = "Divide"
 
-            self.normalise.append(norm_params)
+            self.background_correction.append(norm_params)
             normalisation_description = ""
             for index, (key, value) in enumerate(norm_params.items()):
                 if index > 0:
@@ -1148,20 +1148,20 @@ class ConfigMeasurements(QMainWindow):
     def remove_item_from_list(self):
         current_item = self.normalisation_list.currentRow()
         if current_item > -1:
-            del self.normalise[current_item]
+            del self.background_correction[current_item]
             self.normalisation_list.takeItem(current_item)
 
     def check_the_information(self):
         if self.tabs.currentIndex() == 0:
-            if self.normalise is None:
-                self.normalise = []
-            for index, normalisation_opt in enumerate(self.normalise):
+            if self.background_correction  is None:
+                self.background_correction  = []
+            for index, normalisation_opt in enumerate(self.background_correction ):
                 if self.tab1_channel_dropdown.currentText() in normalisation_opt['target channel']:
                     result = self.channel_already_in_list()
                     if result != QMessageBox.Yes:
                         return False
                     else:
-                        self.normalise.remove(normalisation_opt)
+                        self.background_correction .remove(normalisation_opt)
                         self.normalisation_list.takeItem(index)
                         return True
             if self.tab1_txt_distance.text() == "":
@@ -1174,15 +1174,15 @@ class ConfigMeasurements(QMainWindow):
                 return True
 
         elif self.tabs.currentIndex() == 1:
-            if self.normalise is None:
-                self.normalise = []
-            for index, normalisation_opt in enumerate(self.normalise):
+            if self.background_correction is None:
+                self.background_correction = []
+            for index, normalisation_opt in enumerate(self.background_correction ):
                 if self.tab2_channel_dropdown.currentText() in normalisation_opt['target channel']:
                     result = self.channel_already_in_list()
                     if result != QMessageBox.Yes:
                         return False
                     else:
-                        self.normalise.remove(normalisation_opt)
+                        self.background_correction .remove(normalisation_opt)
                         self.normalisation_list.takeItem(index)
                         return True
             if self.tab2_txt_threshold.text() == "":

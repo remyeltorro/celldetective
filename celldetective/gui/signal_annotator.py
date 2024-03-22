@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QFileDialog, QApplication, \
     QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QSlider, QCheckBox
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QKeySequence, QIntValidator
 from matplotlib.widgets import Slider
 from tifffile import imread
 
@@ -1307,6 +1307,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.soft_path = get_software_location()
         self.recently_modified = False
         self.selection = []
+        self.int_validator = QIntValidator()
         if self.mode == "targets":
             self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
             self.trajectories_path = self.pos + 'output/tables/trajectories_targets.csv'
@@ -1318,7 +1319,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.screen_width = self.parent.parent.parent.screen_width
         self.current_frame = 0
         self.show_fliers = False
-        self.status_name = 'state'
+        self.status_name = 'group'
 
         center_window(self)
 
@@ -1561,18 +1562,18 @@ class MeasureAnnotator(SignalAnnotator):
         self.right_panel = QVBoxLayout()
 
         class_hbox = QHBoxLayout()
-        class_hbox.addWidget(QLabel('state: '), 25)
+        class_hbox.addWidget(QLabel('characteristic \n group: '), 25)
         self.class_choice_cb = QComboBox()
 
         cols = np.array(self.df_tracks.columns)
-        self.class_cols = np.array([c.startswith('state') for c in list(self.df_tracks.columns)])
+        self.class_cols = np.array([c.startswith('group') for c in list(self.df_tracks.columns)])
         self.class_cols = list(cols[self.class_cols])
         try:
-            self.class_cols.remove('state_id')
+            self.class_cols.remove('group_id')
         except Exception:
             pass
         try:
-            self.class_cols.remove('state_color')
+            self.class_cols.remove('group_color')
         except Exception:
             pass
 
@@ -1585,7 +1586,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.add_class_btn = QPushButton('')
         self.add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
         self.add_class_btn.setIcon(icon(MDI6.plus, color="black"))
-        self.add_class_btn.setToolTip("Add a new state")
+        self.add_class_btn.setToolTip("Add a new characteristic group")
         self.add_class_btn.setIconSize(QSize(20, 20))
         self.add_class_btn.clicked.connect(self.create_new_event_class)
         class_hbox.addWidget(self.add_class_btn, 5)
@@ -1593,7 +1594,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.del_class_btn = QPushButton('')
         self.del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
         self.del_class_btn.setIcon(icon(MDI6.delete, color="black"))
-        self.del_class_btn.setToolTip("Delete a state")
+        self.del_class_btn.setToolTip("Delete a characteristic group")
         self.del_class_btn.setIconSize(QSize(20, 20))
         self.del_class_btn.clicked.connect(self.del_event_class)
         class_hbox.addWidget(self.del_class_btn, 5)
@@ -1605,9 +1606,10 @@ class MeasureAnnotator(SignalAnnotator):
 
         time_option_hbox = QHBoxLayout()
         time_option_hbox.setContentsMargins(100, 30, 100, 30)
-        self.time_of_interest_label = QLabel('state: ')
+        self.time_of_interest_label = QLabel('phenotype: ')
         time_option_hbox.addWidget(self.time_of_interest_label, 30)
         self.time_of_interest_le = QLineEdit()
+        self.time_of_interest_le.setValidator(self.int_validator)
         time_option_hbox.addWidget(self.time_of_interest_le)
         self.del_cell_btn = QPushButton('')
         self.del_cell_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
@@ -1815,15 +1817,15 @@ class MeasureAnnotator(SignalAnnotator):
     def write_new_event_class(self):
 
         if self.class_name_le.text() == '':
-            self.target_class = 'state'
+            self.target_class = 'group'
         else:
-            self.target_class = 'state_' + self.class_name_le.text()
+            self.target_class = 'group_' + self.class_name_le.text()
 
         if self.target_class in list(self.df_tracks.columns):
             msgBox = QMessageBox()
             msgBox.setIcon(QMessageBox.Warning)
             msgBox.setText(
-                "This state name already exists. If you proceed,\nall annotated data will be rewritten. Do you wish to continue?")
+                "This characteristic group name already exists. If you proceed,\nall annotated data will be rewritten. Do you wish to continue?")
             msgBox.setWindowTitle("Warning")
             msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             returnValue = msgBox.exec()
@@ -1831,13 +1833,12 @@ class MeasureAnnotator(SignalAnnotator):
                 return None
             else:
                 pass
-
         self.df_tracks.loc[:, self.target_class] = 0
         self.class_choice_cb.clear()
         cols = np.array(self.df_tracks.columns)
-        self.class_cols = np.array([c.startswith('state') for c in list(self.df_tracks.columns)])
+        self.class_cols = np.array([c.startswith('group') for c in list(self.df_tracks.columns)])
         self.class_cols = list(cols[self.class_cols])
-        self.class_cols.remove('state_color')
+        self.class_cols.remove('group_color')
         self.class_choice_cb.addItems(self.class_cols)
         idx = self.class_choice_cb.findText(self.target_class)
         self.status_name = self.target_class
@@ -1868,22 +1869,22 @@ class MeasureAnnotator(SignalAnnotator):
 
         cell_selected = f"cell: {self.track_of_interest}\n"
         if 'TRACK_ID' in self.df_tracks.columns:
-            cell_status = f"state: {self.df_tracks.loc[self.df_tracks['TRACK_ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
+            cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['TRACK_ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
         else:
-            cell_status = f"state: {self.df_tracks.loc[self.df_tracks['ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
+            cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
         self.cell_info.setText(cell_selected + cell_status)
 
     def create_new_event_class(self):
 
         # display qwidget to name the event
         self.newClassWidget = QWidget()
-        self.newClassWidget.setWindowTitle('Create new state')
+        self.newClassWidget.setWindowTitle('Create new characteristic group')
 
         layout = QVBoxLayout()
         self.newClassWidget.setLayout(layout)
         name_hbox = QHBoxLayout()
-        name_hbox.addWidget(QLabel('state name: '), 25)
-        self.class_name_le = QLineEdit('state')
+        name_hbox.addWidget(QLabel('group name: '), 25)
+        self.class_name_le = QLineEdit('group')
         name_hbox.addWidget(self.class_name_le, 75)
         layout.addLayout(name_hbox)
 
@@ -1925,7 +1926,7 @@ class MeasureAnnotator(SignalAnnotator):
         all_states = np.array(all_states)
         self.state_color_map = color_from_state(all_states, recently_modified=False)
 
-        self.df_tracks['state_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
+        self.df_tracks['group_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
 
         self.extract_scatter_from_trajectories()
         self.give_cell_information()
@@ -1965,7 +1966,10 @@ class MeasureAnnotator(SignalAnnotator):
         return (self.im, self.status_scatter,)
 
     def compute_status_and_colors(self):
-        self.status_name = self.class_choice_cb.currentText()
+        if self.class_choice_cb.currentText() == '':
+            self.status_name=self.target_class
+        else:
+            self.status_name = self.class_choice_cb.currentText()
         print('selection and expected names: ', self.status_name)
 
         if self.status_name not in self.df_tracks.columns:
@@ -1974,14 +1978,14 @@ class MeasureAnnotator(SignalAnnotator):
             all_states = self.df_tracks.loc[:, self.status_name].tolist()
             all_states = np.array(all_states)
             self.state_color_map = color_from_state(all_states, recently_modified=False)
-            self.df_tracks['state_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
+            self.df_tracks['group_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
 
     def del_event_class(self):
 
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Warning)
         msgBox.setText(
-            f"You are about to delete state {self.class_choice_cb.currentText()}. Do you still want to proceed?")
+            f"You are about to delete characteristic group {self.class_choice_cb.currentText()}. Do you still want to proceed?")
         msgBox.setWindowTitle("Warning")
         msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         returnValue = msgBox.exec()
@@ -2002,13 +2006,12 @@ class MeasureAnnotator(SignalAnnotator):
         if self.status_name == "state_firstdetection":
             pass
         else:
-            print('remaking the state column')
-
+            print('remaking the group column')
             self.df_tracks.loc[:, self.status_name] = 0
             all_states = self.df_tracks.loc[:, self.status_name].tolist()
             all_states = np.array(all_states)
             self.state_color_map = color_from_state(all_states, recently_modified=False)
-            self.df_tracks['state_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
+            self.df_tracks['group_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
 
     def locate_tracks(self):
 
@@ -2036,14 +2039,14 @@ class MeasureAnnotator(SignalAnnotator):
                 self.df_tracks = self.df_tracks.sort_values(by=['ID', 'FRAME'])
 
             cols = np.array(self.df_tracks.columns)
-            self.class_cols = np.array([c.startswith('state') for c in list(self.df_tracks.columns)])
+            self.class_cols = np.array([c.startswith('group') for c in list(self.df_tracks.columns)])
             self.class_cols = list(cols[self.class_cols])
             try:
                 self.class_cols.remove('class_id')
             except:
                 pass
             try:
-                self.class_cols.remove('state_color')
+                self.class_cols.remove('group_color')
             except:
                 pass
             if len(self.class_cols) > 0:
@@ -2051,7 +2054,7 @@ class MeasureAnnotator(SignalAnnotator):
 
             else:
 
-                self.status_name = 'state'
+                self.status_name = 'group'
 
             if self.status_name not in self.df_tracks.columns:
                 # only create the status column if it does not exist to not erase static classification results
@@ -2072,7 +2075,7 @@ class MeasureAnnotator(SignalAnnotator):
             all_states = self.df_tracks.loc[:, self.status_name].tolist()
             all_states = np.array(all_states)
             self.state_color_map = color_from_state(all_states, recently_modified=False)
-            self.df_tracks['state_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
+            self.df_tracks['group_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
             # self.df_tracks['status_color'] = [color_from_status(i) for i in self.df_tracks[self.status_name].to_numpy()]
             # self.df_tracks['class_color'] = [color_from_class(i) for i in self.df_tracks[self.class_name].to_numpy()]
 
@@ -2104,7 +2107,7 @@ class MeasureAnnotator(SignalAnnotator):
             # self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
             # print(self.columns_to_rescale)
 
-            cols_to_remove = ['state', 'state_color', 'status', 'status_color', 'class_color', 'TRACK_ID', 'FRAME',
+            cols_to_remove = ['group', 'group_color', 'status', 'status_color', 'class_color', 'TRACK_ID', 'FRAME',
                               'x_anim', 'y_anim', 't',
                               'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X',
                               'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index',
@@ -2127,9 +2130,9 @@ class MeasureAnnotator(SignalAnnotator):
         self.tracks = []
 
         for t in np.arange(self.len_movie):
-            self.positions.append(self.df_tracks.loc[self.df_tracks['FRAME'] == t, ['x_anim', 'y_anim']].to_numpy())
+            self.positions.append(self.df_tracks.loc[self.df_tracks['FRAME'] == t, ['POSITION_X', 'POSITION_Y']].to_numpy())
             self.colors.append(
-                self.df_tracks.loc[self.df_tracks['FRAME'] == t, ['state_color']].to_numpy())
+                self.df_tracks.loc[self.df_tracks['FRAME'] == t, ['group_color']].to_numpy())
             if 'TRACK_ID' in self.df_tracks.columns:
                 self.tracks.append(self.df_tracks.loc[self.df_tracks['FRAME'] == t, 'TRACK_ID'].to_numpy())
             else:
@@ -2218,15 +2221,29 @@ class MeasureAnnotator(SignalAnnotator):
             self.normalize_features_btn.click()
         if self.selection:
             self.cancel_selection()
-
         self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks[self.status_name] == 99].index)
-        color_column = str(self.status_name) + "_color"
-        self.df_tracks.drop(columns=color_column, inplace=True)
-        self.df_tracks.drop(columns='x_anim', inplace=True)
-        self.df_tracks.drop(columns='y_anim', inplace=True)
+        #color_column = str(self.status_name) + "_color"
+        try:
+            self.df_tracks.drop(columns='', inplace=True)
+        except:
+            pass
+        try:
+            self.df_tracks.drop(columns='group_color', inplace=True)
+        except:
+            pass
+        try:
+            self.df_tracks.drop(columns='x_anim', inplace=True)
+        except:
+            pass
+        try:
+            self.df_tracks.drop(columns='y_anim', inplace=True)
+        except:
+            pass
 
         self.df_tracks.to_csv(self.trajectories_path, index=False)
         print('table saved.')
+        self.update_frame()
+
 
     # self.extract_scatter_from_trajectories()
 
@@ -2235,7 +2252,7 @@ class MeasureAnnotator(SignalAnnotator):
         all_states = np.array(all_states)
         self.state_color_map = color_from_state(all_states, recently_modified=False)
 
-        self.df_tracks['state_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
+        self.df_tracks['group_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
 
         self.extract_scatter_from_trajectories()
         self.give_cell_information()

@@ -325,7 +325,7 @@ class ThresholdConfigWizard(QMainWindow):
             'eliminate points using a query such as: area > 100 or eccentricity > 0.95')
         hbox_classify.addWidget(self.property_query_le, 70)
         self.submit_query_btn = QPushButton('Submit...')
-        self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+        self.submit_query_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
         self.submit_query_btn.clicked.connect(self.apply_property_query)
         hbox_classify.addWidget(self.submit_query_btn, 20)
         properties_box.addLayout(hbox_classify)

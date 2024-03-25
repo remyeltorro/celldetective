@@ -389,10 +389,16 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
                                                          operation=norm['operation'])
                     img[:, :, ind] = normalised_image
                 else:
-                    normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
-                                                               normalisation_operation=norm['operation'],
-                                                               clip=norm['clip'], mode=norm['type'])
+                    if norm['operation'] == 'Divide':
+                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
+                                                                   normalisation_operation=norm['operation'],
+                                                                   clip=False, mode=norm['type'])
+                    else:
+                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
+                                                                   normalisation_operation=norm['operation'],
+                                                                   clip=norm['clip'], mode=norm['type'])
                     img[:, :, ind] = normalised_image
+
     extra_props = getmembers(extra_properties, isfunction)
     extra_props = [extra_props[i][0] for i in range(len(extra_props))]
 

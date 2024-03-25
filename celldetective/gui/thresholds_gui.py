@@ -1136,7 +1136,10 @@ class ThresholdSpot(ThresholdConfigWizard):
         blobs = self.blob_preview(image=self.test_frame[:, :, self.current_channel], label=lbl, threshold=threshold_value,
                                   diameter=diameter_value)
         mask = np.array([lbl[int(y), int(x)] != 0 for y, x, r in blobs])
-        blobs_filtered = blobs[mask]
+        if np.any(mask):
+            blobs_filtered = blobs[mask]
+        else:
+            blobs_filtered=[]
 
         self.fig_contour, self.ax_contour = plt.subplots(figsize=(4, 6))
         self.fcanvas = FigureCanvas(self.fig_contour, title="Blob measurement", interactive=True)

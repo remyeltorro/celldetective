@@ -2390,3 +2390,8 @@ class MeasureAnnotator(SignalAnnotator):
         self.time_of_interest_le.setEnabled(False)
         self.time_of_interest_le.setText("99")
         self.apply_modification()
+
+    def shortcut_suppr(self):
+        self.correct_btn.click()
+        self.del_cell_btn.click()
+        self.correct_btn.click()

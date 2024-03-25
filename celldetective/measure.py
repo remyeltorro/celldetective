@@ -1105,6 +1105,7 @@ def correct_image(img, cell_masks=None, normalisation_operation=None, clip=False
 
     if para is not None:
         para = np.array(para)
+        print(normalisation_operation)
         if normalisation_operation == 'Subtract':
             correction = img.astype(float) - para.astype(float)  # + 1000.
         else:
@@ -1163,6 +1164,10 @@ def field_normalisation(img, threshold, normalisation_operation, clip, mode):
     mask_int = binary_fill_holes(mask_int).astype(float)
     # invert_mask = np.zeros_like(mask_int)
     # invert_mask[mask_int == 0] = 1
+    if isinstance(normalisation_operation,bool) and normalisation_operation:
+        normalisation_operation = 'Subtract'
+    else:
+        normalisation_operation = 'Divide'
     fluo_max, bg_fit = correct_image(img.astype(float), cell_masks=mask_int,
                                      normalisation_operation=normalisation_operation, clip=clip, mode=mode)
     return fluo_max, bg_fit

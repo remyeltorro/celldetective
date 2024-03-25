@@ -151,9 +151,6 @@ def segment_index(indices):
 		model.diam_mean = 30.0
 		print(f'Cellpose model {modelname} successfully loaded.')
 
-# Loop over all frames and segment
-def segment_index(indices):
-
 	for t in tqdm(indices,desc="frame"):
 		
 		# Load channels at time t

@@ -1105,8 +1105,9 @@ class ThresholdSpot(ThresholdConfigWizard):
         self.exp_dir = self.parent.parent.exp_dir
         self.soft_path = get_software_location()
         if self.img is not None:
-            self.test_frame = self.img
-            self.frame = self.test_frame
+            print(self.img.shape)
+            #self.test_frame = self.img
+            self.frame = self.img
             self.test_mask = mask
             self.populate_all()
             self.setAttribute(Qt.WA_DeleteOnClose)
@@ -1133,7 +1134,7 @@ class ThresholdSpot(ThresholdConfigWizard):
         diameter_value = float(self.parent.diameter_value.text())
         threshold_value = float(self.parent.threshold_value.text())
         lbl = self.test_mask
-        blobs = self.blob_preview(image=self.test_frame[:, :, self.current_channel], label=lbl, threshold=threshold_value,
+        blobs = self.blob_preview(image=self.img[:, :, self.current_channel], label=lbl, threshold=threshold_value,
                                   diameter=diameter_value)
         mask = np.array([lbl[int(y), int(x)] != 0 for y, x, r in blobs])
         if np.any(mask):
@@ -1171,9 +1172,9 @@ class ThresholdSpot(ThresholdConfigWizard):
         self.contrast_slider.setSingleStep(0.00001)
         self.contrast_slider.setTickInterval(0.00001)
         self.contrast_slider.setOrientation(1)
-        self.contrast_slider.setRange(np.amin(self.frame), np.amax(self.frame))
+        self.contrast_slider.setRange(np.amin(self.frame[:, :, self.current_channel]), np.amax(self.frame[:, :, self.current_channel]))
         self.contrast_slider.setValue(
-            [np.percentile(self.frame.flatten(), 1), np.percentile(self.frame.flatten(), 99.99)])
+            [np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
         self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
         contrast_label = QLabel("Contrast: ")
         contrast_slider_layout.addWidget(contrast_label)
@@ -1197,31 +1198,31 @@ class ThresholdSpot(ThresholdConfigWizard):
         removed_background[np.where(dilated_image == 0)] = 0
         min_sigma = (1 / (1 + math.sqrt(2))) * diameter
         max_sigma = math.sqrt(2) * min_sigma
-        blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
+        blobs = skimage.feature.blob_dog(removed_background, threshold_rel=threshold, min_sigma=min_sigma,
                                          max_sigma=max_sigma)
         return blobs
 
     def update_spots(self):
 
-        blobs = self.blob_preview(image=self.test_frame[:, :, self.current_channel], label=self.test_mask,
+        blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
                                   threshold=float(self.threshold_value.text()),
                                   diameter=float(self.diameter_value.text()))
         mask = np.array([self.test_mask[int(y), int(x)] != 0 for y, x, r in blobs])
 
         blobs_filtered = blobs[mask]
         self.ax_contour.clear()
-        self.im = self.ax_contour.imshow(self.test_frame[:, :, self.current_channel], cmap='gray')
+        self.im = self.ax_contour.imshow(self.frame[:, :, self.current_channel], cmap='gray')
         self.ax_contour.set_xticks([])
         self.ax_contour.set_yticks([])
         self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
         for circle in self.circles:
             self.ax_contour.add_artist(circle)
 
-        self.im.set_data(self.test_frame[:, :, self.current_channel])
+        self.im.set_data(self.frame[:, :, self.current_channel])
 
         self.fig_contour.canvas.draw()
         self.contrast_slider.setValue(
-            [np.percentile(self.frame.flatten(), 1), np.percentile(self.frame.flatten(), 99.99)])
+            [np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
 
     def apply(self):
         self.parent.threshold_value.setText(self.threshold_value.text())

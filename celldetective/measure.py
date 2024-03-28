@@ -378,6 +378,17 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
         if (channels is not None) * (img.ndim == 3):
             assert len(channels) == img.shape[
                 -1], "Mismatch between the provided channel names and the shape of the image"
+
+        if spot_detection is not None:
+            for index, channel in enumerate(channels):
+                if channel == spot_detection['channel']:
+                    ind = index
+                    blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
+                                   threshold=spot_detection['threshold'])
+                    df_spots = pd.DataFrame.from_dict(blobs, orient='index',
+                                                      columns=['count', 'spot_mean_intensity']).reset_index()
+            # Rename columns
+            df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
         if normalisation_list:
             for norm in normalisation_list:
                 for index, channel in enumerate(channels):
@@ -414,21 +425,25 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
         extra_props_list = tuple(extra_props_list)
     props = regionprops_table(label, intensity_image=img, properties=feats, extra_properties=extra_props_list)
     df_props = pd.DataFrame(props)
-
-
-
     if spot_detection is not None:
-        for index, channel in enumerate(channels):
-            if channel == spot_detection['channel']:
-                ind = index
-        blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
-                               threshold=spot_detection['threshold'])
-        df_spots = pd.DataFrame.from_dict(blobs, orient='index', columns=['count', 'spot_mean_intensity']).reset_index()
-        # Rename columns
-        df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
         df_props = df_props.merge(df_spots, how='outer', on='label')
         df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
         df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
+
+
+
+    # if spot_detection is not None:
+    #     for index, channel in enumerate(channels):
+    #         if channel == spot_detection['channel']:
+    #             ind = index
+    #     blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
+    #                            threshold=spot_detection['threshold'])
+    #     df_spots = pd.DataFrame.from_dict(blobs, orient='index', columns=['count', 'spot_mean_intensity']).reset_index()
+    #     # Rename columns
+    #     df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
+    #     df_props = df_props.merge(df_spots, how='outer', on='label')
+    #     df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
+    #     df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
 
 
     if border_dist is not None:
@@ -1110,7 +1125,6 @@ def correct_image(img, cell_masks=None, normalisation_operation=None, clip=False
 
     if para is not None:
         para = np.array(para)
-        print(normalisation_operation)
         if normalisation_operation == 'Subtract':
             correction = img.astype(float) - para.astype(float)  # + 1000.
         else:

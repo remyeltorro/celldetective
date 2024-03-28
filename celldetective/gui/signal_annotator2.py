@@ -628,6 +628,9 @@ class SignalAnnotator2(QMainWindow):
 			for k,(t,idx) in enumerate(zip(self.effector_loc_t,self.effector_loc_idx)):
 				self.effector_colors[t][idx,0] = self.effector_previous_color[k][0]
 				self.effector_colors[t][idx,1] = self.effector_previous_color[k][1]
+
+
+
 		except Exception as e:
 			print(f'{e=}')
 
@@ -770,7 +773,8 @@ class SignalAnnotator2(QMainWindow):
 	def locate_target_tracks(self):
 
 		population = 'targets'
-		self.target_trajectories_path =  self.pos+f'output/tables/trajectories_{population}.csv'
+		self.target_trajectories_path = self.pos+f'output/tables/trajectories_{population}.csv'
+		self.neigh_trajectories_path = self.pos+f'output/tables/trajectories_{population}.pkl'
 
 		if not os.path.exists(self.target_trajectories_path):
 
@@ -1349,6 +1353,8 @@ class SignalAnnotator2(QMainWindow):
 
 				self.target_loc_t = []
 				self.target_loc_idx = []
+				self.effector_loc_t = []
+				self.effector_loc_idx = []
 				for t in range(len(self.target_tracks)):
 					indices = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
 					if len(indices)>0:
@@ -1358,8 +1364,23 @@ class SignalAnnotator2(QMainWindow):
 
 				self.target_previous_color = []
 				for t,idx in zip(self.target_loc_t,self.target_loc_idx):
+					neigh=pd.read_pickle(self.neigh_trajectories_path)
+					#print(neigh)
+					effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) & (
+								neigh['FRAME'] == t), 'neighborhood_2_circle_100_px']
+					if effect.iloc[0]!=[]:
+						eff_dict=effect.iloc[0][0]
+						indices = np.where(self.effector_tracks[t] == eff_dict['id'])[0]
+						if len(indices) > 0:
+							self.effector_loc_t.append(t)
+							self.effector_loc_idx.append(indices[0])
 					self.target_previous_color.append(self.target_colors[t][idx].copy())
 					self.target_colors[t][idx] = 'lime'
+				self.effector_previous_color = []
+				for t_eff, idx_eff in zip(self.effector_loc_t, self.effector_loc_idx):
+						self.effector_previous_color.append(self.effector_colors[t_eff][idx_eff].copy())
+						self.effector_colors[t_eff][idx_eff] = 'darkorange'
+
 
 			elif len(ind)>0 and len(self.target_selection)==1:
 				self.cancel_btn.click()

@@ -146,6 +146,8 @@ if os.path.exists(trajectories):
 	if 'TRACK_ID' not in list(trajectories.columns):
 		do_iso_intensities = False
 		intensity_measurement_radii = None
+		if clear_previous:
+			trajectories = remove_trajectory_measurements(trajectories, column_labels)
 	else:
 		if clear_previous:
 			trajectories = remove_trajectory_measurements(trajectories, column_labels)

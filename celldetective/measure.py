@@ -378,6 +378,17 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
         if (channels is not None) * (img.ndim == 3):
             assert len(channels) == img.shape[
                 -1], "Mismatch between the provided channel names and the shape of the image"
+
+        if spot_detection is not None:
+            for index, channel in enumerate(channels):
+                if channel == spot_detection['channel']:
+                    ind = index
+                    blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
+                                   threshold=spot_detection['threshold'])
+                    df_spots = pd.DataFrame.from_dict(blobs, orient='index',
+                                                      columns=['count', 'spot_mean_intensity']).reset_index()
+            # Rename columns
+            df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
         if normalisation_list:
             for norm in normalisation_list:
                 for index, channel in enumerate(channels):
@@ -389,10 +400,16 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
                                                          operation=norm['operation'])
                     img[:, :, ind] = normalised_image
                 else:
-                    normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
-                                                               normalisation_operation=norm['operation'],
-                                                               clip=norm['clip'], mode=norm['type'])
+                    if norm['operation'] == 'Divide':
+                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
+                                                                   normalisation_operation=norm['operation'],
+                                                                   clip=False, mode=norm['type'])
+                    else:
+                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
+                                                                   normalisation_operation=norm['operation'],
+                                                                   clip=norm['clip'], mode=norm['type'])
                     img[:, :, ind] = normalised_image
+
     extra_props = getmembers(extra_properties, isfunction)
     extra_props = [extra_props[i][0] for i in range(len(extra_props))]
 
@@ -408,22 +425,25 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
         extra_props_list = tuple(extra_props_list)
     props = regionprops_table(label, intensity_image=img, properties=feats, extra_properties=extra_props_list)
     df_props = pd.DataFrame(props)
-
-
-
     if spot_detection is not None:
-        for index, channel in enumerate(channels):
-            if channel == spot_detection['channel']:
-                ind = index
-        blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
-                               threshold=spot_detection['threshold'])
-        df_spots = pd.DataFrame.from_dict(blobs, orient='index', columns=['count', 'spot_mean_intensity']).reset_index()
-        print(df_spots)
-        # Rename columns
-        df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
         df_props = df_props.merge(df_spots, how='outer', on='label')
         df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
         df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
+
+
+
+    # if spot_detection is not None:
+    #     for index, channel in enumerate(channels):
+    #         if channel == spot_detection['channel']:
+    #             ind = index
+    #     blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
+    #                            threshold=spot_detection['threshold'])
+    #     df_spots = pd.DataFrame.from_dict(blobs, orient='index', columns=['count', 'spot_mean_intensity']).reset_index()
+    #     # Rename columns
+    #     df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
+    #     df_props = df_props.merge(df_spots, how='outer', on='label')
+    #     df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
+    #     df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
 
 
     if border_dist is not None:
@@ -1105,7 +1125,6 @@ def correct_image(img, cell_masks=None, normalisation_operation=None, clip=False
 
     if para is not None:
         para = np.array(para)
-        print(normalisation_operation)
         if normalisation_operation == 'Subtract':
             correction = img.astype(float) - para.astype(float)  # + 1000.
         else:
@@ -1164,10 +1183,10 @@ def field_normalisation(img, threshold, normalisation_operation, clip, mode):
     mask_int = binary_fill_holes(mask_int).astype(float)
     # invert_mask = np.zeros_like(mask_int)
     # invert_mask[mask_int == 0] = 1
-    if isinstance(normalisation_operation,bool) and normalisation_operation:
-        normalisation_operation = 'Subtract'
-    else:
-        normalisation_operation = 'Divide'
+    # if isinstance(normalisation_operation,bool) and normalisation_operation:
+    #     normalisation_operation = 'Subtract'
+    # else:
+    #     normalisation_operation = 'Divide'
     fluo_max, bg_fit = correct_image(img.astype(float), cell_masks=mask_int,
                                      normalisation_operation=normalisation_operation, clip=clip, mode=mode)
     return fluo_max, bg_fit
@@ -1219,7 +1238,7 @@ def blob_detection(image, label, threshold, diameter):
         removed_background[np.where(dilated_copy == 0)] = 0
         min_sigma = (1 / (1 + math.sqrt(2))) * diameter
         max_sigma = math.sqrt(2) * min_sigma
-        blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
+        blobs = skimage.feature.blob_dog(removed_background, threshold_rel=threshold, min_sigma=min_sigma,
                                          max_sigma=max_sigma)
 
         mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])

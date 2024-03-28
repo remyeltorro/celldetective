@@ -22,7 +22,7 @@ from celldetective.gui.thresholds_gui import ThresholdNormalisation, ThresholdSp
 from celldetective.utils import extract_experiment_channels, get_software_location
 from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
 from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation, correct_image, \
-    field_normalisation
+    field_normalisation, normalise_by_cell
 import numpy as np
 from tifffile import imread
 import json
@@ -1329,6 +1329,30 @@ class ConfigMeasurements(QMainWindow):
     def spot_preview(self):
         self.locate_image()
         self.locate_mask()
+        # for dictionary in self.background_correction:
+        #     if self.spot_channel.currentText() in dictionary['target channel']:
+        #         if dictionary['mode'] == 'field':
+        #             if dictionary['operation'] == 'Divide':
+        #                 normalised, bg_fit = field_normalisation(
+        #                     self.test_frame[:, :, self.spot_channel.currentIndex()],
+        #                     threshold=dictionary['threshold'],
+        #                     normalisation_operation=dictionary['operation'],
+        #                     clip=False,
+        #                     mode=dictionary['type'])
+        #             else:
+        #                 normalised, bg_fit = field_normalisation(
+        #                     self.test_frame[:, :, self.spot_channel.currentIndex()],
+        #                     threshold=dictionary['threshold'],
+        #                     normalisation_operation=dictionary['operation'],
+        #                     clip=dictionary['clip'],
+        #                     mode=dictionary['type'])
+        #             self.test_frame[:, :, self.spot_channel.currentIndex()] = normalised
+        #         if dictionary['mode'] == 'local':
+        #             normalised_image = normalise_by_cell(self.test_frame[:, :, self.spot_channel.currentIndex()].copy(), self.test_mask,
+        #                                                  distance=int(dictionary['distance']), mode=dictionary['type'],
+        #                                                  operation=dictionary['operation'])
+        #             self.test_frame[:, :, self.spot_channel.currentIndex()] = normalised_image
+
         self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
                                          mask=self.test_mask, parent=self)
 

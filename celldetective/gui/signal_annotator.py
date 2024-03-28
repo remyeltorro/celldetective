@@ -1360,10 +1360,6 @@ class MeasureAnnotator(SignalAnnotator):
         self.im = self.ax.imshow(self.img, cmap='gray')
         self.status_scatter = self.ax.scatter(self.positions[0][:, 0], self.positions[0][:, 1], marker="o",
                                               facecolors='none', edgecolors=self.colors[0][:, 0], s=200, picker=True)
-        if self.status_name in self.df_tracks.columns:
-            print('hello')
-
-            self.status_scatter.set_edgecolors(self.colors[0][:, 0])
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_aspect('equal')
@@ -2394,3 +2390,8 @@ class MeasureAnnotator(SignalAnnotator):
         self.time_of_interest_le.setEnabled(False)
         self.time_of_interest_le.setText("99")
         self.apply_modification()
+
+    def shortcut_suppr(self):
+        self.correct_btn.click()
+        self.del_cell_btn.click()
+        self.correct_btn.click()

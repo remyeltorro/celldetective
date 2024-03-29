@@ -626,8 +626,8 @@ class SignalAnnotator2(QMainWindow):
 
 		try:
 			for k,(t,idx) in enumerate(zip(self.effector_loc_t,self.effector_loc_idx)):
-				self.effector_colors[t][idx,0] = self.effector_previous_color[k][0]
-				self.effector_colors[t][idx,1] = self.effector_previous_color[k][1]
+				self.effector_colors[t][idx,0] = self.initial_effector_colors[t][idx,0]
+				self.effector_colors[t][idx,1] = self.initial_effector_colors[t][idx,1]
 
 
 
@@ -1137,12 +1137,14 @@ class SignalAnnotator2(QMainWindow):
 
 		self.effector_positions = []
 		self.effector_colors = []
+		self.initial_effector_colors=[]
 		self.effector_tracks = []
 
 		for t in np.arange(self.len_movie):
 
 			self.effector_positions.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['x_anim', 'y_anim']].to_numpy())
 			self.effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['class_color', 'status_color']].to_numpy())
+			self.initial_effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME'] == t, ['class_color', 'status_color']].to_numpy())
 			self.effector_tracks.append(self.df_effectors.loc[self.df_effectors['FRAME']==t, 'TRACK_ID'].to_numpy())
 
 
@@ -1366,8 +1368,12 @@ class SignalAnnotator2(QMainWindow):
 				for t,idx in zip(self.target_loc_t,self.target_loc_idx):
 					neigh=pd.read_pickle(self.neigh_trajectories_path)
 					#print(neigh)
-					effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) & (
-								neigh['FRAME'] == t), 'neighborhood_2_circle_100_px']
+					columns_of_interest = neigh.filter(like='neighborhood_2_circle').columns
+					first_column = next((col for col in columns_of_interest if col.startswith('neighborhood_2_circle')),
+										None)
+					effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) &
+									   (neigh['FRAME'] == t),
+					first_column]
 					if effect.iloc[0]!=[]:
 						eff_dict=effect.iloc[0][0]
 						indices = np.where(self.effector_tracks[t] == eff_dict['id'])[0]

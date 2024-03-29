@@ -386,6 +386,8 @@ class ControlPanel(QMainWindow):
 			self.ProcessEffectors.check_seg_btn.setEnabled(False)
 			self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
 			self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
+			self.ProcessEffectors.check_measurements_btn.setEnabled(False)
+			self.ProcessTargets.check_measurements_btn.setEnabled(False)
 			#self.ProcessTargets.signal_analysis_action.setEnabled(False)
 			#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
 			self.ProcessTargets.check_signals_btn.setEnabled(False)

@@ -1903,8 +1903,6 @@ class MeasureAnnotator(SignalAnnotator):
     def apply_modification(self):
         if self.time_of_interest_le.text() != "":
             status = int(self.time_of_interest_le.text())
-        elif self.del_class_btn.clicked():
-            status = 99
         else:
             status = 0
         if "TRACK_ID" in self.df_tracks.columns:

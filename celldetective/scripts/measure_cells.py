@@ -113,6 +113,8 @@ else:
 	border_distances = None
 	haralick_options = None
 	clear_previous = False
+	background_correction = None
+	spot_detection = None
 	intensity_measurement_radii = 10
 	isotropic_operations = ['mean']
 
@@ -156,6 +158,7 @@ else:
 	do_features = True
 	features += ['centroid']
 	do_iso_intensities = False
+
 
 if (features is not None) and (trajectories is not None):
 	features = remove_redundant_features(features, 

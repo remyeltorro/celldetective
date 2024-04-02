@@ -1178,6 +1178,8 @@ def field_normalisation(img, threshold, normalisation_operation, clip, mode):
         """
     std_img = std_filter(gauss_filter(img, 2), 4)
     mask = np.zeros_like(img)
+    if threshold=='':
+        pass
     mask[np.where(std_img > float(threshold))] = 1.0
     mask_int = mask.astype(int)
     mask_int = binary_fill_holes(mask_int).astype(float)

@@ -1208,8 +1208,10 @@ class ThresholdSpot(ThresholdConfigWizard):
                                   threshold=float(self.threshold_value.text()),
                                   diameter=float(self.diameter_value.text()))
         mask = np.array([self.test_mask[int(y), int(x)] != 0 for y, x, r in blobs])
-
-        blobs_filtered = blobs[mask]
+        if np.any(mask):
+            blobs_filtered = blobs[mask]
+        else:
+            blobs_filtered = []
         self.ax_contour.clear()
         self.im = self.ax_contour.imshow(self.frame[:, :, self.current_channel], cmap='gray')
         self.ax_contour.set_xticks([])

@@ -621,6 +621,11 @@ class SignalAnnotator2(QMainWindow):
 			for k,(t,idx) in enumerate(zip(self.target_loc_t,self.target_loc_idx)):
 				self.target_colors[t][idx,0] = self.target_previous_color[k][0]
 				self.target_colors[t][idx,1] = self.target_previous_color[k][1]
+			if self.neighbors != {}:
+				for key in self.neighbors.keys():
+					for value in self.neighbors[key]:
+						self.effector_colors[key][value, 0] = self.initial_effector_colors[key][value, 0]
+						self.effector_colors[key][value, 1] = self.initial_effector_colors[key][value, 1]
 		except Exception as e:
 			print(f'{e=}')
 
@@ -1357,6 +1362,7 @@ class SignalAnnotator2(QMainWindow):
 				self.target_loc_idx = []
 				self.effector_loc_t = []
 				self.effector_loc_idx = []
+				#self.effector_previous_color = []
 				for t in range(len(self.target_tracks)):
 					indices = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
 					if len(indices)>0:
@@ -1365,27 +1371,53 @@ class SignalAnnotator2(QMainWindow):
 
 
 				self.target_previous_color = []
+				self.neighbors={}
 				for t,idx in zip(self.target_loc_t,self.target_loc_idx):
 					neigh=pd.read_pickle(self.neigh_trajectories_path)
 					#print(neigh)
-					columns_of_interest = neigh.filter(like='neighborhood_2_circle').columns
-					first_column = next((col for col in columns_of_interest if col.startswith('neighborhood_2_circle')),
+					columns_of_interest = neigh.filter(like='neighborhood_2_circle_200_px').columns
+					first_column = next((col for col in columns_of_interest if col.startswith('neighborhood_2_circle_200_px')),
 										None)
 					effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) &
 									   (neigh['FRAME'] == t),
 					first_column]
+					#print(effect.iloc[0])
+					#print(len(effect.iloc[0]))
+					#print(neigh.columns)
+					eff_dict1=[]
+					indices=[]
 					if effect.iloc[0]!=[]:
-						eff_dict=effect.iloc[0][0]
-						indices = np.where(self.effector_tracks[t] == eff_dict['id'])[0]
+						for i in range(0,len(effect.iloc[0])):
+							eff_dict1.append(effect.iloc[0][i])
+						for dictionn in eff_dict1:
+							#print(dictionn)
+							indices.append(np.where(self.effector_tracks[t] == dictionn['id'])[0])
+						#print(eff_dict1)
+						#eff_dict=effect.iloc[0][0]
+						#indices = np.where(self.effector_tracks[t] == eff_dict['id'])[0]
+						#print(eff_dict1)
+						#print(eff_dict)
 						if len(indices) > 0:
+							indices2=[]
+							for i in indices:
+								indices2.append(i[0])
 							self.effector_loc_t.append(t)
-							self.effector_loc_idx.append(indices[0])
+							self.neighbors[t]=indices2
+							#print(self.effector_loc_t)
+
 					self.target_previous_color.append(self.target_colors[t][idx].copy())
 					self.target_colors[t][idx] = 'lime'
+				# print(self.effector_loc_t)
+				# print(self.effector_loc_idx)
 				self.effector_previous_color = []
-				for t_eff, idx_eff in zip(self.effector_loc_t, self.effector_loc_idx):
-						self.effector_previous_color.append(self.effector_colors[t_eff][idx_eff].copy())
-						self.effector_colors[t_eff][idx_eff] = 'darkorange'
+				#print(neighbors)
+				# for t_eff, idx_eff in zip(self.effector_loc_t, self.effector_loc_idx):
+				# 	self.effector_previous_color.append(self.effector_colors[t_eff][idx_eff].copy())
+				# 	self.effector_colors[t_eff][idx_eff] = 'darkorange'
+				for key in self.neighbors.keys():
+					for value in self.neighbors[key]:
+						self.effector_previous_color.append(self.effector_colors[key][value].copy())
+						self.effector_colors[key][value] = 'darkorange'
 
 
 			elif len(ind)>0 and len(self.target_selection)==1:

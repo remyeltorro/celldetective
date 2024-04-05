@@ -1699,13 +1699,6 @@ class MeasureAnnotator(SignalAnnotator):
         self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
         self.save_btn.clicked.connect(self.save_trajectories)
         btn_hbox.addWidget(self.save_btn, 90)
-
-        self.export_btn = QPushButton('')
-        self.export_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.export_btn.clicked.connect(self.export_signals)
-        self.export_btn.setIcon(icon(MDI6.export, color="black"))
-        self.export_btn.setIconSize(QSize(25, 25))
-        btn_hbox.addWidget(self.export_btn, 10)
         self.left_panel.addLayout(btn_hbox)
 
         # Animation

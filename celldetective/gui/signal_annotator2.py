@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit,QFileDialog, QApplication, QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit
+from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QFileDialog, QApplication, \
+	QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QTabWidget
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
@@ -193,30 +194,93 @@ class SignalAnnotator2(QMainWindow):
 		self.left_panel.addLayout(self.cell_info_hbox)
 
 		# Annotation buttons
-		options_hbox = QHBoxLayout()
-		options_hbox.setContentsMargins(90,30,50,0)
-		self.cell_to_correct=QComboBox()
-		self.cell_to_correct.addItems(['target cell','effector cell'])
-		self.event_btn = QRadioButton('event')
-		self.event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-		self.event_btn.toggled.connect(self.enable_time_of_interest)
+		#options_hbox = QHBoxLayout()
+		#options_hbox.setContentsMargins(90,30,50,0)
+		#self.cell_to_correct=QComboBox()
+		#self.cell_to_correct.addItems(['target cell','effector cell'])
+		#self.event_btn = QRadioButton('event')
+		#self.event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		#self.event_btn.toggled.connect(self.enable_time_of_interest)
 
-		self.no_event_btn = QRadioButton('no event')
-		self.no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-		self.no_event_btn.toggled.connect(self.enable_time_of_interest)
+		#self.no_event_btn = QRadioButton('no event')
+		#self.no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		#self.no_event_btn.toggled.connect(self.enable_time_of_interest)
 
-		self.else_btn = QRadioButton('else')
-		self.else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-		self.else_btn.toggled.connect(self.enable_time_of_interest)
+		#self.else_btn = QRadioButton('else')
+		#self.else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		#self.else_btn.toggled.connect(self.enable_time_of_interest)
 
-		self.suppr_btn = QRadioButton('mark for\nsuppression')
-		self.suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-		self.suppr_btn.toggled.connect(self.enable_time_of_interest)
-		options_hbox.addWidget(self.cell_to_correct)
-		options_hbox.addWidget(self.event_btn, 25)
-		options_hbox.addWidget(self.no_event_btn, 25)
-		options_hbox.addWidget(self.else_btn, 25)
-		options_hbox.addWidget(self.suppr_btn, 25)
+		#self.suppr_btn = QRadioButton('mark for\nsuppression')
+		#self.suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		#self.suppr_btn.toggled.connect(self.enable_time_of_interest)
+		#options_hbox.addWidget(self.cell_to_correct)
+		#options_hbox.addWidget(self.event_btn, 25)
+		#options_hbox.addWidget(self.no_event_btn, 25)
+		#options_hbox.addWidget(self.else_btn, 25)
+		#options_hbox.addWidget(self.suppr_btn, 25)
+		self.correction_tabs=QTabWidget()
+		self.target_tab=QWidget()
+		self.effector_tab=QWidget()
+		self.correction_tabs.addTab(self.target_tab, 'target')
+		self.correction_tabs.addTab(self.effector_tab, 'effector')
+		self.left_panel.addWidget(self.correction_tabs)
+		target_tab_layout=QVBoxLayout()
+		target_options_hbox = QHBoxLayout()
+		self.target_event_btn = QRadioButton('event')
+		self.target_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.target_event_btn.toggled.connect(self.enable_time_of_interest)
+
+		self.target_no_event_btn = QRadioButton('no event')
+		self.target_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.target_no_event_btn.toggled.connect(self.enable_time_of_interest)
+
+		self.target_else_btn = QRadioButton('else')
+		self.target_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.target_else_btn.toggled.connect(self.enable_time_of_interest)
+		self.target_suppr_btn = QRadioButton('mark for\nsuppression')
+		self.target_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.target_suppr_btn.toggled.connect(self.enable_time_of_interest)
+		target_options_hbox.addWidget(self.target_event_btn)
+		target_options_hbox.addWidget(self.target_no_event_btn)
+		target_options_hbox.addWidget(self.target_else_btn)
+		target_options_hbox.addWidget(self.target_suppr_btn)
+		target_time_option_hbox = QHBoxLayout()
+		self.target_time_of_interest_label = QLabel('time of interest: ')
+		target_time_option_hbox.addWidget(self.target_time_of_interest_label, 30)
+		self.target_time_of_interest_le = QLineEdit()
+		target_time_option_hbox.addWidget(self.target_time_of_interest_le, 70)
+		target_tab_layout.addLayout(target_options_hbox)
+		target_tab_layout.addLayout(target_time_option_hbox)
+		self.target_tab.setLayout(target_tab_layout)
+
+		effector_tab_layout = QVBoxLayout()
+		effector_options_hbox = QHBoxLayout()
+		self.effector_event_btn = QRadioButton('event')
+		self.effector_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.effector_event_btn.toggled.connect(self.enable_time_of_interest)
+
+		self.effector_no_event_btn = QRadioButton('no event')
+		self.effector_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.effector_no_event_btn.toggled.connect(self.enable_time_of_interest)
+
+		self.effector_else_btn = QRadioButton('else')
+		self.effector_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.effector_else_btn.toggled.connect(self.enable_time_of_interest)
+		self.effector_suppr_btn = QRadioButton('mark for\nsuppression')
+		self.effector_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.effector_suppr_btn.toggled.connect(self.enable_time_of_interest)
+		effector_options_hbox.addWidget(self.effector_event_btn)
+		effector_options_hbox.addWidget(self.effector_no_event_btn)
+		effector_options_hbox.addWidget(self.effector_else_btn)
+		effector_options_hbox.addWidget(self.effector_suppr_btn)
+		effector_time_option_hbox = QHBoxLayout()
+		self.effector_time_of_interest_label = QLabel('time of interest: ')
+		effector_time_option_hbox.addWidget(self.effector_time_of_interest_label, 30)
+		self.effector_time_of_interest_le = QLineEdit()
+		effector_time_option_hbox.addWidget(self.effector_time_of_interest_le, 70)
+		effector_tab_layout.addLayout(effector_options_hbox)
+		effector_tab_layout.addLayout(effector_time_option_hbox)
+		self.effector_tab.setLayout(effector_tab_layout)
 
 		# #options_hbox.setContentsMargins(150,30,50,0)
 		# self.event_btn2 = QRadioButton('event')
@@ -239,15 +303,15 @@ class SignalAnnotator2(QMainWindow):
 		# options_hbox.addWidget(self.no_event_btn2, 25)
 		# options_hbox.addWidget(self.else_btn2, 25)
 		# options_hbox.addWidget(self.suppr_btn2, 25)
-		self.left_panel.addLayout(options_hbox)
+		#self.left_panel.addLayout(options_hbox)
 
-		time_option_hbox = QHBoxLayout()
-		time_option_hbox.setContentsMargins(100,30,100,30)
-		self.time_of_interest_label = QLabel('time of interest: ')
-		time_option_hbox.addWidget(self.time_of_interest_label, 30)
-		self.time_of_interest_le = QLineEdit()
-		time_option_hbox.addWidget(self.time_of_interest_le, 70)
-		self.left_panel.addLayout(time_option_hbox)
+		#time_option_hbox = QHBoxLayout()
+		#time_option_hbox.setContentsMargins(100,30,100,30)
+		#self.time_of_interest_label = QLabel('time of interest: ')
+		#time_option_hbox.addWidget(self.time_of_interest_label, 30)
+		#self.time_of_interest_le = QLineEdit()
+		#time_option_hbox.addWidget(self.time_of_interest_le, 70)
+		#self.left_panel.addLayout(time_option_hbox)
 
 		# time_option_hbox2 = QHBoxLayout()
 		# time_option_hbox2.setContentsMargins(100,30,100,30)
@@ -274,9 +338,11 @@ class SignalAnnotator2(QMainWindow):
 		main_action_hbox.addWidget(self.cancel_btn)
 		self.left_panel.addLayout(main_action_hbox)
 
-		self.annotation_btns_to_hide = [self.event_btn, self.no_event_btn, 
-										self.else_btn, self.time_of_interest_label, 
-										self.time_of_interest_le, self.suppr_btn,self.cell_to_correct]
+		self.annotation_btns_to_hide = [self.correction_tabs,self.target_event_btn, self.target_no_event_btn,
+										self.target_else_btn, self.target_time_of_interest_label,
+										self.target_time_of_interest_le, self.target_suppr_btn,self.effector_event_btn, self.effector_no_event_btn,
+										self.effector_else_btn, self.effector_time_of_interest_label,
+										self.effector_time_of_interest_le, self.effector_suppr_btn]
 		self.hide_annotation_buttons()
 		#### End of annotation buttons
 
@@ -679,38 +745,68 @@ class SignalAnnotator2(QMainWindow):
 		
 		for a in self.annotation_btns_to_hide:
 			a.hide()
-		for b in [self.event_btn, self.no_event_btn, self.else_btn, self.suppr_btn]:
+		for b in [self.target_event_btn, self.target_no_event_btn, self.target_else_btn, self.target_suppr_btn,
+				  self.effector_event_btn, self.effector_suppr_btn, self.effector_else_btn, self.effector_suppr_btn]:
 			b.setChecked(False)
-		self.time_of_interest_label.setEnabled(False)
-		self.time_of_interest_le.setText('')
-		self.time_of_interest_le.setEnabled(False)
+		self.target_time_of_interest_label.setEnabled(False)
+		self.target_time_of_interest_le.setText('')
+		self.target_time_of_interest_le.setEnabled(False)
+		self.effector_time_of_interest_label.setEnabled(False)
+		self.effector_time_of_interest_le.setText('')
+		self.effector_time_of_interest_le.setEnabled(False)
 
 	def enable_time_of_interest(self):
 
-		if self.event_btn.isChecked():
-			self.time_of_interest_label.setEnabled(True)
-			self.time_of_interest_le.setEnabled(True)
+		if self.target_event_btn.isChecked():
+			self.target_time_of_interest_label.setEnabled(True)
+			self.target_time_of_interest_le.setEnabled(True)
 		else:
-			self.time_of_interest_label.setEnabled(False)
-			self.time_of_interest_le.setEnabled(False)					
+			self.target_time_of_interest_label.setEnabled(False)
+			self.target_time_of_interest_le.setEnabled(False)
+		if self.effector_event_btn.isChecked():
+			self.effector_time_of_interest_label.setEnabled(True)
+			self.effector_time_of_interest_le.setEnabled(True)
+		else:
+			self.effector_time_of_interest_label.setEnabled(False)
+			self.effector_time_of_interest_le.setEnabled(False)
 
 	def show_annotation_buttons(self):
 		
 		for a in self.annotation_btns_to_hide:
 			a.show()
 
-		cclass = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name].to_numpy()[0]
-		t0 = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_time_name].to_numpy()[0]
+		cclass_targets = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name].to_numpy()[0]
+		print(cclass_targets)
+		t0_targets = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_time_name].to_numpy()[0]
 
-		if cclass==0:
-			self.event_btn.setChecked(True)
-			self.time_of_interest_le.setText(str(t0))
-		elif cclass==1:
-			self.no_event_btn.setChecked(True)
-		elif cclass==2:
-			self.else_btn.setChecked(True)
-		elif cclass>2:
-			self.suppr_btn.setChecked(True)
+
+		if cclass_targets==0:
+			self.target_event_btn.setChecked(True)
+			self.target_time_of_interest_le.setText(str(t0_targets))
+		elif cclass_targets==1:
+			self.target_no_event_btn.setChecked(True)
+		elif cclass_targets==2:
+			self.target_else_btn.setChecked(True)
+		elif cclass_targets>2:
+			self.target_suppr_btn.setChecked(True)
+		if self.effector_track_of_interest is not None:
+			print(self.df_effectors.columns)
+			print(self.effector_class_name)
+			cclass_effectors = self.df_effectors[
+				self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
+			print(cclass_effectors)
+			t0_effectors = self.df_effectors[
+				self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+
+			if cclass_effectors==0:
+				self.effector_event_btn.setChecked(True)
+				self.effector_time_of_interest_le.setText(str(t0_effectors))
+			elif cclass_effectors==1:
+				self.effector_no_event_btn.setChecked(True)
+			elif cclass_effectors==2:
+				self.effector_suppr_btn.setChecked(True)
+			elif cclass_effectors>2:
+				self.effector_suppr_btn.setChecked(True)
 
 		self.enable_time_of_interest()
 		self.correct_btn.setText('submit')

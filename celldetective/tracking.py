@@ -130,7 +130,7 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 			tracking_updates = ["motion"]
 		
 		tracker.append(new_btrack_objects)
-		tracker.volume = ((0,volume[0]), (0,volume[1])) #(-1e5, 1e5)
+		tracker.volume = ((0,volume[0]), (0,volume[1]), (-1e5, 1e5)) #(-1e5, 1e5)
 		#print(tracker.volume)
 		tracker.track(tracking_updates=tracking_updates, **track_kwargs)
 		tracker.optimize(options=optimizer_options)
@@ -138,7 +138,11 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 		data, properties, graph = tracker.to_napari() #ndim=2
 
 	# do the table post processing and napari options
-	df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])
+	if data.shape[1]==4:
+		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])
+	elif data.shape[1]==5:
+		print(data)
+		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],"z",column_labels['y'],column_labels['x']])		
 	df[column_labels['x']+'_um'] = df[column_labels['x']]*spatial_calibration
 	df[column_labels['y']+'_um'] = df[column_labels['y']]*spatial_calibration
 

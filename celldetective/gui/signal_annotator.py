@@ -803,7 +803,7 @@ class SignalAnnotator(QMainWindow):
         print(signals)
         to_remove = ['TRACK_ID', 'FRAME', 'x_anim', 'y_anim', 't', 'state', 'generation', 'root', 'parent', 'class_id',
                      'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name',
-                     'pos_name', 'index']
+                     'pos_name', 'index','class_color','status_color']
 
         for c in to_remove:
             if c in signals:

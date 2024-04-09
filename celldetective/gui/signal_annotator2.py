@@ -126,24 +126,23 @@ class SignalAnnotator2(QMainWindow):
 
 		class_hbox.addWidget(self.target_class_choice_cb, 70)
 
-		# self.target_add_class_btn = QPushButton('')
-		# self.target_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		# self.target_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
-		# self.target_add_class_btn.setToolTip("Add a new event class")
-		# self.target_add_class_btn.setIconSize(QSize(20, 20))
-		# self.target_add_class_btn.clicked.connect(self.create_new_event_class)
-		# class_hbox.addWidget(self.add_class_btn, 5)
+		self.target_add_class_btn = QPushButton('')
+		self.target_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.target_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.target_add_class_btn.setToolTip("Add a new event class")
+		self.target_add_class_btn.setIconSize(QSize(20, 20))
+		self.target_add_class_btn.clicked.connect(self.create_new_target_event_class)
+		class_hbox.addWidget(self.target_add_class_btn, 5)
 
-		# self.del_class_btn = QPushButton('')
-		# self.del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		# self.del_class_btn.setIcon(icon(MDI6.delete,color="black"))
-		# self.del_class_btn.setToolTip("Delete an event class")
-		# self.del_class_btn.setIconSize(QSize(20, 20))
-		# self.del_class_btn.clicked.connect(self.del_event_class)
-		# class_hbox.addWidget(self.del_class_btn, 5)
+		self.target_del_class_btn = QPushButton('')
+		self.target_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.target_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
+		self.target_del_class_btn.setToolTip("Delete an event class")
+		self.target_del_class_btn.setIconSize(QSize(20, 20))
+		self.target_del_class_btn.clicked.connect(self.del_target_event_class)
+		class_hbox.addWidget(self.target_del_class_btn, 5)
 
 		self.left_panel.addLayout(class_hbox)
-
 
 		# EFFECTORS
 		class_hbox = QHBoxLayout()
@@ -167,6 +166,22 @@ class SignalAnnotator2(QMainWindow):
 		self.effector_class_choice_cb.setCurrentIndex(0)
 
 		class_hbox.addWidget(self.effector_class_choice_cb, 70)
+
+		self.effector_add_class_btn = QPushButton('')
+		self.effector_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.effector_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.effector_add_class_btn.setToolTip("Add a new event class")
+		self.effector_add_class_btn.setIconSize(QSize(20, 20))
+		self.effector_add_class_btn.clicked.connect(self.create_new_effector_event_class)
+		class_hbox.addWidget(self.effector_add_class_btn, 5)
+
+		self.effector_del_class_btn = QPushButton('')
+		self.effector_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.effector_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
+		self.effector_del_class_btn.setToolTip("Delete an event class")
+		self.effector_del_class_btn.setIconSize(QSize(20, 20))
+		self.effector_del_class_btn.clicked.connect(self.del_effector_event_class)
+		class_hbox.addWidget(self.effector_del_class_btn, 5)
 
 		# self.add_class_btn = QPushButton('')
 		# self.add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
@@ -502,32 +517,55 @@ class SignalAnnotator2(QMainWindow):
 
 		QApplication.processEvents()
 
-	# def del_event_class(self):
+	def del_target_event_class(self):
 
-	# 	msgBox = QMessageBox()
-	# 	msgBox.setIcon(QMessageBox.Warning)
-	# 	msgBox.setText(f"You are about to delete event class {self.class_choice_cb.currentText()}. The associated time and\nstatus will also be deleted. Do you still want to proceed?")
-	# 	msgBox.setWindowTitle("Warning")
-	# 	msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-	# 	returnValue = msgBox.exec()
-	# 	if returnValue == QMessageBox.No:
-	# 		return None
-	# 	else:
-	# 		class_to_delete = self.class_choice_cb.currentText()
-	# 		time_to_delete = class_to_delete.replace('class','t')
-	# 		status_to_delete = class_to_delete.replace('class', 'status')
-	# 		cols_to_delete = [class_to_delete, time_to_delete, status_to_delete]
-	# 		for c in cols_to_delete:
-	# 			try:
-	# 				self.df_tracks = self.df_tracks.drop([c], axis=1)
-	# 			except Exception as e:
-	# 				print(e)
-	# 		item_idx = self.class_choice_cb.findText(class_to_delete)
-	# 		self.class_choice_cb.removeItem(item_idx)
+		msgBox = QMessageBox()
+		msgBox.setIcon(QMessageBox.Warning)
+		msgBox.setText(f"You are about to delete event class {self.target_class_choice_cb.currentText()}. The associated time and\nstatus will also be deleted. Do you still want to proceed?")
+		msgBox.setWindowTitle("Warning")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		returnValue = msgBox.exec()
+		if returnValue == QMessageBox.No:
+			return None
+		else:
+			class_to_delete = self.target_class_choice_cb.currentText()
+			time_to_delete = class_to_delete.replace('class','t')
+			status_to_delete = class_to_delete.replace('class', 'status')
+			cols_to_delete = [class_to_delete, time_to_delete, status_to_delete]
+			for c in cols_to_delete:
+				try:
+					self.df_targets = self.df_targets.drop([c], axis=1)
+				except Exception as e:
+					print(e)
+			item_idx = self.target_class_choice_cb.findText(class_to_delete)
+			self.target_class_choice_cb.removeItem(item_idx)
+
+	def del_effector_event_class(self):
+
+		msgBox = QMessageBox()
+		msgBox.setIcon(QMessageBox.Warning)
+		msgBox.setText(f"You are about to delete event class {self.effector_class_choice_cb.currentText()}. The associated time and\nstatus will also be deleted. Do you still want to proceed?")
+		msgBox.setWindowTitle("Warning")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		returnValue = msgBox.exec()
+		if returnValue == QMessageBox.No:
+			return None
+		else:
+			class_to_delete = self.effector_class_choice_cb.currentText()
+			time_to_delete = class_to_delete.replace('class','t')
+			status_to_delete = class_to_delete.replace('class', 'status')
+			cols_to_delete = [class_to_delete, time_to_delete, status_to_delete]
+			for c in cols_to_delete:
+				try:
+					self.df_effectors = self.df_effectors.drop([c], axis=1)
+				except Exception as e:
+					print(e)
+			item_idx = self.effector_class_choice_cb.findText(class_to_delete)
+			self.effector_class_choice_cb.removeItem(item_idx)
 
 
 
-	def create_new_event_class(self):
+	def create_new_target_event_class(self):
 
 		# display qwidget to name the event
 		self.newClassWidget = QWidget()
@@ -537,8 +575,8 @@ class SignalAnnotator2(QMainWindow):
 		self.newClassWidget.setLayout(layout)
 		name_hbox = QHBoxLayout()
 		name_hbox.addWidget(QLabel('event name: '), 25)
-		self.class_name_le = QLineEdit('event')
-		name_hbox.addWidget(self.class_name_le, 75)
+		self.target_class_name_le = QLineEdit('event')
+		name_hbox.addWidget(self.target_class_name_le, 75)
 		layout.addLayout(name_hbox)
 
 		class_labels = ['event', 'no event', 'else']
@@ -559,7 +597,7 @@ class SignalAnnotator2(QMainWindow):
 		btn_hbox.addWidget(submit_btn, 50)
 		layout.addLayout(btn_hbox)
 
-		submit_btn.clicked.connect(self.write_new_event_class)
+		submit_btn.clicked.connect(self.write_new_target_event_class)
 		cancel_btn.clicked.connect(self.close_without_new_class)
 
 		self.newClassWidget.show()
@@ -568,48 +606,130 @@ class SignalAnnotator2(QMainWindow):
 
 		# Prefill with class value
 		# write in table
+	def create_new_effector_event_class(self):
 
-	# def write_new_event_class(self):
+		# display qwidget to name the event
+		self.newClassWidget = QWidget()
+		self.newClassWidget.setWindowTitle('Create new event class')
+
+		layout = QVBoxLayout()
+		self.newClassWidget.setLayout(layout)
+		name_hbox = QHBoxLayout()
+		name_hbox.addWidget(QLabel('event name: '), 25)
+		self.effector_class_name_le = QLineEdit('event')
+		name_hbox.addWidget(self.effector_class_name_le, 75)
+		layout.addLayout(name_hbox)
+
+		class_labels = ['event', 'no event', 'else']
+		layout.addWidget(QLabel('prefill: '))
+		radio_box = QHBoxLayout()
+		self.class_option_rb = [QRadioButton() for i in range(3)]
+		for i, c in enumerate(self.class_option_rb):
+			if i == 0:
+				c.setChecked(True)
+			c.setText(class_labels[i])
+			radio_box.addWidget(c, 33, alignment=Qt.AlignCenter)
+		layout.addLayout(radio_box)
+
+		btn_hbox = QHBoxLayout()
+		submit_btn = QPushButton('submit')
+		cancel_btn = QPushButton('cancel')
+		btn_hbox.addWidget(cancel_btn, 50)
+		btn_hbox.addWidget(submit_btn, 50)
+		layout.addLayout(btn_hbox)
+
+		submit_btn.clicked.connect(self.write_new_effector_event_class)
+		cancel_btn.clicked.connect(self.close_without_new_class)
+
+		self.newClassWidget.show()
+		center_window(self.newClassWidget)
+
+	# Prefill with class value
+	# write in table
+
+	def write_new_target_event_class(self):
 		
 
-	# 	if self.class_name_le.text()=='':
-	# 		self.target_class = 'class'
-	# 		self.target_time = 't0'
-	# 	else:
-	# 		self.target_class = 'class_'+self.class_name_le.text()
-	# 		self.target_time = 't_'+self.class_name_le.text()
+		if self.target_class_name_le.text()=='':
+			self.target_class = 'class'
+			self.target_time = 't0'
+		else:
+			self.target_class = 'class_'+self.target_class_name_le.text()
+			self.target_time = 't_'+self.target_class_name_le.text()
 
-	# 	if self.target_class in list(self.df_tracks.columns):
+		if self.target_class in list(self.df_targets.columns):
 
-	# 		msgBox = QMessageBox()
-	# 		msgBox.setIcon(QMessageBox.Warning)
-	# 		msgBox.setText("This event name already exists. If you proceed,\nall annotated data will be rewritten. Do you wish to continue?")
-	# 		msgBox.setWindowTitle("Warning")
-	# 		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-	# 		returnValue = msgBox.exec()
-	# 		if returnValue == QMessageBox.No:
-	# 			return None
-	# 		else:
-	# 			pass
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("This event name already exists. If you proceed,\nall annotated data will be rewritten. Do you wish to continue?")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+			else:
+				pass
 
-	# 	fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
-	# 	self.df_tracks.loc[:,self.target_class] = fill_option
-	# 	if fill_option==0:
-	# 		self.df_tracks.loc[:,self.target_time] = 0.1
-	# 	else:
-	# 		self.df_tracks.loc[:,self.target_time] = -1
+		fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
+		self.df_targets.loc[:,self.target_class] = fill_option
+		if fill_option==0:
+			self.df_targets.loc[:,self.target_time] = 0.1
+		else:
+			self.df_targets.loc[:,self.target_time] = -1
 		
-	# 	self.class_choice_cb.clear()
-	# 	cols = np.array(self.df_tracks.columns)
-	# 	self.class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
-	# 	self.class_cols = list(cols[self.class_cols])
-	# 	self.class_cols.remove('class_id')
-	# 	self.class_cols.remove('class_color')
-	# 	self.class_choice_cb.addItems(self.class_cols)
-	# 	idx = self.class_choice_cb.findText(self.target_class)
-	# 	self.class_choice_cb.setCurrentIndex(idx)
+		self.target_class_choice_cb.clear()
+		cols = np.array(self.df_targets.columns)
+		self.target_class_cols = np.array([c.startswith('class') for c in list(self.df_targets.columns)])
+		self.target_class_cols = list(cols[self.target_class_cols])
+		self.target_class_cols.remove('class_id')
+		self.target_class_cols.remove('class_color')
+		self.target_class_choice_cb.addItems(self.target_class_cols)
+		idx = self.target_class_choice_cb.findText(self.target_class)
+		self.target_class_choice_cb.setCurrentIndex(idx)
 
-	# 	self.newClassWidget.close()	
+		self.newClassWidget.close()
+
+	def write_new_effector_event_class(self):
+
+		if self.effector_class_name_le.text() == '':
+			self.effector_class = 'class'
+			self.effector_time = 't0'
+		else:
+			self.effector_class = 'class_' + self.effector_class_name_le.text()
+			self.effector_time = 't_' + self.effector_class_name_le.text()
+
+		if self.effector_class in list(self.df_effectors.columns):
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText(
+				"This event name already exists. If you proceed,\nall annotated data will be rewritten. Do you wish to continue?")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+			else:
+				pass
+
+		fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
+		self.df_effectors.loc[:, self.effector_class] = fill_option
+		if fill_option == 0:
+			self.df_effectors.loc[:, self.effector_time] = 0.1
+		else:
+			self.df_effectors.loc[:, self.effector_time] = -1
+
+		self.effector_class_choice_cb.clear()
+		cols = np.array(self.df_effectors.columns)
+		self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
+		self.effector_class_cols = list(cols[self.effector_class_cols])
+		self.effector_class_cols.remove('class_id')
+		self.effector_class_cols.remove('class_color')
+		self.effector_class_choice_cb.addItems(self.effector_class_cols)
+		idx = self.effector_class_choice_cb.findText(self.effector_class)
+		self.effector_class_choice_cb.setCurrentIndex(idx)
+
+		self.newClassWidget.close()
 
 
 	def close_without_new_class(self):
@@ -627,19 +747,19 @@ class SignalAnnotator2(QMainWindow):
 			self.expected_target_time = 't0'
 
 		self.time_target_name = self.expected_target_time
-		self.status_target_name = self.expected_target_status
+		self.target_status_name = self.expected_target_status
 
 		print('selection and expected names: ', self.target_class_name, self.target_expected_time, self.target_expected_status)
 
-		if self.time_target_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns and not self.status_target_name in self.df_targets.columns:
+		if self.time_target_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns and not self.target_status_name in self.df_targets.columns:
 			# only create the status column if it does not exist to not erase static classification results
-			self.make_status_column_targets()
+			self.make_target_status_column()
 		elif self.time_target_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns:
 			# all good, do nothing
 			pass
 		else:
-			if not self.status_name in self.df_targets.columns:
-				self.df_targets[self.status_target_name] = 0
+			if not self.target_status_name in self.df_targets.columns:
+				self.df_targets[self.target_status_name] = 0
 				self.df_targets['status_color'] = color_from_status(0)
 				self.df_targets['class_color'] = color_from_class(1)
 
@@ -648,7 +768,7 @@ class SignalAnnotator2(QMainWindow):
 		if not self.time_target_name in self.df_targets.columns:
 			self.df_targets[self.time_target_name] = -1
 
-		self.df_targets['status_color'] = [color_from_status(i) for i in self.df_targets[self.status_target_name].to_numpy()]					
+		self.df_targets['status_color'] = [color_from_status(i) for i in self.df_targets[self.target_status_name].to_numpy()]
 		self.df_targets['class_color'] = [color_from_class(i) for i in self.df_targets[self.target_class_name].to_numpy()]
 
 		self.extract_scatter_from_target_trajectories()
@@ -671,7 +791,7 @@ class SignalAnnotator2(QMainWindow):
 
 		if self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
 			# only create the status column if it does not exist to not erase static classification results
-			self.make_status_column_effectors()
+			self.make_effector_status_column()
 		elif self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns:
 			# all good, do nothing
 			pass
@@ -825,6 +945,52 @@ class SignalAnnotator2(QMainWindow):
 
 		self.correct_btn.disconnect()
 		self.correct_btn.clicked.connect(self.apply_modification)
+
+	# def make_status_column_targets(self):
+	# 	print(self.target_class_name, self.target_time_name, self.target_status_name)
+	# 	print('remaking the status column')
+	# 	for tid, group in self.df_targets.groupby('TRACK_ID'):
+	#
+	# 		indices = group.index
+	# 		t0 = group[self.target_time_name].to_numpy()[0]
+	# 		cclass = group[self.target_class_name].to_numpy()[0]
+	# 		timeline = group['FRAME'].to_numpy()
+	# 		status = np.zeros_like(timeline)
+	# 		if t0 > 0:
+	# 			status[timeline >= t0] = 1.
+	# 		if cclass == 2:
+	# 			status[:] = 2
+	# 		if cclass > 2:
+	# 			status[:] = 42
+	# 		status_color = [color_from_status(s) for s in status]
+	# 		class_color = [color_from_class(cclass) for i in range(len(status))]
+	#
+	# 		self.df_targets.loc[indices, self.status_name] = status
+	# 		self.df_targets.loc[indices, 'status_color'] = status_color
+	# 		self.df_targets.loc[indices, 'class_color'] = class_color
+	#
+	# def make_status_column_effectors(self):
+	# 	print(self.effector_class_name, self.effector_time_name, self.status_effector_name)
+	# 	print('remaking the status column')
+	# 	for tid, group in self.df_targets.groupby('TRACK_ID'):
+	#
+	# 		indices = group.index
+	# 		t0 = group[self.target_time_name].to_numpy()[0]
+	# 		cclass = group[self.target_class_name].to_numpy()[0]
+	# 		timeline = group['FRAME'].to_numpy()
+	# 		status = np.zeros_like(timeline)
+	# 		if t0 > 0:
+	# 			status[timeline >= t0] = 1.
+	# 		if cclass == 2:
+	# 			status[:] = 2
+	# 		if cclass > 2:
+	# 			status[:] = 42
+	# 		status_color = [color_from_status(s) for s in status]
+	# 		class_color = [color_from_class(cclass) for i in range(len(status))]
+	#
+	# 		self.df_targets.loc[indices, self.status_name] = status
+	# 		self.df_targets.loc[indices, 'status_color'] = status_color
+	# 		self.df_targets.loc[indices, 'class_color'] = class_color
 
 	def apply_modification(self):
 
@@ -1845,11 +2011,16 @@ class SignalAnnotator2(QMainWindow):
 		# if self.selection:
 		# 	self.cancel_selection()
 
-		# self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks[self.class_name]>2].index)
-		# self.df_tracks.to_csv(self.trajectories_path, index=False)
-		# print('table saved.')
-		# self.extract_scatter_from_trajectories()
-		# #self.give_cell_information()
+		self.df_targets = self.df_targets.drop(self.df_targets[self.df_targets[self.target_class_name]>2].index)
+		self.df_targets.to_csv(self.target_trajectories_path, index=False)
+		print('targets table saved.')
+		self.extract_scatter_from_target_trajectories()
+
+		self.df_effectors = self.df_effectors.drop(self.df_effectors[self.df_effectors[self.effector_class_name]>2].index)
+		self.df_effectors.to_csv(self.effector_trajectories_path, index=False)
+		print('effectors table saved.')
+		self.extract_scatter_from_effector_trajectories()
+		#self.give_cell_information()
 
 
 	# def interval_slider_action(self):

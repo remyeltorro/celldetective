@@ -1227,8 +1227,8 @@ class SignalAnnotator2(QMainWindow):
 					self.loc_t.append(t)
 					self.loc_idx.append(indices[0])
 
-			self.MinMaxScaler = MinMaxScaler()
-			self.columns_to_rescale = list(self.df_targets.columns)
+			self.MinMaxScaler_targets = MinMaxScaler()
+			self.columns_to_rescale_targets = list(self.df_targets.columns)
 
 			# is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
 			# is_number_test = is_number(self.df_tracks.dtypes)
@@ -1243,13 +1243,13 @@ class SignalAnnotator2(QMainWindow):
 
 			for tr in cols_to_remove:
 				try:
-					self.columns_to_rescale.remove(tr)
+					self.columns_to_rescale_targets.remove(tr)
 				except:
 					pass
 					#print(f'column {tr} could not be found...')
 
-			x = self.df_targets[self.columns_to_rescale].values
-			self.MinMaxScaler.fit(x)
+			x = self.df_targets[self.columns_to_rescale_targets].values
+			self.MinMaxScaler_targets.fit(x)
 
 			#self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
@@ -1339,8 +1339,8 @@ class SignalAnnotator2(QMainWindow):
 					self.loc_t.append(t)
 					self.loc_idx.append(indices[0])
 
-			self.MinMaxScaler = MinMaxScaler()
-			self.columns_to_rescale = list(self.df_effectors.columns)
+			self.MinMaxScaler_effectors = MinMaxScaler()
+			self.columns_to_rescale_effectors = list(self.df_effectors.columns)
 
 			# is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
 			# is_number_test = is_number(self.df_tracks.dtypes)
@@ -1355,13 +1355,13 @@ class SignalAnnotator2(QMainWindow):
 
 			for tr in cols_to_remove:
 				try:
-					self.columns_to_rescale.remove(tr)
+					self.columns_to_rescale_effectors.remove(tr)
 				except:
 					pass
 					#print(f'column {tr} could not be found...')
 
-			x = self.df_effectors[self.columns_to_rescale].values
-			self.MinMaxScaler.fit(x)
+			x = self.df_effectors[self.columns_to_rescale_effectors].values
+			self.MinMaxScaler_effectors.fit(x)
 
 			#self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
@@ -1939,7 +1939,6 @@ class SignalAnnotator2(QMainWindow):
 
 		return (self.im,self.target_status_scatter,self.target_class_scatter,self.effector_status_scatter,self.effector_class_scatter,)
 
-
 	def stop(self):
 		# # On stop we disconnect all of our events.
 		self.stop_btn.hide()
@@ -2111,26 +2110,74 @@ class SignalAnnotator2(QMainWindow):
 		# 	except Exception as e:
 		# 		print(f"Error {e}...")
 
+	# def normalize_features(self):
+	# 	if self.df_targets is None or self.df_effectors is None:
+	# 		print("Error: DataFrame is not initialized.")
+	# 		return
+	# 	x_targets = self.df_targets[self.columns_to_rescale_targets].values
+	# 	x_effectors = self.df_effectors[self.columns_to_rescale_effectors].values
+	#
+	# 	if not self.normalized_signals:
+	# 		x_target_normalized = self.MinMaxScaler_targets.fit_transform(x_targets)
+	# 		x_effector_normalized = self.MinMaxScaler_effectors.fit_transform(x_effectors)
+	# 		self.df_targets[self.columns_to_rescale_targets]=x_target_normalized
+	# 		self.df_effectors[self.columns_to_rescale_effectors]=x_effector_normalized
+	# 		self.plot_signals()
+	# 		self.normalized_signals = True
+	# 		self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="#1565c0"))
+	# 		self.normalize_features_btn.setIconSize(QSize(25, 25))
+	# 		print("Features normalized.")
+	# 	else:
+	# 		x_target_inverse = self.MinMaxScaler_targets.inverse_transform(x_targets)
+	# 		x_effectors_inverse = self.MinMaxScaler_effectors.inverse_transform(x_effectors)
+	# 		self.df_targets[self.columns_to_rescale_targets] = x_target_inverse
+	# 		self.df_effectors[self.columns_to_rescale_effectors] = x_effectors_inverse
+	# 		self.plot_signals()
+	# 		self.normalized_signals = False
+	# 		self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
+	# 		self.normalize_features_btn.setIconSize(QSize(25, 25))
+	# 		print("Features unnormalized.")
+
 	def normalize_features(self):
+		self.MinMaxScaler = MinMaxScaler()
+		if self.df_targets is None or self.df_effectors is None:
+			print("Error: DataFrame is not initialized.")
+			return
+		df_tracks1_renamed = self.df_targets[self.columns_to_rescale_targets].rename(columns=lambda x: x + '_1')
+		df_tracks2_renamed = self.df_effectors[self.columns_to_rescale_effectors].rename(columns=lambda x: x + '_2')
 
-		pass
+		columns_to_rescale1_renamed = [col + '_1' for col in self.columns_to_rescale_targets]
+		columns_to_rescale2_renamed = [col + '_2' for col in self.columns_to_rescale_effectors]
+		columns_to_rescale_renamed = []
+		for i in columns_to_rescale1_renamed:
+			columns_to_rescale_renamed.append(i)
+		for i in columns_to_rescale2_renamed:
+			columns_to_rescale_renamed.append(i)
+		self.merged_df = pd.concat([df_tracks1_renamed, df_tracks2_renamed], axis=1)
 
-		# x = self.df_tracks[self.columns_to_rescale].values
+		x = self.merged_df[columns_to_rescale_renamed].values
+		if not self.normalized_signals:
+			self.MinMaxScaler.fit(self.merged_df.values)
+			x_normalized = self.MinMaxScaler_targets.fit_transform(x)
+			self.merged_df[columns_to_rescale_renamed] = x_normalized
+			self.df_targets[self.columns_to_rescale_targets] = self.merged_df[columns_to_rescale1_renamed]
+			self.df_effectors[self.columns_to_rescale_effectors] = self.merged_df[columns_to_rescale2_renamed]
+			self.plot_signals()
+			self.normalized_signals = True
+			self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="#1565c0"))
+			self.normalize_features_btn.setIconSize(QSize(25, 25))
+			print("Features normalized.")
+		else:
+			x_inverse=self.MinMaxScaler_targets.inverse_transform(x)
+			self.merged_df[columns_to_rescale_renamed]=x_inverse
+			self.df_targets[self.columns_to_rescale_targets]=self.merged_df[columns_to_rescale1_renamed]
+			self.df_effectors[self.columns_to_rescale_effectors]=self.merged_df[columns_to_rescale2_renamed]
+			self.plot_signals()
+			self.normalized_signals = False
+			self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
+			self.normalize_features_btn.setIconSize(QSize(25, 25))
+			print("Features unnormalized.")
 
-		# if not self.normalized_signals:
-		# 	x = self.MinMaxScaler.transform(x)
-		# 	self.df_tracks[self.columns_to_rescale] = x
-		# 	self.plot_signals()
-		# 	self.normalized_signals = True
-		# 	self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="#1565c0"))
-		# 	self.normalize_features_btn.setIconSize(QSize(25, 25))
-		# else:
-		# 	x = self.MinMaxScaler.inverse_transform(x)
-		# 	self.df_tracks[self.columns_to_rescale] = x
-		# 	self.plot_signals()
-		# 	self.normalized_signals = False			
-		# 	self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
-		# 	self.normalize_features_btn.setIconSize(QSize(25, 25))
 
 	def switch_to_log(self):
 

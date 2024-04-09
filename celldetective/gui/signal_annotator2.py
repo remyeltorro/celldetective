@@ -383,11 +383,11 @@ class SignalAnnotator2(QMainWindow):
 
 		signal_choice_vbox = QVBoxLayout()
 		signal_choice_vbox.setContentsMargins(30,0,30,50)
-		for i in range(len(self.signal_choice_targets_cb)):
+		for i in range(len(self.signal_choices)):
 			
 			hlayout = QHBoxLayout()
-			hlayout.addWidget(self.signal_choice_targets_label[i], 20)
-			hlayout.addWidget(self.signal_choice_targets_cb[i], 75)
+			hlayout.addWidget(self.signal_labels[i], 20)
+			hlayout.addWidget(self.signal_choices[i], 75)
 			#hlayout.addWidget(self.log_btns[i], 5)
 			signal_choice_vbox.addLayout(hlayout)
 
@@ -709,13 +709,17 @@ class SignalAnnotator2(QMainWindow):
 		self.correct_btn.setEnabled(False)
 		self.correct_btn.setText('correct')
 		self.cancel_btn.setEnabled(False)
+		self.correct_btn.disconnect()
+		self.correct_btn.clicked.connect(self.show_annotation_buttons)
 		
 		try:
 			self.target_selection.pop(0)
+			self.hide_target_cell_info()
 		except Exception as e:
 			print(e)
 		try:
 			self.effector_selection.pop(0)
+			self.hide_effector_cell_info()
 		except Exception as e:
 			print(e)
 
@@ -771,12 +775,13 @@ class SignalAnnotator2(QMainWindow):
 			self.effector_time_of_interest_le.setEnabled(False)
 
 	def show_annotation_buttons(self):
-		
+		if self.target_selection:
+			self.correction_tabs.setTabEnabled(0,True)
+		else:
+			self.correction_tabs.setTabEnabled(0,False)
 		for a in self.annotation_btns_to_hide:
 			a.show()
-
 		cclass_targets = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name].to_numpy()[0]
-		print(cclass_targets)
 		t0_targets = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_time_name].to_numpy()[0]
 
 
@@ -789,13 +794,20 @@ class SignalAnnotator2(QMainWindow):
 			self.target_else_btn.setChecked(True)
 		elif cclass_targets>2:
 			self.target_suppr_btn.setChecked(True)
+		if self.effector_selection:
+			self.correction_tabs.setTabEnabled(1,True)
+		else:
+			self.correction_tabs.setTabEnabled(1,False)
+
 		if self.effector_track_of_interest is not None:
-			print(self.df_effectors.columns)
-			print(self.effector_class_name)
-			cclass_effectors = self.df_effectors[
-				self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
-			print(cclass_effectors)
-			t0_effectors = self.df_effectors[
+			#print(self.df_effectors['TRACK_ID']==self.effector_track_of_interest)
+			#print
+			cclass_effectors = self.df_effectors.loc[
+				self.df_effectors['TRACK_ID'] == self.effector_track_of_interest,
+				self.effector_class_name
+			].to_numpy()[0]
+
+			t0_effectors = self.df_effectors.loc[
 				self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
 
 			if cclass_effectors==0:
@@ -833,75 +845,74 @@ class SignalAnnotator2(QMainWindow):
 		# 	cclass = 2
 		# elif self.suppr_btn.isChecked():
 		# 	cclass = 42
-		print(self.cell_to_correct.currentText())
-		if self.cell_to_correct.currentText()=='target cell':
-			t0 = -1
-			if self.event_btn.isChecked():
-				cclass = 0
+		if self.correction_tabs.currentIndex()==0:
+			t0_target = -1
+			if self.target_event_btn.isChecked():
+				cclass_target = 0
 				try:
-					t0 = float(self.time_of_interest_le.text().replace(',', '.'))
-					self.line_dt.set_xdata([t0, t0])
+					t0_target = float(self.target_time_of_interest_le.text().replace(',', '.'))
+					self.line_dt.set_xdata([t0_target, t0_target])
 					self.cell_fcanvas.canvas.draw_idle()
 				except Exception as e:
 					print(e)
-					t0 = -1
-					cclass = 2
-			elif self.no_event_btn.isChecked():
-				cclass = 1
-			elif self.else_btn.isChecked():
-				cclass = 2
-			elif self.suppr_btn.isChecked():
-				cclass = 42
-			self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name] = cclass
-			self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_time_name] = t0
+					t0_target = -1
+					cclass_target = 2
+			elif self.target_no_event_btn.isChecked():
+				cclass_target = 1
+			elif self.target_else_btn.isChecked():
+				cclass_target = 2
+			elif self.target_suppr_btn.isChecked():
+				cclass_target = 42
+			self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name] = cclass_target
+			self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_time_name] = t0_target
 
 			indices = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name].index
 			timeline = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
 			status = np.zeros_like(timeline)
-			if t0 > 0:
-				status[timeline>=t0] = 1.
-			if cclass==2:
+			if t0_target > 0:
+				status[timeline>=t0_target] = 1.
+			if cclass_target==2:
 				status[:] = 2
-			if cclass>2:
+			if cclass_target>2:
 				status[:] = 42
 			status_color = [color_from_status(s, recently_modified=True) for s in status]
-			class_color = [color_from_class(cclass, recently_modified=True) for i in range(len(status))]
+			class_color = [color_from_class(cclass_target, recently_modified=True) for i in range(len(status))]
 
 			self.df_targets.loc[indices, self.target_status_name] = status
 			self.df_targets.loc[indices, 'status_color'] = status_color
 			self.df_targets.loc[indices, 'class_color'] = class_color
-		if self.cell_to_correct.currentText()=='effector cell':
-			t0 = -1
-			if self.event_btn.isChecked():
-				cclass = 0
+		if self.correction_tabs.currentIndex()==1:
+			t0_effector = -1
+			if self.effector_event_btn.isChecked():
+				cclass_effector = 0
 				try:
-					t0 = float(self.time_of_interest_le.text().replace(',', '.'))
-					self.line_dt.set_xdata([t0, t0])
+					t0_effector = float(self.effector_time_of_interest_le.text().replace(',', '.'))
+					self.line_dt.set_xdata([t0_effector, t0_effector])
 					self.cell_fcanvas.canvas.draw_idle()
 				except Exception as e:
 					print(e)
-					t0 = -1
-					cclass = 2
-			elif self.no_event_btn.isChecked():
-				cclass = 1
-			elif self.else_btn.isChecked():
-				cclass = 2
-			elif self.suppr_btn.isChecked():
-				cclass = 42
-			self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass
-			self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name] = t0
+					t0_effector = -1
+					cclass_effector = 2
+			elif self.effector_no_event_btn.isChecked():
+				cclass_effector = 1
+			elif self.effector_else_btn.isChecked():
+				cclass_effector = 2
+			elif self.effector_suppr_btn.isChecked():
+				cclass_effector = 42
+			self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass_effector
+			self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name] = t0_effector
 
 			indices = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].index
 			timeline = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
 			status = np.zeros_like(timeline)
-			if t0 > 0:
-				status[timeline>=t0] = 1.
-			if cclass==2:
+			if t0_effector > 0:
+				status[timeline>=t0_effector] = 1.
+			if cclass_effector==2:
 				status[:] = 2
-			if cclass>2:
+			if cclass_effector>2:
 				status[:] = 42
 			status_color = [color_from_status(s, recently_modified=True) for s in status]
-			class_color = [color_from_class(cclass, recently_modified=True) for i in range(len(status))]
+			class_color = [color_from_class(cclass_effector, recently_modified=True) for i in range(len(status))]
 			self.df_effectors.loc[indices, self.effector_status_name] = status
 			self.df_effectors.loc[indices, 'status_color'] = status_color
 			self.df_effectors.loc[indices, 'class_color'] = class_color
@@ -1241,21 +1252,56 @@ class SignalAnnotator2(QMainWindow):
 	def generate_signal_choices(self):
 		
 		# TARGETS
-		self.signal_choice_targets_cb = [QComboBox() for i in range(self.n_signals)]
-		self.signal_choice_targets_label = [QLabel(f'signal {i+1}: ') for i in range(self.n_signals)]
+		#self.signal_choice_targets_cb = [QComboBox() for i in range(self.n_signals)]
+		#self.signal_choice_targets_label = [QLabel(f'signal {i+1}: ') for i in range(self.n_signals)]
 		#self.log_btns = [QPushButton() for i in range(self.n_signals)]
-
-		signals = list(self.df_targets.columns)
-		to_remove = ['TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index']
+		self.signal_choices = []
+		self.signal_labels =[]
+		target_signals = list(self.df_targets.columns)
+		effector_signals = list(self.df_effectors.columns)
+		relative_signals = []
+		to_remove = ['TRACK_ID','class_color','status_color', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index']
 
 		for c in to_remove:
-			if c in signals:
-				signals.remove(c)
+			if c in target_signals:
+				target_signals.remove(c)
+			if c in effector_signals:
+				effector_signals.remove(c)
+			if c in relative_signals:
+				relative_signals.remove(c)
 
-		for i in range(len(self.signal_choice_targets_cb)):
-			self.signal_choice_targets_cb[i].addItems(['--']+signals)
-			self.signal_choice_targets_cb[i].setCurrentIndex(i+1)
-			self.signal_choice_targets_cb[i].currentIndexChanged.connect(self.plot_signals)
+		#for i in range(len(self.signal_choice_targets_cb)):
+		#	self.signal_choice_targets_cb[i].addItems(['--']+signals)
+		#	self.signal_choice_targets_cb[i].setCurrentIndex(i+1)
+		#	self.signal_choice_targets_cb[i].currentIndexChanged.connect(self.plot_signals)
+
+		self.target_signal_choice=QComboBox()
+		self.effector_signal_choice=QComboBox()
+		self.relative_signal_choice = QComboBox()
+
+		self.target_signal_choice_label=QLabel('target signal')
+		self.effector_signal_choice_label=QLabel('effector signal')
+		self.relative_signal_choice_label=QLabel('relative signal')
+
+		self.target_signal_choice.addItems(['--']+target_signals)
+		self.effector_signal_choice.addItems(['--']+effector_signals)
+		self.relative_signal_choice.addItems(['--']+relative_signals)
+
+		self.effector_signal_choice.setCurrentIndex(1)
+		self.target_signal_choice.setCurrentIndex(1)
+
+		self.target_signal_choice.currentIndexChanged.connect(self.plot_signals)
+		self.effector_signal_choice.currentIndexChanged.connect(self.plot_signals)
+		self.relative_signal_choice.currentIndexChanged.connect(self.plot_signals)
+
+		self.signal_choices.append(self.target_signal_choice)
+		self.signal_choices.append(self.effector_signal_choice)
+		self.signal_choices.append(self.relative_signal_choice)
+
+		self.signal_labels.append(self.target_signal_choice_label)
+		self.signal_labels.append(self.effector_signal_choice_label)
+		self.signal_labels.append(self.relative_signal_choice_label)
+
 
 		# # EFFECTORS
 		# self.signal_choice_effectors_cb = [QComboBox() for i in range(self.n_signals)]
@@ -1279,26 +1325,35 @@ class SignalAnnotator2(QMainWindow):
 		
 		try:
 			yvalues = []
-			for i in range(len(self.signal_choice_targets_cb)):
-				
-				signal_choice = self.signal_choice_targets_cb[i].currentText()
-				self.lines[i].set_label(signal_choice)
+			for i in range(len(self.signal_choices)):
+				signal_choice = self.signal_choices[i].currentText()
+				#self.lines[i].set_label(signal_choice)
 
 				if signal_choice=="--":
 					self.lines[i].set_xdata([])
 					self.lines[i].set_ydata([])
+					self.lines[i].set_label('')
 				else:
-					print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
-					xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
-					ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+					if i == 0:
+						self.lines[i].set_label('target '+signal_choice)
+						print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
+						xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
+						ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+					elif i == 1:
+						self.lines[i].set_label('effector ' + signal_choice)
+						print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
+						xdata = self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, 'FRAME'].to_numpy()
+						ydata = self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, signal_choice].to_numpy()
 
-					xdata = xdata[ydata==ydata] # remove nan
-					ydata = ydata[ydata==ydata]
+					xdata = xdata[ydata == ydata]  # remove nan
+					ydata = ydata[ydata == ydata]
 
 					yvalues.extend(ydata)
 					self.lines[i].set_xdata(xdata)
 					self.lines[i].set_ydata(ydata)
-					self.lines[i].set_color(tab10(i/3.))
+					self.lines[i].set_color(tab10(i / 3.))
+
+
 			
 			self.configure_ylims()
 
@@ -1495,7 +1550,7 @@ class SignalAnnotator2(QMainWindow):
 		self.cell_fig.set_facecolor('none')  # or 'None'
 		self.cell_fig.canvas.setStyleSheet("background-color: transparent;")
 
-		self.lines = [self.cell_ax.plot([np.linspace(0,self.len_movie-1,self.len_movie)],[np.zeros((self.len_movie))])[0] for i in range(len(self.signal_choice_targets_cb))]
+		self.lines = [self.cell_ax.plot([np.linspace(0,self.len_movie-1,self.len_movie)],[np.zeros((self.len_movie))])[0] for i in range(len(self.signal_choices))]
 		for i in range(len(self.lines)):
 			self.lines[i].set_label(f'signal {i}')
 
@@ -1525,6 +1580,7 @@ class SignalAnnotator2(QMainWindow):
 
 
 		if pop=='targets':
+			self.correction_tabs.setTabEnabled(0,True)
 			if len(ind)>1:
 				# More than one point in vicinity
 				datax,datay = [self.target_positions[self.framedata][i,0] for i in ind],[self.target_positions[self.framedata][i,1] for i in ind]
@@ -1614,6 +1670,7 @@ class SignalAnnotator2(QMainWindow):
 				pass
 
 		elif pop=='effectors':
+			self.correction_tabs.setTabEnabled(1, True)
 			if len(ind)>1:
 				# More than one point in vicinity
 				datax,datay = [self.effector_positions[self.framedata][i,0] for i in ind],[self.effector_positions[self.framedata][i,1] for i in ind]
@@ -1669,15 +1726,22 @@ class SignalAnnotator2(QMainWindow):
 		try:
 			min_values = []
 			max_values = []
-			for i in range(len(self.signal_choice_targets_cb)):
-				signal = self.signal_choice_targets_cb[i].currentText()
+			for i in range(len(self.signal_choices)):
+				signal = self.signal_choices[i].currentText()
 				if signal=='--':
 					continue
 				else:
-					maxx = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),99)
-					minn = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),1)
-					min_values.append(minn)
-					max_values.append(maxx)
+					if i==0:
+						maxx_target = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),99)
+						minn_target = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),1)
+						min_values.append(minn_target)
+						max_values.append(maxx_target)
+					elif i==1:
+						maxx_effector = np.nanpercentile(self.df_effectors.loc[:,signal].to_numpy().flatten(),99)
+						minn_effector= np.nanpercentile(self.df_effectors.loc[:,signal].to_numpy().flatten(),1)
+
+						min_values.append(minn_effector)
+						max_values.append(maxx_effector)
 
 			if len(min_values)>0:
 				self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
@@ -1751,6 +1815,10 @@ class SignalAnnotator2(QMainWindow):
 
 		self.target_cell_info.setText(target_cell_selected+target_cell_class+target_cell_time)#+effector_cell_selected+effector_cell_class+effector_cell_time)
 
+	def hide_target_cell_info(self):
+
+		self.target_cell_info.setText('')
+
 	def give_effector_cell_information(self):
 		#
 		# target_cell_selected = f"target cell: {self.target_track_of_interest}\n"
@@ -1762,6 +1830,10 @@ class SignalAnnotator2(QMainWindow):
 		effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}\n"
 
 		self.effector_cell_info.setText(effector_cell_selected+effector_cell_class+effector_cell_time)
+
+	def hide_effector_cell_info(self):
+
+		self.effector_cell_info.setText('')
 
 
 	def save_trajectories(self):

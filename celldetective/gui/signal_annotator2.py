@@ -66,6 +66,7 @@ class SignalAnnotator2(QMainWindow):
 
 		self.locate_target_tracks()
 		self.locate_effector_tracks()
+		self.locate_relative_tracks()
 
 		self.prepare_stack()
 
@@ -1365,6 +1366,124 @@ class SignalAnnotator2(QMainWindow):
 
 			#self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
+	def locate_relative_tracks(self):
+
+		population = 'relative'
+		self.relative_trajectories_path = self.pos + f'output/tables/relative.csv'
+		#self.neigh_trajectories_path = self.pos + f'output/tables/trajectories_{population}.pkl'
+
+		if not os.path.exists(self.target_trajectories_path):
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("The trajectories cannot be detected.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Yes:
+				self.close()
+		else:
+
+			# Load and prep tracks
+			self.df_relative = pd.read_csv(self.relative_trajectories_path)
+			self.df_relative= self.df_relative.sort_values(by=['target', 'frame'])
+
+			self.relative_cols = np.array(self.df_relative.columns)
+			# for col in self.relative_cols:
+			# 	print(col)
+			# 	if col=="relxy":
+			# 		self.relative_cols.remove(col)
+			#self.target_class_cols = np.array([c.startswith('class') for c in list(self.df_targets.columns)])
+			#self.relative_cols = list(cols[self.target_class_cols])
+			#try:
+				#self..remove('class_id')
+			#except:
+				#pass
+			#try:
+				#self.target_class_cols.remove('class_color')
+			#except:
+				#pass
+			# if len(self.target_class_cols) > 0:
+			# 	self.target_class_name = self.target_class_cols[0]
+			# 	self.target_expected_status = 'status'
+			# 	suffix = self.target_class_name.replace('class', '').replace('_', '')
+			# 	if suffix != '':
+			# 		self.target_expected_status += '_' + suffix
+			# 		self.target_expected_time = 't_' + suffix
+			# 	else:
+			# 		self.target_expected_time = 't0'
+			# 	self.target_time_name = self.target_expected_time
+			# 	self.target_status_name = self.target_expected_status
+			# else:
+			# 	self.target_class_name = 'class'
+			# 	self.target_time_name = 't0'
+			# 	self.target_status_name = 'status'
+			#
+			# if self.target_time_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns and not self.target_status_name in self.df_targets.columns:
+			# 	# only create the status column if it does not exist to not erase static classification results
+			# 	self.make_target_status_column()
+			# elif self.target_time_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns:
+			# 	# all good, do nothing
+			# 	pass
+			# else:
+			# 	if not self.target_status_name in self.df_targets.columns:
+			# 		self.df_targets[self.target_status_name] = 0
+			# 		self.df_targets['status_color'] = color_from_status(0)
+			# 		self.df_targets['class_color'] = color_from_class(1)
+			#
+			# if not self.target_class_name in self.df_targets.columns:
+			# 	self.df_targets[self.target_class_name] = 1
+			# if not self.target_time_name in self.df_targets.columns:
+			# 	self.df_targets[self.target_time_name] = -1
+			#
+			# self.df_targets['status_color'] = [color_from_status(i) for i in
+			# 								   self.df_targets[self.target_status_name].to_numpy()]
+			# self.df_targets['class_color'] = [color_from_class(i) for i in
+			# 								  self.df_targets[self.target_class_name].to_numpy()]
+			#
+			# self.df_targets = self.df_targets.dropna(subset=['POSITION_X', 'POSITION_Y'])
+			# self.df_targets['x_anim'] = self.df_targets['POSITION_X'] * self.fraction
+			# self.df_targets['y_anim'] = self.df_targets['POSITION_Y'] * self.fraction
+			# self.df_targets['x_anim'] = self.df_targets['x_anim'].astype(int)
+			# self.df_targets['y_anim'] = self.df_targets['y_anim'].astype(int)
+			#
+			# self.extract_scatter_from_target_trajectories()
+			# self.target_track_of_interest = self.df_targets['TRACK_ID'].min()
+			#
+			# self.loc_t = []
+			# self.loc_idx = []
+			# for t in range(len(self.target_tracks)):
+			# 	indices = np.where(self.target_tracks[t] == self.target_track_of_interest)[0]
+			# 	if len(indices) > 0:
+			# 		self.loc_t.append(t)
+			# 		self.loc_idx.append(indices[0])
+			#
+			# self.MinMaxScaler_targets = MinMaxScaler()
+			# self.columns_to_rescale_targets = list(self.df_targets.columns)
+
+			# is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
+			# is_number_test = is_number(self.df_tracks.dtypes)
+			# self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
+			# print(self.columns_to_rescale)
+
+			#cols_to_remove = ['relxy']
+			#cols = np.array(list(self.df_relative.columns))
+			# time_cols = np.array([c.startswith('t_') for c in cols])
+			# time_cols = list(cols[time_cols])
+			# cols_to_remove += time_cols
+			#
+			# for tr in cols_to_remove:
+			# 	try:
+			# 		self.columns_to_rescale_targets.remove(tr)
+			# 	except:
+			# 		pass
+			# # print(f'column {tr} could not be found...')
+			#
+			# x = self.df_targets[self.columns_to_rescale_targets].values
+			# self.MinMaxScaler_targets.fit(x)
+
+	# self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
+
 
 
 	def make_target_status_column(self):
@@ -1425,8 +1544,8 @@ class SignalAnnotator2(QMainWindow):
 		self.signal_labels =[]
 		target_signals = list(self.df_targets.columns)
 		effector_signals = list(self.df_effectors.columns)
-		relative_signals = []
-		to_remove = ['TRACK_ID','class_color','status_color', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index']
+		relative_signals = list(self.relative_cols)
+		to_remove = ['TRACK_ID','class_color','status_color', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index','relxy','tc','nk']
 
 		for c in to_remove:
 			if c in target_signals:
@@ -1510,11 +1629,36 @@ class SignalAnnotator2(QMainWindow):
 						print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
 						xdata = self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, 'FRAME'].to_numpy()
 						ydata = self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, signal_choice].to_numpy()
+					else:
+						print(self.df_relative)
+						self.lines[i].set_label('relative ' + signal_choice)
+						print(f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
+						xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
+						print(self.df_relative.loc[self.df_relative['target'] == self.target_track_of_interest ,
+						signal_choice])
+						print(self.df_relative.loc[self.df_relative['effector'] == self.effector_track_of_interest,
+						signal_choice])
+						print(self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest),
+						signal_choice])
+						ydata = self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest),
+						signal_choice].to_numpy()
+						# if ydata!=[]:
+						# 	print(ydata.shape)
+						# else:
+						# 	ydata=np.zeros(30)
+						# print(ydata)
 
-					xdata = xdata[ydata == ydata]  # remove nan
+					#xdata = xdata[ydata == ydata]  # remove nan
+					xdata = xdata[ydata == ydata]
 					ydata = ydata[ydata == ydata]
 
 					yvalues.extend(ydata)
+					#t0 = self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest),'t0_lysis'].to_numpy()
+					#print(t0)
+					#self.line_dt.set_xdata([t0, t0])
+					#min_val=np.min(ydata)
+					#max_val=np.max(ydata)
+					#self.line_dt.set_ydata([min_val, max_val])
 					self.lines[i].set_xdata(xdata)
 					self.lines[i].set_ydata(ydata)
 					self.lines[i].set_color(tab10(i / 3.))
@@ -1524,9 +1668,12 @@ class SignalAnnotator2(QMainWindow):
 			self.configure_ylims()
 
 			min_val,max_val = self.cell_ax.get_ylim()
-			t0 = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_expected_time].to_numpy()[0]
-			self.line_dt.set_xdata([t0, t0])
-			self.line_dt.set_ydata([min_val,max_val])
+			t0 = self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest) & (
+						self.df_relative['effector'] == self.effector_track_of_interest), 't0_lysis'].to_numpy()
+			if t0!=[]:
+				t0=t0[0]
+				self.line_dt.set_xdata([t0, t0])
+				self.line_dt.set_ydata([min_val,max_val])
 
 			self.cell_ax.legend()
 			self.cell_fcanvas.canvas.draw()
@@ -1908,6 +2055,12 @@ class SignalAnnotator2(QMainWindow):
 
 						min_values.append(minn_effector)
 						max_values.append(maxx_effector)
+					else:
+						maxx_relative = np.nanpercentile(self.df_relatives.loc[:,signal].to_numpy().flatten(),99)
+						minn_relative = np.nanpercentile(self.df_relatives.loc[:,signal].to_numpy().flatten(),1)
+
+						min_values.append(minn_relative)
+						max_values.append(maxx_relative)
 
 			if len(min_values)>0:
 				self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))

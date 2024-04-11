@@ -20,6 +20,16 @@ Celldetective is a python package and software to perform single-cell analysis o
 Overview
 --------
 
+.. raw:: html
+
+	<embed>
+		<p align="center">
+		<img src="https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/celldetective-blocks.png" width="90%" />
+		</p>
+	</embed>
+
+
+
 Despite notable efforts in the development of user-friendly softwares that integrate state-of-the-art solutions to perform single cell analysis, very few are designed for time-lapse data and even less for multimodal problems where cells populations are mixed and can only be separated through the use of multimodal information. Few software solutions provide, to our knowledge, the extraction of response functions from single cell events such as the dynamic survival of a population directly in the GUI, as coding skills are usually required to do so. We want to study complex data which is often multimodal time lapse microscopy images of interacting cell populations, without loss of generality. With a high need for an easy-to-use, no-coding-skill-required software adapted to images and intended for biologists, we introduce **Celldetective**, an open-source python-based software with the following highlight features:
 
 * **Comprehensive single-cell image analysis** : Celldetective ships segmentation, tracking, and measurement modules, as well as event detection from single-cell signals, for up to two populations of interest.

@@ -42,6 +42,15 @@ Despite notable efforts in the development of user-friendly softwares that integ
 * **Accessible and open source** : Celldetective does not require any coding skills. The software, its models and datasets are made fully open source to encourage transparency and reproducibility.
 
 
+.. raw:: html
+
+	<embed>
+		<p align="center">
+		<img src="https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/signal-annotator.gif" width="90%" />
+		</p>
+	</embed>
+
+
 
 System requirements
 ===================

@@ -141,7 +141,7 @@ https://celldetective.readthedocs.io/
 How to cite?
 ============
 
-If you use this code in your research, please cite the `Celldetective <https://www.biorxiv.org/content/10.1101/2024.03.15.585250v1>`_  paper (currently preprint):
+If you use this software in your research, please cite the `Celldetective <https://www.biorxiv.org/content/10.1101/2024.03.15.585250v1>`_  paper (currently preprint):
 
 .. code-block:: raw
 
@@ -159,6 +159,7 @@ If you use this code in your research, please cite the `Celldetective <https://w
 	}
 
 
+Make sure you to cite the papers of any segmentation model (StarDist, Cellpose) or tracker (bTrack) you used through Celldetective.
 
 
 Bibliography

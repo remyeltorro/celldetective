@@ -206,7 +206,10 @@ class ClassifierWidget(QWidget):
 		self.update_props_scatter()
 
 	def submit_classification(self):
+		
 		print('submit')
+		self.apply_property_query()
+
 		if self.time_corr.isChecked():
 			self.class_name_user = 'class_'+self.name_le.text()
 			print(f'User defined class name: {self.class_name_user}.')

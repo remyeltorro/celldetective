@@ -58,6 +58,7 @@ class ConfigSignalPlot(QWidget):
 		self.show_ci = True
 		self.show_cell_lines = False
 		self.ax2=None
+		self.auto_close = False
 
 
 		print('Parent wells: ', self.wells)
@@ -75,6 +76,8 @@ class ConfigSignalPlot(QWidget):
 		#self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
 		#self.load_previous_measurement_instructions()
+		if self.auto_close:
+			self.close()
 
 	def interpret_pos_location(self):
 		
@@ -178,8 +181,14 @@ class ConfigSignalPlot(QWidget):
 		self.all_columns = np.unique(self.all_columns)
 		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
-		class_columns = list(self.all_columns[class_idx])
-		time_columns = list(self.all_columns[time_idx])
+		
+		try:
+			class_columns = list(self.all_columns[class_idx])
+			time_columns = list(self.all_columns[time_idx])
+		except:
+			print('columns not found')
+			self.auto_close = True
+			return None
 		
 		self.cbs[2].clear()
 		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
@@ -463,7 +472,10 @@ class ConfigSignalPlot(QWidget):
 
 		# read instructions from combobox options
 		self.load_available_tables()
-		self.ask_for_features()
+		if self.df is not None:
+			self.ask_for_features()
+		else:
+			return None
 
 	def generate_pos_selection_widget(self):
 
@@ -513,9 +525,6 @@ class ConfigSignalPlot(QWidget):
 			po = self.position_option - 1
 
 		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.cbs[0].currentText(), return_pos_info=True)
-		self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
-		#self.df_well_info.to_csv(self.exp_dir+'exp_info_well.csv')
-
 
 		if self.df is None:
 			
@@ -532,6 +541,8 @@ class ConfigSignalPlot(QWidget):
 			else:
 				self.close()
 				return None
+		else:
+			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
 
 	def compute_signal_functions(self):
 

@@ -63,7 +63,7 @@ if distance is None:
     os.abort()
     #distance = 0
 else:
-    rel = pd.DataFrame(relative_quantities_per_pos2(pos, [0], neigh_dist=distance))
+    rel = pd.DataFrame(relative_quantities_per_pos2(pos, [0,2], neigh_dist=distance))
     path = pos + 'output/tables/relative.csv'
     rel.to_csv(path, index=False)
     print(f'Measurements successfully written in table {pos + os.sep.join(["output", "tables", "relative"])}')

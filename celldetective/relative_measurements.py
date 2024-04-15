@@ -43,21 +43,15 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist=200, target_lys
     target_pickle = pd.read_pickle(neigh_trajectories_path)
     df_targets.loc[:, f'neighborhood_2_circle_{neigh_dist}_px'] = target_pickle[f'neighborhood_2_circle_{neigh_dist}_px']
 
-
-
-    # df_targets, df_effectors = distance_cut_neighborhood(df_targets.loc[edge_filter],
-    #                                                     df_effectors,
-    #                                                     neigh_dist,
-    #                                                     **neighborhood_kwargs,
-    #                                                    )
-
     for tid, group in df_targets.loc[df_targets[target_lysis_class].isin(target_classes), :].groupby('TRACK_ID'):
         # loop over targets in lysis class of interest
-
+        print(tid)
         t0 = ceil(group[target_lysis_time].to_numpy()[0])
-        # if t0<=0:
-        # t0 = 5
-        neighbours = group.loc[group['FRAME'] <= t0, f'neighborhood_2_circle_{neigh_dist}_px'].values  # all neighbours
+        if t0<=0:
+           t0 = 5
+        #print(group)
+        neighbours = group.loc[group['FRAME'] <=t0 , f'neighborhood_2_circle_{neigh_dist}_px'].values  # all neighbours
+        #print(neighbours)
         timeline_til_lysis = group.loc[group['FRAME'] <= t0, 'FRAME'].to_numpy()
         timeline = group['FRAME'].to_numpy()
 
@@ -133,7 +127,6 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist=200, target_lys
                 df_rel.append({'target': tid, 'effector': nk, 'frame': t, 'relative_distance': relative_distance[t],
                                'relative_velocity': dddt[t], 't0_lysis': t0, 'angle_tc-eff': relative_angle1[t],
                                'angle-eff-tc': relative_angle2[t]})
-            print(df_rel)
 
 
     return df_rel

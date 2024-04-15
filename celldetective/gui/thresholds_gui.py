@@ -894,9 +894,12 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 			self.test_frame = np.squeeze(self.img)
 			self.frame = std_filter(gauss_filter(self.test_frame, 2), 4)
 			self.threshold_slider = QLabeledDoubleSlider()
+			self.threshold_slider.setOrientation(1)
+			#self.threshold_slider.setValue(np.percentile(self.frame, 99.99))
 			self.initialize_histogram()
 			self.show_threshold_image()
 			self.populate_norm_widget()
+			self.threshold_changed(self.threshold_slider.value())
 			self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def show_threshold_image(self):
@@ -988,7 +991,7 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.threshold_slider.setSingleStep(0.001)
 		self.threshold_slider.setTickInterval(0.001)
 		self.threshold_slider.setRange(np.amin(self.frame), np.amax(self.frame))
-		self.threshold_slider.setValue(self.min_threshold)
+		self.threshold_slider.setValue(np.percentile(self.frame,90))
 		self.add_hist_threshold()
 
 		self.canvas_hist.canvas.draw_idle()

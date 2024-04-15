@@ -217,16 +217,14 @@ def measure_index(indices):
 			feature_table = measure_features(img, lbl, features=features, border_dist=border_distances,
 											 channels=channel_names, haralick_options=haralick_options, verbose=False,
 											 normalisation_list=background_correction, spot_detection=spot_detection)
-
 			if trajectories is None:
 				positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
-				positions_at_t['ID'] = np.arange(
-					len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
+				positions_at_t['ID'] = np.arange(len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
 				positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
 				positions_at_t['FRAME'] = int(t)
 				column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'],
 								 'y': column_labels['y']}
-
+			feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
 
 		if do_iso_intensities:
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
@@ -236,8 +234,9 @@ def measure_index(indices):
 		elif do_iso_intensities * (not do_features):
 			measurements_at_t = iso_table
 		elif do_features:
-			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id')
-
+			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
+			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
+			
 		if measurements_at_t is not None:
 			measurements_at_t[column_labels['time']] = t
 			timestep_dataframes.append(measurements_at_t)

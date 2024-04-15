@@ -8,6 +8,7 @@ from celldetective.io import get_segmentation_models_list, control_segmentation_
 from celldetective.io import locate_segmentation_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI, SignalAnnotator2
 from celldetective.gui.gui_utils import QHSeperationLine
+from celldetective.relative_measurements import rel_measure_at_position
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
 from celldetective.measure import measure_at_position
@@ -911,6 +912,17 @@ class NeighPanel(QFrame):
 
 		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
 
+		self.measure_rel = QCheckBox("MEASURE")
+		self.measure_rel.setStyleSheet("""
+					font-size: 10px;
+					padding-left: 10px;
+					padding-top: 5px;
+					""")
+		self.measure_rel.setIcon(icon(MDI6.eyedropper, color="black"))
+		self.measure_rel.setIconSize(QSize(20, 20))
+		self.measure_rel.setToolTip(
+			"Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
+		self.grid_contents.addWidget(self.measure_rel, 1,0,1,1)
 
 		self.visu_btn = QPushButton()
 		self.visu_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
@@ -918,7 +930,7 @@ class NeighPanel(QFrame):
 		self.visu_btn.clicked.connect(self.check_signals2)
 		self.visu_btn.setToolTip("Open signal annotator for two populations.")
 		self.visu_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.grid_contents.addWidget(self.visu_btn, 1,0,1,1)
+		self.grid_contents.addWidget(self.visu_btn, 1,1,1,1)
 
 		# MASK INTERSECTION NEIGHBORHOOD
 		# mask_neigh_hbox = QHBoxLayout()
@@ -1028,6 +1040,10 @@ class NeighPanel(QFrame):
 													clear_neigh=config['clear_neigh'],
 													neighborhood_kwargs=config['neighborhood_kwargs'],
 													)
+				if self.measure_rel.isChecked():
+					rel_measure_at_position(self.pos)
+
+					#table = os.sep.join([self.pos, 'output', 'tables', 'relative.csv'])
 		print('Done.')
 	
 	def check_signals2(self):

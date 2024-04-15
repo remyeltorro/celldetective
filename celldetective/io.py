@@ -1082,7 +1082,7 @@ def auto_correct_masks(masks):
 		bbox_area = props.loc[props['label']==cell, 'area_bbox'].values
 		area = props.loc[props['label']==cell, 'area'].values
 
-		if bbox_area > 2*area: #condition for anomaly
+		if bbox_area > 1.75*area: #condition for anomaly
 
 			lbl = masks==cell
 			lbl = lbl.astype(int)
@@ -1129,7 +1129,13 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 	def export_labels():
 		labels_layer = viewer.layers['segmentation'].data
 		for t,im in enumerate(tqdm(labels_layer)):
-			save_tiff_imagej_compatible(output_folder+f"{str(t).zfill(4)}.tif", im, axes='YX')
+			
+			try:
+				im = auto_correct_masks(im)
+			except Exception as e:
+				print(e)
+
+			save_tiff_imagej_compatible(output_folder+f"{str(t).zfill(4)}.tif", im.astype(np.int16), axes='YX')
 		print("The labels have been successfully rewritten.")
 
 	def export_annotation():
@@ -1194,7 +1200,7 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 					except:
 						pass
 				multichannel = np.array(multichannel)        
-				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", labels_layer[xmin:xmax,ymin:ymax], axes='YX')
+				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", labels_layer[xmin:xmax,ymin:ymax].astype(np.int16), axes='YX')
 				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.tif", multichannel, axes='CYX')
 				info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
 				info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.json"

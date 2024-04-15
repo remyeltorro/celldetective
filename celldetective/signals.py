@@ -937,6 +937,15 @@ class SignalDetectionModel(object):
 				self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
 							  loss=self.loss_class, 
 							  metrics=['accuracy', Precision(), Recall()])
+			else:
+				self.initial_model = clone_model(self.model_class)
+				self.model_class.set_weights(self.initial_model.get_weights())
+				# Recompile to avoid crash
+				self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
+							  loss=self.loss_class, 
+							  metrics=['accuracy', Precision(), Recall()])
+				# Reset weights
+				self.model_class.set_weights(self.initial_model.get_weights())			
 		else:
 			print("Compiling the classifier...")
 			self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
@@ -1061,7 +1070,12 @@ class SignalDetectionModel(object):
 							  loss=self.loss_reg, 
 							  metrics=['mse','mae'])
 			else:
-				pass
+				self.initial_model = clone_model(self.model_reg)
+				self.model_reg.set_weights(self.initial_model.get_weights())
+				self.model_reg.compile(optimizer=Adam(learning_rate=self.learning_rate), 
+							  loss=self.loss_reg, 
+							  metrics=['mse','mae'])
+				self.model_reg.set_weights(self.initial_model.get_weights())
 		else:
 			print("Compiling the regressor...")
 			self.model_reg.compile(optimizer=Adam(learning_rate=self.learning_rate), 

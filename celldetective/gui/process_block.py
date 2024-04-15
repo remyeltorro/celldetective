@@ -483,8 +483,23 @@ class ProcessPanel(QFrame):
 		self.ConfigMeasurements.show()
 
 	def open_classifier_ui(self):
-		self.ClassifierWidget = ClassifierWidget(self)
-		self.ClassifierWidget.show()
+
+		self.load_available_tables()
+		if self.df is None:
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table was found...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None	
+			else:
+				return None
+		else:	
+			self.ClassifierWidget = ClassifierWidget(self)
+			self.ClassifierWidget.show()
 
 	def open_signal_annotator_configuration_ui(self):
 		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)

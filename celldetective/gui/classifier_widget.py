@@ -24,7 +24,7 @@ class ClassifierWidget(QWidget):
 		self.screen_height = self.parent.parent.parent.screen_height
 		self.screen_width = self.parent.parent.parent.screen_width
 		self.setWindowTitle("Custom classification")
-		self.parent.load_available_tables()
+
 		self.mode = self.parent.mode
 		self.df = self.parent.df
 

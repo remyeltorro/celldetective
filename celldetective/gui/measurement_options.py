@@ -1082,7 +1082,7 @@ class ConfigMeasurements(QMainWindow):
 		self.view_norm_btn = QPushButton("")
 		self.view_norm_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
 		self.view_norm_btn.setIcon(icon(MDI6.eye_outline, color="black"))
-		self.view_norm_btn.setToolTip("View flat image")
+		self.view_norm_btn.setToolTip("View corrected image")
 		self.view_norm_btn.setIconSize(QSize(20, 20))
 		self.view_norm_btn.clicked.connect(self.preview_normalisation)
 		tab2_layout.addWidget(self.view_norm_btn, 4, 2)

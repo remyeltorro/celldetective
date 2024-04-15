@@ -115,7 +115,7 @@ class ProcessPanel(QFrame):
 		self.view_tab_btn = QPushButton("View table")
 		self.view_tab_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
-		self.view_tab_btn.setToolTip('poop twice a day for a healthy gut')
+		self.view_tab_btn.setToolTip('View table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
 		#self.view_tab_btn.setEnabled(False)

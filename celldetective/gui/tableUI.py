@@ -273,7 +273,7 @@ class TableUI(QMainWindow):
 		layout = QVBoxLayout()
 		self.projectionWidget.setLayout(layout)
 		self.projection_op_cb = QComboBox()
-		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum', 'std', 'var', 'sem', 'skew', 'kurt', 'idmax', 'idmin'])
+		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum'])
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('operation: '), 33)
 		hbox.addWidget(self.projection_op_cb, 66)

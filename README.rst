@@ -9,6 +9,7 @@ Celldetective
 		</p>
 	</embed>
 
+[![Documentation Status](https://readthedocs.org/projects/celldetective/badge/?version=latest)](https://celldetective.readthedocs.io/en/latest/?badge=latest)
 
 Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images.
 

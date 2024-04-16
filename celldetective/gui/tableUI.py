@@ -586,17 +586,16 @@ class TableUI(QMainWindow):
 				self.plot_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				
-				if 't0' in list(self.data.columns):
-					ref_time_col = 't0'
-				else:
-					ref_time_col = 'FRAME'
-
+				# if 't0' in list(self.data.columns):
+				# 	ref_time_col = 't0'
+				# else:
+				# 	ref_time_col = 'FRAME'
 
 				for w,well_group in self.data.groupby('well_name'):
 					for pos,pos_group in well_group.groupby('pos_name'):
 						for tid,group_track in pos_group.groupby('TRACK_ID'):
-							self.ax.plot(group_track["FRAME"] - group_track[ref_time_col].to_numpy()[0], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
-				self.ax.set_xlabel(r"$t - t_0$ [frame]")
+							self.ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
+				self.ax.set_xlabel(r"$t$ [frame]")
 				self.ax.set_ylabel(column_names[unique_cols[0]])
 				plt.tight_layout()
 				self.fig.set_facecolor('none')  # or 'None'

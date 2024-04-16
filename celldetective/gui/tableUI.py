@@ -360,7 +360,7 @@ class TableUI(QMainWindow):
 
 		legend=True
 		if self.hist_check.isChecked():
-			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True)
+			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
 			legend = False
 		if self.kde_check.isChecked():
 			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)

@@ -363,7 +363,7 @@ class TableUI(QMainWindow):
 			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True)
 			legend = False
 		if self.kde_check.isChecked():
-			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
 			legend = False
 
 		if self.ecdf_check.isChecked():
@@ -375,7 +375,7 @@ class TableUI(QMainWindow):
 			legend = False
 
 		if self.violin_check.isChecked():
-			sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+			sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
 			legend = False
 
 		if self.box_check.isChecked():
@@ -405,8 +405,11 @@ class TableUI(QMainWindow):
 
 		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent']
 		for c in self.static_columns:
-			group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
-
+			try:
+				group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+			except Exception as e:
+				print(e)
+				pass
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
 		self.subtable.show()
 

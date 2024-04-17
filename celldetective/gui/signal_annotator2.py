@@ -203,9 +203,9 @@ class SignalAnnotator2(QMainWindow):
         self.left_panel.addLayout(class_hbox)
         self.cell_info_hbox=QHBoxLayout()
         self.target_cell_info = QLabel('')
-        self.effector_cell_info= QLabel('')
+        self.effector_cell_info= QVBoxLayout()
         self.cell_info_hbox.addWidget(self.target_cell_info)
-        self.cell_info_hbox.addWidget(self.effector_cell_info)
+        self.cell_info_hbox.addLayout(self.effector_cell_info)
 
         self.left_panel.addLayout(self.cell_info_hbox)
 
@@ -836,6 +836,7 @@ class SignalAnnotator2(QMainWindow):
         try:
             self.target_selection.pop(0)
             self.hide_target_cell_info()
+            self.hide_effector_cell_info()
         except Exception as e:
             print(e)
         try:
@@ -1095,6 +1096,7 @@ class SignalAnnotator2(QMainWindow):
         self.extract_scatter_from_effector_trajectories()
         self.give_target_cell_information()
         self.give_effector_cell_information()
+
 
         self.correct_btn.disconnect()
         self.correct_btn.clicked.connect(self.show_annotation_buttons)
@@ -1933,16 +1935,28 @@ class SignalAnnotator2(QMainWindow):
                 self.no_event_shortcut.setEnabled(True)
 
                 self.target_track_of_interest = self.target_tracks[self.framedata][ind]
+                try:
+                    neighboors = self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest),'effector']
+                    best_neighbor=self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest)]
+                    best_neighbor=best_neighbor
+                    best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'effector')])[0]
+                    self.effector_track_of_interest=best_neighbor
+                    self.give_effector_cell_information()
+                    neighboors = np.unique(neighboors)
+                except:
+                    neighboors=[]
+                # print(best_neighbor)
+                # print(neighboors)
+
                 print(f'You selected track {self.target_track_of_interest}.')
                 self.give_target_cell_information()
+
                 self.plot_signals()
 
                 self.target_loc_t = []
                 self.target_loc_idx = []
                 self.target_loc_t_not_picked = []
                 self.target_loc_idx_not_picked=[]
-                self.effector_loc_t = []
-                self.effector_loc_idx = []
                 self.effector_loc_t_not_picked= []
                 self.effector_loc_idx_not_picked = []
                 #self.effector_previous_color = []
@@ -1959,41 +1973,43 @@ class SignalAnnotator2(QMainWindow):
                 self.target_previous_color = []
                 self.neighbors={}
                 self.target_not_picked_initial_colors=[]
+
                 for t,idx in zip(self.target_loc_t,self.target_loc_idx):
-                    neigh=pd.read_pickle(self.neigh_trajectories_path)
+                    #neigh=pd.read_pickle(self.neigh_trajectories_path)
                     #print(neigh)
-                    columns_of_interest = neigh.filter(like='neighborhood_2_circle_200_px').columns
-                    first_column = next((col for col in columns_of_interest if col.startswith('neighborhood_2_circle_200_px')),
-                                        None)
-                    effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) &
-                                       (neigh['FRAME'] == t),
-                    first_column]
+                    #columns_of_interest = neigh.filter(like='neighborhood_2_circle_200_px').columns
+                    #first_column = next((col for col in columns_of_interest if col.startswith('neighborhood_2_circle_200_px')),
+                    #                   None)
+                    #effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) &
+                    #                   (neigh['FRAME'] == t),
+                    #first_column]
                     #print(effect.iloc[0])
                     #print(len(effect.iloc[0]))
                     #print(neigh.columns)
-                    eff_dict1=[]
-                    indices=[]
-                    if effect.iloc[0]!=[]:
-                        if isinstance(effect.iloc[0],float):
-                            pass
-                        else:
-                            for i in range(0,len(effect.iloc[0])):
-                                eff_dict1.append(effect.iloc[0][i])
-                        for dictionn in eff_dict1:
+                    #eff_dict1=[]
+                    #indices=[]
+
+                    #if effect.iloc[0]!=[]:
+                    #    if isinstance(effect.iloc[0],float):
+                    #        pass
+                    #    else:
+                    #        for i in range(0,len(effect.iloc[0])):
+                    #            eff_dict1.append(effect.iloc[0][i])
+                    #    for dictionn in eff_dict1:
                             #print(dictionn)
-                            indices.append(np.where(self.effector_tracks[t] == dictionn['id'])[0])
+                    #        indices.append(np.where(self.effector_tracks[t] == dictionn['id'])[0])
                         #print(eff_dict1)
                         #eff_dict=effect.iloc[0][0]
                         #indices = np.where(self.effector_tracks[t] == eff_dict['id'])[0]
                         #print(eff_dict1)
                         #print(eff_dict)
-                        if len(indices) > 0:
-                            indices2=[]
-                            for i in indices:
-                                indices2.append(i[0])
-                            self.effector_loc_t.append(t)
-                            self.neighbors[t]=indices2
-                            #print(self.effector_loc_t)
+                    #    if len(indices) > 0:
+                    #        indices2=[]
+                    #        for i in indices:
+                    #            indices2.append(i[0])
+                    #        self.effector_loc_t.append(t)
+                    #        self.neighbors[t]=indices2
+                    #        #print(self.effector_loc_t)
 
                     self.target_previous_color.append(self.target_colors[t][idx].copy())
                     self.target_colors[t][idx] = 'lime'
@@ -2007,38 +2023,29 @@ class SignalAnnotator2(QMainWindow):
                 # for t_eff, idx_eff in zip(self.effector_loc_t, self.effector_loc_idx):
                 # 	self.effector_previous_color.append(self.effector_colors[t_eff][idx_eff].copy())
                 # 	self.effector_colors[t_eff][idx_eff] = 'darkorange'
-                for key in self.neighbors.keys():
-                    for value in self.neighbors[key]:
-                        self.effector_previous_color.append(self.effector_colors[key][value].copy())
-                        self.effector_colors[key][value] = 'darkorange'
-
-
-
-
-
+                for effector in neighboors:
+                    self.effector_loc_t = []
+                    self.effector_loc_idx = []
+                    for t in range(len(self.effector_tracks)):
+                        indices = np.where(self.effector_tracks[t]==effector)[0]
+                        if len(indices)>0:
+                            self.effector_loc_t.append(t)
+                            self.effector_loc_idx.append(indices[0])
+                    self.effector_previous_color = []
+                    for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+                        if effector == self.effector_track_of_interest:
+                            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                            self.effector_colors[t][idx] = 'magenta'
+                        else:
+                            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                            self.effector_colors[t][idx] = 'darkorange'
 
                 for t in range(len(self.effector_colors)):
                     for idx in range(len(self.effector_colors[t])):
-
                         if self.effector_colors[t][idx].any() != 'darkorange':
-                            self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
-                            self.effector_colors[t][idx] = 'black'
-                # for t, idx in zip(self.effector_loc_t_not_picked, self.effector_loc_idx_not_picked):
-                #     #print(self.effector_tracks[t][idx])
-                #     #print(self.effector_colors[t][idx])
-                #     print(self.effector_colors[t][idx])
-                #     if self.effector_colors[t][idx, 0] == 'darkorange':
-                #         print('is it even doing anything')
-                #         self.effector_colors[t][idx]= 'darkorange'
-                #     self.effector_colors[t][idx] = 'black'
-                # print(len(self.effector_tracks))
-                # for t in range(len(self.effector_tracks)):
-                # 	for track in range(len(self.effector_tracks[t])):
-                # 		print(self.effector_tracks[t][track])
-                # 		print(self.neighbors[t])
-                # 		if self.effector_tracks[t][track] not in self.neighbors[t]:
-                # 			self.effector_colors[t][track]='black'
-
+                            if self.effector_colors[t][idx].any() != 'magenta':
+                                self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
+                                self.effector_colors[t][idx] = 'black'
 
 
             elif len(ind)>0 and len(self.target_selection)==1:
@@ -2066,7 +2073,9 @@ class SignalAnnotator2(QMainWindow):
 
                 self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
                 print(f'You selected track {self.effector_track_of_interest}.')
+                self.hide_effector_cell_info()
                 self.give_effector_cell_information()
+
                 self.plot_signals()
 
                 self.effector_loc_t = []
@@ -2198,16 +2207,55 @@ class SignalAnnotator2(QMainWindow):
         self.target_cell_info.setText('')
 
     def give_effector_cell_information(self):
+        self.effector_cell_info.setSpacing(0)
+        self.effector_cell_info.setContentsMargins(0, 20, 0, 30)
+        self.neigh_eff_combo=QComboBox()
+        #self.neighb_eff_combo.addItems(self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest),'effecor'])
+        neighs=self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest),'effector'].to_numpy()
+        neighs=np.unique(neighs)
+        for effector in neighs:
+            self.neigh_eff_combo.addItem(str(effector))
+        self.neigh_eff_combo.setCurrentText(str(self.effector_track_of_interest))
+        self.eff_cell_sel=QHBoxLayout()
+        #effector_cell_selected = f"effector cell: {self.effector_track_of_interest}"
+        self.effector_cell_selected = f"effector cell: "
+        self.eff_cell = QLabel(self.effector_cell_selected)
+        # self.eff_cell_sel.removeWidget(self.eff_cell)
+        # self.eff_cell_sel.removeWidget(self.neigh_eff_combo)
+        self.eff_cell_sel.addWidget(self.eff_cell)
+        self.eff_cell_sel.addWidget(self.neigh_eff_combo, alignment=Qt.AlignLeft)
+        self.effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}"
+        self.eff_cls = QLabel(self.effector_cell_class)
+        self.effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}"
+        self.eff_tm=QLabel(self.effector_cell_time)
+        try:
+            self.effector_probabilty = f"probability: {self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest),'probability'].to_numpy()[0]}"
+        except:
+            self.effector_probabilty=f"probability: 0"
+        self.eff_prb=QLabel(self.effector_probabilty)
+        #self.effector_cell_info.setText(effector_cell_selected+effector_cell_class+effector_cell_time+effector_probabilty)
+        # self.effector_cell_info.removeWidget(self.eff_cls)
+        # self.effector_cell_info.removeWidget(self.eff_tm)
+        # self.effector_cell_info.removeWidget(self.eff_prb)
+        self.effector_cell_info.addLayout(self.eff_cell_sel)
+        self.effector_cell_info.addWidget(self.eff_cls)
+        self.effector_cell_info.addWidget(self.eff_tm)
+        self.effector_cell_info.addWidget(self.eff_prb)
+        self.neigh_eff_combo.currentIndexChanged.connect(self.update_effector_info)
+        self.eff_info_to_hide=[self.eff_cell,self.neigh_eff_combo,self.eff_cls,self.eff_tm,self.eff_prb]
 
-        effector_cell_selected = f"effector cell: {self.effector_track_of_interest}\n"
-        effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}\n"
-        effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}\n"
 
-        self.effector_cell_info.setText(effector_cell_selected+effector_cell_class+effector_cell_time)
+
 
     def hide_effector_cell_info(self):
+        self.eff_cls.clear()
+        self.eff_tm.clear()
+        self.eff_prb.clear()
 
-        self.effector_cell_info.setText('')
+        for info in self.eff_info_to_hide:
+            print(info)
+            print('hiding?')
+            info.hide()
 
 
     def save_trajectories(self):
@@ -2286,6 +2334,62 @@ class SignalAnnotator2(QMainWindow):
     def export_signals(self):
 
         pass
+
+    def update_effector_info(self):
+        # Clear existing labels
+        self.eff_cls.clear()
+        self.eff_tm.clear()
+        self.eff_prb.clear()
+        self.effector_loc_t=[]
+        self.effector_loc_idx=[]
+        for t in range(len(self.effector_tracks)):
+            indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
+            if len(indices) > 0:
+                self.effector_loc_t.append(t)
+                self.effector_loc_idx.append(indices[0])
+
+        self.effector_previous_color = []
+        for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+            self.effector_colors[t][idx] = 'darkorange'
+        # Get the selected effector cell
+        self.effector_track_of_interest = float(self.neigh_eff_combo.currentText())
+
+        # Get information for the selected effector cell
+        try:
+            effector_class = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
+        except:
+            effector_class = 0
+        effector_time = \
+        self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+
+        try:
+            effector_probability = self.df_relative.loc[
+                (self.df_relative['target'] == self.target_track_of_interest) & (
+                            self.df_relative['effector'] == self.effector_track_of_interest), 'probability'].to_numpy()[0]
+        except IndexError:
+            effector_probability = 0
+
+        # Update labels with new information
+        self.eff_cls.setText(f"class: {effector_class}")
+        self.eff_tm.setText(f"time of interest: {effector_time}")
+        self.eff_prb.setText(f"probability: {effector_probability}")
+        self.effector_loc_t=[]
+        self.effector_loc_idx=[]
+        for t in range(len(self.effector_tracks)):
+            print(indices)
+            print(self.effector_track_of_interest)
+            indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
+            print(indices)
+            if len(indices) > 0:
+                self.effector_loc_t.append(t)
+                self.effector_loc_idx.append(indices[0])
+
+        self.effector_previous_color = []
+        for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+            self.effector_colors[t][idx] = 'magenta'
+
 
         # auto_dataset_name = self.pos.split(os.sep)[-4]+'_'+self.pos.split(os.sep)[-2]+'.npy'
 

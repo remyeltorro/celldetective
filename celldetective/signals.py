@@ -1776,9 +1776,10 @@ def random_time_shift(signal, time_of_interest, cclass, model_signal_length):
 
 	delta_t = target_time - time_of_interest
 	signal = shift(signal, [delta_t,0], order=0, mode="nearest")
-	if target_time<=0 and cclass==0:
+
+	if target_time<=0 and np.argmax(cclass)==0:
 		target_time = -1
-		cclass = 2
+		cclass = np.array([0.,0.,1.]).astype(np.float32)
 
 	if return_target:
 		return signal,target_time, cclass

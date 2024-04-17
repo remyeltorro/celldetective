@@ -237,8 +237,10 @@ class SignalAnnotator2(QMainWindow):
         self.correction_tabs=QTabWidget()
         self.target_tab=QWidget()
         self.effector_tab=QWidget()
+        self.relative_tab=QWidget()
         self.correction_tabs.addTab(self.target_tab, 'target')
         self.correction_tabs.addTab(self.effector_tab, 'effector')
+        self.correction_tabs.addTab(self.relative_tab, 'relative')
         self.left_panel.addWidget(self.correction_tabs)
         target_tab_layout=QVBoxLayout()
         target_options_hbox = QHBoxLayout()
@@ -297,6 +299,35 @@ class SignalAnnotator2(QMainWindow):
         effector_tab_layout.addLayout(effector_options_hbox)
         effector_tab_layout.addLayout(effector_time_option_hbox)
         self.effector_tab.setLayout(effector_tab_layout)
+
+        relative_tab_layout = QVBoxLayout()
+        relative_options_hbox = QHBoxLayout()
+        self.relative_event_btn = QRadioButton('event')
+        self.relative_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_event_btn.toggled.connect(self.enable_time_of_interest)
+
+        self.relative_no_event_btn = QRadioButton('no event')
+        self.relative_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_no_event_btn.toggled.connect(self.enable_time_of_interest)
+
+        self.relative_else_btn = QRadioButton('else')
+        self.relative_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_else_btn.toggled.connect(self.enable_time_of_interest)
+        self.relative_suppr_btn = QRadioButton('mark for\nsuppression')
+        self.relative_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_suppr_btn.toggled.connect(self.enable_time_of_interest)
+        relative_options_hbox.addWidget(self.relative_event_btn)
+        relative_options_hbox.addWidget(self.relative_no_event_btn)
+        relative_options_hbox.addWidget(self.relative_else_btn)
+        relative_options_hbox.addWidget(self.relative_suppr_btn)
+        relative_time_option_hbox = QHBoxLayout()
+        self.relative_time_of_interest_label = QLabel('time of interest: ')
+        relative_time_option_hbox.addWidget(self.relative_time_of_interest_label, 30)
+        self.relative_time_of_interest_le = QLineEdit()
+        relative_time_option_hbox.addWidget(self.relative_time_of_interest_le, 70)
+        relative_tab_layout.addLayout(relative_options_hbox)
+        relative_tab_layout.addLayout(relative_time_option_hbox)
+        self.relative_tab.setLayout(relative_tab_layout)
 
         # #options_hbox.setContentsMargins(150,30,50,0)
         # self.event_btn2 = QRadioButton('event')
@@ -903,10 +934,10 @@ class SignalAnnotator2(QMainWindow):
             self.effector_time_of_interest_le.setEnabled(False)
 
     def show_annotation_buttons(self):
-        if self.target_selection:
-            self.correction_tabs.setTabEnabled(0,True)
-        else:
-            self.correction_tabs.setTabEnabled(0,False)
+        # if self.target_selection:
+        #     self.correction_tabs.setTabEnabled(0,True)
+        # else:
+        #     self.correction_tabs.setTabEnabled(0,False)
         for a in self.annotation_btns_to_hide:
             a.show()
         cclass_targets = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name].to_numpy()[0]
@@ -922,10 +953,10 @@ class SignalAnnotator2(QMainWindow):
             self.target_else_btn.setChecked(True)
         elif cclass_targets>2:
             self.target_suppr_btn.setChecked(True)
-        if self.effector_selection:
-            self.correction_tabs.setTabEnabled(1,True)
-        else:
-            self.correction_tabs.setTabEnabled(1,False)
+        # if self.effector_selection:
+        #     self.correction_tabs.setTabEnabled(1,True)
+        # else:
+        #     self.correction_tabs.setTabEnabled(1,False)
 
         if self.effector_track_of_interest is not None:
             #print(self.df_effectors['TRACK_ID']==self.effector_track_of_interest)
@@ -1936,15 +1967,19 @@ class SignalAnnotator2(QMainWindow):
 
                 self.target_track_of_interest = self.target_tracks[self.framedata][ind]
                 try:
-                    neighboors = self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest),'effector']
+                    self.hide_effector_cell_info()
+                except:
+                    pass
+                try:
+                    neighbors = self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest),'effector']
                     best_neighbor=self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest)]
                     best_neighbor=best_neighbor
                     best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'effector')])[0]
                     self.effector_track_of_interest=best_neighbor
                     self.give_effector_cell_information()
-                    neighboors = np.unique(neighboors)
+                    neighbors = np.unique(neighbors)
                 except:
-                    neighboors=[]
+                    neighbors=[]
                 # print(best_neighbor)
                 # print(neighboors)
 
@@ -2023,7 +2058,7 @@ class SignalAnnotator2(QMainWindow):
                 # for t_eff, idx_eff in zip(self.effector_loc_t, self.effector_loc_idx):
                 # 	self.effector_previous_color.append(self.effector_colors[t_eff][idx_eff].copy())
                 # 	self.effector_colors[t_eff][idx_eff] = 'darkorange'
-                for effector in neighboors:
+                for effector in neighbors:
                     self.effector_loc_t = []
                     self.effector_loc_idx = []
                     for t in range(len(self.effector_tracks)):
@@ -2070,7 +2105,17 @@ class SignalAnnotator2(QMainWindow):
                 self.cancel_btn.setEnabled(True)
                 self.del_shortcut.setEnabled(True)
                 self.no_event_shortcut.setEnabled(True)
+                for t in range(len(self.effector_tracks)):
+                    indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
+                    if len(indices) > 0:
+                        self.effector_loc_t.append(t)
+                        self.effector_loc_idx.append(indices[0])
 
+                self.effector_previous_color = []
+                for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+                    if self.effector_colors[t][idx].any() == 'magenta':
+                        self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                        self.effector_colors[t][idx] = 'darkorange'
                 self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
                 print(f'You selected track {self.effector_track_of_interest}.')
                 self.hide_effector_cell_info()
@@ -2253,8 +2298,6 @@ class SignalAnnotator2(QMainWindow):
         self.eff_prb.clear()
 
         for info in self.eff_info_to_hide:
-            print(info)
-            print('hiding?')
             info.hide()
 
 
@@ -2377,10 +2420,7 @@ class SignalAnnotator2(QMainWindow):
         self.effector_loc_t=[]
         self.effector_loc_idx=[]
         for t in range(len(self.effector_tracks)):
-            print(indices)
-            print(self.effector_track_of_interest)
             indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
-            print(indices)
             if len(indices) > 0:
                 self.effector_loc_t.append(t)
                 self.effector_loc_idx.append(indices[0])

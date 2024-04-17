@@ -198,15 +198,23 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist=200, target_lys
     # print(probs)
     # print(type(probs))
     df_rel = pd.DataFrame(df_rel)
+    for index,row in pts.iterrows():
+        df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 'drel'] = row[
+            'drel']
+        df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 'vrel'] = row[
+            'vrel']
+        df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 't_residence_rel'] = row[
+            't_residence_rel']
     for prob in probs:
         for index,row in prob.iterrows():
-            print(type(row))
-            print(row)
-            print("ROW 1")
-            print(row[1])
-            print(row['nk'])
             df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']),'probability']=row['total_prob']
 
+    # df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 'drel'] = row[
+    #     'drel']
+    # df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 'vrel'] = row[
+    #     'vrel']
+    # df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 't_residence_rel'] = row[
+    #     't_residence_rel']
 
 
     return df_rel

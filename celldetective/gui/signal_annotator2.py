@@ -183,6 +183,33 @@ class SignalAnnotator2(QMainWindow):
         self.effector_del_class_btn.setIconSize(QSize(20, 20))
         self.effector_del_class_btn.clicked.connect(self.del_effector_event_class)
         class_hbox.addWidget(self.effector_del_class_btn, 5)
+        self.left_panel.addLayout(class_hbox)
+
+        #RELATIVE
+        class_hbox = QHBoxLayout()
+        class_hbox.addWidget(QLabel('relative event: '), 25)
+        self.relative_class_choice_cb = QComboBox()
+        self.relative_class_choice_cb.addItems(self.relative_class_cols)
+        #self.relative_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+        self.relative_class_choice_cb.setCurrentIndex(0)
+
+        class_hbox.addWidget(self.relative_class_choice_cb, 70)
+
+        self.relative_add_class_btn = QPushButton('')
+        self.relative_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.relative_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
+        self.relative_add_class_btn.setToolTip("Add a new event class")
+        self.relative_add_class_btn.setIconSize(QSize(20, 20))
+        self.relative_add_class_btn.clicked.connect(self.create_new_relative_event_class)
+        class_hbox.addWidget(self.relative_add_class_btn, 5)
+
+        self.relative_del_class_btn = QPushButton('')
+        self.relative_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.relative_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
+        self.relative_del_class_btn.setToolTip("Delete an event class")
+        self.relative_del_class_btn.setIconSize(QSize(20, 20))
+        self.relative_del_class_btn.clicked.connect(self.del_relative_event_class)
+        class_hbox.addWidget(self.relative_del_class_btn, 5)
 
         # self.add_class_btn = QPushButton('')
         # self.add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
@@ -595,6 +622,30 @@ class SignalAnnotator2(QMainWindow):
             item_idx = self.effector_class_choice_cb.findText(class_to_delete)
             self.effector_class_choice_cb.removeItem(item_idx)
 
+    def del_relative_event_class(self):
+
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Warning)
+        msgBox.setText(f"You are about to delete event class {self.relative_class_choice_cb.currentText()}. The associated time and\nstatus will also be deleted. Do you still want to proceed?")
+        msgBox.setWindowTitle("Warning")
+        msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        returnValue = msgBox.exec()
+        if returnValue == QMessageBox.No:
+            return None
+        else:
+            class_to_delete = self.relative_class_choice_cb.currentText()
+            time_to_delete = class_to_delete.replace('class','t')
+            status_to_delete = class_to_delete.replace('class', 'status')
+            cols_to_delete = [class_to_delete, time_to_delete, status_to_delete]
+            for c in cols_to_delete:
+                try:
+                    self.df_relative = self.df_relative.drop([c], axis=1)
+                except Exception as e:
+                    print(e)
+            item_idx = self.relative_class_choice_cb.findText(class_to_delete)
+            self.relative_class_choice_cb.removeItem(item_idx)
+
+
 
 
     def create_new_target_event_class(self):
@@ -678,6 +729,43 @@ class SignalAnnotator2(QMainWindow):
 
     # Prefill with class value
     # write in table
+    def create_new_relative_event_class(self):
+
+        # display qwidget to name the event
+        self.newClassWidget = QWidget()
+        self.newClassWidget.setWindowTitle('Create new event class')
+
+        layout = QVBoxLayout()
+        self.newClassWidget.setLayout(layout)
+        name_hbox = QHBoxLayout()
+        name_hbox.addWidget(QLabel('event name: '), 25)
+        self.relative_class_name_le = QLineEdit('event')
+        name_hbox.addWidget(self.relative_class_name_le, 75)
+        layout.addLayout(name_hbox)
+
+        class_labels = ['event', 'no event', 'else']
+        layout.addWidget(QLabel('prefill: '))
+        radio_box = QHBoxLayout()
+        self.class_option_rb = [QRadioButton() for i in range(3)]
+        for i,c in enumerate(self.class_option_rb):
+            if i==0:
+                c.setChecked(True)
+            c.setText(class_labels[i])
+            radio_box.addWidget(c, 33, alignment=Qt.AlignCenter)
+        layout.addLayout(radio_box)
+
+        btn_hbox = QHBoxLayout()
+        submit_btn = QPushButton('submit')
+        cancel_btn = QPushButton('cancel')
+        btn_hbox.addWidget(cancel_btn, 50)
+        btn_hbox.addWidget(submit_btn, 50)
+        layout.addLayout(btn_hbox)
+
+        submit_btn.clicked.connect(self.write_new_relative_event_class)
+        cancel_btn.clicked.connect(self.close_without_new_class)
+
+        self.newClassWidget.show()
+        center_window(self.newClassWidget)
 
     def write_new_target_event_class(self):
 
@@ -760,6 +848,51 @@ class SignalAnnotator2(QMainWindow):
         self.effector_class_choice_cb.addItems(self.effector_class_cols)
         idx = self.effector_class_choice_cb.findText(self.effector_class)
         self.effector_class_choice_cb.setCurrentIndex(idx)
+
+        self.newClassWidget.close()
+
+    def write_new_relative_event_class(self):
+
+
+        if self.relative_class_name_le.text()=='':
+            self.relative_class = 'class'
+            self.relative_time = 't0'
+        else:
+            self.relative_class = 'class_'+self.relative_class_name_le.text()
+            self.relative_time = 't_'+self.relative_class_name_le.text()
+
+        if self.relative_class in list(self.df_relative.columns):
+
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Warning)
+            msgBox.setText("This event name already exists. If you proceed,\nall annotated data will be rewritten. Do you wish to continue?")
+            msgBox.setWindowTitle("Warning")
+            msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            returnValue = msgBox.exec()
+            if returnValue == QMessageBox.No:
+                return None
+            else:
+                pass
+
+        fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
+        self.df_relative.loc[:,self.relative_class] = fill_option
+        if fill_option==0:
+            self.df_relative.loc[:,self.relative_time] = 0.1
+        else:
+            self.df_relative.loc[:,self.relative_time] = -1
+
+        self.relative_class_choice_cb.clear()
+        cols = np.array(self.df_relative.columns)
+        self.relative_class_cols = np.array([c.startswith('class') for c in list(self.df_relative.columns)])
+        self.relative_class_cols = list(cols[self.relative_class_cols])
+        try:
+            self.relative_class_cols.remove('class_id')
+            self.relative_class_cols.remove('class_color')
+        except:
+            pass
+        self.relative_class_choice_cb.addItems(self.relative_class_cols)
+        idx = self.relative_class_choice_cb.findText(self.relative_class)
+        self.relative_class_choice_cb.setCurrentIndex(idx)
 
         self.newClassWidget.close()
 
@@ -932,6 +1065,13 @@ class SignalAnnotator2(QMainWindow):
         else:
             self.effector_time_of_interest_label.setEnabled(False)
             self.effector_time_of_interest_le.setEnabled(False)
+        if self.relative_event_btn.isChecked():
+            self.relative_time_of_interest_label.setEnabled(True)
+            self.relative_time_of_interest_le.setEnabled(True)
+        else:
+            self.relative_time_of_interest_label.setEnabled(False)
+            self.relative_time_of_interest_le.setEnabled(False)
+
 
     def show_annotation_buttons(self):
         # if self.target_selection:
@@ -978,6 +1118,24 @@ class SignalAnnotator2(QMainWindow):
                 self.effector_suppr_btn.setChecked(True)
             elif cclass_effectors>2:
                 self.effector_suppr_btn.setChecked(True)
+        if self.effector_track_of_interest is not None and self.target_track_of_interest is not None:
+            cclass_relative = self.df_relative.loc[
+                (self.df_relative['target'] == self.target_track_of_interest)&(self.df_relative['effector'] == self.effector_track_of_interest),
+                self.relative_class_name
+            ].to_numpy()[0]
+
+            t0_relative = self.df_relative.loc[
+                (self.df_relative['target'] == self.target_track_of_interest)&(self.df_relative['effector'] == self.effector_track_of_interest), self.relative_time_name].to_numpy()[0]
+
+            if cclass_relative == 0:
+                self.relative_event_btn.setChecked(True)
+                self.relative_time_of_interest_le.setText(str(t0_relative))
+            elif cclass_relative == 1:
+                self.relative_no_event_btn.setChecked(True)
+            elif cclass_relative == 2:
+                self.relative_suppr_btn.setChecked(True)
+            elif cclass_relative > 2:
+                self.relative_suppr_btn.setChecked(True)
 
         self.enable_time_of_interest()
         self.correct_btn.setText('submit')
@@ -1086,6 +1244,8 @@ class SignalAnnotator2(QMainWindow):
             self.df_targets.loc[indices, self.target_status_name] = status
             self.df_targets.loc[indices, 'status_color'] = status_color
             self.df_targets.loc[indices, 'class_color'] = class_color
+            self.give_target_cell_information()
+
         if self.correction_tabs.currentIndex()==1:
             t0_effector = -1
             if self.effector_event_btn.isChecked():
@@ -1121,12 +1281,53 @@ class SignalAnnotator2(QMainWindow):
             self.df_effectors.loc[indices, self.effector_status_name] = status
             self.df_effectors.loc[indices, 'status_color'] = status_color
             self.df_effectors.loc[indices, 'class_color'] = class_color
+            self.hide_effector_cell_info()
+            self.give_effector_cell_information()
+
+        if self.correction_tabs.currentIndex()==2:
+            self.relative_class_name=self.relative_class_choice_cb.currentText()
+            t0_relative = -1
+            if self.relative_event_btn.isChecked():
+                cclass_relative = 0
+                try:
+                    t0_relative = float(self.relative_time_of_interest_le.text().replace(',', '.'))
+                    self.line_dt.set_xdata([t0_relative, t0_relative])
+                    self.cell_fcanvas.canvas.draw_idle()
+                except Exception as e:
+                    print(e)
+                    t0_relative = -1
+                    cclass_relative = 2
+            elif self.relative_no_event_btn.isChecked():
+                cclass_relative = 1
+            elif self.relative_else_btn.isChecked():
+                cclass_relative = 2
+            elif self.relative_suppr_btn.isChecked():
+                cclass_relative = 42
+            self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest), self.relative_class_name] = cclass_relative
+            self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest), self.relative_time_name] = t0_relative
+
+            indices = self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest), self.relative_class_name].index
+            timeline = self.df_relative.loc[(self.df_relative['target'] == self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest), 'frame'].to_numpy()
+            status = np.zeros_like(timeline)
+            if t0_relative > 0:
+                status[timeline>=t0_relative] = 1.
+            if cclass_relative==2:
+                status[:] = 2
+            if cclass_relative>2:
+                status[:] = 42
+            #status_color = [color_from_status(s, recently_modified=True) for s in status]
+            #class_color = [color_from_class(cclass_effector, recently_modified=True) for i in range(len(status))]
+            #self.df_effectors.loc[indices, self.effector_status_name] = status
+            #self.df_effectors.loc[indices, 'status_color'] = status_color
+            #self.df_effectors.loc[indices, 'class_color'] = class_color
+            #self.hide_effector_cell_info()
+            #self.give_effector_cell_information()
 
         #self.make_status_column()
         self.extract_scatter_from_target_trajectories()
         self.extract_scatter_from_effector_trajectories()
-        self.give_target_cell_information()
-        self.give_effector_cell_information()
+        #self.give_target_cell_information()
+        #self.give_effector_cell_information()
 
 
         self.correct_btn.disconnect()
@@ -1441,12 +1642,41 @@ class SignalAnnotator2(QMainWindow):
         time_cols = np.array([c.startswith('t_') for c in cols])
         time_cols = list(cols[time_cols])
         cols_to_remove += time_cols
+        self.relative_class_cols = np.array([c.startswith('class') for c in list(self.df_relative.columns)])
+        try:
+            self.relative_class_cols = list(cols[self.relative_class_cols])
+        except:
+            pass
+        try:
+            self.relative_lass_cols.remove('class_id')
+        except:
+            pass
+        try:
+            self.relative_class_cols.remove('class_color')
+        except:
+            pass
 
         for tr in cols_to_remove:
             try:
                 self.columns_to_rescale_relative.remove(tr)
             except:
                 pass
+
+        if len(self.relative_class_cols) > 0:
+            self.relative_class_name = self.relative_class_cols[0]
+            self.relative_expected_status = 'status'
+            suffix = self.relative_class_name.replace('class', '').replace('_', '')
+            if suffix != '':
+                self.relative_expected_status += '_' + suffix
+                self.relative_expected_time = 't_' + suffix
+            else:
+                self.relative_expected_time = 't0_lysis'
+            self.relative_time_name = self.relative_expected_time
+            self.relative_status_name = self.relative_expected_status
+        else:
+            self.relative_class_name = 'class'
+            self.relative_time_name = 't0'
+            self.relative_status_name = 'status'
         # print(f'column {tr} could not be found...')
             # for col in self.relative_cols:
             # 	print(col)
@@ -2319,6 +2549,12 @@ class SignalAnnotator2(QMainWindow):
         self.df_effectors.to_csv(self.effector_trajectories_path, index=False)
         print('effectors table saved.')
         self.extract_scatter_from_effector_trajectories()
+
+        self.relative_class_name = self.relative_class_choice_cb.currentText()
+        self.df_relative = self.df_relative.drop(self.df_relative[self.df_relative[self.relative_class_name]>2].index)
+        self.df_relative.to_csv(self.relative_trajectories_path, index=False)
+        print('relative table saved.')
+        #self.extract_scatter_from_effector_trajectories()
         #self.give_cell_information()
 
 

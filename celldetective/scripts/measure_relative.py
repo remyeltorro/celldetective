@@ -22,7 +22,6 @@ args = parser.parse_args()
 process_arguments = vars(args)
 pos = str(process_arguments['position'])
 
-
 instruction_file = os.sep.join(['configs', "neighborhood_instructions.json"])
 
 # Locate experiment config

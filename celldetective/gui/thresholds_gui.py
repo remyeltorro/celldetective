@@ -1203,8 +1203,11 @@ class ThresholdSpot(ThresholdConfigWizard):
                                          max_sigma=max_sigma)
         return blobs
 
-    def update_spots(self):
 
+    def update_spots(self):
+        xlim = self.ax_contour.get_xlim()
+        ylim = self.ax_contour.get_ylim()
+        contrast_levels = self.contrast_slider.value()
         blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
                                   threshold=float(self.threshold_value.text()),
                                   diameter=float(self.diameter_value.text()))
@@ -1217,15 +1220,18 @@ class ThresholdSpot(ThresholdConfigWizard):
         self.im = self.ax_contour.imshow(self.frame[:, :, self.current_channel], cmap='gray')
         self.ax_contour.set_xticks([])
         self.ax_contour.set_yticks([])
+
         self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
         for circle in self.circles:
             self.ax_contour.add_artist(circle)
 
-        self.im.set_data(self.frame[:, :, self.current_channel])
+        self.ax_contour.set_xlim(xlim)
+        self.ax_contour.set_ylim(ylim)
 
+        self.im.set_data(self.frame[:, :, self.current_channel])
         self.fig_contour.canvas.draw()
-        self.contrast_slider.setValue(
-            [np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
+        self.contrast_slider.setValue(contrast_levels)
+
 
     def apply(self):
         self.parent.threshold_value.setText(self.threshold_value.text())

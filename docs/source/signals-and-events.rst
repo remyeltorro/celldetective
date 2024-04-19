@@ -32,13 +32,13 @@ We provide several Deep-learning models that take select single-cell signals as 
 Threshold-based event characterization
 --------------------------------------
 
-We also provide a binary classification module, allowing you to classify cells to any number of classes of interest in a "static" way, one frame at a time, based on feature values. This classification process yields a binary signal, which can be interpreted:
+We also provide a binary classification module, allowing you to classify cells to any number of classes or groups of interest in a "static" way, one frame at a time, based on feature values. This classification process yields a binary signal, which can be interpreted:
 
 #. a perfectly null signal is associated to the absence of event
 #. a completely positive signal is associated to an event that already happened
 #. a sigmoid-like switch is a transition from an absence of event to an event. The time of event is extracted by fitting a sigmoid on the binary classification signal. A :math:`R^2` score is computed. If the score is higher than 0.7, the time is kept, otherwise the cell is classified as "else", to be corrected.
 
-Click on the ``Classify data`` button of the measurements section. Define a name for the class/event. Project as many features of interest and write down the classification conditions for the event of interest. Apply to write in the tables the new class. If the ``TRACK_ID`` column is in the table (tracked data), the sigmoid-fitting process with be triggered to extract the event times.
+Click on the ``Classify data`` button of the measurements section. Define a name for the class/event/group. Project as many features of interest and write down the classification conditions for the event of interest. Apply to write in the tables the new class/group. If the ``TRACK_ID`` column is in the table (tracked data) and the ``Time correlated event`` option is checked, the sigmoid-fitting process will be triggered to extract the event times and create a class. When ``Time correlated event`` option is not checked, instead of a class/event, a characteristic group will be created and the phenotypes will be assigned accordingly.
 
 .. figure:: _static/static-classification.png
     :width: 400px

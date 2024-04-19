@@ -595,6 +595,7 @@ def mean_neighborhood_before_event(neigh_table, neigh_col, event_time_col):
 	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
 	
 	if event_time_col is None:
+		print('No event time was provided... Estimating the mean neighborhood over the whole observation time...')
 		neigh_table.loc[:,'event_time_temp'] = neigh_table['FRAME'].max()
 		event_time_col = 'event_time_temp'
 	

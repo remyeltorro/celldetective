@@ -16,7 +16,7 @@ abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)
 import random
 from tqdm import tqdm
 
-def relative_quantities_per_pos2(pos, target_classes, neigh_dist=200, target_lysis_class='class_custom',
+def relative_quantities_per_pos2(pos, target_classes, neigh_dist, target_lysis_class='class_custom',
                                  target_lysis_time='t_custom', pre_lysis_time_window=5,
                                  velocity_kwargs={'window': 1, 'mode': 'bi'},
                                  neighborhood_kwargs={'status': None, 'include_dead_weight': True,
@@ -48,7 +48,6 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist=200, target_lys
 
     for tid, group in df_targets.loc[df_targets[target_lysis_class].isin(target_classes), :].groupby('TRACK_ID'):
         # loop over targets in lysis class of interest
-        print(tid)
         t0 = ceil(group[target_lysis_time].to_numpy()[0])
         if t0<=0:
            t0 = 5
@@ -190,8 +189,8 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist=200, target_lys
                         't_residence_rel': duration_in_neigh})
 
             for t in range(len(relative_distance)):
-                df_rel.append({'target': tid, 'effector': nk, 'frame': t, 'relative_distance': relative_distance[t],
-                               'relative_velocity': dddt[t], 't0_lysis': t0, 'angle_tc-eff': relative_angle1[t],
+                df_rel.append({'TARGET_ID': tid, 'EFFECTOR_ID': nk, 'FRAME': t, 'distance': relative_distance[t],
+                               'velocity': dddt[t], 't0_lysis': t0, 'angle_tc-eff': relative_angle1[t],
                                'angle-eff-tc': relative_angle2[t],'probability':0})
     pts=pd.DataFrame(pts)
     probs = probabilities(pts)
@@ -199,15 +198,15 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist=200, target_lys
     # print(type(probs))
     df_rel = pd.DataFrame(df_rel)
     for index,row in pts.iterrows():
-        df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 'drel'] = row[
+        df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 'drel'] = row[
             'drel']
-        df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 'vrel'] = row[
+        df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 'vrel'] = row[
             'vrel']
-        df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 't_residence_rel'] = row[
+        df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 't_residence_rel'] = row[
             't_residence_rel']
     for prob in probs:
         for index,row in prob.iterrows():
-            df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']),'probability']=row['total_prob']
+            df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']),'probability']=row['total_prob']
 
     # df_rel.loc[(df_rel['target'] == row['tc']) & (df_rel['effector'] == row['nk']), 'drel'] = row[
     #     'drel']
@@ -286,8 +285,6 @@ def velocity_law(x):
 def probabilities(pairs,radius_critical=80,radius_max=150):
     scores = []
     pair_dico=[]
-    print(pairs)
-    print(type(pairs))
     print(f'Found {len(pairs)} TC-NK pairs...')
     if len(pairs) > 0:
         unique_tcs = np.unique(pairs['tc'].to_numpy())

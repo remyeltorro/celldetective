@@ -95,12 +95,11 @@ We provide a module for spot detection to count the number of blob-like objects 
 
 
 Static measurements annotation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Celldetective provides a viewer for static data, enabling the visualisation of single-cell measurements. This tool allows the user to visualise the film frame by frame and switch between different channels of the experiment. User can categorize cells based on their characteristics, such as size, and assign phenotypes accordingly.
-The tool offers interactive features, allowing users to click on individual cells represented by circles on the plot. Each cell's phenotype is indicated by its color. Upon selection, the measurements associated with the chosen cell are displayed on the graph. The boxplot represents the values of all cells in the film, while the strip plot represents all the cells in the current frame. The selected cell is highlighted as a red dot.
-It is possible to represent up to three measurements at a time, with options to normalise and log-rescale the data if the chosen signals exhibit significant differences in quantity. Additionally, users cam opt to display the outliers for the boxplot, which are hidden by default.
-The tool is compatible with both static and dynamic data and is especially useful in the cases where a reliable tracking of the cells could not be performed.
+We provide a viewer for the measurements of single cells. You can open an image stack and navigate it frame-by-frame, with an option to switch the channel. You can click on individual cells, represented by circles on the image, and categorize them manually based on their characteristics. You can define a group in which you assign a phenotype for each cell. A value (and color) encodes for the cell phenotype. You can display the measurements of a given cell on the left-side graph by simply clicking on it on the image. The boxplots show the spread of values for all cells in the stack. The strip plot shows the measurements for the cells within the current frame. The red dot is the cell of interest. You can represent up to three measurements at a time, with options to normalize and log-rescale the measurements if they span orders of magnitude. Additionally, you can display the outliers for the boxplot, hidden by default.
+
+The tool is compatible with static and dynamic data. It is particularly relevant when reliable tracking of the cells is impossible, due to a poor time resolution.
 
 .. figure:: _static/measurements_annotator.gif
     :width: 800px

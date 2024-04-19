@@ -40,7 +40,7 @@ We also provide a binary classification module, allowing you to classify cells t
 
 Click on the ``Classify data`` button of the measurements section. Define a name for the class/event/group. Project as many features of interest and write down the classification conditions for the event of interest. Apply to write in the tables the new class/group. If the ``TRACK_ID`` column is in the table (tracked data) and the ``Time correlated event`` option is checked, the sigmoid-fitting process will be triggered to extract the event times and create a class. When ``Time correlated event`` option is not checked, instead of a class/event, a characteristic group will be created and the phenotypes will be assigned accordingly.
 
-.. figure:: _static/static-classification.png
+.. figure:: _static/classify.gif
     :width: 400px
     :align: center
     :alt: static_class

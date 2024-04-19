@@ -19,18 +19,18 @@ Options
 -------
 
 Background correction
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
-The background correction module allows the user to perform background correction for a specific channel with a choice between two modes: local and field. In local mode, each cell will be corrected individually according to the surrounding background, the distance of the background accounted for is chosen by the user in the outer distance field. If needed, the user cam visualize the selected band around the cell for quality control. The user then can choose whether the correction should be based on the mean or median intensity value of the background, with options to subtract or divide the original cell intensity by the background value.
+The background correction module allows you to correct the background intensity in a specific channel, 1) locally (``Local ``) or 2) over the field of view (``Field ``). In the ``Local `` mode, each cell is corrected one by one by the surrounding background intensity. You can estimate the background intensity level over any controlled distance. We provide a visualization tool for these background ROIs. You can measure 1) the mean or 2) the median intensity within the background ROI around each cell, which you can either 1) divide or 2) subtract from the intensity of the cell. 
 
 .. figure:: _static/local_correction.png
     :align: center
     :alt: local_correction
 
-    **GUI to pilot local background correction, with a highlight on the region accounted for during the correction.** The channel on which the correction is to be performed can be selected from the dropdown menu containing all the channels of the experiment. The user can define and visualize contour bands, representing the background that will be used in the correction. Here, the bands are shown for an image of MCF7 cell stained nuclei. The user can then choose whether to perform background subtraction or division based on mean or median background value.
+    **GUI to pilot local background correction, with a highlight on the region accounted for during the correction.** The channel on which the correction is to be performed can be selected from the dropdown menu containing all the channels of the experiment. The user can define and visualize contour bands, defining the background ROIs that will be used in the correction. Here, the bands are shown for an image of MCF7 cell stained nuclei. The user can then choose whether to perform background subtraction or division based on mean or median background value.
 
 
-Field background correction assumes non-uniform background distribution. In this case, the user can set the threshold to exclude the cells of interest from the background calculations with the help of a threshold visualization tool. The user must then specify the type of background deformation: paraboloid or plane, which will then be adjusted. Once again, the user must choose whether to subtract or divide by the obtained values. In the case if subtraction, the user can choose whether they wish to remove the obtained negative values by clipping. For field correction, you can preview the corrected image and compare the intensity profiles before and after correction to ensure quality control.
+In most instances, the background can be fitted by a 2D function such as a plane or paraboloid, provided we can isolate the background from the cells on the image. You can set a threshold on the standard-deviation-transformed image to roughly exclude the cells from the fit. A visualizer accompanies you in the process. You can choose to 1) divide or 2) subtract the extracted background from the whole image. When subtracting, you can decide to clip negative values. Eventually, you can preview the corrected image and view the change in diagonal intensity profiles.
 
 .. figure:: _static/field_correction.png
     :align: center
@@ -46,7 +46,7 @@ Mask-based measurements
 
 The segmentation mask is an obvious starting point to perform single-cell measurements that are tonal, textural and morphological. The mask provides a ROI over which a series of measurements can be performed at each time point. The mask can also be used to define sub sections. 
 
-One practical subsection that can be extracted from the euclidean transform of the mask is to perform a threshold on the distance to the mask boundary, leaving a contour that reflects that of the mask but smaller. With two threshold distances, it is possible to define a slice. This decomposition of the mask can be used to assess the peripherality of a fluorescence signal. 
+One practical subsection that can be extracted using the Euclidean distance transform of the mask is a contour or slice. This decomposition of the mask can be used to assess the peripherality of a fluorescence signal. 
 
 .. figure:: _static/measurements-ui.png
     :align: center
@@ -57,8 +57,7 @@ One practical subsection that can be extracted from the euclidean transform of t
 
 For morphological and tonal measurements, we rely on the scikit-image library and more specifically ``regionprops`` that provides a fast computation of features from masks.
 
-Based on the this library, a few of the extra measurements were added, such as measurements of the intensity distribution of two types: peripheral and centre of mass displacement. The peripheral intensity calculates the distribution if intensity of each pixel using the Euclidian distance and moving from the edge od the cell mask towards the centre. The obtained intensity values are then fitted linearly, and the slope and intercept of the obtained fit are returned as the output.
-The centre of mass displacement is used to define the difference between the geometric centroid of the cell mask and the intensity-weighed centroid. The output is the Euclidian distance between the two centroids as well the orientation in degrees. It is also possible to detect the centre of mass displacement in the outer band only, in cases where the peripheral intensity presents uneven intensity distribution at the edge.
+In addition, we propose some extra measurements relevant to the study intensity distributions within single cells, 1) a peripherality of intensity estimate and 2) a center of mass displacement estimate, within the cell mask. We compute the peripherality estimate for each single cell by correlating the Euclidean distance of the pixels to the cell mask edge with their intensity. We extract the slope and intercept of a linear fit to define the estimate. The center of mass displacement is defined as the difference between the geometric centroid of the cell mask and the intensity-weighed centroid. The output is the Euclidean distance between the two centroids and the orientation in degrees. We also make it possible to focus the detection of the center of mass displacement at the edge only, such that the estimate is no longer sensitive to the intensities inside the cell mask.
 
 For texture measurements, we provide several options to measure the texture averaged over cell masks, with refined parameters. You can control carefully the image normalization and play with the distance, scale and # gray levels to make the computation time acceptable while not destroying texture information.
 

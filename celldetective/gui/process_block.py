@@ -1049,6 +1049,7 @@ class NeighPanel(QFrame):
 													img_shape=(self.parent.shape_x,self.parent.shape_y), 
 													return_tables=False,
 													clear_neigh=config['clear_neigh'],
+													event_time_col=config['event_time_col'],
 													neighborhood_kwargs=config['neighborhood_kwargs'],
 													)
 		print('Done.')

@@ -165,7 +165,10 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 	"""
 
 	# Check live_status option
-	setA, setB, status = set_live_status(setA, setB, status, not_status_option)
+	if setA is not None and setB is not None:
+		setA, setB, status = set_live_status(setA, setB, status, not_status_option)
+	else:
+		return None,None
 
 	# Check distance option 
 	if not isinstance(distance, list):
@@ -376,6 +379,8 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 		df_B = df_B.drop(columns=unwanted)		
 
 	df_A, df_B = distance_cut_neighborhood(df_A,df_B, distance,**neighborhood_kwargs)
+	if df_A is None or df_B is None:
+		return None
 
 	for td,d in zip(theta_dist, distance):
 
@@ -394,6 +399,7 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
 		
 		df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col)
+		df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col)
 
 	df_A.to_pickle(path_A.replace('.csv','.pkl'))
 	if not population[0]==population[1]:
@@ -620,6 +626,78 @@ def mean_neighborhood_before_event(neigh_table, neigh_col, event_time_col):
 	if event_time_col=='event_time_temp':
 		neigh_table = neigh_table.drop(columns='event_time_temp')
 	return neigh_table
+
+def mean_neighborhood_after_event(neigh_table, neigh_col, event_time_col):
+	
+	"""
+	Computes the mean neighborhood metrics for each cell track after a specified event time.
+
+	This function calculates the mean values of specified neighborhood metrics (inclusive, exclusive, intermediate)
+	for each cell track after the event time. The function requires the neighborhood metrics to
+	have been previously computed and appended to the input dataframe. It operates on grouped data based on position
+	and track ID, handling cases with or without position information.
+
+	Parameters
+	----------
+	neigh_table : pandas.DataFrame
+		A dataframe containing cell track data with precomputed neighborhood metrics and event time information.
+	neigh_col : str
+		The base name of the neighborhood metric columns in `neigh_table`.
+	event_time_col : str or None
+		The column name indicating the event time for each cell track. If None, the maximum frame number in the
+		dataframe is used as the event time for all tracks.
+
+	Returns
+	-------
+	pandas.DataFrame
+		The input dataframe with added columns for the mean neighborhood metrics before the event for each cell track.
+		The new columns are named as 'mean_count_{metric}_{neigh_col}_before_event', where {metric} is one of
+		'inclusive', 'exclusive', 'intermediate'.
+
+	"""
+
+
+	if 'position' in list(neigh_table.columns):
+		groupbycols = ['position','TRACK_ID']
+	else:
+		groupbycols = ['TRACK_ID']
+	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
+	
+	if event_time_col is None:
+		neigh_table.loc[:,'event_time_temp'] = None #neigh_table['FRAME'].max()
+		event_time_col = 'event_time_temp'
+	
+	for tid,group in neigh_table.groupby(groupbycols):
+
+		group = group.dropna(subset=neigh_col)
+		indices = list(group.index)
+
+		event_time_values = group[event_time_col].to_numpy()
+		if len(event_time_values)>0:
+			event_time = event_time_values[0]
+		else:
+			continue
+
+		if event_time is None or (event_time<0.):
+			neigh_table.loc[indices, f'mean_count_intermediate_{neigh_col}_after_event'] = np.nan
+			neigh_table.loc[indices, f'mean_count_inclusive_{neigh_col}_after_event'] = np.nan
+			neigh_table.loc[indices, f'mean_count_exclusive_{neigh_col}_after_event'] = np.nan
+		else:
+			valid_counts_intermediate = group.loc[group['FRAME']>event_time,'intermediate_count_s1_'+neigh_col].to_numpy()
+			valid_counts_inclusive = group.loc[group['FRAME']>event_time,'inclusive_count_s1_'+neigh_col].to_numpy()
+			valid_counts_exclusive = group.loc[group['FRAME']>event_time,'exclusive_count_s1_'+neigh_col].to_numpy()
+
+			if len(valid_counts_intermediate[valid_counts_intermediate==valid_counts_intermediate])>0:
+				neigh_table.loc[indices, f'mean_count_intermediate_{neigh_col}_after_event'] = np.nanmean(valid_counts_intermediate)
+			if len(valid_counts_inclusive[valid_counts_inclusive==valid_counts_inclusive])>0:
+				neigh_table.loc[indices, f'mean_count_inclusive_{neigh_col}_after_event'] = np.nanmean(valid_counts_inclusive)
+			if len(valid_counts_exclusive[valid_counts_exclusive==valid_counts_exclusive])>0:
+				neigh_table.loc[indices, f'mean_count_exclusive_{neigh_col}_after_event'] = np.nanmean(valid_counts_exclusive)
+
+	if event_time_col=='event_time_temp':
+		neigh_table = neigh_table.drop(columns='event_time_temp')
+	return neigh_table
+
 
 # def mask_intersection_neighborhood(setA, labelsA, setB, labelsB, threshold_iou=0.5, viewpoint='B'):
 # 	# do whatever to match objects in A and B

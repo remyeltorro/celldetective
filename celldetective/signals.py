@@ -1771,7 +1771,7 @@ def random_time_shift(signal, time_of_interest, cclass, model_signal_length):
 		return_target = True
 		max_time = model_signal_length - 3 # to prevent approaching too much to the edge
 
-	times = np.linspace(-model_signal_length+3,max_time,1000) # symmetrize to create left-censored events
+	times = np.linspace(-max_time,max_time,2000) # symmetrize to create left-censored events
 	target_time = np.random.choice(times)
 
 	delta_t = target_time - time_of_interest
@@ -1841,7 +1841,7 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 				assert time_of_interest is not None, f"Please provide valid lysis times"
 				signal,time_of_interest,cclass = random_time_shift(signal, time_of_interest, cclass, model_signal_length)
 
-		signal = random_intensity_change(signal)
+		#signal = random_intensity_change(signal) #maybe bad idea for non percentile-normalized signals
 		signal = gauss_noise(signal)
 
 	return signal, time_of_interest/model_signal_length, cclass

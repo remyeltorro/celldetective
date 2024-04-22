@@ -1612,7 +1612,7 @@ class SignalAnnotator2(QMainWindow):
     def locate_relative_tracks(self):
 
         population = 'relative'
-        self.relative_trajectories_path = self.pos + f'output/tables/relative.csv'
+        self.relative_trajectories_path = self.pos + f'output/tables/relative_measurements_neighborhood.csv'
         #self.neigh_trajectories_path = self.pos + f'output/tables/trajectories_{population}.pkl'
 
         if not os.path.exists(self.target_trajectories_path):
@@ -2552,11 +2552,13 @@ class SignalAnnotator2(QMainWindow):
         self.df_effectors.to_csv(self.effector_trajectories_path, index=False)
         print('effectors table saved.')
         self.extract_scatter_from_effector_trajectories()
-
-        self.relative_class_name = self.relative_class_choice_cb.currentText()
-        self.df_relative = self.df_relative.drop(self.df_relative[self.df_relative[self.relative_class_name]>2].index)
-        self.df_relative.to_csv(self.relative_trajectories_path, index=False)
-        print('relative table saved.')
+        try:
+            self.relative_class_name = self.relative_class_choice_cb.currentText()
+            self.df_relative = self.df_relative.drop(self.df_relative[self.df_relative[self.relative_class_name]>2].index)
+            self.df_relative.to_csv(self.relative_trajectories_path, index=False)
+            print('relative table saved.')
+        except:
+            pass
         #self.extract_scatter_from_effector_trajectories()
         #self.give_cell_information()
 

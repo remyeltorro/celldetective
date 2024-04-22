@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea,
     QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, QTabWidget, \
     QRadioButton, QButtonGroup, QSizePolicy, QListWidget, QDialog
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 from matplotlib.patches import Circle
 from scipy import ndimage
 from skimage.draw import disk
@@ -40,9 +40,9 @@ from stardist import fill_label_holes
 
 class ConfigMeasurements(QMainWindow):
     """
-	UI to set measurement instructions.
+    UI to set measurement instructions.
 
-	"""
+    """
 
     def __init__(self, parent=None):
 
@@ -71,6 +71,9 @@ class ConfigMeasurements(QMainWindow):
         self.screen_height = self.parent.parent.parent.screen_height
         center_window(self)
 
+        self.onlyFloat = QDoubleValidator()
+        self.onlyInt = QIntValidator()
+
         self.setMinimumWidth(500)
         self.setMinimumHeight(int(0.3 * self.screen_height))
         self.setMaximumHeight(int(0.8 * self.screen_height))
@@ -80,9 +83,9 @@ class ConfigMeasurements(QMainWindow):
     def populate_widget(self):
 
         """
-		Create the multibox design.
+        Create the multibox design.
 
-		"""
+        """
 
         # Create button widget and layout
         self.scroll_area = QScrollArea(self)
@@ -139,16 +142,16 @@ class ConfigMeasurements(QMainWindow):
     def populate_iso_frame(self):
 
         """
-		Add widgets and layout in the POST-PROCESSING frame.
-		"""
+        Add widgets and layout in the POST-PROCESSING frame.
+        """
 
         grid = QGridLayout(self.iso_frame)
 
         self.iso_lbl = QLabel("ISOTROPIC MEASUREMENTS")
         self.iso_lbl.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
+            font-weight: bold;
+            padding: 0px;
+            """)
         grid.addWidget(self.iso_lbl, 0, 0, 1, 4, alignment=Qt.AlignCenter)
         self.generate_iso_contents()
         grid.addWidget(self.ContentsIso, 1, 0, 1, 4, alignment=Qt.AlignTop)
@@ -156,16 +159,16 @@ class ConfigMeasurements(QMainWindow):
     def populate_features_frame(self):
 
         """
-		Add widgets and layout in the FEATURES frame.
-		"""
+        Add widgets and layout in the FEATURES frame.
+        """
 
         grid = QGridLayout(self.features_frame)
 
         self.feature_lbl = QLabel("FEATURES")
         self.feature_lbl.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
+            font-weight: bold;
+            padding: 0px;
+            """)
         grid.addWidget(self.feature_lbl, 0, 0, 1, 4, alignment=Qt.AlignCenter)
 
         self.generate_feature_panel_contents()
@@ -460,8 +463,8 @@ class ConfigMeasurements(QMainWindow):
     def show_haralick_options(self):
 
         """
-		Show the Haralick texture options.
-		"""
+        Show the Haralick texture options.
+        """
 
         if self.activate_haralick_btn.isChecked():
             for element in self.haralick_to_hide:
@@ -473,9 +476,9 @@ class ConfigMeasurements(QMainWindow):
     def adjustScrollArea(self):
 
         """
-		Auto-adjust scroll area to fill space
-		(from https://stackoverflow.com/questions/66417576/make-qscrollarea-use-all-available-space-of-qmainwindow-height-axis)
-		"""
+        Auto-adjust scroll area to fill space
+        (from https://stackoverflow.com/questions/66417576/make-qscrollarea-use-all-available-space-of-qmainwindow-height-axis)
+        """
 
         step = 5
         while self.scroll_area.verticalScrollBar().isVisible() and self.height() < self.maximumHeight():
@@ -484,8 +487,8 @@ class ConfigMeasurements(QMainWindow):
     def write_instructions(self):
 
         """
-		Write the selected options in a json file for later reading by the software.
-		"""
+        Write the selected options in a json file for later reading by the software.
+        """
 
         print('Writing instructions...')
         measurement_options = {}
@@ -528,8 +531,8 @@ class ConfigMeasurements(QMainWindow):
                                     'isotropic_operations': isotropic_operations})
         spot_detection = None
         if self.spot_check.isChecked():
-            spot_detection = {'channel': self.spot_channel.currentText(), 'diameter': float(self.diameter_value.text()),
-                              'threshold': float(self.threshold_value.text())}
+            spot_detection = {'channel': self.spot_channel.currentText(), 'diameter': float(self.diameter_value.text().replace(',','.')),
+                              'threshold': float(self.threshold_value.text().replace(',','.'))}
         measurement_options.update({'spot_detection': spot_detection})
         if self.clear_previous_btn.isChecked():
             self.clear_previous = True
@@ -569,8 +572,8 @@ class ConfigMeasurements(QMainWindow):
     def load_previous_measurement_instructions(self):
 
         """
-		Read the measurmeent options from a previously written json file and format properly for the UI.
-		"""
+        Read the measurmeent options from a previously written json file and format properly for the UI.
+        """
 
         print('Reading instructions..')
         if os.path.exists(self.measure_instructions_path):
@@ -696,8 +699,8 @@ class ConfigMeasurements(QMainWindow):
     def locate_image(self):
 
         """
-		Load the first frame of the first movie found in the experiment folder as a sample.
-		"""
+        Load the first frame of the first movie found in the experiment folder as a sample.
+        """
 
         movies = glob(self.parent.parent.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
         print(movies)
@@ -727,10 +730,10 @@ class ConfigMeasurements(QMainWindow):
     def control_haralick_digitalization(self):
 
         """
-		Load an image for the first experiment movie found.
-		Apply the Haralick parameters and check the result of the digitization (normalization + binning of intensities).
+        Load an image for the first experiment movie found.
+        Apply the Haralick parameters and check the result of the digitization (normalization + binning of intensities).
 
-		"""
+        """
 
         self.locate_image()
         self.extract_haralick_options()
@@ -758,10 +761,10 @@ class ConfigMeasurements(QMainWindow):
     def control_haralick_intensity_histogram(self):
 
         """
-		Load an image for the first experiment movie found.
-		Apply the Haralick normalization parameters and check the normalized intensity histogram.
+        Load an image for the first experiment movie found.
+        Apply the Haralick normalization parameters and check the normalized intensity histogram.
 
-		"""
+        """
 
         self.locate_image()
         self.extract_haralick_options()
@@ -785,9 +788,9 @@ class ConfigMeasurements(QMainWindow):
     def view_selected_contour(self):
 
         """
-		Show the ROI for the selected contour measurement on experimental data.
+        Show the ROI for the selected contour measurement on experimental data.
 
-		"""
+        """
 
         if self.parent.parent.position_list.currentText() == '*':
             msgBox = QMessageBox()
@@ -905,8 +908,8 @@ class ConfigMeasurements(QMainWindow):
     def locate_mask(self):
 
         """
-		Load the first mask of the detected movie.
-		"""
+        Load the first mask of the detected movie.
+        """
 
         labels_path = str(Path(self.stack0).parent.parent) + f'/labels_{self.mode}/'
         masks = natsorted(glob(labels_path + '*.tif'))
@@ -919,9 +922,9 @@ class ConfigMeasurements(QMainWindow):
     def switch_channel_contour(self, value):
 
         """
-		Adjust intensity values when changing channels in the contour visualizer.
+        Adjust intensity values when changing channels in the contour visualizer.
 
-		"""
+        """
 
         self.im_contour.set_array(self.test_frame[:, :, value])
         self.im_contour.set_clim(vmin=np.percentile(self.test_frame[:, :, value].flatten(), 1),
@@ -947,9 +950,9 @@ class ConfigMeasurements(QMainWindow):
         layout = QVBoxLayout(self.normalisation_frame)
         self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
         self.normalisation_lbl.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
+            font-weight: bold;
+            padding: 0px;
+            """)
         layout.addWidget(self.normalisation_lbl, alignment=Qt.AlignCenter)
         self.tabs = QTabWidget()
         self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -1079,7 +1082,7 @@ class ConfigMeasurements(QMainWindow):
         self.view_norm_btn = QPushButton("")
         self.view_norm_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
         self.view_norm_btn.setIcon(icon(MDI6.eye_outline, color="black"))
-        self.view_norm_btn.setToolTip("View flat image")
+        self.view_norm_btn.setToolTip("View corrected image")
         self.view_norm_btn.setIconSize(QSize(20, 20))
         self.view_norm_btn.clicked.connect(self.preview_normalisation)
         tab2_layout.addWidget(self.view_norm_btn, 4, 2)
@@ -1097,7 +1100,7 @@ class ConfigMeasurements(QMainWindow):
         if min_threshold == "":
             min_threshold = 0
         current_channel = self.tab2_channel_dropdown.currentIndex()
-        self.threshold_visual = ThresholdNormalisation(min_threshold=float(min_threshold),
+        self.threshold_visual = ThresholdNormalisation(min_threshold=int(min_threshold),
                                                        current_channel=current_channel, parent=self)
 
     def show_clipping_options(self):
@@ -1214,17 +1217,19 @@ class ConfigMeasurements(QMainWindow):
     def preview_normalisation(self):
         plt.close('all')
         plt.figure("Intensity Profiles",figsize=(10, 5))
-
         self.locate_image()
         diagonal_length = min(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[0], self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[1])
-
-
+        if self.tab2_subtract.isChecked():
+            norm_operation='Subtract'
+        else:
+            norm_operation='Divide'
         normalised, bg_fit = field_normalisation(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()],
                                                  threshold=self.tab2_txt_threshold.text(),
-                                                 normalisation_operation=self.tab2_subtract.isChecked(),
+                                                 normalisation_operation=norm_operation,
                                                  clip=self.tab2_clip.isChecked(),
                                                  mode=self.tab2_dropdown.currentText())
-        diagonal_original = [self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()][i, i] for i in range(diagonal_length)]
+        diagonal_original = [self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()][i, i] for i in
+                             range(diagonal_length)]
         diagonal_corrected = [normalised[i, i] for i in range(diagonal_length)]
         diagonal_indices = np.arange(diagonal_length)
 
@@ -1249,13 +1254,12 @@ class ConfigMeasurements(QMainWindow):
         self.ax.imshow(normalised, cmap='gray')
         self.normalised_img.canvas.draw()
         self.normalised_img.show()
-
     def view_normalisation_contour(self):
 
         """
-		Show the ROI for the selected contour measurement on experimental data.
+        Show the ROI for the selected contour measurement on experimental data.
 
-		"""
+        """
 
         if self.parent.parent.position_list.currentText() == '*':
             msgBox = QMessageBox()
@@ -1330,12 +1334,21 @@ class ConfigMeasurements(QMainWindow):
         self.spot_channel.addItems(self.channel_names)
         layout.addWidget(self.spot_channel_lbl, 2, 0)
         layout.addWidget(self.spot_channel, 2, 1)
+
         self.diameter_lbl = QLabel('Spot diameter: ')
         self.diameter_value = QLineEdit()
+        self.diameter_value.setValidator(self.onlyFloat)
+        self.diameter_value.setText('7')
+        self.diameter_value.textChanged.connect(self.enable_spot_preview)
+
         layout.addWidget(self.diameter_lbl, 3, 0)
         layout.addWidget(self.diameter_value, 3, 1)
         self.threshold_lbl = QLabel('Spot threshold: ')
         self.threshold_value = QLineEdit()
+        self.threshold_value.setValidator(self.onlyFloat)
+        self.threshold_value.setText('0')
+        self.threshold_value.textChanged.connect(self.enable_spot_preview)
+
         layout.addWidget(self.threshold_lbl, 4, 0)
         layout.addWidget(self.threshold_value, 4, 1)
         self.preview_spot = QPushButton('Preview')
@@ -1350,6 +1363,14 @@ class ConfigMeasurements(QMainWindow):
         self.threshold_lbl.setEnabled(False)
         self.preview_spot.setEnabled(False)
 
+    def enable_spot_preview(self):
+
+        diam = self.diameter_value.text().replace(',','').replace('.','')
+        thresh = self.threshold_value.text().replace(',','').replace('.','')
+        if diam.isnumeric() and thresh.isnumeric():
+            self.preview_spot.setEnabled(True)
+        else:
+            self.preview_spot.setEnabled(False)
 
     def spot_preview(self):
         self.locate_image()

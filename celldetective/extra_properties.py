@@ -13,22 +13,22 @@ from scipy.spatial.distance import euclidean
 
 # Percentiles
 
-def intensity_percentile_99(regionmask, intensity_image):
+def intensity_percentile_ninety_nine(regionmask, intensity_image):
 	return np.nanpercentile(intensity_image[regionmask],99)
 
-def intensity_percentile_95(regionmask, intensity_image):
+def intensity_percentile_ninety_five(regionmask, intensity_image):
 	return np.nanpercentile(intensity_image[regionmask],95)
 
-def intensity_percentile_90(regionmask, intensity_image):
+def intensity_percentile_ninety(regionmask, intensity_image):
 	return np.nanpercentile(intensity_image[regionmask],90)
 
-def intensity_percentile_75(regionmask, intensity_image):
+def intensity_percentile_seventy_five(regionmask, intensity_image):
 	return np.nanpercentile(intensity_image[regionmask],75)
 
-def intensity_percentile_50(regionmask, intensity_image):
+def intensity_percentile_fifty(regionmask, intensity_image):
 	return np.nanpercentile(intensity_image[regionmask],50)
 
-def intensity_percentile_25(regionmask, intensity_image):
+def intensity_percentile_twenty_five(regionmask, intensity_image):
 	return np.nanpercentile(intensity_image[regionmask],25)
 
 # STD

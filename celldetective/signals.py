@@ -937,6 +937,15 @@ class SignalDetectionModel(object):
 				self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
 							  loss=self.loss_class, 
 							  metrics=['accuracy', Precision(), Recall()])
+			else:
+				self.initial_model = clone_model(self.model_class)
+				self.model_class.set_weights(self.initial_model.get_weights())
+				# Recompile to avoid crash
+				self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
+							  loss=self.loss_class, 
+							  metrics=['accuracy', Precision(), Recall()])
+				# Reset weights
+				self.model_class.set_weights(self.initial_model.get_weights())			
 		else:
 			print("Compiling the classifier...")
 			self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
@@ -1061,7 +1070,12 @@ class SignalDetectionModel(object):
 							  loss=self.loss_reg, 
 							  metrics=['mse','mae'])
 			else:
-				pass
+				self.initial_model = clone_model(self.model_reg)
+				self.model_reg.set_weights(self.initial_model.get_weights())
+				self.model_reg.compile(optimizer=Adam(learning_rate=self.learning_rate), 
+							  loss=self.loss_reg, 
+							  metrics=['mse','mae'])
+				self.model_reg.set_weights(self.initial_model.get_weights())
 		else:
 			print("Compiling the regressor...")
 			self.model_reg.compile(optimizer=Adam(learning_rate=self.learning_rate), 
@@ -1709,7 +1723,7 @@ def gauss_noise(signal):
 	signal = signal + sig*np.random.normal(0,1,signal.shape)*signal
 	return signal
 
-def random_time_shift(signal, time_of_interest, model_signal_length):
+def random_time_shift(signal, time_of_interest, cclass, model_signal_length):
 
 	"""
 
@@ -1748,25 +1762,29 @@ def random_time_shift(signal, time_of_interest, model_signal_length):
 	--------
 	>>> signal = np.array([[1, 2, 3], [4, 5, 6]])
 	>>> shifted_signal, new_time = random_time_shift(signal, 1, 5)
-	
+
 	"""
-	
+
 	max_time = model_signal_length
 	return_target = False
 	if time_of_interest != -1:
 		return_target = True
 		max_time = model_signal_length - 3 # to prevent approaching too much to the edge
-	
-	times = np.linspace(0,max_time,1000)
+
+	times = np.linspace(-max_time,max_time,2000) # symmetrize to create left-censored events
 	target_time = np.random.choice(times)
-	
+
 	delta_t = target_time - time_of_interest
 	signal = shift(signal, [delta_t,0], order=0, mode="nearest")
 
+	if target_time<=0 and np.argmax(cclass)==0:
+		target_time = -1
+		cclass = np.array([0.,0.,1.]).astype(np.float32)
+
 	if return_target:
-		return signal,target_time
+		return signal,target_time, cclass
 	else:
-		return signal, time_of_interest
+		return signal, time_of_interest, cclass
 
 def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=True, probability=0.8):
 
@@ -1821,9 +1839,9 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 			# do not time shift miscellaneous cells
 			if cclass.argmax()!=2.:
 				assert time_of_interest is not None, f"Please provide valid lysis times"
-				signal,time_of_interest = random_time_shift(signal, time_of_interest, model_signal_length)
+				signal,time_of_interest,cclass = random_time_shift(signal, time_of_interest, cclass, model_signal_length)
 
-		signal = random_intensity_change(signal)
+		#signal = random_intensity_change(signal) #maybe bad idea for non percentile-normalized signals
 		signal = gauss_noise(signal)
 
 	return signal, time_of_interest/model_signal_length, cclass

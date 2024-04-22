@@ -47,8 +47,8 @@ class SignalAnnotator2(QMainWindow):
         self.effector_selection = []
 
         # Read instructions from target block for now...
-        self.mode = "targets"
-        self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
+        self.mode = "neighborhood"
+        self.instructions_path = self.exp_dir + "configs/signal_annotator_config_neighborhood.json"
         #self.trajectories_path = self.pos+'output/tables/trajectories_targets.csv'
 
         self.screen_height = self.parent.parent.parent.screen_height
@@ -1119,13 +1119,16 @@ class SignalAnnotator2(QMainWindow):
             elif cclass_effectors>2:
                 self.effector_suppr_btn.setChecked(True)
         if self.effector_track_of_interest is not None and self.target_track_of_interest is not None:
-            cclass_relative = self.df_relative.loc[
-                (self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
-                self.relative_class_name
-            ].to_numpy()[0]
+            try:
+                cclass_relative = self.df_relative.loc[
+                    (self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                    self.relative_class_name].to_numpy()[0]
 
-            t0_relative = self.df_relative.loc[
-                (self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), self.relative_time_name].to_numpy()[0]
+                t0_relative = self.df_relative.loc[
+                    (self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), self.relative_time_name].to_numpy()[0]
+            except:
+                cclass_relative=2
+                t0_relative=0
 
             if cclass_relative == 0:
                 self.relative_event_btn.setChecked(True)
@@ -2303,11 +2306,11 @@ class SignalAnnotator2(QMainWindow):
                             self.effector_colors[t][idx] = 'magenta'
                         else:
                             self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                            self.effector_colors[t][idx] = 'darkorange'
+                            self.effector_colors[t][idx] = 'salmon'
 
                 for t in range(len(self.effector_colors)):
                     for idx in range(len(self.effector_colors[t])):
-                        if self.effector_colors[t][idx].any() != 'darkorange':
+                        if self.effector_colors[t][idx].any() != 'salmon':
                             if self.effector_colors[t][idx].any() != 'magenta':
                                 self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
                                 self.effector_colors[t][idx] = 'black'
@@ -2345,7 +2348,7 @@ class SignalAnnotator2(QMainWindow):
                 for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
                     if self.effector_colors[t][idx].any() == 'magenta':
                         self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                        self.effector_colors[t][idx] = 'darkorange'
+                        self.effector_colors[t][idx] = 'salmon'
                 self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
                 print(f'You selected track {self.effector_track_of_interest}.')
                 self.hide_effector_cell_info()
@@ -2630,7 +2633,7 @@ class SignalAnnotator2(QMainWindow):
         self.effector_previous_color = []
         for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
             self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-            self.effector_colors[t][idx] = 'darkorange'
+            self.effector_colors[t][idx] = 'salmon'
         # Get the selected effector cell
         self.effector_track_of_interest = float(self.neigh_eff_combo.currentText())
 

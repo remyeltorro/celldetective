@@ -523,18 +523,22 @@ class TableUI(QMainWindow):
 			column_names = self.data.columns
 			unique_cols = np.unique(col_idx)
 
-			fig, ax = plt.subplots(1, 1, figsize=(7, 5.5))
+			self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
+			self.plot_wdw = FigureCanvas(self.fig, title="scatter")
+			self.ax.clear()
 			for k in range(len(unique_cols)):
-
 				row_idx_i = row_idx[np.where(col_idx == unique_cols[k])[0]]
 				y = self.data.iloc[row_idx_i, unique_cols[k]]
-				ax.plot(self.data["timeline"][row_idx_i], y, label=column_names[unique_cols[k]])
+				self.ax.plot(self.data["timeline"][row_idx_i], y, label=column_names[unique_cols[k]])
 
-			ax.legend()
-			ax.set_xlabel("time [frame]")
-			ax.set_ylabel(self.title)
+			self.ax.legend()
+			self.ax.set_xlabel("time [frame]")
+			self.ax.set_ylabel(self.title)
 			plt.tight_layout()
-			plt.show(block=False)
+			self.fig.set_facecolor('none')  # or 'None'
+			self.fig.canvas.setStyleSheet("background-color: transparent;")
+			self.plot_wdw.canvas.draw()
+			plt.show()
 
 		elif self.plot_mode == "plot_track_signals":
 

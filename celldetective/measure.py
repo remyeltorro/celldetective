@@ -1240,7 +1240,7 @@ def blob_detection(image, label, threshold, diameter):
         removed_background[np.where(dilated_copy == 0)] = 0
         min_sigma = (1 / (1 + math.sqrt(2))) * diameter
         max_sigma = math.sqrt(2) * min_sigma
-        blobs = skimage.feature.blob_dog(removed_background, threshold_rel=threshold, min_sigma=min_sigma,
+        blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
                                          max_sigma=max_sigma)
 
         mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])

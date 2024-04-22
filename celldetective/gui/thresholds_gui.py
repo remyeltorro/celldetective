@@ -1125,6 +1125,7 @@ class ThresholdSpot(ThresholdConfigWizard):
 			self.close()
 
 	def populate_left_panel(self):
+
 		self.left_layout = QVBoxLayout()
 		diameter_layout=QHBoxLayout()
 		self.diameter_lbl = QLabel('Spot diameter: ')
@@ -1200,8 +1201,6 @@ class ThresholdSpot(ThresholdConfigWizard):
 		self.left_panel.setContentsMargins(30, 30, 30, 30)
 		self.populate_left_panel()
 		self.draw_spot_preview()
-		self.right_panel.addWidget(self.fcanvas.canvas)
-		self.right_panel.addWidget(self.fcanvas.toolbar)
 		self.setCentralWidget(self.button_widget)
 		contrast_slider_layout = QHBoxLayout()
 		self.contrast_slider = QLabeledDoubleRangeSlider()
@@ -1225,6 +1224,8 @@ class ThresholdSpot(ThresholdConfigWizard):
 		self.diameter_value.textChanged.connect(self.enable_preview)
 		self.threshold_value.textChanged.connect(self.enable_preview)
 
+		self.right_panel.addWidget(self.fcanvas.canvas)
+		self.right_panel.addWidget(self.fcanvas.toolbar)
 
 		main_layout.addLayout(self.right_panel)
 		main_layout.addLayout(self.left_panel)

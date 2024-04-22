@@ -707,7 +707,7 @@ class ConfigMeasurements(QMainWindow):
         if len(movies) == 0:
             msgBox = QMessageBox()
             msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("No movies are detected in the experiment folder. Cannot load an image to test Haralick.")
+            msgBox.setText("No movies are detected in the experiment folder. Cannot load an image...")
             msgBox.setWindowTitle("Warning")
             msgBox.setStandardButtons(QMessageBox.Ok)
             returnValue = msgBox.exec()
@@ -1375,7 +1375,11 @@ class ConfigMeasurements(QMainWindow):
 
     def spot_preview(self):
         self.locate_image()
-        self.locate_mask()
+        if self.test_frame is not None:
+            self.locate_mask()
+            if self.test_mask is not None:
+                self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
+                                                 mask=self.test_mask, parent=self)
         # for dictionary in self.background_correction:
         #     if self.spot_channel.currentText() in dictionary['target channel']:
         #         if dictionary['mode'] == 'field':
@@ -1400,8 +1404,6 @@ class ConfigMeasurements(QMainWindow):
         #                                                  operation=dictionary['operation'])
         #             self.test_frame[:, :, self.spot_channel.currentIndex()] = normalised_image
 
-        self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
-                                         mask=self.test_mask, parent=self)
 
     def enable_spot_detection(self):
         if self.spot_check.isChecked():

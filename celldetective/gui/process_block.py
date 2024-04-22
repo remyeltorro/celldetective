@@ -4,6 +4,8 @@ from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
+
+from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
 from celldetective.io import locate_segmentation_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI, SignalAnnotator2
@@ -114,7 +116,7 @@ class ProcessPanel(QFrame):
 		self.view_tab_btn = QPushButton("View table")
 		self.view_tab_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
-		self.view_tab_btn.setToolTip('poop twice a day for a healthy gut')
+		self.view_tab_btn.setToolTip('View table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
 		#self.view_tab_btn.setEnabled(False)
@@ -143,12 +145,21 @@ class ProcessPanel(QFrame):
 		#self.to_disable.append(self.measure_action_tc)
 
 		self.classify_btn = QPushButton()
-		self.classify_btn.setIcon(icon(MDI6.scatter_plot,color="black"))
+		self.classify_btn.setIcon(icon(MDI6.scatter_plot, color="black"))
 		self.classify_btn.setIconSize(QSize(20, 20))
 		self.classify_btn.setToolTip("Classify data.")
 		self.classify_btn.setStyleSheet(self.parent.parent.button_select_all)
 		self.classify_btn.clicked.connect(self.open_classifier_ui)
 		measure_layout.addWidget(self.classify_btn, 5) #4,2,1,1, alignment=Qt.AlignRight
+
+		self.check_measurements_btn=QPushButton()
+		self.check_measurements_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
+		self.check_measurements_btn.setIconSize(QSize(20, 20))
+		self.check_measurements_btn.setToolTip("View measurement output.")
+		self.check_measurements_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.check_measurements_btn.clicked.connect(self.check_measurements)
+		measure_layout.addWidget(self.check_measurements_btn, 5)
+
 
 		self.measurements_config_btn = QPushButton()
 		self.measurements_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
@@ -312,13 +323,13 @@ class ProcessPanel(QFrame):
 		self.upload_model_btn.setIcon(icon(MDI6.upload,color="black"))
 		self.upload_model_btn.setIconSize(QSize(20, 20))
 		self.upload_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
-		self.upload_model_btn.setToolTip("Upload a new segmentation model (Deep learning or threshold-based).")
+		self.upload_model_btn.setToolTip("Upload a new segmentation model\n(Deep learning or threshold-based).")
 		model_zoo_layout.addWidget(self.upload_model_btn, 5)
 		self.upload_model_btn.clicked.connect(self.upload_segmentation_model)
 		# self.to_disable.append(self.upload_tc_model)
 
 		self.train_btn = QPushButton("TRAIN")
-		self.train_btn.setToolTip("Train or retrain a segmentation model on newly annotated data.")
+		self.train_btn.setToolTip("Train or retrain a segmentation model\non newly annotated data.")
 		self.train_btn.setIcon(icon(MDI6.redo_variant,color='black'))
 		self.train_btn.setIconSize(QSize(20, 20))
 		self.train_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
@@ -372,6 +383,12 @@ class ProcessPanel(QFrame):
 			self.SignalAnnotator = SignalAnnotator(self)
 			self.SignalAnnotator.show()		
 
+	def check_measurements(self):
+
+		test = self.parent.locate_selected_position()
+		if test:
+			self.MeasureAnnotator = MeasureAnnotator(self)
+			self.MeasureAnnotator.show()
 
 	def enable_segmentation_model_list(self):
 		if self.segment_action.isChecked():
@@ -467,8 +484,23 @@ class ProcessPanel(QFrame):
 		self.ConfigMeasurements.show()
 
 	def open_classifier_ui(self):
-		self.ClassifierWidget = ClassifierWidget(self)
-		self.ClassifierWidget.show()
+
+		self.load_available_tables()
+		if self.df is None:
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table was found...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None	
+			else:
+				return None
+		else:	
+			self.ClassifierWidget = ClassifierWidget(self)
+			self.ClassifierWidget.show()
 
 	def open_signal_annotator_configuration_ui(self):
 		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
@@ -1038,6 +1070,7 @@ class NeighPanel(QFrame):
 													img_shape=(self.parent.shape_x,self.parent.shape_y), 
 													return_tables=False,
 													clear_neigh=config['clear_neigh'],
+													event_time_col=config['event_time_col'],
 													neighborhood_kwargs=config['neighborhood_kwargs'],
 													)
 				if self.measure_rel.isChecked():

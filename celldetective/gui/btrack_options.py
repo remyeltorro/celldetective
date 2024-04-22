@@ -45,7 +45,7 @@ class ConfigTracking(QMainWindow):
 		self.screen_height = self.parent.parent.parent.screen_height
 
 		center_window(self)
-		self.setMinimumWidth(500)
+		self.setMinimumWidth(540)
 		self.setMinimumHeight(int(0.3*self.screen_height))
 		self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()

@@ -9,7 +9,6 @@ Celldetective
 		</p>
 	</embed>
 
-
 Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images.
 
 - **Documentation:** https://celldetective.readthedocs.io
@@ -19,6 +18,16 @@ Celldetective is a python package and software to perform single-cell analysis o
 
 Overview
 --------
+
+.. raw:: html
+
+	<embed>
+		<p align="center">
+		<img src="https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/celldetective-blocks.png" width="90%" />
+		</p>
+	</embed>
+
+
 
 Despite notable efforts in the development of user-friendly softwares that integrate state-of-the-art solutions to perform single cell analysis, very few are designed for time-lapse data and even less for multimodal problems where cells populations are mixed and can only be separated through the use of multimodal information. Few software solutions provide, to our knowledge, the extraction of response functions from single cell events such as the dynamic survival of a population directly in the GUI, as coding skills are usually required to do so. We want to study complex data which is often multimodal time lapse microscopy images of interacting cell populations, without loss of generality. With a high need for an easy-to-use, no-coding-skill-required software adapted to images and intended for biologists, we introduce **Celldetective**, an open-source python-based software with the following highlight features:
 
@@ -30,6 +39,15 @@ Despite notable efforts in the development of user-friendly softwares that integ
 * **In-software analysis** : Celldetective ships visualization tools to collapse single-cell signals with respect to an event, build survival curves, compare measurement distributions across biological conditions.
 * **A library of segmentation and signal models**: we created specific models to investigate a co-culture of MCF-7 cells and primary NK cells, that are available directly is the software with a large collection of generalist models developed by the StarDist and Cellpose teams, which are a perfect starting point to segment single cells in a new biological system. 
 * **Accessible and open source** : Celldetective does not require any coding skills. The software, its models and datasets are made fully open source to encourage transparency and reproducibility.
+
+
+.. raw:: html
+
+	<embed>
+		<p align="center">
+		<img src="https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/signal-annotator.gif" width="90%" />
+		</p>
+	</embed>
 
 
 
@@ -122,7 +140,26 @@ https://celldetective.readthedocs.io/
 How to cite?
 ============
 
-Citation instructions will be updated once we obtain a DOI.
+If you use this software in your research, please cite the `Celldetective <https://www.biorxiv.org/content/10.1101/2024.03.15.585250v1>`_  paper (currently preprint):
+
+.. code-block:: raw
+
+	@article {Torro2024.03.15.585250,
+		author = {R{\'e}my Torro and Beatriz D{\`\i}az-Bello and Dalia El Arawi and Lorna Ammer and Patrick Chames and Kheya Sengupta and Laurent Limozin},
+		title = {Celldetective: an AI-enhanced image analysis tool for unraveling dynamic cell interactions},
+		elocation-id = {2024.03.15.585250},
+		year = {2024},
+		doi = {10.1101/2024.03.15.585250},
+		publisher = {Cold Spring Harbor Laboratory},
+		abstract = {A current key challenge in bioimaging is the analysis of multimodal and multidimensional data reporting dynamic interactions between diverse cell populations. We developed Celldetective, a software that integrates AI-based segmentation and tracking algorithms and automated signal analysis into a user-friendly graphical interface. It offers complete interactive visualization, annotation, and training capabilities. We demonstrate it by analyzing original experimental data of spreading immune effector cells as well as antibody-dependent cell cytotoxicity events using multimodal fluorescence microscopy.Competing Interest StatementThe authors have declared no competing interest.},
+		URL = {https://www.biorxiv.org/content/early/2024/03/17/2024.03.15.585250},
+		eprint = {https://www.biorxiv.org/content/early/2024/03/17/2024.03.15.585250.full.pdf},
+		journal = {bioRxiv}
+	}
+
+
+Make sure you to cite the papers of any segmentation model (StarDist, Cellpose) or tracker (bTrack) you used through Celldetective.
+
 
 Bibliography
 ============

@@ -56,9 +56,9 @@ class QueryWidget(QWidget):
 
 	def filter_table(self):
 		try:
-			query_text = self.query_le.text().replace('class','`class`')
+			query_text = self.query_le.text().replace('class', '`class`')
 			tab = self.parent.data.query(query_text)
-			self.subtable = TableUI(tab,query_text, plot_mode="scatter")
+			self.subtable = TableUI(tab, query_text, plot_mode="scatter")
 			self.subtable.show()
 			self.close()
 		except Exception as e:
@@ -125,6 +125,7 @@ class TableUI(QMainWindow):
 
 		self.model = PandasModel(data)
 		self.table_view.setModel(self.model)
+		self.table_view.resizeColumnsToContents()
 
 	def _createActions(self):
 
@@ -196,7 +197,7 @@ class TableUI(QMainWindow):
 		x = self.table_view.selectedIndexes()
 		col_idx = np.unique(np.array([l.column() for l in x]))
 
-		if len(col_idx)==0:
+		if len(col_idx) == 0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
 			msgBox.setText(f"Please select a column first.")
@@ -272,7 +273,7 @@ class TableUI(QMainWindow):
 		layout = QVBoxLayout()
 		self.projectionWidget.setLayout(layout)
 		self.projection_op_cb = QComboBox()
-		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum', 'std', 'var', 'sem', 'skew', 'kurt', 'idmax', 'idmin'])
+		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum'])
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('operation: '), 33)
 		hbox.addWidget(self.projection_op_cb, 66)
@@ -300,8 +301,8 @@ class TableUI(QMainWindow):
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
 		self.strip_check = QCheckBox('strip')
-		self.box_check = QCheckBox('Boxplot')
-		self.boxenplot_check = QCheckBox('Boxenplot')
+		self.box_check = QCheckBox('Boxplot') #BOXPLOT NOT WORKING
+		self.boxenplot_check = QCheckBox('Boxenplot') #NOT WORKING EITHER
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
@@ -359,10 +360,10 @@ class TableUI(QMainWindow):
 
 		legend=True
 		if self.hist_check.isChecked():
-			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True)
+			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
 			legend = False
 		if self.kde_check.isChecked():
-			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
 			legend = False
 
 		if self.ecdf_check.isChecked():
@@ -374,7 +375,7 @@ class TableUI(QMainWindow):
 			legend = False
 
 		if self.violin_check.isChecked():
-			sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+			sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
 			legend = False
 
 		if self.box_check.isChecked():
@@ -404,8 +405,11 @@ class TableUI(QMainWindow):
 
 		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent']
 		for c in self.static_columns:
-			group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
-
+			try:
+				group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+			except Exception as e:
+				print(e)
+				pass
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
 		self.subtable.show()
 
@@ -447,8 +451,7 @@ class TableUI(QMainWindow):
 	# 		return array
 
 	def plot(self):
-
-		if self.plot_mode=="static":
+		if self.plot_mode == "static":
 	
 			x = self.table_view.selectedIndexes()
 			col_idx = [l.column() for l in x]
@@ -491,13 +494,13 @@ class TableUI(QMainWindow):
 				# self.histogram_window.show()
 
 
-			elif len(unique_cols)==2:
+			elif len(unique_cols) == 2:
 
 				print("two columns, plot mode")
 				x1 = self.test_bool(self.data.iloc[row_idx, unique_cols[0]])
 				x2 = self.test_bool(self.data.iloc[row_idx, unique_cols[1]])
 
-				self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+				self.fig, self.ax = plt.subplots(1, 1, figsize=(4,3))
 				self.scatter_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				self.ax.scatter(x1,x2)
@@ -512,7 +515,7 @@ class TableUI(QMainWindow):
 			else:
 				print("please select less columns")
 
-		elif self.plot_mode=="plot_timeseries":
+		elif self.plot_mode == "plot_timeseries":
 			print("mode plot frames")
 			x = self.table_view.selectedIndexes()
 			col_idx = np.array([l.column() for l in x])
@@ -520,10 +523,10 @@ class TableUI(QMainWindow):
 			column_names = self.data.columns
 			unique_cols = np.unique(col_idx)
 
-			fig,ax = plt.subplots(1,1,figsize=(7,5.5))
+			fig, ax = plt.subplots(1, 1, figsize=(7, 5.5))
 			for k in range(len(unique_cols)):
 
-				row_idx_i = row_idx[np.where(col_idx==unique_cols[k])[0]]
+				row_idx_i = row_idx[np.where(col_idx == unique_cols[k])[0]]
 				y = self.data.iloc[row_idx_i, unique_cols[k]]
 				ax.plot(self.data["timeline"][row_idx_i], y, label=column_names[unique_cols[k]])
 
@@ -533,7 +536,7 @@ class TableUI(QMainWindow):
 			plt.tight_layout()
 			plt.show(block=False)
 
-		elif self.plot_mode=="plot_track_signals":
+		elif self.plot_mode == "plot_track_signals":
 
 			print("mode plot track signals")
 			print('we plot here')
@@ -544,11 +547,11 @@ class TableUI(QMainWindow):
 			column_names = self.data.columns
 			unique_cols = np.unique(col_idx)
 
-			if len(unique_cols)>2:
-				fig,ax = plt.subplots(1,1,figsize=(7,5.5))
+			if len(unique_cols) > 2:
+				fig,ax = plt.subplots(1, 1, figsize=(7, 5.5))
 				for k in range(len(unique_cols)):
 
-					row_idx_i = row_idx[np.where(col_idx==unique_cols[k])[0]]
+					row_idx_i = row_idx[np.where(col_idx == unique_cols[k])[0]]
 					y = self.data.iloc[row_idx_i, unique_cols[k]]
 					print(unique_cols[k])
 					for w,well_group in self.data.groupby('well_name'):
@@ -562,9 +565,9 @@ class TableUI(QMainWindow):
 				plt.tight_layout()
 				plt.show(block=False)
 
-			if len(unique_cols)==2:
+			if len(unique_cols) == 2:
 
-				self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+				self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
 				self.scatter_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				for tid,group in self.data.groupby('TRACK_ID'):
@@ -577,23 +580,22 @@ class TableUI(QMainWindow):
 				self.scatter_wdw.canvas.draw()
 				self.scatter_wdw.show()
 
-			if len(unique_cols)==1:
+			if len(unique_cols) == 1:
 				
-				self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+				self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
 				self.plot_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				
-				if 't0' in list(self.data.columns):
-					ref_time_col = 't0'
-				else:
-					ref_time_col = 'FRAME'
-
+				# if 't0' in list(self.data.columns):
+				# 	ref_time_col = 't0'
+				# else:
+				# 	ref_time_col = 'FRAME'
 
 				for w,well_group in self.data.groupby('well_name'):
 					for pos,pos_group in well_group.groupby('pos_name'):
 						for tid,group_track in pos_group.groupby('TRACK_ID'):
-							self.ax.plot(group_track["FRAME"] - group_track[ref_time_col].to_numpy()[0], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
-				self.ax.set_xlabel(r"$t - t_0$ [frame]")
+							self.ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
+				self.ax.set_xlabel(r"$t$ [frame]")
 				self.ax.set_ylabel(column_names[unique_cols[0]])
 				plt.tight_layout()
 				self.fig.set_facecolor('none')  # or 'None'

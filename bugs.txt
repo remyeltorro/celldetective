@@ -18,5 +18,8 @@ Not working yet
 
 ImportError: cannot import name 'version' from 'packaging' (unknown location)
 
-
+Merge Ksenija:
+* spot detection performed on background corrected image --> mismatch with the threshold set in the GUI applied to original image instead
+* Del button shortcut breaks static measurement UI
+* weird names for double regionprops measurements (eg: intensity displacement distance / angle named wrong)
 

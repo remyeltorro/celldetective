@@ -1100,7 +1100,7 @@ class ConfigMeasurements(QMainWindow):
         if min_threshold == "":
             min_threshold = 0
         current_channel = self.tab2_channel_dropdown.currentIndex()
-        self.threshold_visual = ThresholdNormalisation(min_threshold=int(min_threshold),
+        self.threshold_visual = ThresholdNormalisation(min_threshold=float(min_threshold),
                                                        current_channel=current_channel, parent=self)
 
     def show_clipping_options(self):
@@ -1254,6 +1254,7 @@ class ConfigMeasurements(QMainWindow):
         self.ax.imshow(normalised, cmap='gray')
         self.normalised_img.canvas.draw()
         self.normalised_img.show()
+
     def view_normalisation_contour(self):
 
         """
@@ -1334,7 +1335,6 @@ class ConfigMeasurements(QMainWindow):
         self.spot_channel.addItems(self.channel_names)
         layout.addWidget(self.spot_channel_lbl, 2, 0)
         layout.addWidget(self.spot_channel, 2, 1)
-
         self.diameter_lbl = QLabel('Spot diameter: ')
         self.diameter_value = QLineEdit()
         self.diameter_value.setValidator(self.onlyFloat)
@@ -1362,6 +1362,7 @@ class ConfigMeasurements(QMainWindow):
         self.threshold_value.setEnabled(False)
         self.threshold_lbl.setEnabled(False)
         self.preview_spot.setEnabled(False)
+
 
     def enable_spot_preview(self):
 

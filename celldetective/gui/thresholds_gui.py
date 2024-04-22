@@ -888,18 +888,22 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.pos = self.parent.parent.parent.pos
 		self.exp_dir = self.parent.parent.exp_dir
 		self.soft_path = get_software_location()
+		self.auto_close = False
 
 		self.locate_stack()
-		if self.img is not None:
-			self.test_frame = np.squeeze(self.img)
-			self.frame = std_filter(gauss_filter(self.test_frame, 2), 4)
-			self.threshold_slider = QLabeledDoubleSlider()
-			self.threshold_slider.setOrientation(1)
-			self.initialize_histogram()
-			self.show_threshold_image()
-			self.populate_norm_widget()
-			self.threshold_changed(self.threshold_slider.value())
-			self.setAttribute(Qt.WA_DeleteOnClose)
+		if not self.auto_close:
+			if self.img is not None:
+				self.test_frame = np.squeeze(self.img)
+				self.frame = std_filter(gauss_filter(self.test_frame, 2), 4)
+				self.threshold_slider = QLabeledDoubleSlider()
+				self.threshold_slider.setOrientation(1)
+				self.initialize_histogram()
+				self.show_threshold_image()
+				self.populate_norm_widget()
+				self.threshold_changed(self.threshold_slider.value())
+				self.setAttribute(Qt.WA_DeleteOnClose)
+		else:
+			self.close()
 
 	def show_threshold_image(self):
 		if self.test_frame is not None:
@@ -1060,7 +1064,7 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Ok:
 				self.img = None
-				self.close()
+				self.auto_close = True
 				return None
 
 		if len(movies) == 0:
@@ -1072,7 +1076,8 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Yes:
-				self.close()
+				self.auto_close = True
+				return None
 		else:
 			self.stack_path = movies[0]
 			self.len_movie = self.parent.parent.parent.len_movie
@@ -1236,12 +1241,12 @@ class ThresholdSpot(ThresholdConfigWizard):
 
 	def blob_preview(self, image, label, threshold, diameter):
 		removed_background = image.copy()
-		dilated_image = ndimage.grey_dilation(label, footprint=disk(int(abs(10))))
+		dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
 		removed_background[np.where(dilated_image == 0)] = 0
 		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
 		max_sigma = math.sqrt(2) * min_sigma
-		blobs = skimage.feature.blob_dog(removed_background, threshold_rel=threshold, min_sigma=min_sigma,
-										 max_sigma=max_sigma)
+		blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
+										 max_sigma=max_sigma, overlap=0.75)
 		return blobs
 
 	def update_spots(self):

@@ -1279,8 +1279,7 @@ class ThresholdSpot(ThresholdConfigWizard):
 
 		self.im.set_data(self.frame[:, :, self.current_channel])
 		self.fig_contour.canvas.draw()
-		self.contrast_slider.setValue(
-			[np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
+		self.contrast_slider.setValue(contrast_levels)
 
 
 

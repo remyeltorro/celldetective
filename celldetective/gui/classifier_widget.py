@@ -172,7 +172,7 @@ class ClassifierWidget(QWidget):
 			self.ax_props.set_ylabel(self.features_cb[0].currentText())
 		else:
 			self.scat_props.set_offsets(self.df[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-			colors = [color_from_class(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
+			colors = [color_from_class(c) for c in self.df[self.class_name].to_numpy()]
 			self.scat_props.set_facecolor(colors)
 			self.scat_props.set_alpha(self.currentAlpha)
 			self.ax_props.set_xlabel(self.features_cb[1].currentText())

@@ -177,9 +177,9 @@ class ClassifierWidget(QWidget):
 			self.scat_props.set_alpha(self.currentAlpha)
 			self.ax_props.set_xlabel(self.features_cb[1].currentText())
 			self.ax_props.set_ylabel(self.features_cb[0].currentText())
-
 		self.ax_props.set_xlim(1*self.df[self.features_cb[1].currentText()].min(),1.0*self.df[self.features_cb[1].currentText()].max())
 		self.ax_props.set_ylim(1*self.df[self.features_cb[0].currentText()].min(),1.0*self.df[self.features_cb[0].currentText()].max())
+		self.propscanvas.canvas.toolbar.update()
 		self.propscanvas.canvas.draw_idle()
 
 	def apply_property_query(self):
@@ -213,6 +213,7 @@ class ClassifierWidget(QWidget):
 		self.currentFrame = value
 		self.update_props_scatter()
 
+
 	def set_transparency(self, value):
 		self.currentAlpha = value
 		#fc = self.scat_props.get_facecolors()
@@ -220,6 +221,7 @@ class ClassifierWidget(QWidget):
 		#self.scat_props.set_facecolors(fc)
 		#self.propscanvas.canvas.draw_idle()
 		self.update_props_scatter()
+
 
 	def switch_projection(self):
 		if self.project_times:

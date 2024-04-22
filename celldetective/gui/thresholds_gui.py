@@ -1205,9 +1205,23 @@ class ThresholdSpot(ThresholdConfigWizard):
 
     def update_spots(self):
 
+        try:
+            diameter_value = float(self.diameter_value.text().replace(',','.'))
+        except:
+            print('Diameter could not be converted to float... Abort.')
+            return None
+
+        try:
+            threshold_value = float(self.threshold_value.text().replace(',','.'))
+        except:
+            print('Threshold could not be converted to float... Abort.')
+            return None
+        xlim = self.ax_contour.get_xlim()
+        ylim = self.ax_contour.get_ylim()
+        contrast_levels = self.contrast_slider.value()
         blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
-                                  threshold=float(self.threshold_value.text()),
-                                  diameter=float(self.diameter_value.text()))
+								  threshold=threshold_value,
+								  diameter=diameter_value)
         mask = np.array([self.test_mask[int(y), int(x)] != 0 for y, x, r in blobs])
         if np.any(mask):
             blobs_filtered = blobs[mask]
@@ -1220,12 +1234,15 @@ class ThresholdSpot(ThresholdConfigWizard):
         self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
         for circle in self.circles:
             self.ax_contour.add_artist(circle)
+        self.ax_contour.set_xlim(xlim)
+        self.ax_contour.set_ylim(ylim)
 
         self.im.set_data(self.frame[:, :, self.current_channel])
-
         self.fig_contour.canvas.draw()
-        self.contrast_slider.setValue(
-            [np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
+        self.contrast_slider.setValue(contrast_levels)
+
+
+
 
     def apply(self):
         self.parent.threshold_value.setText(self.threshold_value.text())

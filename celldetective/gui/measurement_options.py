@@ -1097,7 +1097,7 @@ class ConfigMeasurements(QMainWindow):
         if min_threshold == "":
             min_threshold = 0
         current_channel = self.tab2_channel_dropdown.currentIndex()
-        self.threshold_visual = ThresholdNormalisation(min_threshold=int(min_threshold),
+        self.threshold_visual = ThresholdNormalisation(min_threshold=float(min_threshold),
                                                        current_channel=current_channel, parent=self)
 
     def show_clipping_options(self):
@@ -1212,12 +1212,37 @@ class ConfigMeasurements(QMainWindow):
         return x ** 2 + y
 
     def preview_normalisation(self):
+        plt.close('all')
+        plt.figure("Intensity Profiles",figsize=(10, 5))
+
         self.locate_image()
+        diagonal_length = min(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[0], self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[1])
+
+
         normalised, bg_fit = field_normalisation(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()],
                                                  threshold=self.tab2_txt_threshold.text(),
                                                  normalisation_operation=self.tab2_subtract.isChecked(),
                                                  clip=self.tab2_clip.isChecked(),
                                                  mode=self.tab2_dropdown.currentText())
+        diagonal_original = [self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()][i, i] for i in range(diagonal_length)]
+        diagonal_corrected = [normalised[i, i] for i in range(diagonal_length)]
+        diagonal_indices = np.arange(diagonal_length)
+
+        plt.subplot(1, 2, 1)
+        plt.plot(diagonal_indices, diagonal_original, color='black', linewidth=0.2)  # Adjust linewidth here
+        plt.title('Original Image')
+        plt.xlabel('Pixel Index along Diagonal')
+        plt.ylabel('Intensity')
+
+        plt.subplot(1, 2, 2)
+        plt.plot(diagonal_indices, diagonal_corrected, color='black', linewidth=0.2)  # Adjust linewidth here
+        plt.title('Corrected Image')
+        plt.xlabel('Pixel Index along Diagonal')
+        plt.ylabel('Intensity')
+
+        plt.tight_layout()
+        plt.show()
+
         self.fig, self.ax = plt.subplots()
         self.normalised_img = FigureCanvas(self.fig, "Corrected background image preview")
         self.ax.clear()

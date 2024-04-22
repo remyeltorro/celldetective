@@ -273,7 +273,7 @@ class TableUI(QMainWindow):
 		layout = QVBoxLayout()
 		self.projectionWidget.setLayout(layout)
 		self.projection_op_cb = QComboBox()
-		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum', 'std', 'var', 'sem', 'skew', 'kurt', 'idmax', 'idmin'])
+		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum'])
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('operation: '), 33)
 		hbox.addWidget(self.projection_op_cb, 66)
@@ -301,8 +301,8 @@ class TableUI(QMainWindow):
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
 		self.strip_check = QCheckBox('strip')
-		self.box_check = QCheckBox('Boxplot') #BOXPLOT NOT WORKING
-		self.boxenplot_check = QCheckBox('Boxenplot') #NOT WORKING EITHER
+		self.box_check = QCheckBox('Boxplot')
+		self.boxenplot_check = QCheckBox('Boxenplot')
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
@@ -360,10 +360,10 @@ class TableUI(QMainWindow):
 
 		legend=True
 		if self.hist_check.isChecked():
-			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True)
+			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
 			legend = False
 		if self.kde_check.isChecked():
-			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
 			legend = False
 
 		if self.ecdf_check.isChecked():
@@ -375,7 +375,7 @@ class TableUI(QMainWindow):
 			legend = False
 
 		if self.violin_check.isChecked():
-			sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+			sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
 			legend = False
 
 		if self.box_check.isChecked():
@@ -405,8 +405,11 @@ class TableUI(QMainWindow):
 
 		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent']
 		for c in self.static_columns:
-			group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
-
+			try:
+				group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+			except Exception as e:
+				print(e)
+				pass
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
 		self.subtable.show()
 
@@ -441,11 +444,11 @@ class TableUI(QMainWindow):
 				file_name += ".csv"
 			self.data.to_csv(file_name, index=False)
 
-	# def test_bool(self, array):
-	# 	if array.dtype=="bool":
-	# 		return np.array(array, dtype=int)
-	# 	else:
-	# 		return array
+	def test_bool(self, array):
+		if array.dtype=="bool":
+			return np.array(array, dtype=int)
+		else:
+			return array
 
 	def plot(self):
 		if self.plot_mode == "static":
@@ -507,7 +510,7 @@ class TableUI(QMainWindow):
 				self.fig.set_facecolor('none')  # or 'None'
 				self.fig.canvas.setStyleSheet("background-color: transparent;")
 				self.scatter_wdw.canvas.draw()
-				self.scatter_wdw.show(block=False)
+				self.scatter_wdw.show()
 
 			else:
 				print("please select less columns")
@@ -583,17 +586,16 @@ class TableUI(QMainWindow):
 				self.plot_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
 				
-				if 't0' in list(self.data.columns):
-					ref_time_col = 't0'
-				else:
-					ref_time_col = 'FRAME'
-
+				# if 't0' in list(self.data.columns):
+				# 	ref_time_col = 't0'
+				# else:
+				# 	ref_time_col = 'FRAME'
 
 				for w,well_group in self.data.groupby('well_name'):
 					for pos,pos_group in well_group.groupby('pos_name'):
 						for tid,group_track in pos_group.groupby('TRACK_ID'):
-							self.ax.plot(group_track["FRAME"] - group_track[ref_time_col].to_numpy()[0], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
-				self.ax.set_xlabel(r"$t - t_0$ [frame]")
+							self.ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
+				self.ax.set_xlabel(r"$t$ [frame]")
 				self.ax.set_ylabel(column_names[unique_cols[0]])
 				plt.tight_layout()
 				self.fig.set_facecolor('none')  # or 'None'

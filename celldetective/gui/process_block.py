@@ -115,7 +115,7 @@ class ProcessPanel(QFrame):
 		self.view_tab_btn = QPushButton("View table")
 		self.view_tab_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
-		self.view_tab_btn.setToolTip('poop twice a day for a healthy gut')
+		self.view_tab_btn.setToolTip('View table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
 		#self.view_tab_btn.setEnabled(False)
@@ -322,13 +322,13 @@ class ProcessPanel(QFrame):
 		self.upload_model_btn.setIcon(icon(MDI6.upload,color="black"))
 		self.upload_model_btn.setIconSize(QSize(20, 20))
 		self.upload_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
-		self.upload_model_btn.setToolTip("Upload a new segmentation model (Deep learning or threshold-based).")
+		self.upload_model_btn.setToolTip("Upload a new segmentation model\n(Deep learning or threshold-based).")
 		model_zoo_layout.addWidget(self.upload_model_btn, 5)
 		self.upload_model_btn.clicked.connect(self.upload_segmentation_model)
 		# self.to_disable.append(self.upload_tc_model)
 
 		self.train_btn = QPushButton("TRAIN")
-		self.train_btn.setToolTip("Train or retrain a segmentation model on newly annotated data.")
+		self.train_btn.setToolTip("Train or retrain a segmentation model\non newly annotated data.")
 		self.train_btn.setIcon(icon(MDI6.redo_variant,color='black'))
 		self.train_btn.setIconSize(QSize(20, 20))
 		self.train_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
@@ -483,8 +483,23 @@ class ProcessPanel(QFrame):
 		self.ConfigMeasurements.show()
 
 	def open_classifier_ui(self):
-		self.ClassifierWidget = ClassifierWidget(self)
-		self.ClassifierWidget.show()
+
+		self.load_available_tables()
+		if self.df is None:
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table was found...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None	
+			else:
+				return None
+		else:	
+			self.ClassifierWidget = ClassifierWidget(self)
+			self.ClassifierWidget.show()
 
 	def open_signal_annotator_configuration_ui(self):
 		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
@@ -1034,6 +1049,7 @@ class NeighPanel(QFrame):
 													img_shape=(self.parent.shape_x,self.parent.shape_y), 
 													return_tables=False,
 													clear_neigh=config['clear_neigh'],
+													event_time_col=config['event_time_col'],
 													neighborhood_kwargs=config['neighborhood_kwargs'],
 													)
 		print('Done.')

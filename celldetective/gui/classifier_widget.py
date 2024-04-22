@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxL
 from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class
 import numpy as np
 import matplotlib.pyplot as plt
-from superqt import QLabeledSlider
+from superqt import QLabeledSlider,QLabeledDoubleSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from PyQt5.QtCore import Qt, QSize
@@ -23,8 +23,10 @@ class ClassifierWidget(QWidget):
 		self.parent = parent
 		self.screen_height = self.parent.parent.parent.screen_height
 		self.screen_width = self.parent.parent.parent.screen_width
+		self.currentAlpha = 1.0
+
 		self.setWindowTitle("Custom classification")
-		self.parent.load_available_tables()
+
 		self.mode = self.parent.mode
 		self.df = self.parent.df
 
@@ -78,6 +80,21 @@ class ClassifierWidget(QWidget):
 		layout.addLayout(slider_hbox)
 
 
+		# transparency slider
+		self.alpha_slider = QLabeledDoubleSlider()
+		self.alpha_slider.setSingleStep(0.001)
+		self.alpha_slider.setOrientation(1)
+		self.alpha_slider.setRange(0,1)
+		self.alpha_slider.setValue(1.0)
+		self.alpha_slider.setDecimals(3)
+
+		slider_alpha_hbox = QHBoxLayout()
+		slider_alpha_hbox.addWidget(QLabel('transparency: '), 10)
+		slider_alpha_hbox.addWidget(self.alpha_slider, 90)
+		layout.addLayout(slider_alpha_hbox)
+
+
+
 		self.features_cb = [QComboBox() for i in range(2)]
 		self.log_btns = [QPushButton() for i in range(2)]
 
@@ -118,6 +135,7 @@ class ClassifierWidget(QWidget):
 		layout.addWidget(self.submit_btn, 30)
 
 		self.frame_slider.valueChanged.connect(self.set_frame)
+		self.alpha_slider.valueChanged.connect(self.set_transparency)
 
 	def init_class(self):
 
@@ -139,7 +157,7 @@ class ClassifierWidget(QWidget):
 		self.propscanvas = FigureCanvas(self.fig_props, interactive=True)
 		self.fig_props.set_facecolor('none')
 		self.fig_props.canvas.setStyleSheet("background-color: transparent;")
-		self.scat_props = self.ax_props.scatter([],[], color='k', alpha=0.75)
+		self.scat_props = self.ax_props.scatter([],[], color="k", alpha=self.currentAlpha)
 		self.propscanvas.canvas.draw_idle()
 		self.propscanvas.canvas.setMinimumHeight(self.screen_height//5)
 
@@ -147,13 +165,16 @@ class ClassifierWidget(QWidget):
 
 		if not self.project_times:
 			self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-			self.scat_props.set_facecolor([color_from_class(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()])
+			colors = [color_from_class(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
+			self.scat_props.set_facecolor(colors)
+			self.scat_props.set_alpha(self.currentAlpha)
 			self.ax_props.set_xlabel(self.features_cb[1].currentText())
 			self.ax_props.set_ylabel(self.features_cb[0].currentText())
 		else:
-
 			self.scat_props.set_offsets(self.df[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-			self.scat_props.set_facecolor([color_from_class(c) for c in self.df[self.class_name].to_numpy()])
+			colors = [color_from_class(c) for c in self.df[self.class_name].to_numpy()]
+			self.scat_props.set_facecolor(colors)
+			self.scat_props.set_alpha(self.currentAlpha)
 			self.ax_props.set_xlabel(self.features_cb[1].currentText())
 			self.ax_props.set_ylabel(self.features_cb[0].currentText())
 
@@ -192,6 +213,14 @@ class ClassifierWidget(QWidget):
 		self.currentFrame = value
 		self.update_props_scatter()
 
+	def set_transparency(self, value):
+		self.currentAlpha = value
+		#fc = self.scat_props.get_facecolors()
+		#fc[:, 3] = value
+		#self.scat_props.set_facecolors(fc)
+		#self.propscanvas.canvas.draw_idle()
+		self.update_props_scatter()
+
 	def switch_projection(self):
 		if self.project_times:
 			self.project_times = False
@@ -206,7 +235,10 @@ class ClassifierWidget(QWidget):
 		self.update_props_scatter()
 
 	def submit_classification(self):
+		
 		print('submit')
+		self.apply_property_query()
+
 		if self.time_corr.isChecked():
 			self.class_name_user = 'class_'+self.name_le.text()
 			print(f'User defined class name: {self.class_name_user}.')

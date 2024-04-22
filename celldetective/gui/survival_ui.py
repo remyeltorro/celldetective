@@ -49,6 +49,7 @@ class ConfigSurvival(QWidget):
 		self.well_labels = _extract_labels_from_config(self.exp_config,len(self.wells))
 		self.FrameToMin = self.parent.parent.FrameToMin
 		self.float_validator = QDoubleValidator()
+		self.auto_close = False
 
 		print('Parent wells: ', self.wells)
 
@@ -66,6 +67,8 @@ class ConfigSurvival(QWidget):
 		#self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
 		#self.load_previous_measurement_instructions()
+		if self.auto_close:
+			self.close()
 
 	def interpret_pos_location(self):
 		
@@ -160,8 +163,13 @@ class ConfigSurvival(QWidget):
 		# 	if c in class_columns:
 		# 		class_columns.remove(c)
 
-		time_columns = list(self.all_columns[time_idx])
-		
+		try:
+			time_columns = list(self.all_columns[time_idx])
+		except:
+			print('no column starts with t')
+			self.auto_close = True
+			return None
+
 		self.cbs[1].clear()
 		self.cbs[1].addItems(np.unique(self.cb_options[1]+time_columns))
 
@@ -374,6 +382,15 @@ class ConfigSurvival(QWidget):
 
 		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.cbs[0].currentText(), return_pos_info=True)
 		if self.df is None:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table could be found.. Abort.")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.close()
+				return None		
 			print('no table could be found...')
 		else:
 			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()

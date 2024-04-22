@@ -1203,37 +1203,37 @@ class ThresholdSpot(ThresholdConfigWizard):
                                          max_sigma=max_sigma)
         return blobs
 
-	def update_spots(self):
+    def update_spots(self):
 
-		try:
-			diameter_value = float(self.diameter_value.text().replace(',','.'))
-		except:
-			print('Diameter could not be converted to float... Abort.')
-			return None
+        try:
+            diameter_value = float(self.diameter_value.text().replace(',','.'))
+        except:
+            print('Diameter could not be converted to float... Abort.')
+            return None
 
-		try:
-			threshold_value = float(self.threshold_value.text().replace(',','.'))
-		except:
-			print('Threshold could not be converted to float... Abort.')
-			return None
+        try:
+            threshold_value = float(self.threshold_value.text().replace(',','.'))
+        except:
+            print('Threshold could not be converted to float... Abort.')
+            return None
         xlim = self.ax_contour.get_xlim()
         ylim = self.ax_contour.get_ylim()
         contrast_levels = self.contrast_slider.value()
-		blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
+        blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
 								  threshold=threshold_value,
 								  diameter=diameter_value)
-		mask = np.array([self.test_mask[int(y), int(x)] != 0 for y, x, r in blobs])
-		if np.any(mask):
-			blobs_filtered = blobs[mask]
-		else:
-			blobs_filtered = []
-		self.ax_contour.clear()
-		self.im = self.ax_contour.imshow(self.frame[:, :, self.current_channel], cmap='gray')
-		self.ax_contour.set_xticks([])
-		self.ax_contour.set_yticks([])
-		self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
-		for circle in self.circles:
-			self.ax_contour.add_artist(circle)
+        mask = np.array([self.test_mask[int(y), int(x)] != 0 for y, x, r in blobs])
+        if np.any(mask):
+            blobs_filtered = blobs[mask]
+        else:
+            blobs_filtered = []
+        self.ax_contour.clear()
+        self.im = self.ax_contour.imshow(self.frame[:, :, self.current_channel], cmap='gray')
+        self.ax_contour.set_xticks([])
+        self.ax_contour.set_yticks([])
+        self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
+        for circle in self.circles:
+            self.ax_contour.add_artist(circle)
         self.ax_contour.set_xlim(xlim)
         self.ax_contour.set_ylim(ylim)
 

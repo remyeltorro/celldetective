@@ -301,8 +301,8 @@ class TableUI(QMainWindow):
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
 		self.strip_check = QCheckBox('strip')
-		self.box_check = QCheckBox('Boxplot') #BOXPLOT NOT WORKING
-		self.boxenplot_check = QCheckBox('Boxenplot') #NOT WORKING EITHER
+		self.box_check = QCheckBox('Boxplot')
+		self.boxenplot_check = QCheckBox('Boxenplot')
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
@@ -444,11 +444,11 @@ class TableUI(QMainWindow):
 				file_name += ".csv"
 			self.data.to_csv(file_name, index=False)
 
-	# def test_bool(self, array):
-	# 	if array.dtype=="bool":
-	# 		return np.array(array, dtype=int)
-	# 	else:
-	# 		return array
+	def test_bool(self, array):
+		if array.dtype=="bool":
+			return np.array(array, dtype=int)
+		else:
+			return array
 
 	def plot(self):
 		if self.plot_mode == "static":
@@ -510,7 +510,7 @@ class TableUI(QMainWindow):
 				self.fig.set_facecolor('none')  # or 'None'
 				self.fig.canvas.setStyleSheet("background-color: transparent;")
 				self.scatter_wdw.canvas.draw()
-				self.scatter_wdw.show(block=False)
+				self.scatter_wdw.show()
 
 			else:
 				print("please select less columns")

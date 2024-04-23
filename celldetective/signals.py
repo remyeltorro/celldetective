@@ -1119,8 +1119,10 @@ class SignalDetectionModel(object):
 		self.model_reg.load_weights(os.sep.join([self.model_folder,"regressor.h5"]))
 		self.evaluate_regression_model()
 		
-		np.save(os.sep.join([self.model_folder,"scores.npy"]), self.dico)
-		
+		try:
+			np.save(os.sep.join([self.model_folder,"scores.npy"]), self.dico)
+		except Exception as e:
+			print(e)
 
 
 	def plot_model_history(self, mode="regressor"):

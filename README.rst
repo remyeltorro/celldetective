@@ -9,7 +9,7 @@ Celldetective
 		</p>
 	</embed>
 
-|ico1| |ico2| |ico3|
+|ico1| |ico4| |ico2| |ico3|
  
 .. |ico1| image:: https://img.shields.io/readthedocs/celldetective?link=https%3A%2F%2Fcelldetective.readthedocs.io%2Fen%2Flatest%2Findex.html
 
@@ -17,6 +17,7 @@ Celldetective
 
 .. |ico3| image:: https://img.shields.io/github/stars/remyeltorro/celldetective?link=https%3A%2F%2Fgithub.com%2Fremyeltorro%2Fcelldetective%2Fstargazers
 
+.. |ico4| image:: https://img.shields.io/pypi/v/celldetective
 
 Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images. 
 

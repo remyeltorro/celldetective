@@ -15,7 +15,7 @@
 .. |ico3| image:: https://img.shields.io/github/stars/remyeltorro/celldetective?link=https%3A%2F%2Fgithub.com%2Fremyeltorro%2Fcelldetective%2Fstargazers
 
 
-Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images.
+Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images. 
 
 - **Documentation:** https://celldetective.readthedocs.io
 - **Source code:** https://github.com/remyeltorro/celldetective

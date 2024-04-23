@@ -7,16 +7,22 @@ from pip._internal.req import parse_requirements
 links = []
 requires = []
 
-inst_req = parse_requirements('requirements.txt', session='hack')
+requirements = parse_requirements('requirements.txt', session='hack')
+requirements = list(requirements) 
+try:
+    requirements = [str(ir.req) for ir in install_reqs]
+except:
+    requirements = [str(ir.requirement) for ir in install_reqs]
 
-for item in inst_req:
-		# we want to handle package names and also repo urls
-		if getattr(item, 'url', None):  # older pip has url
-				links.append(str(item.url))
-		if getattr(item, 'link', None): # newer pip has link
-				links.append(str(item.link))
-		if item.req:
-				requires.append(str(item.req))
+
+# for item in requirements:
+# 		# we want to handle package names and also repo urls
+# 		if getattr(item, 'url', None):  # older pip has url
+# 				links.append(str(item.url))
+# 		if getattr(item, 'link', None): # newer pip has link
+# 				links.append(str(item.link))
+# 		if item.req:
+# 				requires.append(str(item.req))
 
 setup(name='celldetective',
 			version='1.0.2.post1',
@@ -35,6 +41,6 @@ setup(name='celldetective',
 					'celldetective = celldetective.__main__:main'],
 			},
 			install_requires = requires,
-			dependency_links = links
+			#dependency_links = links
 			)
 

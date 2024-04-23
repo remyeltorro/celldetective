@@ -3,9 +3,9 @@ import setuptools
 import pip
 
 try: # for pip >= 10
-		from pip._internal.req import parse_requirements
+		from pip._internal.req import parse_requirements, download
 except ImportError: # for pip <= 9.0.3
-		from pip.req import parse_requirements
+		from pip.req import parse_requirements, download
 
 links = []
 requires = []
@@ -15,7 +15,7 @@ try:
 except:
 		# new versions of pip requires a session
 		requirements = parse_requirements(
-				'requirements.txt', session=pip.download.PipSession())
+				'requirements.txt', session=download.PipSession())
 
 for item in requirements:
 		# we want to handle package names and also repo urls

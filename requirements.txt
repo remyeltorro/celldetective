@@ -25,3 +25,4 @@ liblapack
 gputools
 lmfit~=1.2.2
 superqt >= 0.6.1
+setuptools

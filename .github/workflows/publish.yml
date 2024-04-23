@@ -1,7 +1,7 @@
 name: Upload Python Package to PyPI when a Release is Created
 
 on:
-  push:
+  release:
 
 jobs:
   pypi-publish:

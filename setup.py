@@ -4,7 +4,7 @@ import setuptools
 setup(name='celldetective',
 			version='1.0.2',
 			description='description',
-			long_description=open('README.rst').read(),
+			long_description=open('README-pip.rst',encoding="utf8").read(),
       			long_description_content_type='text/x-rst',
 			url='http://github.com/remyeltorro/celldetective',
 			author='Rémy Torro',

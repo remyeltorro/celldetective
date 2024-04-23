@@ -10,7 +10,7 @@ Pytorch: [W NNPACK.cpp:64] Could not initialize NNPACK! Reason: Unsupported hard
 Solution: 
 mamba remove pytorch
 mamba install pytorch
-
+ 
 PyQt5/QtWidgets.abi3.so: undefined symbol: _ZdlPvm, version Qt_5
 pip uninstall pyqt5
 conda install pyqt

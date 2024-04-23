@@ -1,4 +1,5 @@
 from setuptools import setup
+import setuptools
 
 setup(name='celldetective',
       version='1.0.2',

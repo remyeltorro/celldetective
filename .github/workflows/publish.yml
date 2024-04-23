@@ -1,6 +1,6 @@
 name: Publish Python 🐍 distribution 📦 to PyPI
 
-on: push
+on: release
 
 jobs:
   build:

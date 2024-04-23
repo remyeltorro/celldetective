@@ -2,14 +2,19 @@ from setuptools import setup
 import setuptools
 import pip
 
+try: # for pip >= 10
+		from pip._internal.req import parse_requirements
+except ImportError: # for pip <= 9.0.3
+		from pip.req import parse_requirements
+
 links = []
 requires = []
 
 try:
-		requirements = pip.req.parse_requirements('requirements.txt')
+		requirements = parse_requirements('requirements.txt')
 except:
 		# new versions of pip requires a session
-		requirements = pip.req.parse_requirements(
+		requirements = parse_requirements(
 				'requirements.txt', session=pip.download.PipSession())
 
 for item in requirements:

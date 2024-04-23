@@ -10,9 +10,9 @@ requires = []
 requirements = parse_requirements('requirements.txt', session='hack')
 requirements = list(requirements) 
 try:
-    requirements = [str(ir.req) for ir in install_reqs]
+    requirements = [str(ir.req) for ir in requirements]
 except:
-    requirements = [str(ir.requirement) for ir in install_reqs]
+    requirements = [str(ir.requirement) for ir in requirements]
 
 
 # for item in requirements:
@@ -40,7 +40,7 @@ setup(name='celldetective',
 				'console_scripts': [
 					'celldetective = celldetective.__main__:main'],
 			},
-			install_requires = requires,
+			install_requires = requirements,
 			#dependency_links = links
 			)
 

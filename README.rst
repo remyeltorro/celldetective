@@ -159,6 +159,15 @@ The installation of the dependencies will take a few minutes (up to half an hour
 
 Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
 
+Quick start
+===========
+
+You can launch the GUI by 1) opening a terminal and 2) typing the following:
+
+.. code-block:: bash
+
+	python -m celldetective
+
 
 Documentation
 =============

@@ -23,3 +23,9 @@ Merge Ksenija:
 * Del button shortcut breaks static measurement UI
 * weird names for double regionprops measurements (eg: intensity displacement distance / angle named wrong)
 
+
+Error when training StarDist model on old CPU:
+pyopencl._cl.LogicError: clGetPlatformIDs failed: PLATFORM_NOT_FOUND_KHR
+--> pip install pocl-binary-distribution
+
+

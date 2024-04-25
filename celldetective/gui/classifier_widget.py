@@ -161,7 +161,7 @@ class ClassifierWidget(QWidget):
 		self.propscanvas.canvas.draw_idle()
 		self.propscanvas.canvas.setMinimumHeight(self.screen_height//5)
 
-	def update_props_scatter(self):
+	def update_props_scatter(self, feature_changed=True):
 
 		if not self.project_times:
 			self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
@@ -177,9 +177,10 @@ class ClassifierWidget(QWidget):
 			self.scat_props.set_alpha(self.currentAlpha)
 			self.ax_props.set_xlabel(self.features_cb[1].currentText())
 			self.ax_props.set_ylabel(self.features_cb[0].currentText())
-
 		self.ax_props.set_xlim(1*self.df[self.features_cb[1].currentText()].min(),1.0*self.df[self.features_cb[1].currentText()].max())
 		self.ax_props.set_ylim(1*self.df[self.features_cb[0].currentText()].min(),1.0*self.df[self.features_cb[0].currentText()].max())
+		if feature_changed:
+			self.propscanvas.canvas.toolbar.update()
 		self.propscanvas.canvas.draw_idle()
 
 	def apply_property_query(self):
@@ -210,16 +211,25 @@ class ClassifierWidget(QWidget):
 		self.update_props_scatter()
 
 	def set_frame(self, value):
+		xlim=self.ax_props.get_xlim()
+		ylim=self.ax_props.get_ylim()
 		self.currentFrame = value
-		self.update_props_scatter()
+		self.update_props_scatter(feature_changed=False)
+		self.ax_props.set_xlim(xlim)
+		self.ax_props.set_ylim(ylim)
+
 
 	def set_transparency(self, value):
+		xlim=self.ax_props.get_xlim()
+		ylim=self.ax_props.get_ylim()
 		self.currentAlpha = value
 		#fc = self.scat_props.get_facecolors()
 		#fc[:, 3] = value
 		#self.scat_props.set_facecolors(fc)
 		#self.propscanvas.canvas.draw_idle()
-		self.update_props_scatter()
+		self.update_props_scatter(feature_changed=False)
+		self.ax_props.set_xlim(xlim)
+		self.ax_props.set_ylim(ylim)
 
 	def switch_projection(self):
 		if self.project_times:

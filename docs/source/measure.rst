@@ -85,7 +85,7 @@ The isotropic measurements are interfaced in almost the same way as the contour 
 Spot detection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We provide a module for spot detection to count the number of blob-like objects of similar size within a cell mask. You must estimate the average diameter of the spots (in pixels) and increase the relative threshold (between 0 and 1) to remove false positive detections. A visualizer helps determine the detection parameters. The module computes the total number of detected spots and their mean intensity per cell.
+We provide a module for spot detection to count the number of blob-like objects of similar size within a cell mask. You must estimate the average diameter of the spots (in pixels) and increase the intensity threshold to remove false positive detections. A visualizer helps determine the detection parameters. The module computes the total number of detected spots and their mean intensity per cell.
 
 .. figure:: _static/spot_detection.png
     :align: center

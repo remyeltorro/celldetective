@@ -230,7 +230,8 @@ def measure_index(indices):
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
 		if do_iso_intensities and do_features:
-			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
+			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
+			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
 		elif do_iso_intensities * (not do_features):
 			measurements_at_t = iso_table
 		elif do_features:

@@ -8,7 +8,7 @@ from tifffile import imread
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice, color_from_state
 from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QLabeledSlider
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
-from celldetective.io import auto_load_number_of_frames, load_frames, locate_stack
+from celldetective.io import auto_load_number_of_frames, load_frames, locate_stack,locate_labels
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
 import json
 import numpy as np
@@ -1308,6 +1308,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.recently_modified = False
         self.selection = []
         self.int_validator = QIntValidator()
+        self.current_alpha=0.5
         if self.mode == "targets":
             self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
             self.trajectories_path = self.pos + 'output/tables/trajectories_targets.csv'
@@ -1324,6 +1325,7 @@ class MeasureAnnotator(SignalAnnotator):
         center_window(self)
 
         self.locate_stack()
+        self.labels=locate_labels(self.pos,population=self.mode)
         self.current_channel = 0
 
         self.locate_tracks()
@@ -1352,7 +1354,7 @@ class MeasureAnnotator(SignalAnnotator):
         """
 
         self.framedata = 0
-
+        self.current_label=self.labels[self.current_frame]
         self.fig, self.ax = plt.subplots(tight_layout=True)
         self.fcanvas = FigureCanvas(self.fig, interactive=True)
         self.ax.clear()
@@ -1360,6 +1362,8 @@ class MeasureAnnotator(SignalAnnotator):
         self.im = self.ax.imshow(self.img, cmap='gray')
         self.status_scatter = self.ax.scatter(self.positions[0][:, 0], self.positions[0][:, 1], marker="o",
                                               facecolors='none', edgecolors=self.colors[0][:, 0], s=200, picker=True)
+        self.im_mask = self.ax.imshow(np.ma.masked_where(self.current_label == 0, self.current_label),
+                                              cmap='viridis', interpolation='none',alpha=self.current_alpha)
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_aspect('equal')
@@ -1760,7 +1764,21 @@ class MeasureAnnotator(SignalAnnotator):
         self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
         contrast_hbox.addWidget(QLabel('contrast: '))
         contrast_hbox.addWidget(self.contrast_slider, 90)
+
         self.right_panel.addLayout(contrast_hbox, 5)
+        self.alpha_slider = QLabeledDoubleSlider()
+        self.alpha_slider.setSingleStep(0.001)
+        self.alpha_slider.setOrientation(1)
+        self.alpha_slider.setRange(0, 1)
+        self.alpha_slider.setValue(self.current_alpha)
+        self.alpha_slider.setDecimals(3)
+        self.alpha_slider.valueChanged.connect(self.set_transparency)
+
+        slider_alpha_hbox = QHBoxLayout()
+        slider_alpha_hbox.setContentsMargins(150, 5, 150, 5)
+        slider_alpha_hbox.addWidget(QLabel('transparency: '), 10)
+        slider_alpha_hbox.addWidget(self.alpha_slider, 90)
+        self.right_panel.addLayout(slider_alpha_hbox)
 
         channel_hbox = QHBoxLayout()
         self.choose_channel = QComboBox()
@@ -1845,6 +1863,16 @@ class MeasureAnnotator(SignalAnnotator):
         self.time_of_interest_le.setText('')
         self.time_of_interest_le.setEnabled(False)
 
+    # def update_labels(self):
+    #     self.im_mask.remove()
+    #     self.im_mask = self.ax.imshow(np.ma.masked_where(self.current_label == 0, self.current_label),
+    #                                            cmap='viridis', interpolation='none',alpha=self.current_alpha)
+    #     self.fcanvas.canvas.draw()
+
+    def set_transparency(self):
+        self.current_alpha = self.alpha_slider.value()
+        self.im_mask.set_alpha(self.current_alpha)
+        self.fcanvas.canvas.draw()
     def show_annotation_buttons(self):
 
         for a in self.annotation_btns_to_hide:
@@ -1946,14 +1974,17 @@ class MeasureAnnotator(SignalAnnotator):
         """
         Update plot elements at each timestep of the loop.
         """
-
         self.framedata = framedata
         self.frame_lbl.setText(f'position: {self.framedata}')
         self.im.set_array(self.img)
         self.status_scatter.set_offsets(self.positions[self.framedata])
         self.status_scatter.set_edgecolors(self.colors[self.framedata][:, 0])
+        self.current_label = self.labels[self.current_frame]
+        self.im_mask.remove()
+        self.im_mask = self.ax.imshow(np.ma.masked_where(self.current_label == 0, self.current_label),
+                                               cmap='viridis', interpolation='none',alpha=self.current_alpha)
 
-        return (self.im, self.status_scatter,)
+        return (self.im, self.status_scatter,self.im_mask,)
 
     def compute_status_and_colors(self):
         if self.class_choice_cb.currentText() == '':
@@ -2328,6 +2359,8 @@ class MeasureAnnotator(SignalAnnotator):
             self.img = load_frames(0, self.stack_path, normalize_input=False)
             print(self.img.shape)
             print(f'{self.stack_path} successfully located.')
+
+
 
     def reload_frame(self):
 

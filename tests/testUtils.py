@@ -1,6 +1,6 @@
 import unittest
 import matplotlib.pyplot as plt
-from celldetective.utils import create_patch_mask, remove_redundant_features
+from celldetective.utils import create_patch_mask, remove_redundant_features, _extract_channel_indices, _get_img_num_per_channel
 
 class TestPatchMask(unittest.TestCase):
 
@@ -27,6 +27,30 @@ class TestRemoveRedundantFeatures(unittest.TestCase):
 	def test_remove_red_features(self):
 		self.assertEqual(remove_redundant_features(self.list_a, self.list_b, channel_names=['test_channel']), self.expected)
 
+
+class TestExtractChannelIndices(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.channels = ['ch1','ch2','ch3','ch4']
+		self.required_channels = ['ch4','ch2']
+		self.expected_indices = [3,1]
+
+	def test_extracted_channels_are_correct(self):
+		self.assertEqual(list(_extract_channel_indices(self.channels, self.required_channels)), self.expected_indices)
+
+
+class TestImgIndexPerChannel(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.channels_indices = [1]
+		self.len_movie = 5
+		self.nbr_channels = 3
+		self.expected_indices = [1,4,7,10,13]
+
+	def test_index_sequence_is_correct(self):
+		self.assertEqual(list(_get_img_num_per_channel(self.channels_indices, self.len_movie, self.nbr_channels)[0]), self.expected_indices)
 
 if __name__=="__main__":
 	unittest.main()

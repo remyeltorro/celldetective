@@ -1200,12 +1200,33 @@ def color_from_class(cclass, recently_modified=False):
 
 def random_fliprot(img, mask):
 
-	"""
+    """
+    Randomly flips and rotates an image and its corresponding mask.
 
-	Perform random flipping of the image and the associated mask. 
-	Needs YXC (channel last).
+    This function applies a series of random flips and permutations (rotations) to both the input image and its
+    associated mask, ensuring that any transformations applied to the image are also exactly applied to the mask.
+    The function is designed to handle multi-dimensional images (e.g., multi-channel images in YXC format where
+    channels are last).
 
-	"""
+    Parameters
+    ----------
+    img : ndarray
+        The input image to be transformed. This array is expected to have dimensions where the channel axis is last.
+    mask : ndarray
+        The mask corresponding to `img`, to be transformed in the same way as the image.
+
+    Returns
+    -------
+    tuple of ndarray
+        A tuple containing the transformed image and mask.
+
+    Raises
+    ------
+    AssertionError
+        If the number of dimensions of the mask exceeds that of the image, indicating incompatible shapes.
+
+    """
+
 	assert img.ndim >= mask.ndim
 	axes = tuple(range(mask.ndim))
 	perm = tuple(np.random.permutation(axes))
@@ -1224,13 +1245,38 @@ def random_fliprot(img, mask):
 
 def random_shift(image,mask, max_shift_amplitude=0.1):
 
-	"""
+    """
+    Randomly shifts an image and its corresponding mask along the X and Y axes.
 
-	Perform random shift of the image in X and or Y. 
-	Needs YXC (channel last).
+    This function shifts both the image and the mask by a randomly chosen distance up to a maximum
+    percentage of the image's dimensions, specified by `max_shift_amplitude`. The shifts are applied
+    independently in both the X and Y directions. This type of augmentation can help improve the robustness
+    of models to positional variations in images.
 
-	"""	
-	
+    Parameters
+    ----------
+    image : ndarray
+        The input image to be shifted. Must be in YXC format (height, width, channels).
+    mask : ndarray
+        The mask corresponding to `image`, to be shifted in the same way as the image.
+    max_shift_amplitude : float, optional
+        The maximum shift as a fraction of the image's dimension. Default is 0.1 (10% of the image's size).
+
+    Returns
+    -------
+    tuple of ndarray
+        A tuple containing the shifted image and mask.
+
+    Notes
+    -----
+    - The shift values are chosen randomly within the range defined by the maximum amplitude.
+    - Shifting is performed using the 'constant' mode where missing values are filled with zeros (cval=0.0),
+      which may introduce areas of zero-padding along the edges of the shifted images and masks.
+    - This function is designed to support data augmentation for machine learning and image processing tasks,
+      particularly in contexts where spatial invariance is beneficial.
+
+    """
+
 	input_shape = image.shape[0]
 	max_shift = input_shape*max_shift_amplitude
 	

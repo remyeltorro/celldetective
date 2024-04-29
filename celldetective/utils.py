@@ -1200,32 +1200,32 @@ def color_from_class(cclass, recently_modified=False):
 
 def random_fliprot(img, mask):
 
-    """
-    Randomly flips and rotates an image and its corresponding mask.
+	"""
+	Randomly flips and rotates an image and its corresponding mask.
 
-    This function applies a series of random flips and permutations (rotations) to both the input image and its
-    associated mask, ensuring that any transformations applied to the image are also exactly applied to the mask.
-    The function is designed to handle multi-dimensional images (e.g., multi-channel images in YXC format where
-    channels are last).
+	This function applies a series of random flips and permutations (rotations) to both the input image and its
+	associated mask, ensuring that any transformations applied to the image are also exactly applied to the mask.
+	The function is designed to handle multi-dimensional images (e.g., multi-channel images in YXC format where
+	channels are last).
 
-    Parameters
-    ----------
-    img : ndarray
-        The input image to be transformed. This array is expected to have dimensions where the channel axis is last.
-    mask : ndarray
-        The mask corresponding to `img`, to be transformed in the same way as the image.
+	Parameters
+	----------
+	img : ndarray
+		The input image to be transformed. This array is expected to have dimensions where the channel axis is last.
+	mask : ndarray
+		The mask corresponding to `img`, to be transformed in the same way as the image.
 
-    Returns
-    -------
-    tuple of ndarray
-        A tuple containing the transformed image and mask.
+	Returns
+	-------
+	tuple of ndarray
+		A tuple containing the transformed image and mask.
 
-    Raises
-    ------
-    AssertionError
-        If the number of dimensions of the mask exceeds that of the image, indicating incompatible shapes.
+	Raises
+	------
+	AssertionError
+		If the number of dimensions of the mask exceeds that of the image, indicating incompatible shapes.
 
-    """
+	"""
 
 	assert img.ndim >= mask.ndim
 	axes = tuple(range(mask.ndim))
@@ -1245,37 +1245,37 @@ def random_fliprot(img, mask):
 
 def random_shift(image,mask, max_shift_amplitude=0.1):
 
-    """
-    Randomly shifts an image and its corresponding mask along the X and Y axes.
+	"""
+	Randomly shifts an image and its corresponding mask along the X and Y axes.
 
-    This function shifts both the image and the mask by a randomly chosen distance up to a maximum
-    percentage of the image's dimensions, specified by `max_shift_amplitude`. The shifts are applied
-    independently in both the X and Y directions. This type of augmentation can help improve the robustness
-    of models to positional variations in images.
+	This function shifts both the image and the mask by a randomly chosen distance up to a maximum
+	percentage of the image's dimensions, specified by `max_shift_amplitude`. The shifts are applied
+	independently in both the X and Y directions. This type of augmentation can help improve the robustness
+	of models to positional variations in images.
 
-    Parameters
-    ----------
-    image : ndarray
-        The input image to be shifted. Must be in YXC format (height, width, channels).
-    mask : ndarray
-        The mask corresponding to `image`, to be shifted in the same way as the image.
-    max_shift_amplitude : float, optional
-        The maximum shift as a fraction of the image's dimension. Default is 0.1 (10% of the image's size).
+	Parameters
+	----------
+	image : ndarray
+		The input image to be shifted. Must be in YXC format (height, width, channels).
+	mask : ndarray
+		The mask corresponding to `image`, to be shifted in the same way as the image.
+	max_shift_amplitude : float, optional
+		The maximum shift as a fraction of the image's dimension. Default is 0.1 (10% of the image's size).
 
-    Returns
-    -------
-    tuple of ndarray
-        A tuple containing the shifted image and mask.
+	Returns
+	-------
+	tuple of ndarray
+		A tuple containing the shifted image and mask.
 
-    Notes
-    -----
-    - The shift values are chosen randomly within the range defined by the maximum amplitude.
-    - Shifting is performed using the 'constant' mode where missing values are filled with zeros (cval=0.0),
-      which may introduce areas of zero-padding along the edges of the shifted images and masks.
-    - This function is designed to support data augmentation for machine learning and image processing tasks,
-      particularly in contexts where spatial invariance is beneficial.
+	Notes
+	-----
+	- The shift values are chosen randomly within the range defined by the maximum amplitude.
+	- Shifting is performed using the 'constant' mode where missing values are filled with zeros (cval=0.0),
+	  which may introduce areas of zero-padding along the edges of the shifted images and masks.
+	- This function is designed to support data augmentation for machine learning and image processing tasks,
+	  particularly in contexts where spatial invariance is beneficial.
 
-    """
+	"""
 
 	input_shape = image.shape[0]
 	max_shift = input_shape*max_shift_amplitude
@@ -1295,9 +1295,35 @@ def random_shift(image,mask, max_shift_amplitude=0.1):
 
 
 def blur(x,max_sigma=4.0):
+
 	"""
-	Random image blur
+	Applies a random Gaussian blur to an image.
+
+	This function blurs an image by applying a Gaussian filter with a randomly chosen sigma value. The sigma
+	represents the standard deviation for the Gaussian kernel and is selected randomly up to a specified maximum.
+	The blurring is applied while preserving the range of the image's intensity values and maintaining any
+	zero-valued pixels as they are.
+
+	Parameters
+	----------
+	x : ndarray
+		The input image to be blurred. The image can have any number of channels, but must be in a format
+		where the channels are the last dimension (YXC format).
+	max_sigma : float, optional
+		The maximum value for the standard deviation of the Gaussian blur. Default is 4.0.
+
+	Returns
+	-------
+	ndarray
+		The blurred image. The output will have the same shape and type as the input image.
+
+	Notes
+	-----
+	- The function ensures that zero-valued pixels in the input image remain unchanged after the blurring,
+	  which can be important for maintaining masks or other specific regions within the image.
+	- Gaussian blurring is commonly used in image processing to reduce image noise and detail by smoothing.
 	"""
+
 	sigma = np.random.random()*max_sigma
 	loc_i,loc_j,loc_c = np.where(x==0.)
 	x = gaussian(x, sigma, channel_axis=-1, preserve_range=True)
@@ -1308,8 +1334,44 @@ def blur(x,max_sigma=4.0):
 def noise(x, apply_probability=0.5, clip_option=False):
 
 	"""
-	Apply random noise to a multichannel image
+	Applies random noise to each channel of a multichannel image based on a specified probability.
 
+	This function introduces various types of random noise to an image. Each channel of the image can be
+	modified independently with different noise models chosen randomly from a predefined list. The application
+	of noise to any given channel is determined by a specified probability, allowing for selective noise
+	addition.
+
+	Parameters
+	----------
+	x : ndarray
+		The input multichannel image to which noise will be added. The image should be in format with channels
+		as the last dimension (e.g., height x width x channels).
+	apply_probability : float, optional
+		The probability with which noise is applied to each channel of the image. Default is 0.5.
+	clip_option : bool, optional
+		Specifies whether to clip the corrupted data to stay within the valid range after noise addition.
+		If True, the output array will be clipped to the range [0, 1] or [0, 255] depending on the input
+		data type. Default is False.
+
+	Returns
+	-------
+	ndarray
+		The noised image. This output has the same shape as the input but potentially altered intensity values
+		due to noise addition.
+
+	Notes
+	-----
+	- The types of noise that can be applied include 'gaussian', 'localvar', 'poisson', and 'speckle'.
+	- The choice of noise type for each channel is randomized and the noise is only applied if a randomly
+	  generated number is less than or equal to `apply_probability`.
+	- Zero-valued pixels in the input image remain zero in the output to preserve background or masked areas.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> x = np.random.rand(256, 256, 3)  # Example 3-channel image
+	>>> noised_image = noise(x)
+	# The image 'x' may have different types of noise applied to each of its channels with a 50% probability.
 	"""
 
 	x_noise = x.astype(float).copy()

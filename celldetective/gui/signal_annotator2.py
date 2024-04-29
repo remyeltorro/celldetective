@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QFileDialog, QApplication, \
-    QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QTabWidget
+    QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QTabWidget, QButtonGroup
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
@@ -457,13 +457,30 @@ class SignalAnnotator2(QMainWindow):
 
         signal_choice_vbox = QVBoxLayout()
         signal_choice_vbox.setContentsMargins(30,0,30,50)
+
         for i in range(len(self.signal_choices)):
 
             hlayout = QHBoxLayout()
-            hlayout.addWidget(self.signal_labels[i], 20)
-            hlayout.addWidget(self.signal_choices[i], 75)
+            hlayout.addLayout(self.signal_labels[i], 20)
+            #hlayout.addLayout(self.signal_choices[i], 75)
+            if i==0:
+                hlayout.addWidget(self.signal_choices[i], 75,alignment=Qt.AlignBottom)
+            else:
+                hlayout.addWidget(self.signal_choices[i], 75)
             #hlayout.addWidget(self.log_btns[i], 5)
             signal_choice_vbox.addLayout(hlayout)
+
+        self.target_button1.clicked.connect(self.signal_button_changed1)
+        self.effector_button1.clicked.connect(self.signal_button_changed1)
+        self.relative_button1.clicked.connect(self.signal_button_changed1)
+
+        self.target_button2.clicked.connect(self.signal_button_changed2)
+        self.effector_button2.clicked.connect(self.signal_button_changed2)
+        self.relative_button2.clicked.connect(self.signal_button_changed2)
+
+        self.target_button3.clicked.connect(self.signal_button_changed3)
+        self.effector_button3.clicked.connect(self.signal_button_changed3)
+        self.relative_button3.clicked.connect(self.signal_button_changed3)
 
             # self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
             # self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
@@ -1834,35 +1851,98 @@ class SignalAnnotator2(QMainWindow):
         #self.log_btns = [QPushButton() for i in range(self.n_signals)]
         self.signal_choices = []
         self.signal_labels =[]
-        target_signals = list(self.df_targets.columns)
-        effector_signals = list(self.df_effectors.columns)
-        relative_signals = list(self.relative_cols)
+        self.target_signals = list(self.df_targets.columns)
+        self.effector_signals = list(self.df_effectors.columns)
+        self.relative_signals = list(self.relative_cols)
         to_remove = ['TARGET_ID','EFFECTOR_ID','FRAME','t0_lysis','TRACK_ID','class_color','status_color', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index','relxy','tc','nk']
 
         for c in to_remove:
-            if c in target_signals:
-                target_signals.remove(c)
-            if c in effector_signals:
-                effector_signals.remove(c)
-            if c in relative_signals:
-                relative_signals.remove(c)
+            if c in self.target_signals:
+                self.target_signals.remove(c)
+            if c in self.effector_signals:
+                self.effector_signals.remove(c)
+            if c in self.relative_signals:
+                self.relative_signals.remove(c)
 
         #for i in range(len(self.signal_choice_targets_cb)):
         #	self.signal_choice_targets_cb[i].addItems(['--']+signals)
         #	self.signal_choice_targets_cb[i].setCurrentIndex(i+1)
         #	self.signal_choice_targets_cb[i].currentIndexChanged.connect(self.plot_signals)
-
+        self.signal1=QButtonGroup()
+        self.signal2 = QButtonGroup()
+        self.signal3 = QButtonGroup()
         self.target_signal_choice=QComboBox()
         self.effector_signal_choice=QComboBox()
         self.relative_signal_choice = QComboBox()
+        self.signal_choice_names=QHBoxLayout()
+        target_label=QLabel("T")
+        effector_label=QLabel("E")
+        relative_label=QLabel("R")
+        self.signal_buttons1=QHBoxLayout()
+        self.signal_buttons2 = QHBoxLayout()
+        self.signal_buttons3 = QHBoxLayout()
 
+        self.target_button1=QRadioButton()
+        self.effector_button1=QRadioButton()
+        self.relative_button1=QRadioButton()
+
+        self.vertical_signal_target=QVBoxLayout()
+        self.vertical_signal_target.addWidget(target_label,alignment=Qt.AlignBottom)
+        self.vertical_signal_target.addWidget(self.target_button1)
+
+        self.vertical_signal_effector=QVBoxLayout()
+        self.vertical_signal_effector.addWidget(effector_label,alignment=Qt.AlignBottom)
+        self.vertical_signal_effector.addWidget(self.effector_button1)
+
+        self.vertical_signal_relative=QVBoxLayout()
+        self.vertical_signal_relative.addWidget(relative_label,alignment=Qt.AlignBottom)
+        self.vertical_signal_relative.addWidget(self.relative_button1)
+
+        self.signal_buttons1.addLayout(self.vertical_signal_target)
+        self.signal_buttons1.addLayout(self.vertical_signal_effector)
+        self.signal_buttons1.addLayout(self.vertical_signal_relative)
+        self.target_button2=QRadioButton()
+        self.effector_button2=QRadioButton()
+        self.relative_button2=QRadioButton()
+
+        self.signal_buttons2.addWidget(self.target_button2)
+        self.signal_buttons2.addWidget(self.effector_button2)
+        self.signal_buttons2.addWidget(self.relative_button2)
+
+        self.target_button3=QRadioButton()
+        self.effector_button3=QRadioButton()
+        self.relative_button3=QRadioButton()
+
+        self.signal_buttons3.addWidget(self.target_button3)
+        self.signal_buttons3.addWidget(self.effector_button3)
+        self.signal_buttons3.addWidget(self.relative_button3)
+
+        self.signal1.addButton(self.target_button1)
+        self.signal1.addButton(self.effector_button1)
+        self.signal1.addButton(self.relative_button1)
+
+        self.signal2.addButton(self.target_button2)
+        self.signal2.addButton(self.effector_button2)
+        self.signal2.addButton(self.relative_button2)
+
+        self.signal3.addButton(self.target_button3)
+        self.signal3.addButton(self.effector_button3)
+        self.signal3.addButton(self.relative_button3)
+
+        #self.signal_choice_names.addWidget(target_label)
+        # self.signal_choice_names.addWidget(effector_label)
+        # self.signal_choice_names.addWidget(relative_label)
+        self.vertical_signal_choice=QVBoxLayout()
+        self.vertical_spacer=QLabel(' ')
+        self.vertical_signal_choice.addWidget(self.vertical_spacer)
+        self.vertical_signal_choice.addWidget(self.target_signal_choice)
         self.target_signal_choice_label=QLabel('target signal')
         self.effector_signal_choice_label=QLabel('effector signal')
         self.relative_signal_choice_label=QLabel('relative signal')
 
-        self.target_signal_choice.addItems(['--']+target_signals)
-        self.effector_signal_choice.addItems(['--']+effector_signals)
-        self.relative_signal_choice.addItems(['--']+relative_signals)
+        self.target_signal_choice.addItems(['--']+self.target_signals)
+        self.effector_signal_choice.addItems(['--']+self.effector_signals)
+        self.relative_signal_choice.addItems(['--']+self.relative_signals)
 
         self.effector_signal_choice.setCurrentIndex(1)
         self.target_signal_choice.setCurrentIndex(1)
@@ -1874,10 +1954,19 @@ class SignalAnnotator2(QMainWindow):
         self.signal_choices.append(self.target_signal_choice)
         self.signal_choices.append(self.effector_signal_choice)
         self.signal_choices.append(self.relative_signal_choice)
+        self.target_button1.setChecked(True)
+        self.effector_button2.setChecked(True)
+        self.relative_button3.setChecked(True)
+        #
+        # self.signal_labels.append(self.target_signal_choice_label)
+        # self.signal_labels.append(self.effector_signal_choice_label)
+        # self.signal_labels.append(self.relative_signal_choice_label)
+        #
+        self.signal_labels.append(self.signal_buttons1)
+        self.signal_labels.append(self.signal_buttons2)
+        self.signal_labels.append(self.signal_buttons3)
 
-        self.signal_labels.append(self.target_signal_choice_label)
-        self.signal_labels.append(self.effector_signal_choice_label)
-        self.signal_labels.append(self.relative_signal_choice_label)
+
 
 
         # # EFFECTORS
@@ -1912,21 +2001,74 @@ class SignalAnnotator2(QMainWindow):
                     self.lines[i].set_label('')
                 else:
                     if i == 0:
-                        self.lines[i].set_label('target '+signal_choice)
-                        print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
-                        xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
-                        ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+                        if self.target_button1.isChecked():
+                            self.lines[i].set_label('target '+signal_choice)
+                            print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
+                            xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+                        if self.effector_button1.isChecked():
+                            self.lines[i].set_label('effector ' + signal_choice)
+                            print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
+                            xdata = self.df_effectors.loc[
+                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_effectors.loc[self.df_effectors[
+                                                              'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                        if self.relative_button1.isChecked():
+                            self.lines[i].set_label('relative ' + signal_choice)
+                            print(
+                                f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
+                            xdata = self.df_targets.loc[
+                                self.df_targets['TRACK_ID'] == self.target_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_relative.loc[
+                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
+                                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                                signal_choice].to_numpy()
                     elif i == 1:
-                        self.lines[i].set_label('effector ' + signal_choice)
-                        print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
-                        xdata = self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, 'FRAME'].to_numpy()
-                        ydata = self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, signal_choice].to_numpy()
+                        if self.target_button2.isChecked():
+                            self.lines[i].set_label('target '+signal_choice)
+                            print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
+                            xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+                        if self.effector_button2.isChecked():
+                            self.lines[i].set_label('effector ' + signal_choice)
+                            print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
+                            xdata = self.df_effectors.loc[
+                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_effectors.loc[self.df_effectors[
+                                                              'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                        if self.relative_button2.isChecked():
+                            self.lines[i].set_label('relative ' + signal_choice)
+                            print(
+                                f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
+                            xdata = self.df_targets.loc[
+                                self.df_targets['TRACK_ID'] == self.target_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_relative.loc[
+                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
+                                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                                signal_choice].to_numpy()
                     else:
-                        self.lines[i].set_label('relative ' + signal_choice)
-                        print(f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
-                        xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
-                        ydata = self.df_relative.loc[(self.df_relative['TARGET_ID']==self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID']==self.effector_track_of_interest),
-                        signal_choice].to_numpy()
+                        if self.target_button3.isChecked():
+                            self.lines[i].set_label('target '+signal_choice)
+                            print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
+                            xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+                        if self.effector_button3.isChecked():
+                            self.lines[i].set_label('effector ' + signal_choice)
+                            print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
+                            xdata = self.df_effectors.loc[
+                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_effectors.loc[self.df_effectors[
+                                                              'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                        if self.relative_button3.isChecked():
+                            self.lines[i].set_label('relative ' + signal_choice)
+                            print(
+                                f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
+                            xdata = self.df_targets.loc[
+                                self.df_targets['TRACK_ID'] == self.target_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = self.df_relative.loc[
+                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
+                                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                                signal_choice].to_numpy()
                         # if ydata!=[]:
                         # 	print(ydata.shape)
                         # else:
@@ -1953,6 +2095,8 @@ class SignalAnnotator2(QMainWindow):
             self.configure_ylims()
 
             min_val,max_val = self.cell_ax.get_ylim()
+            print(min_val)
+            print(max_val)
             t0 = self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
                         self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), 't0_lysis'].to_numpy()
             if t0!=[]:
@@ -2396,22 +2540,53 @@ class SignalAnnotator2(QMainWindow):
                     continue
                 else:
                     if i==0:
-                        maxx_target = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),99)
-                        minn_target = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),1)
-                        min_values.append(minn_target)
-                        max_values.append(maxx_target)
+                        if self.target_button1.isChecked():
+                            maxx_target = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),99)
+                            minn_target = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),1)
+                            min_values.append(minn_target)
+                            max_values.append(maxx_target)
+                        if self.effector_button1.isChecked():
+                            maxx_target = np.nanpercentile(self.df_effectors.loc[:, signal].to_numpy().flatten(), 99)
+                            minn_target = np.nanpercentile(self.df_effectors.loc[:, signal].to_numpy().flatten(), 1)
+                            min_values.append(minn_target)
+                            max_values.append(maxx_target)
+                        if self.relative_button1.isChecked():
+                            maxx_target = np.nanpercentile(self.df_relative.loc[:, signal].to_numpy().flatten(), 99)
+                            minn_target = np.nanpercentile(self.df_relative.loc[:, signal].to_numpy().flatten(), 1)
+                            min_values.append(minn_target)
+                            max_values.append(maxx_target)
                     elif i==1:
-                        maxx_effector = np.nanpercentile(self.df_effectors.loc[:,signal].to_numpy().flatten(),99)
-                        minn_effector= np.nanpercentile(self.df_effectors.loc[:,signal].to_numpy().flatten(),1)
-
-                        min_values.append(minn_effector)
-                        max_values.append(maxx_effector)
+                        if self.target_button2.isChecked():
+                            maxx_effector = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),99)
+                            minn_effector = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),1)
+                            min_values.append(minn_effector)
+                            max_values.append(maxx_effector)
+                        if self.effector_button2.isChecked():
+                            maxx_effector = np.nanpercentile(self.df_effectors.loc[:, signal].to_numpy().flatten(), 99)
+                            minn_effector = np.nanpercentile(self.df_effectors.loc[:, signal].to_numpy().flatten(), 1)
+                            min_values.append(minn_effector)
+                            max_values.append(maxx_effector)
+                        if self.relative_button2.isChecked():
+                            maxx_effector = np.nanpercentile(self.df_relative.loc[:, signal].to_numpy().flatten(), 99)
+                            minn_effector = np.nanpercentile(self.df_relative.loc[:, signal].to_numpy().flatten(), 1)
+                            min_values.append(minn_effector)
+                            max_values.append(maxx_effector)
                     else:
-                        maxx_relative = np.nanpercentile(self.df_relative.loc[:,signal].to_numpy().flatten(),99)
-                        minn_relative = np.nanpercentile(self.df_relative.loc[:,signal].to_numpy().flatten(),1)
-
-                        min_values.append(minn_relative)
-                        max_values.append(maxx_relative)
+                        if self.target_button3.isChecked():
+                            maxx_relative = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),99)
+                            minn_relative = np.nanpercentile(self.df_targets.loc[:,signal].to_numpy().flatten(),1)
+                            min_values.append(minn_relative)
+                            max_values.append(maxx_relative)
+                        if self.effector_button3.isChecked():
+                            maxx_relative = np.nanpercentile(self.df_effectors.loc[:, signal].to_numpy().flatten(), 99)
+                            minn_relative = np.nanpercentile(self.df_effectors.loc[:, signal].to_numpy().flatten(), 1)
+                            min_values.append(minn_relative)
+                            max_values.append(maxx_relative)
+                        if self.relative_button3.isChecked():
+                            maxx_relative = np.nanpercentile(self.df_relative.loc[:, signal].to_numpy().flatten(), 99)
+                            minn_relative = np.nanpercentile(self.df_relative.loc[:, signal].to_numpy().flatten(), 1)
+                            min_values.append(minn_relative)
+                            max_values.append(maxx_relative)
 
             if len(min_values)>0:
                 self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
@@ -2797,3 +2972,30 @@ class SignalAnnotator2(QMainWindow):
 
         #self.cell_ax.autoscale()
         self.cell_fcanvas.canvas.draw_idle()
+
+    def signal_button_changed1(self):
+        self.target_signal_choice.clear()
+        if self.target_button1.isChecked():
+            self.target_signal_choice.addItems(['--']+self.target_signals)
+        if self.effector_button1.isChecked():
+            self.target_signal_choice.addItems(['--']+self.effector_signals)
+        if self.relative_button1.isChecked():
+            self.target_signal_choice.addItems(['--']+self.relative_signals)
+
+    def signal_button_changed2(self):
+        self.effector_signal_choice.clear()
+        if self.target_button2.isChecked():
+            self.effector_signal_choice.addItems(['--'] + self.target_signals)
+        if self.effector_button2.isChecked():
+            self.effector_signal_choice.addItems(['--'] + self.effector_signals)
+        if self.relative_button2.isChecked():
+            self.effector_signal_choice.addItems(['--'] + self.relative_signals)
+
+    def signal_button_changed3(self):
+        self.relative_signal_choice.clear()
+        if self.target_button3.isChecked():
+            self.relative_signal_choice.addItems(['--'] + self.target_signals)
+        if self.effector_button3.isChecked():
+            self.relative_signal_choice.addItems(['--'] + self.effector_signals)
+        if self.relative_button3.isChecked():
+            self.relative_signal_choice.addItems(['--'] + self.relative_signals)

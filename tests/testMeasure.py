@@ -44,32 +44,32 @@ class TestFeatureMeasurement(unittest.TestCase):
 
 	# With image
 	def test_measure_yields_table(self):
-		assert isinstance(self.feature_measurements, pd.DataFrame)
+		self.assertIsInstance(self.feature_measurements, pd.DataFrame)
 
 	def test_two_objects(self):
-		assert len(self.feature_measurements)==2
+		self.assertEqual(len(self.feature_measurements),2)
 
 	def test_channel_named_correctly(self):
-		assert 'test_channel_mean' in list(self.feature_measurements.columns)
+		self.assertIn('test_channel_mean',list(self.feature_measurements.columns))
 
 	def test_intensity_is_one(self):
-		assert np.all([v==1.0 for v in self.feature_measurements['test_channel_mean'].values])
+		self.assertTrue(np.all([v==1.0 for v in self.feature_measurements['test_channel_mean'].values]))
 
 	def test_area_first_is_twenty_five(self):
-		assert self.feature_measurements['area'].values[0]==25
+		self.assertEqual(self.feature_measurements['area'].values[0],25)
 
 	def test_area_second_is_hundred(self):
-		assert self.feature_measurements['area'].values[1]==100
+		self.assertEqual(self.feature_measurements['area'].values[1],100)
 
 	# Without image
 	def test_measure_yields_table(self):
-		assert isinstance(self.feature_measurements_no_image, pd.DataFrame)
+		self.assertIsInstance(self.feature_measurements_no_image, pd.DataFrame)
 
 	def test_two_objects(self):
-		assert len(self.feature_measurements_no_image)==2
+		self.assertEqual(len(self.feature_measurements_no_image),2)
 
 	def test_channel_not_in_table(self):
-		assert 'test_channel_mean' not in list(self.feature_measurements_no_image.columns)
+		self.assertNotIn('test_channel_mean',list(self.feature_measurements_no_image.columns))
 
 	# With no features
 	def test_only_one_measurement(self):
@@ -116,16 +116,16 @@ class TestIsotropicMeasurement(unittest.TestCase):
 
 
 	def test_measure_yields_table(self):
-	 	assert isinstance(self.iso_measurements, pd.DataFrame)
+	 	self.assertIsInstance(self.iso_measurements, pd.DataFrame)
 
 	def test_intensity_zero_in_small_circle(self):
-		assert self.iso_measurements[f'test_channel_circle_{self.inner_radius}_mean'].values[0]==0.
+		self.assertEqual(self.iso_measurements[f'test_channel_circle_{self.inner_radius}_mean'].values[0],0.)
 
 	def test_intensity_greater_than_zero_in_intermediate_circle(self):
-		assert self.iso_measurements[f'test_channel_circle_{self.upper_radius}_mean'].values[0]>0.
+		self.assertGreater(self.iso_measurements[f'test_channel_circle_{self.upper_radius}_mean'].values[0],0.)
 	
 	def test_ring_measurement_avoids_zero(self):
-		assert self.iso_measurements[f'test_channel_ring_{self.safe_upper_radius}_{self.safe_upper_radius+3}_mean'].values[0]==1.0
+		self.assertEqual(self.iso_measurements[f'test_channel_ring_{self.safe_upper_radius}_{self.safe_upper_radius+3}_mean'].values[0],1.0)
 
 
 if __name__=="__main__":

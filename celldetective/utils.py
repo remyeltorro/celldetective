@@ -482,7 +482,7 @@ def remove_redundant_features(features, reference_features, channel_names=None):
 
 	"""
 
-	new_features = features.copy()
+	new_features = features[:]
 
 	for f in features:
 

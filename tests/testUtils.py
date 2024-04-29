@@ -1,6 +1,7 @@
 import unittest
 import matplotlib.pyplot as plt
-from celldetective.utils import create_patch_mask, remove_redundant_features, _extract_channel_indices, _get_img_num_per_channel
+import numpy as np
+from celldetective.utils import create_patch_mask, remove_redundant_features, _extract_channel_indices, _get_img_num_per_channel,split_by_ratio
 
 class TestPatchMask(unittest.TestCase):
 
@@ -51,6 +52,18 @@ class TestImgIndexPerChannel(unittest.TestCase):
 
 	def test_index_sequence_is_correct(self):
 		self.assertEqual(list(_get_img_num_per_channel(self.channels_indices, self.len_movie, self.nbr_channels)[0]), self.expected_indices)
+
+
+class TestSplitArrayByRatio(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.array_length = 100
+		self.array = np.ones(self.array_length)
+
+	def test_ratio_split_is_correct(self):
+		split_array = split_by_ratio(self.array,0.5,0.25,0.1)
+		self.assertTrue(np.all([len(split_array[0])==50, len(split_array[1])==25, len(split_array[2])==10]))
 
 if __name__=="__main__":
 	unittest.main()

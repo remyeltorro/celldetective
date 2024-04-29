@@ -1021,7 +1021,7 @@ def fit_plane(image, cell_masks=None):
                        x=xx,
                        y=yy,
                        weights=weights,
-                       params=params, max_nfev=100)
+                       params=params, max_nfev=3000)
     a = result.params['a'].value
     b = result.params['b'].value
     c = result.params['c'].value
@@ -1075,7 +1075,7 @@ def fit_paraboloid(image, cell_masks=None):
                        x=xx,
                        y=yy,
                        weights=weights,
-                       params=params, max_nfev=100)
+                       params=params, max_nfev=3000)
     a = result.params['a'].value
     b = result.params['b'].value
     c = result.params['c'].value

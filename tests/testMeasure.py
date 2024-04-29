@@ -1,8 +1,7 @@
 import unittest
 import pandas as pd
 import numpy as np
-from celldetective.measure import measure, measure_features, measure_isotropic_intensity
-import matplotlib.pyplot as plt
+from celldetective.measure import measure_features, measure_isotropic_intensity, drop_tonal_features
 
 class TestFeatureMeasurement(unittest.TestCase):
 
@@ -126,6 +125,16 @@ class TestIsotropicMeasurement(unittest.TestCase):
 	
 	def test_ring_measurement_avoids_zero(self):
 		self.assertEqual(self.iso_measurements[f'test_channel_ring_{self.safe_upper_radius}_{self.safe_upper_radius+3}_mean'].values[0],1.0)
+
+class TestDropTonal(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.features = ['area', 'intensity_mean', 'intensity_max']
+
+	def test_drop_tonal(self):
+		self.features_processed = drop_tonal_features(self.features)
+		self.assertEqual(self.features_processed,['area'])
 
 
 if __name__=="__main__":

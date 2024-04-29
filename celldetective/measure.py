@@ -308,10 +308,11 @@ def drop_tonal_features(features):
 
     """
 
+    feat2 = features[:]
     for f in features:
         if 'intensity' in f:
-            features.remove(f)
-    return features
+            feat2.remove(f)
+    return feat2
 
 def measure_features(img, label, features=['area', 'intensity_mean'], channels=None,
                      border_dist=None, haralick_options=None, verbose=True, normalisation_list=None,

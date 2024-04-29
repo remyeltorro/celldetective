@@ -198,9 +198,9 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist, target_lysis_c
     # print(type(probs))
     df_rel = pd.DataFrame(df_rel)
     for index,row in pts.iterrows():
-        df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 'drel'] = row[
+        df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 'distance_mean'] = row[
             'drel']
-        df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 'vrel'] = row[
+        df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 'velocity_mean'] = row[
             'vrel']
         df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']), 't_residence_rel'] = row[
             't_residence_rel']

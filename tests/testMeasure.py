@@ -79,6 +79,11 @@ class TestFeatureMeasurement(unittest.TestCase):
 
 class TestIsotropicMeasurement(unittest.TestCase):
 
+	"""
+	
+	Test that isotropic intensity measurements behave as expected on fake image
+
+	"""
 
 	@classmethod
 	def setUpClass(self):

@@ -753,7 +753,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
             pad_value_x = mask.shape[0]//2 + 1
             pad_value_y = mask.shape[1]//2 + 1
-            frame_padded = np.pad(img, [(pad_value_x,pad_value_x),(pad_value_y,pad_value_y),(0,0)])
+            frame_padded = np.pad(img, [(pad_value_x,pad_value_x),(pad_value_y,pad_value_y),(0,0)], constant_values=[(-1,-1),(-1,-1),(0,0)])
 
             # Find a way to measure intensity in mask
             for tid,group in positions.groupby(column_labels['track']):
@@ -770,11 +770,17 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
                 expanded_mask = np.expand_dims(mask, axis=-1)  # shape: (X, Y, 1)
                 crop = frame_padded[ymin:ymax,xmin:xmax]
-                projection = np.multiply(crop, expanded_mask)
+
+                crop_temp = crop.copy()
+                crop_temp[crop_temp==-1] = 0.
+                projection = np.multiply(crop_temp, expanded_mask)
+
+                projection[crop==-1] = -1
+                projection[expanded_mask==0.] = -1
 
                 for op in operations:
                     func = eval('np.'+op)
-                    intensity_values = func(projection, axis=(0,1), where=projection!=0.)
+                    intensity_values = func(projection, axis=(0,1), where=projection>=0.)
                     for k in range(crop.shape[-1]):
                         if isinstance(r,list):
                             positions.loc[group.index, f'{channels[k]}_ring_{min(r)}_{max(r)}_{op}'] = intensity_values[k]

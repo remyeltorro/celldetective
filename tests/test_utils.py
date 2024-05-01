@@ -1,7 +1,8 @@
 import unittest
 import matplotlib.pyplot as plt
 import numpy as np
-from celldetective.utils import create_patch_mask, remove_redundant_features, _extract_channel_indices, _get_img_num_per_channel,split_by_ratio
+import os
+from celldetective.utils import create_patch_mask, remove_redundant_features, _extract_channel_indices, _get_img_num_per_channel,split_by_ratio,extract_experiment_channels
 
 class TestPatchMask(unittest.TestCase):
 
@@ -64,6 +65,7 @@ class TestSplitArrayByRatio(unittest.TestCase):
 	def test_ratio_split_is_correct(self):
 		split_array = split_by_ratio(self.array,0.5,0.25,0.1)
 		self.assertTrue(np.all([len(split_array[0])==50, len(split_array[1])==25, len(split_array[2])==10]))
+
 
 if __name__=="__main__":
 	unittest.main()

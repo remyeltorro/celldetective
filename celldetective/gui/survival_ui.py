@@ -26,7 +26,7 @@ from tqdm import tqdm
 from lifelines import KaplanMeierFitter
 import matplotlib.cm as mcm
 import math
-from celldetective.events import switch_to_events_v2
+from celldetective.events import switch_to_events
 
 class ConfigSurvival(QWidget):
 	
@@ -437,7 +437,7 @@ class ConfigSurvival(QWidget):
 				left_censored = True
 			else:
 				left_censored = False
-			events, survival_times = switch_to_events_v2(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
+			events, survival_times = switch_to_events(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
 			ks = KaplanMeierFitter()
 			if len(events)>0:
 				ks.fit(survival_times, event_observed=events)
@@ -494,7 +494,7 @@ class ConfigSurvival(QWidget):
 				well_first_detections = None
 			
 			print(f"{well_classes=}; {well_times=}")
-			events, survival_times = switch_to_events_v2(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
+			events, survival_times = switch_to_events(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
 			print(f"{events=}; {survival_times=}")
 			ks = KaplanMeierFitter()
 			if len(survival_times)>0:

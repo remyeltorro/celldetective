@@ -606,7 +606,6 @@ def interpolate_time_gaps(trajectories, column_labels={'track': "TRACK_ID", 'tim
 	trajectories.reset_index(drop=True, inplace=True)
 	trajectories[column_labels['time']] = trajectories[column_labels['time']].astype('int64').astype(float) / 10**9
 	#trajectories[column_labels['time']] = trajectories[column_labels['time']].astype('int64')
-	print(trajectories[column_labels['time']])
 	trajectories.sort_values(by=[column_labels['track'],column_labels['time']],inplace=True)
 	
 	return trajectories

@@ -128,6 +128,9 @@ if os.path.exists(os.sep.join([pos,label_folder])):
 	rmtree(os.sep.join([pos,label_folder]))
 os.mkdir(os.sep.join([pos,label_folder]))
 print(f'Folder {os.sep.join([pos,label_folder])} successfully generated.')
+log=f'segmentation model: {modelname}\n'
+with open(pos+f'log_{mode}.json', 'a') as f:
+	f.write(log)
 
 
 # Loop over all frames and segment

@@ -45,6 +45,11 @@ else:
 	print('The trajectories table could not be found. Abort.')
 	os.abort()
 
+log=f'segmentation model: {model} \n'
+
+with open(pos+f'log_{mode}.json', 'a') as f:
+	f.write(log)
+
 trajectories = analyze_signals(trajectories.copy(), model, interpolate_na=True, selected_signals=None, column_labels = column_labels, plot_outcome=True,output_dir=pos+'output/')
 trajectories = trajectories.sort_values(by=[column_labels['track'], column_labels['time']])
 trajectories.to_csv(pos+os.sep.join(['output','tables', table_name]), index=False)

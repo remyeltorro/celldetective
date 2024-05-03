@@ -195,8 +195,16 @@ if trajectories is None:
 	print('Use features as a substitute for the trajectory table.')
 	if 'label' not in features:
 		features.append('label')
-
-
+features_log=f'features: {features}'
+border_distances_log=f'border_distances: {border_distances}'
+haralick_options_log=f'haralick_options: {haralick_options}'
+background_correction_log=f'background_correction: {background_correction}'
+spot_detection_log=f'spot_detection: {spot_detection}'
+intensity_measurement_radii_log=f'intensity_measurement_radii: {intensity_measurement_radii}'
+isotropic_options_log=f'isotropic_operations: {isotropic_operations} \n'
+log='\n'.join([features_log,border_distances_log,haralick_options_log,background_correction_log,spot_detection_log,intensity_measurement_radii_log,isotropic_options_log])
+with open(pos + f'log_{mode}.json', 'a') as f:
+	f.write(log)
 def measure_index(indices):
 
 	global column_labels

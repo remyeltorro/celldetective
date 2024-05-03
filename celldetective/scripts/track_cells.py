@@ -139,6 +139,15 @@ img_num_channels = _get_img_num_per_channel(channel_indices, len_movie, nbr_chan
 #######################################
 
 timestep_dataframes = []
+features_log=f'features: {features}'
+mask_channels_log=f'mask_channels: {mask_channels}'
+haralick_option_log=f'haralick_options: {haralick_options}'
+post_processing_option_log=f'post_processing_options: {post_processing_options}'
+log_list=[features_log, mask_channels_log, haralick_option_log, post_processing_option_log]
+log='\n'.join(log_list)
+
+with open(pos+f'log_{mode}.json', 'a') as f:
+	f.write(log)
 
 def measure_index(indices):
 	for t in tqdm(indices,desc="frame"):

@@ -5,6 +5,8 @@ from PyQt5.QtGui import QIcon
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
+
+from celldetective.gui.plot_measurements import ConfigMeasurementsPlot
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
 from celldetective.gui import ConfigSurvival, ConfigSignalPlot
 from celldetective.gui.gui_utils import QHSeperationLine
@@ -65,6 +67,14 @@ class AnalysisPanel(QFrame):
 		self.grid.addWidget(self.plot_signal_btn)
 
 
+		self.plot_measurements_btn = QPushButton("plot measurements")
+		self.plot_measurements_btn.setIcon(QIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','signals_icon.png']))))
+		self.plot_measurements_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.plot_measurements_btn.setIconSize(QSize(35, 35))
+		self.plot_measurements_btn.clicked.connect(self.configure_plot_measurements)
+		self.grid.addWidget(self.plot_measurements_btn)
+
+
 	def configure_survival(self):
 		print('survival analysis starting!!!')
 		self.configSurvival = ConfigSurvival(self)
@@ -74,6 +84,11 @@ class AnalysisPanel(QFrame):
 		print('plot signal analysis starting!!!')
 		self.ConfigSignalPlot = ConfigSignalPlot(self)
 		self.ConfigSignalPlot.show()
+
+	def configure_plot_measurements(self):
+		print('plot measurements analysis starting!!!')
+		self.ConfigMeasurementsPlot = ConfigMeasurementsPlot(self)
+		self.ConfigMeasurementsPlot.show()
 
 
 	# 	self.select_all_btn = QPushButton()

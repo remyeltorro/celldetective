@@ -1,7 +1,7 @@
 import argparse
 import os
 import json
-from celldetective.relative_measurements import relative_quantities_per_pos2
+from celldetective.relative_measurements import relative_quantities_per_pos2, update_effector_table
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels
 
 from pathlib import Path, PurePath
@@ -65,6 +65,10 @@ else:
     rel = pd.DataFrame(relative_quantities_per_pos2(pos, [0,2], neigh_dist=distance))
     path = pos + 'output/tables/relative_measurements_neighborhood.csv'
     rel.to_csv(path, index=False)
+    tab_eff = pos + os.sep.join(['output', 'tables', 'trajectories_effectors.csv'])
+    df_effectors = pd.read_csv(tab_eff)
+    updated_eff=update_effector_table(rel,df_effectors)
+    updated_eff.to_csv(tab_eff, index=False)
     print(f'Measurements successfully written in table {pos + os.sep.join(["output", "tables", "relative_measurements_neighborhood.csv"])}')
     #print('Done.')
 

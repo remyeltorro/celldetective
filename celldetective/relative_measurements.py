@@ -67,9 +67,16 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist, target_lysis_c
 
         unique_nks = list(np.unique(nk_ids))
         print(f'TC {tid} with t_lysis {t0}: found {len(unique_nks)} NK neighs: {unique_nks}...')
-        nk_neighs = df_effectors.query(f"TRACK_ID.isin({unique_nks})")  # locate the NKs of interest in NK table
+        try:
+            nk_neighs = df_effectors.query(f"TRACK_ID.isin({unique_nks})")  # locate the NKs of interest in NK table
+        except:
+            nk_neighs = df_effectors.query(f"ID.isin({unique_nks})")
+        if 'TRACK_ID' in nk_neighs.columns:
+            id_type='TRACK_ID'
+        else:
+            id_type='ID'
 
-        for nk, group_nk in nk_neighs.groupby('TRACK_ID'):
+        for nk, group_nk in nk_neighs.groupby(id_type):
 
             coords_nk = group_nk[['POSITION_X', 'POSITION_Y']].to_numpy()
             lamp = group_nk['fluo_channel_1_mean'].to_numpy()
@@ -241,4 +248,14 @@ def probabilities(pairs,radius_critical=80,radius_max=150):
                     group['total_prob'] += group[hyp] * score_i['w_' + hyp]
                     probs.append(group)
     return probs
+
+def update_effector_table(df_relative, df_effector):
+    df_effector['group_neighborhood']=1
+    effectors = np.unique(df_relative['EFFECTOR_ID'].to_numpy())
+    for effector in effectors:
+        if effector in df_effector['TRACK_ID'].values:
+            # Set group_neighborhood to 0 where TRACK_ID matches effector
+            df_effector.loc[df_effector['TRACK_ID'] == effector, 'group_neighborhood'] = 0
+    return df_effector
+
 

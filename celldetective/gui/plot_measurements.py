@@ -702,11 +702,11 @@ class ConfigMeasurementsPlot(QWidget):
 		fig, ax = plt.subplots(1, 1, figsize=(10, 5))
 		if self.check_class.isChecked():
 			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True)
+					  dodge=True,palette=self.palette)
 		# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
 			if self.show_cell_lines:
 				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True, alpha=0.3, linewidth=0.5, size=3)
+					  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.palette)
 		elif self.check_group.isChecked():
 			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
 						  hue=self.cbs[2].currentText(),
@@ -748,11 +748,11 @@ class ConfigMeasurementsPlot(QWidget):
 		fig, ax = plt.subplots(1, 1, figsize=(10, 5))
 		if self.check_class.isChecked():
 			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True)
+					  dodge=True,palette=self.palette)
 		# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
 			if self.show_cell_lines:
 				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True, alpha=0.3, linewidth=0.5, size=3)
+					  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.palette)
 		elif self.check_group.isChecked():
 			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
 						  hue=self.cbs[2].currentText(),

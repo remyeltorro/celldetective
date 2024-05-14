@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QFileDialog, QApplication, \
-    QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QTabWidget, QButtonGroup
+    QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QTabWidget, \
+    QButtonGroup, QGridLayout
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
@@ -454,21 +455,29 @@ class SignalAnnotator2(QMainWindow):
         plot_buttons_hbox.addWidget(self.log_btn, 5)
 
         self.left_panel.addLayout(plot_buttons_hbox)
-
+        signal_choice_grid = QGridLayout()
+        signal_choice_grid.setContentsMargins(30,0,30,50)
+        signal_choice_grid.addLayout(self.signal_buttons0,0,0)
+        signal_choice_grid.addLayout(self.signal_buttons1,1,0)
+        signal_choice_grid.addLayout(self.signal_buttons2,2,0)
+        signal_choice_grid.addLayout(self.signal_buttons3,3,0)
+        #signal_choice_hbox = QHBoxLayout()
+        #signal_choice_hbox.addLayout(self.signal_choice_names)
+        #signal_choice_hbox.setContentsMargins(30, 0, 30, 50)
         signal_choice_vbox = QVBoxLayout()
         signal_choice_vbox.setContentsMargins(30,0,30,50)
-
         for i in range(len(self.signal_choices)):
-
-            hlayout = QHBoxLayout()
-            hlayout.addLayout(self.signal_labels[i], 20)
-            #hlayout.addLayout(self.signal_choices[i], 75)
-            if i==0:
-                hlayout.addWidget(self.signal_choices[i], 75,alignment=Qt.AlignBottom)
-            else:
-                hlayout.addWidget(self.signal_choices[i], 75)
-            #hlayout.addWidget(self.log_btns[i], 5)
-            signal_choice_vbox.addLayout(hlayout)
+            signal_choice_grid.addWidget(self.signal_choices[i],i+1,1)
+            # hlayout = QHBoxLayout()
+            #
+            # #hlayout.addLayout(self.signal_labels[i], 20)
+            # #hlayout.addLayout(self.signal_choices[i], 75)
+            # # if i==0:
+            # #     hlayout.addWidget(self.signal_choices[i], 75,alignment=Qt.AlignBottom)
+            # # else:
+            # hlayout.addWidget(self.signal_choices[i], 75)
+            # #hlayout.addWidget(self.log_btns[i], 5)
+            # signal_choice_vbox.addLayout(hlayout)
 
         self.target_button1.clicked.connect(self.signal_button_changed1)
         self.effector_button1.clicked.connect(self.signal_button_changed1)
@@ -485,8 +494,8 @@ class SignalAnnotator2(QMainWindow):
             # self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
             # self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
             # self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
-
-        self.left_panel.addLayout(signal_choice_vbox)
+        #signal_choice_hbox.addLayout(signal_choice_vbox,alignment=Qt.AlignCenter)
+        self.left_panel.addLayout(signal_choice_grid)
 
         btn_hbox = QHBoxLayout()
         self.save_btn = QPushButton('Save')
@@ -1874,10 +1883,14 @@ class SignalAnnotator2(QMainWindow):
         self.target_signal_choice=QComboBox()
         self.effector_signal_choice=QComboBox()
         self.relative_signal_choice = QComboBox()
+        self.target_buttons_layout=QVBoxLayout()
+        self.effector_buttons_layout=QVBoxLayout()
+        self.relative_buttons_layout=QVBoxLayout()
         self.signal_choice_names=QHBoxLayout()
         target_label=QLabel("T")
         effector_label=QLabel("E")
         relative_label=QLabel("R")
+        self.signal_buttons0=QHBoxLayout()
         self.signal_buttons1=QHBoxLayout()
         self.signal_buttons2 = QHBoxLayout()
         self.signal_buttons3 = QHBoxLayout()
@@ -1886,21 +1899,23 @@ class SignalAnnotator2(QMainWindow):
         self.effector_button1=QRadioButton()
         self.relative_button1=QRadioButton()
 
-        self.vertical_signal_target=QVBoxLayout()
-        self.vertical_signal_target.addWidget(target_label,alignment=Qt.AlignBottom)
-        self.vertical_signal_target.addWidget(self.target_button1)
-
-        self.vertical_signal_effector=QVBoxLayout()
-        self.vertical_signal_effector.addWidget(effector_label,alignment=Qt.AlignBottom)
-        self.vertical_signal_effector.addWidget(self.effector_button1)
-
-        self.vertical_signal_relative=QVBoxLayout()
-        self.vertical_signal_relative.addWidget(relative_label,alignment=Qt.AlignBottom)
-        self.vertical_signal_relative.addWidget(self.relative_button1)
-
-        self.signal_buttons1.addLayout(self.vertical_signal_target)
-        self.signal_buttons1.addLayout(self.vertical_signal_effector)
-        self.signal_buttons1.addLayout(self.vertical_signal_relative)
+        # self.vertical_signal_target=QVBoxLayout()
+        # self.vertical_signal_target.addWidget(target_label,alignment=Qt.AlignBottom)
+        # self.vertical_signal_target.addWidget(self.target_button1)
+        #
+        # self.vertical_signal_effector=QVBoxLayout()
+        # self.vertical_signal_effector.addWidget(effector_label,alignment=Qt.AlignBottom)
+        # self.vertical_signal_effector.addWidget(self.effector_button1)
+        #
+        # self.vertical_signal_relative=QVBoxLayout()
+        # self.vertical_signal_relative.addWidget(relative_label,alignment=Qt.AlignBottom)
+        # self.vertical_signal_relative.addWidget(self.relative_button1)
+        self.signal_buttons0.addWidget(target_label)
+        self.signal_buttons0.addWidget(effector_label)
+        self.signal_buttons0.addWidget(relative_label)
+        self.signal_buttons1.addWidget(self.target_button1)
+        self.signal_buttons1.addWidget(self.effector_button1)
+        self.signal_buttons1.addWidget(self.relative_button1)
         self.target_button2=QRadioButton()
         self.effector_button2=QRadioButton()
         self.relative_button2=QRadioButton()
@@ -1929,13 +1944,32 @@ class SignalAnnotator2(QMainWindow):
         self.signal3.addButton(self.effector_button3)
         self.signal3.addButton(self.relative_button3)
 
+        self.target_buttons_layout.addWidget(target_label)
+        self.target_buttons_layout.addWidget(self.target_button1)
+        self.target_buttons_layout.addWidget(self.target_button2)
+        self.target_buttons_layout.addWidget(self.target_button3)
+
+        self.effector_buttons_layout.addWidget(effector_label)
+        self.effector_buttons_layout.addWidget(self.effector_button1)
+        self.effector_buttons_layout.addWidget(self.effector_button2)
+        self.effector_buttons_layout.addWidget(self.effector_button3)
+
+        self.relative_buttons_layout.addWidget(relative_label)
+        self.relative_buttons_layout.addWidget(self.relative_button1)
+        self.relative_buttons_layout.addWidget(self.relative_button2)
+        self.relative_buttons_layout.addWidget(self.relative_button3)
+
+        #self.signal_choice_names.addLayout(self.target_buttons_layout)
+        #self.signal_choice_names.addLayout(self.effector_buttons_layout)
+        #self.signal_choice_names.addLayout(self.relative_buttons_layout)
+
         #self.signal_choice_names.addWidget(target_label)
         # self.signal_choice_names.addWidget(effector_label)
         # self.signal_choice_names.addWidget(relative_label)
-        self.vertical_signal_choice=QVBoxLayout()
-        self.vertical_spacer=QLabel(' ')
-        self.vertical_signal_choice.addWidget(self.vertical_spacer)
-        self.vertical_signal_choice.addWidget(self.target_signal_choice)
+        #self.vertical_signal_choice=QVBoxLayout()
+        #self.vertical_spacer=QLabel(' ')
+        #self.vertical_signal_choice.addWidget(self.vertical_spacer)
+        #self.vertical_signal_choice.addWidget(self.target_signal_choice)
         self.target_signal_choice_label=QLabel('target signal')
         self.effector_signal_choice_label=QLabel('effector signal')
         self.relative_signal_choice_label=QLabel('relative signal')
@@ -1962,9 +1996,9 @@ class SignalAnnotator2(QMainWindow):
         # self.signal_labels.append(self.effector_signal_choice_label)
         # self.signal_labels.append(self.relative_signal_choice_label)
         #
-        self.signal_labels.append(self.signal_buttons1)
-        self.signal_labels.append(self.signal_buttons2)
-        self.signal_labels.append(self.signal_buttons3)
+        self.signal_labels.append(self.target_buttons_layout)
+        self.signal_labels.append(self.effector_buttons_layout)
+        self.signal_labels.append(self.relative_buttons_layout)
 
 
 

@@ -391,7 +391,6 @@ class ConfigMeasurementsPlot(QWidget):
 			# 	radio_hbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
 			# self.plot_btn_group.buttonClicked[int].connect(self.plot_survivals)
 
-			print(self.well_indices, self.position_indices)
 			if self.position_indices is not None:
 				if len(self.well_indices)>1 and len(self.position_indices)==1:
 					self.plot_btn_group.buttons()[0].click()
@@ -592,15 +591,28 @@ class ConfigMeasurementsPlot(QWidget):
 
 		data = []
 		full_data = []
-		for z, well in enumerate(wells):  # loop over wells
-			#print(well)
-			if z not in self.well_indices:
-				pass
-			else:
-				positions = get_positions_in_well(well)
-				for ind,pos in enumerate(positions):  # loop over positions
-					if self.position_indices is not None:
-						if ind+1 in self.position_indices:
+		print(self.well_option)
+		if self.well_option>1:
+			self.plot_mode='wells'
+			for z, well in enumerate(wells):  # loop over wells
+				#print(well)
+				if z not in self.well_indices:
+					pass
+				else:
+					positions = get_positions_in_well(well)
+					for ind,pos in enumerate(positions):  # loop over positions
+						if self.position_indices is not None:
+							if ind+1 in self.position_indices:
+								print(f'Processing position {pos}...')
+								tab_tc = pos + os.sep.join(['output', 'tables', f'trajectories_{self.cbs[0].currentText()}.csv'])
+								if not os.path.exists(tab_tc):
+									return None
+								else:
+									data = pd.read_csv(tab_tc)
+									data['well_name'] = well_name[z]
+								full_data.append(data)
+
+						else:
 							print(f'Processing position {pos}...')
 							tab_tc = pos + os.sep.join(['output', 'tables', f'trajectories_{self.cbs[0].currentText()}.csv'])
 							if not os.path.exists(tab_tc):
@@ -609,16 +621,31 @@ class ConfigMeasurementsPlot(QWidget):
 								data = pd.read_csv(tab_tc)
 								data['well_name'] = well_name[z]
 							full_data.append(data)
-
-					else:
+		else:
+			self.plot_mode='positions'
+			positions = get_positions_in_well(wells[self.well_indices[0]])
+			for ind, pos in enumerate(positions):  # loop over positions
+				pos_name=pos.split(os.sep)[-2]
+				if self.position_indices is not None:
+					if ind + 1 in self.position_indices:
 						print(f'Processing position {pos}...')
-						tab_tc = pos + os.sep.join(['output', 'tables', f'trajectories_{self.cbs[0].currentText()}.csv'])
+						tab_tc = pos + os.sep.join(
+							['output', 'tables', f'trajectories_{self.cbs[0].currentText()}.csv'])
 						if not os.path.exists(tab_tc):
 							return None
 						else:
 							data = pd.read_csv(tab_tc)
-							data['well_name'] = well_name[z]
+							data['position'] = pos_name
 						full_data.append(data)
+				else:
+					print(f'Processing position {pos}...')
+					tab_tc = pos + os.sep.join(['output', 'tables', f'trajectories_{self.cbs[0].currentText()}.csv'])
+					if not os.path.exists(tab_tc):
+						return None
+					else:
+						data = pd.read_csv(tab_tc)
+						data['position'] = pos_name
+					full_data.append(data)
 		self.plot_data = pd.concat(full_data, ignore_index=True)
 
 
@@ -700,28 +727,51 @@ class ConfigMeasurementsPlot(QWidget):
 		plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 		fig, ax = plt.subplots(1, 1, figsize=(10, 5))
-		if self.check_class.isChecked():
-			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True,palette=self.palette)
-		# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
-			if self.show_cell_lines:
-				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.palette)
-		elif self.check_group.isChecked():
-			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
-						  hue=self.cbs[2].currentText(),
-						  dodge=True,palette=self.hue_colors)
-			# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
-			if self.show_cell_lines:
-				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+		if self.well_option>1:
+			if self.check_class.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
+						  dodge=True,palette=self.palette)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
+						  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.palette)
+			elif self.check_group.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
 							  hue=self.cbs[2].currentText(),
-							  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.hue_colors)
+							  dodge=True,palette=self.hue_colors)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+								  hue=self.cbs[2].currentText(),
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.hue_colors)
+			else:
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',color=self.palette[0],
+								  dodge=True)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',color=self.palette[0],
+									  dodge=True, alpha=0.3, linewidth=0.5, size=3)
 		else:
-			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',color=self.palette[0],
+			if self.check_class.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+							  hue=self.cbs[1].currentText(),
+							  dodge=True, palette=self.palette)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+								  hue=self.cbs[1].currentText(),
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3, palette=self.palette)
+			elif self.check_group.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+							  hue=self.cbs[2].currentText(),
+							  dodge=True, palette=self.hue_colors)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+								  hue=self.cbs[2].currentText(),
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3, palette=self.hue_colors)
+			else:
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+							  color=self.palette[0],
 							  dodge=True)
-			# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
-			if self.show_cell_lines:
-				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',color=self.palette[0],
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+								  color=self.palette[0],
 								  dodge=True, alpha=0.3, linewidth=0.5, size=3)
 		self.ax.spines['top'].set_visible(False)
 		self.ax.spines['right'].set_visible(False)
@@ -746,28 +796,55 @@ class ConfigMeasurementsPlot(QWidget):
 		plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 		fig, ax = plt.subplots(1, 1, figsize=(10, 5))
-		if self.check_class.isChecked():
-			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True,palette=self.palette)
-		# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
-			if self.show_cell_lines:
-				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name', hue=self.cbs[1].currentText(),
-					  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.palette)
-		elif self.check_group.isChecked():
-			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
-						  hue=self.cbs[2].currentText(),
-						  dodge=True,palette=self.hue_colors)
-			# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
-			if self.show_cell_lines:
-				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+		if self.well_option>1:
+			if self.check_class.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+							  hue=self.cbs[1].currentText(),
+							  dodge=True, palette=self.palette)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+								  hue=self.cbs[1].currentText(),
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3, palette=self.palette)
+			elif self.check_group.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
 							  hue=self.cbs[2].currentText(),
-							  dodge=True, alpha=0.3, linewidth=0.5, size=3,palette=self.hue_colors)
-		else:
-			sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',color=self.palette[0],
+							  dodge=True, palette=self.hue_colors)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+								  hue=self.cbs[2].currentText(),
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3, palette=self.hue_colors)
+			else:
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+							  color=self.palette[0],
 							  dodge=True)
-			# sns.violinplot(ax=ax,data=plot_data, y='drift_diff', x='well',hue='contact',dodge=True,cut=0,split=False,inner='quart',linewidth=1)
-			if self.show_cell_lines:
-				sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',color=self.palette[0],
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='well_name',
+								  color=self.palette[0],
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3)
+		else:
+			if self.check_class.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+							  hue=self.cbs[1].currentText(),
+							  dodge=True, palette=self.palette)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+								  hue=self.cbs[1].currentText(),
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3, palette=self.palette)
+			elif self.check_group.isChecked():
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+							  hue=self.cbs[2].currentText(),
+							  dodge=True, palette=self.hue_colors)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+								  hue=self.cbs[2].currentText(),
+								  dodge=True, alpha=0.3, linewidth=0.5, size=3, palette=self.hue_colors)
+			else:
+				sns.boxenplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+							  color=self.palette[0],
+							  dodge=True)
+				if self.show_cell_lines:
+					sns.stripplot(ax=self.ax, data=self.plot_data, y=self.feature_selected, x='position',
+								  color=self.palette[0],
 								  dodge=True, alpha=0.3, linewidth=0.5, size=3)
 		ax.spines['top'].set_visible(False)
 		ax.spines['right'].set_visible(False)
@@ -947,7 +1024,7 @@ class ConfigMeasurementsPlot(QWidget):
 		self.plot_survivals(0)
 
 	def select_survival_lines(self):
-		if len(self.well_indices)>1:
+		if self.plot_mode=='wells':
 			selected_wells=[]
 			for i in range(len(self.well_display_options)):
 				if self.well_display_options[i].isChecked():

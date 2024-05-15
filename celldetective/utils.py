@@ -367,7 +367,7 @@ def compute_weights(y):
 
 	return class_weights
 
-def train_test_split(data_x, data_y1, data_y2=None, validation_size=0.25, test_size=0):
+def train_test_split(data_x, data_y1, data_class=None, validation_size=0.25, test_size=0, n_iterations=10):
 
 	"""
 
@@ -407,37 +407,56 @@ def train_test_split(data_x, data_y1, data_y2=None, validation_size=0.25, test_s
 
 	"""
 
-	n_values = len(data_x)
-	randomize = np.arange(n_values)
-	np.random.shuffle(randomize)
+	if data_class is not None:
+		print(f"Unique classes: {np.sort(np.argmax(np.unique(data_class,axis=0),axis=1))}")
 
-	train_percentage = 1- validation_size - test_size
-	chunks = split_by_ratio(randomize, train_percentage, validation_size, test_size)
+	for i in range(n_iterations):
 
-	x_train = data_x[chunks[0]]
-	y1_train = data_y1[chunks[0]]
-	if data_y2 is not None:
-		y2_train = data_y2[chunks[0]]
+		n_values = len(data_x)
+		randomize = np.arange(n_values)
+		np.random.shuffle(randomize)
 
+		train_percentage = 1 - validation_size - test_size
 
-	x_val = data_x[chunks[1]]
-	y1_val = data_y1[chunks[1]]
-	if data_y2 is not None:
-		y2_val = data_y2[chunks[1]]
+		chunks = split_by_ratio(randomize, train_percentage, validation_size, test_size)
 
-	ds = {"x_train": x_train, "x_val": x_val,
-		 "y1_train": y1_train, "y1_val": y1_val}
-	if data_y2 is not None:
-		ds.update({"y2_train": y2_train, "y2_val": y2_val})
+		x_train = data_x[chunks[0]]
+		y1_train = data_y1[chunks[0]]
+		if data_class is not None:
+			y2_train = data_class[chunks[0]]
 
-	if test_size>0:
-		x_test = data_x[chunks[2]]
-		y1_test = data_y1[chunks[2]]
-		ds.update({"x_test": x_test, "y1_test": y1_test})
-		if data_y2 is not None:
-			y2_test = data_y2[chunks[2]]
-			ds.update({"y2_test": y2_test})
-	return ds
+		x_val = data_x[chunks[1]]
+		y1_val = data_y1[chunks[1]]
+		if data_class is not None:
+			y2_val = data_class[chunks[1]]
+
+		if data_class is not None:
+			print(f"classes in train set: {np.sort(np.argmax(np.unique(y2_train,axis=0),axis=1))}; classes in validation set: {np.sort(np.argmax(np.unique(y2_val,axis=0),axis=1))}")
+			same_class_test = np.array_equal(np.sort(np.argmax(np.unique(y2_train,axis=0),axis=1)), np.sort(np.argmax(np.unique(y2_val,axis=0),axis=1)))
+			print(f"Check that classes are found in all sets: {same_class_test}...")
+		else:
+			same_class_test = True
+
+		if same_class_test:
+
+			ds = {"x_train": x_train, "x_val": x_val,
+				 "y1_train": y1_train, "y1_val": y1_val}
+			if data_class is not None:
+				ds.update({"y2_train": y2_train, "y2_val": y2_val})
+
+			if test_size>0:
+				x_test = data_x[chunks[2]]
+				y1_test = data_y1[chunks[2]]
+				ds.update({"x_test": x_test, "y1_test": y1_test})
+				if data_class is not None:
+					y2_test = data_class[chunks[2]]
+					ds.update({"y2_test": y2_test})
+			return ds
+		else:
+			continue
+
+	raise Exception("Some classes are missing from the train or validation set... Abort.")
+
 
 def remove_redundant_features(features, reference_features, channel_names=None):
 

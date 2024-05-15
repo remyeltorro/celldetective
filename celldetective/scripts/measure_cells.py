@@ -20,6 +20,7 @@ from natsort import natsorted
 from art import tprint
 from tifffile import imread
 import threading
+import datetime
 
 tprint("Measure")
 
@@ -204,7 +205,10 @@ intensity_measurement_radii_log=f'intensity_measurement_radii: {intensity_measur
 isotropic_options_log=f'isotropic_operations: {isotropic_operations} \n'
 log='\n'.join([features_log,border_distances_log,haralick_options_log,background_correction_log,spot_detection_log,intensity_measurement_radii_log,isotropic_options_log])
 with open(pos + f'log_{mode}.json', 'a') as f:
-	f.write(log)
+	f.write(f'{datetime.datetime.now()} MEASURE \n')
+	f.write(log+'\n')
+
+
 def measure_index(indices):
 
 	global column_labels

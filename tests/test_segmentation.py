@@ -2,69 +2,92 @@ import unittest
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import json
+from tifffile import imread
+from celldetective.segmentation import segment, segment_frame_from_thresholds
+from tensorflow.keras.metrics import BinaryIoU
 
-# class TestPatchMask(unittest.TestCase):
+TEST_IMAGE_FILENAME = os.path.join(os.path.dirname(__file__), os.sep.join(['assets','sample.tif']))
+TEST_LABEL_FILENAME = os.path.join(os.path.dirname(__file__), os.sep.join(['assets','sample_labelled.tif']))
+TEST_CONFIG_FILENAME = os.path.join(os.path.dirname(__file__), os.sep.join(['assets','sample.json']))
 
-# 	@classmethod
-# 	def setUpClass(self):
-# 		self.radius = 3
+class TestDLMCF7Segmentation(unittest.TestCase):
 
-# 	def test_correct_shape(self):
-# 		self.patch = create_patch_mask(self.radius, self.radius)
-# 		self.assertEqual(self.patch.shape,(3,3))
+	@classmethod
+	def setUpClass(self):
+		self.img = imread(TEST_IMAGE_FILENAME)
+		self.label_true = imread(TEST_LABEL_FILENAME)
+		self.stack = np.moveaxis([self.img, self.img, self.img],1,-1)
+		with open(TEST_CONFIG_FILENAME) as config_file:
+			self.config = json.load(config_file)
+		self.channels = self.config['channels']
+		self.spatial_calibration = self.config['spatial_calibration']
 
-# 	def test_correct_ring(self):
-# 		self.patch = create_patch_mask(5, 5,radius=[1,2])
-# 		self.assertFalse(self.patch[2,2])
+	def test_correct_segmentation_with_multimodal_model(self):
+		
+		labels = segment(self.stack, "MCF7_bf_pi_cfse_h", channels=self.channels, spatial_calibration=self.spatial_calibration, view_on_napari=False,
+						use_gpu=False)
+		np.testing.assert_array_equal(labels[0], labels[1])
 
-# class TestRemoveRedundantFeatures(unittest.TestCase):
+		self.binary_label_true = self.label_true.copy().astype(float)
+		self.binary_label_true[self.binary_label_true>0] = 1.
 
-# 	@classmethod
-# 	def setUpClass(self):
-# 		self.list_a = ['feat1','feat2','feat3','feat4','intensity_mean']
-# 		self.list_b = ['feat5','feat2','feat1','feat6','test_channel_mean']
-# 		self.expected = ['feat3','feat4']
+		label_binary = labels[0].copy().astype(float)
+		label_binary[label_binary>0] = 1.
 
-# 	def test_remove_red_features(self):
-# 		self.assertEqual(remove_redundant_features(self.list_a, self.list_b, channel_names=['test_channel']), self.expected)
+		m = BinaryIoU(target_class_ids=[1])
+		m.update_state(self.binary_label_true, label_binary)
+		score = m.result().numpy()
 
+		self.assertGreater(score,0.9)
 
-# class TestExtractChannelIndices(unittest.TestCase):
+	def test_correct_segmentation_with_transferred_model(self):
+		
+		labels = segment(self.stack, "MCF7_h_versatile", channels=self.channels, spatial_calibration=self.spatial_calibration, view_on_napari=False,
+			use_gpu=True, time_flat_normalization=False, time_flat_percentiles=(0.0,99.99))
+		np.testing.assert_array_equal(labels[0], labels[1])
 
-# 	@classmethod
-# 	def setUpClass(self):
-# 		self.channels = ['ch1','ch2','ch3','ch4']
-# 		self.required_channels = ['ch4','ch2']
-# 		self.expected_indices = [3,1]
+		self.binary_label_true = self.label_true.copy().astype(float)
+		self.binary_label_true[self.binary_label_true>0] = 1.
 
-# 	def test_extracted_channels_are_correct(self):
-# 		self.assertEqual(list(_extract_channel_indices(self.channels, self.required_channels)), self.expected_indices)
+		label_binary = labels[0].copy().astype(float)
+		label_binary[label_binary>0] = 1.
 
+		m = BinaryIoU(target_class_ids=[1])
+		m.update_state(self.binary_label_true, label_binary)
+		score = m.result().numpy()
 
-# class TestImgIndexPerChannel(unittest.TestCase):
-
-# 	@classmethod
-# 	def setUpClass(self):
-# 		self.channels_indices = [1]
-# 		self.len_movie = 5
-# 		self.nbr_channels = 3
-# 		self.expected_indices = [1,4,7,10,13]
-
-# 	def test_index_sequence_is_correct(self):
-# 		self.assertEqual(list(_get_img_num_per_channel(self.channels_indices, self.len_movie, self.nbr_channels)[0]), self.expected_indices)
-
-
-# class TestSplitArrayByRatio(unittest.TestCase):
-
-# 	@classmethod
-# 	def setUpClass(self):
-# 		self.array_length = 100
-# 		self.array = np.ones(self.array_length)
-
-# 	def test_ratio_split_is_correct(self):
-# 		split_array = split_by_ratio(self.array,0.5,0.25,0.1)
-# 		self.assertTrue(np.all([len(split_array[0])==50, len(split_array[1])==25, len(split_array[2])==10]))
+		self.assertGreater(score,0.9)
 
 
-# if __name__=="__main__":
-# 	unittest.main()
+class TestThresholdMCF7Segmentation(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.img = imread(TEST_IMAGE_FILENAME)
+		self.label_true = imread(TEST_LABEL_FILENAME)
+		with open(TEST_CONFIG_FILENAME) as config_file:
+			self.config = json.load(config_file)
+		self.channels = self.config['channels']
+		self.spatial_calibration = self.config['spatial_calibration']
+
+	def test_correct_segmentation_with_threshold(self):
+		
+		label = segment_frame_from_thresholds(np.moveaxis(self.img,0,-1), target_channel=3, thresholds=[8000,1.0E10], equalize_reference=None,
+								  filters=[['variance',4],['gauss',2]], marker_min_distance=13, marker_footprint_size=34, marker_footprint=None, feature_queries=["area < 80"], channel_names=None)
+		
+		self.binary_label_true = self.label_true.copy().astype(float)
+		self.binary_label_true[self.binary_label_true>0] = 1.
+
+		label_binary = label.copy().astype(float)
+		label_binary[label_binary>0] = 1.
+
+		m = BinaryIoU(target_class_ids=[1])
+		m.update_state(self.binary_label_true, label_binary)
+		score = m.result().numpy()
+
+		self.assertGreater(score,0.7)
+
+
+if __name__=="__main__":
+	unittest.main()

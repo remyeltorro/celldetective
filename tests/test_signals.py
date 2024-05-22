@@ -68,8 +68,6 @@ def export_set(trajectories, name='set.npy', output_folder='.'):
 		
 	np.save(os.sep.join([output_folder,name]), training_set)
 
-	return training_set
-
 
 class TestCreateSignalModel(unittest.TestCase):
 
@@ -99,7 +97,7 @@ class TestTrainSignalModel(unittest.TestCase):
 		self.trajectories = generate_fake_signal_data(300)
 		if not os.path.exists('temp'):
 			os.mkdir('temp')
-		self.ts = export_set(self.trajectories, name='set.npy', output_folder='temp')
+		export_set(self.trajectories, name='set.npy', output_folder='temp')
 		self.model = SignalDetectionModel(
 									 channel_option=["signal"], 
 									 model_signal_length=128,
@@ -114,7 +112,7 @@ class TestTrainSignalModel(unittest.TestCase):
 	def test_train_signal_model(self):
 
 		self.model.fit_from_directory(
-									 self.ts,
+									 ['temp'],
 									 normalize=True,
 									 normalization_percentile=None,
 									 normalization_values = None,

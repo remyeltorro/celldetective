@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+from PyQt5.QtWidgets import QFrame, QGridLayout, QRadioButton, QButtonGroup, QComboBox,QTabWidget,QSizePolicy,QListWidget, QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
 	QMessageBox, QWidget, QLineEdit, QScrollArea
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
@@ -14,10 +14,11 @@ from celldetective.segmentation import segment_at_position, segment_from_thresho
 from celldetective.tracking import track_at_position
 from celldetective.measure import measure_at_position
 from celldetective.signals import analyze_signals_at_position
+from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
 from natsort import natsorted
-from superqt import QLabeledDoubleSlider
+from superqt import QLabeledDoubleSlider, QLabeledRangeSlider, QLabeledSlider
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -26,6 +27,7 @@ from tifffile import imwrite
 import json
 import psutil
 from celldetective.neighborhood import compute_neighborhood_at_position
+from celldetective.io import estimate_background_per_condition
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -1053,3 +1055,281 @@ class NeighPanel(QFrame):
 													neighborhood_kwargs=config['neighborhood_kwargs'],
 													)
 		print('Done.')
+
+
+class PreprocessingPanel(QFrame):
+	
+	def __init__(self, parent):
+
+		super().__init__()		
+		self.parent = parent
+		self.exp_channels = self.parent.exp_channels
+		self.exp_dir = self.parent.exp_dir
+		self.wells = np.array(self.parent.wells,dtype=str)
+		exp_config = self.exp_dir + "config.ini"
+		self.channel_names, self.channels = extract_experiment_channels(exp_config)
+		self.channel_names = np.array(self.channel_names)
+		
+		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+		self.grid = QGridLayout(self)
+
+		self.generate_header()
+	
+	def generate_header(self):
+
+		"""
+		Read the mode and prepare a collapsable block to process a specific cell population.
+
+		"""
+
+		panel_title = QLabel(f"PREPROCESSING")
+		panel_title.setStyleSheet("""
+			font-weight: bold;
+			padding: 0px;
+			""")
+
+		self.grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
+
+		self.select_all_btn = QPushButton()
+		self.select_all_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
+		self.select_all_btn.setIconSize(QSize(20, 20))
+		self.all_ticked = False
+		#self.select_all_btn.clicked.connect(self.tick_all_actions)
+		self.select_all_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
+		#self.to_disable.append(self.all_tc_actions)
+		
+		self.collapse_btn = QPushButton()
+		self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
+		self.collapse_btn.setIconSize(QSize(25, 25))
+		self.collapse_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
+
+		self.populate_contents()
+		
+		self.grid.addWidget(self.ContentsFrame, 1, 0, 1, 4, alignment=Qt.AlignTop)
+		self.collapse_btn.clicked.connect(lambda: self.ContentsFrame.setHidden(not self.ContentsFrame.isHidden()))
+		self.collapse_btn.clicked.connect(self.collapse_advanced)
+		self.ContentsFrame.hide()
+
+	def collapse_advanced(self):
+		if self.ContentsFrame.isHidden():
+			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
+			self.collapse_btn.setIconSize(QSize(20, 20))
+			self.parent.w.adjustSize()
+			self.parent.adjustSize()
+		else:
+			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
+			self.collapse_btn.setIconSize(QSize(20, 20))
+			self.parent.w.adjustSize()
+			self.parent.adjustSize()
+
+	def populate_contents(self):
+
+		self.ContentsFrame = QFrame()
+		self.grid_contents = QGridLayout(self.ContentsFrame)
+		self.grid_contents.setContentsMargins(0,0,0,0)
+
+		layout = QVBoxLayout()
+		self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
+		self.normalisation_lbl.setStyleSheet("""
+			font-weight: bold;
+			padding: 0px;
+			""")
+		layout.addWidget(self.normalisation_lbl, alignment=Qt.AlignCenter)
+		self.tabs = QTabWidget()
+		self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+		
+		self.tab2 = QWidget()
+		self.tab_condition = QWidget()
+
+		self.normalisation_list = QListWidget()
+		self.tabs.addTab(self.tab2, 'Per-field')
+		self.tabs.addTab(self.tab_condition, 'Per-condition')
+
+		self.tab2.setLayout(self.populate_field_norm_tab())
+		self.tab_condition.setLayout(self.populate_condition_norm_tab())
+
+		layout.addWidget(self.tabs)
+		self.norm_list_lbl = QLabel('Background correction to perform:')
+		hbox = QHBoxLayout()
+		hbox.addWidget(self.norm_list_lbl)
+		self.del_norm_btn = QPushButton("")
+		self.del_norm_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.del_norm_btn.setIcon(icon(MDI6.trash_can, color="black"))
+		self.del_norm_btn.setToolTip("Remove background correction")
+		self.del_norm_btn.setIconSize(QSize(20, 20))
+		hbox.addWidget(self.del_norm_btn, alignment=Qt.AlignRight)
+		layout.addLayout(hbox)
+		#self.del_norm_btn.clicked.connect(self.remove_item_from_list)
+		layout.addWidget(self.normalisation_list)
+		self.grid_contents.addLayout(layout, 0,0,1,4)
+
+	def populate_condition_norm_tab(self):
+
+		tab_condition_layout = QGridLayout(self.tab_condition)
+		
+		channel_hbox = QHBoxLayout()
+		self.tab_condition_channel_dropdown = QComboBox()
+		self.tab_condition_channel_dropdown.addItems(self.channel_names)
+		channel_hbox.addWidget(QLabel('Channel: '), 25)
+		channel_hbox.addWidget(self.tab_condition_channel_dropdown, 75)
+		tab_condition_layout.addLayout(channel_hbox, 0,0,1,3)
+
+		frame_selection_hbox = QHBoxLayout()
+
+		frame_selection_hbox.addWidget(QLabel('Time range: '), 25)
+		self.frame_range_slider = QLabeledRangeSlider()
+		self.frame_range_slider.setOrientation(1)
+		self.frame_range_slider.setRange(0,self.parent.len_movie)
+		self.frame_range_slider.setValue((0,5))
+		frame_selection_hbox.addWidget(self.frame_range_slider, 75)
+		tab_condition_layout.addLayout(frame_selection_hbox, 1,0,1,3)
+
+		tab_condition_layout.addWidget(QLabel("Threshold: "), 2, 0)
+		self.tab_cdt_std_le = QLineEdit()
+		tab_condition_layout.addWidget(self.tab_cdt_std_le, 2, 1)
+
+		self.check_threshold_cdt_btn = QPushButton()
+		self.check_threshold_cdt_btn.setIcon(icon(MDI6.image_check, color="k"))
+		self.check_threshold_cdt_btn.setStyleSheet(self.parent.parent.button_select_all)
+		tab_condition_layout.addWidget(self.check_threshold_cdt_btn, 2, 2)
+
+		control_bg_layout = QHBoxLayout()
+		control_bg_layout.addWidget(QLabel('well: '),25)
+		self.well_slider = QLabeledSlider()
+		self.well_slider.setOrientation(1)
+		self.well_slider.setRange(0,len(self.wells))
+		self.well_slider.setValue(0)
+		control_bg_layout.addWidget(self.well_slider,70)
+
+		self.check_bg_btn = QPushButton()
+		self.check_bg_btn.setIcon(icon(MDI6.image_check, color="k"))
+		self.check_bg_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.check_bg_btn.setToolTip('View background.')
+		control_bg_layout.addWidget(self.check_bg_btn,5)
+		print(self.exp_dir, self.well_slider.value(),self.frame_range_slider.value())
+		self.check_bg_btn.clicked.connect(self.estimate_bg)
+
+		tab_condition_layout.addLayout(control_bg_layout,3,0,1,3)
+
+
+		self.regress_cb = QCheckBox('Regress background to each frame?')
+		tab_condition_layout.addWidget(self.regress_cb, 4,0,1,3)
+
+		self.tab_cdt_subtract = QRadioButton('Subtract')
+		self.tab_cdt_divide = QRadioButton('Divide')
+		self.tab_cdt_sd_btn_group = QButtonGroup(self)
+		self.tab_cdt_sd_btn_group.addButton(self.tab2_subtract)
+		self.tab_cdt_sd_btn_group.addButton(self.tab2_divide)
+		tab_condition_layout.addWidget(self.tab_cdt_subtract, 5, 0, alignment=Qt.AlignRight)
+		tab_condition_layout.addWidget(self.tab_cdt_divide, 5, 1, alignment=Qt.AlignRight)
+
+		self.tab_cdt_clip = QRadioButton('Clip')
+		self.tab_cdt_no_clip = QRadioButton("Don't clip")
+		self.tab_cdt_clip_group = QButtonGroup(self)
+		self.tab_cdt_clip_group.addButton(self.tab_cdt_clip)
+		self.tab_cdt_clip_group.addButton(self.tab_cdt_no_clip)
+		self.tab_cdt_clip.setEnabled(False)
+		self.tab_cdt_no_clip.setEnabled(False)
+		tab_condition_layout.addWidget(self.tab_cdt_clip, 6, 0, alignment=Qt.AlignLeft)
+		tab_condition_layout.addWidget(self.tab_cdt_no_clip, 6, 1, alignment=Qt.AlignLeft)
+		#self.tab2_subtract.toggled.connect(self.show_clipping_options)
+		#self.tab2_divide.toggled.connect(self.show_clipping_options)
+
+		self.view_bg_btn = QPushButton("")
+		self.view_bg_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.view_bg_btn.setIcon(icon(MDI6.eye_outline, color="black"))
+		self.view_bg_btn.setToolTip("View corrected image")
+		self.view_bg_btn.setIconSize(QSize(20, 20))
+		#self.view_norm_btn.clicked.connect(self.preview_normalisation)
+		tab_condition_layout.addWidget(self.view_bg_btn, 6, 2)
+
+		tab_cdt_submit = QPushButton()
+		tab_cdt_submit.setText('Add channel')
+		tab_cdt_submit.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		tab_condition_layout.addWidget(tab_cdt_submit, 7, 0, 1, 3)
+		#tab2_submit.clicked.connect(self.add_item_to_list)
+
+
+		return tab_condition_layout
+
+	def estimate_bg(self):
+
+		print(self.tab_condition_channel_dropdown.currentText())
+		estimate_background_per_condition(self.exp_dir, 
+										  well_option = self.well_slider.value(),
+										  frame_range = self.frame_range_slider.value(),
+										  target_channel = self.tab_condition_channel_dropdown.currentText(),
+										  show_progress_per_pos = True,
+										  )
+
+	def populate_field_norm_tab(self):
+
+		tab2_layout = QGridLayout(self.tab2)
+
+		channel_lbl = QLabel()
+		channel_lbl.setText("Channel: ")
+		tab2_layout.addWidget(channel_lbl, 0, 0)
+
+		self.tab2_channel_dropdown = QComboBox()
+		self.tab2_channel_dropdown.addItems(self.channel_names)
+		tab2_layout.addWidget(self.tab2_channel_dropdown, 0, 1)
+
+		tab2_lbl = QLabel()
+		tab2_lbl.setText("std threshold: ")
+		tab2_layout.addWidget(tab2_lbl, 1, 0)
+
+		self.tab2_txt_threshold = QLineEdit()
+		tab2_layout.addWidget(self.tab2_txt_threshold, 1, 1)
+
+		self.norm_digit_btn = QPushButton()
+		self.norm_digit_btn.setIcon(icon(MDI6.image_check, color="k"))
+		self.norm_digit_btn.setStyleSheet(self.parent.parent.button_select_all)
+
+		#self.norm_digit_btn.clicked.connect(self.show_threshold_visual)
+		tab2_layout.addWidget(self.norm_digit_btn, 1, 2)
+
+		tab2_lbl_type = QLabel()
+		tab2_lbl_type.setText("Type: ")
+		tab2_layout.addWidget(tab2_lbl_type, 2, 0)
+
+		self.tab2_dropdown = QComboBox()
+		self.tab2_dropdown.addItems(["Paraboloid", "Plane"])
+		tab2_layout.addWidget(self.tab2_dropdown, 2, 1)
+
+		self.tab2_subtract = QRadioButton('Subtract')
+		self.tab2_divide = QRadioButton('Divide')
+		self.tab2_sd_btn_group = QButtonGroup(self)
+		self.tab2_sd_btn_group.addButton(self.tab2_subtract)
+		self.tab2_sd_btn_group.addButton(self.tab2_divide)
+		tab2_layout.addWidget(self.tab2_subtract, 3, 0, alignment=Qt.AlignRight)
+		tab2_layout.addWidget(self.tab2_divide, 3, 1, alignment=Qt.AlignRight)
+
+		self.tab2_clip = QRadioButton('Clip')
+		self.tab2_no_clip = QRadioButton("Don't clip")
+		self.tab2_clip_group = QButtonGroup(self)
+		self.tab2_clip_group.addButton(self.tab2_clip)
+		self.tab2_clip_group.addButton(self.tab2_no_clip)
+		self.tab2_clip.setEnabled(False)
+		self.tab2_no_clip.setEnabled(False)
+		tab2_layout.addWidget(self.tab2_clip, 4, 0, alignment=Qt.AlignLeft)
+		tab2_layout.addWidget(self.tab2_no_clip, 4, 1, alignment=Qt.AlignLeft)
+		#self.tab2_subtract.toggled.connect(self.show_clipping_options)
+		#self.tab2_divide.toggled.connect(self.show_clipping_options)
+
+		self.view_norm_btn = QPushButton("")
+		self.view_norm_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.view_norm_btn.setIcon(icon(MDI6.eye_outline, color="black"))
+		self.view_norm_btn.setToolTip("View corrected image")
+		self.view_norm_btn.setIconSize(QSize(20, 20))
+		#self.view_norm_btn.clicked.connect(self.preview_normalisation)
+		tab2_layout.addWidget(self.view_norm_btn, 4, 2)
+
+		tab2_submit = QPushButton()
+		tab2_submit.setText('Add channel')
+		tab2_submit.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		tab2_layout.addWidget(tab2_submit, 5, 0, 1, 3)
+		#tab2_submit.clicked.connect(self.add_item_to_list)
+
+		return tab2_layout

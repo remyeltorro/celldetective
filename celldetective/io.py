@@ -19,7 +19,8 @@ from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _
 import json
 import threading
 from skimage.measure import regionprops_table
-
+from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
+import matplotlib.pyplot as plt
 
 def get_experiment_wells(experiment):
 	
@@ -233,7 +234,53 @@ def get_position_movie_path(pos, prefix=''):
 		stack_path = np.nan
 	
 	return stack_path
-					
+
+def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel=None, frame_range=[0,5], show_progress_per_pos=False, show_progress_per_well=True):
+	
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
+	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
+
+	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, "*")
+	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
+	nbr_channels = _extract_nbr_channels_from_config(config)
+	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
+	print(nbr_channels, img_num_channels.shape)
+	real_well_index = 0
+	
+	for widx, well_path in enumerate(tqdm(wells[well_indices], disable=~show_progress_per_well)):
+		
+		any_movie = False # assume no table
+		
+		well_index = widx
+		well_name, well_number = extract_well_name_and_number(well_path)
+		
+		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
+		real_pos_index = 0
+		frame_mean_per_position = []
+
+		for pidx,pos_path in enumerate(tqdm(positions, disable=~show_progress_per_pos)):
+			
+			pos_name = extract_position_name(pos_path)
+			
+			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
+			frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
+			frame_mean = np.mean(frames, axis=-1)
+
+			# Compute STD mask values above threshold
+
+			# store
+			frame_mean_per_position.append(frame_mean)
+
+		background = np.mean(frame_mean_per_position,axis=0)
+		plt.imshow(background,cmap='gray')
+		plt.pause(2)
+		plt.show()
+
+
+
+
 def load_experiment_tables(experiment, population='targets', well_option='*',position_option='*', return_pos_info=False):
 	
 

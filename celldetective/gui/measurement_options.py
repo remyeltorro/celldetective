@@ -702,8 +702,8 @@ class ConfigMeasurements(QMainWindow):
         Load the first frame of the first movie found in the experiment folder as a sample.
         """
 
-        movies = glob(self.parent.parent.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
-        print(movies)
+        movies = glob(self.parent.parent.pos + os.sep.join(['movie', f"{self.parent.parent.movie_prefix}*.tif"]))
+
         if len(movies) == 0:
             msgBox = QMessageBox()
             msgBox.setIcon(QMessageBox.Warning)

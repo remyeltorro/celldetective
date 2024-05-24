@@ -21,6 +21,8 @@ import threading
 from skimage.measure import regionprops_table
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 import matplotlib.pyplot as plt
+from celldetective.filters import std_filter, median_filter, gauss_filter
+from stardist import fill_label_holes
 
 def get_experiment_wells(experiment):
 	
@@ -235,7 +237,7 @@ def get_position_movie_path(pos, prefix=''):
 	
 	return stack_path
 
-def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel=None, frame_range=[0,5], show_progress_per_pos=False, show_progress_per_well=True):
+def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel=None, frame_range=[0,5], mode="timeseries", show_progress_per_pos=False, show_progress_per_well=True):
 	
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
@@ -246,10 +248,11 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
 	nbr_channels = _extract_nbr_channels_from_config(config)
 	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
-	print(nbr_channels, img_num_channels.shape)
-	real_well_index = 0
 	
-	for widx, well_path in enumerate(tqdm(wells[well_indices], disable=~show_progress_per_well)):
+	backgrounds = []
+
+	real_well_index = 0
+	for widx, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
 		
 		any_movie = False # assume no table
 		
@@ -260,23 +263,61 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 		real_pos_index = 0
 		frame_mean_per_position = []
 
-		for pidx,pos_path in enumerate(tqdm(positions, disable=~show_progress_per_pos)):
+		for pidx,pos_path in enumerate(tqdm(positions, disable=not show_progress_per_pos)):
 			
 			pos_name = extract_position_name(pos_path)
 			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
-			frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
-			frame_mean = np.mean(frames, axis=-1)
 
-			# Compute STD mask values above threshold
+			if mode=="timeseries":
+
+				frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
+				frames = np.moveaxis(frames, -1, 0).astype(float)
+
+				for i in range(len(frames)):
+					if np.all(frames[i].flatten()==0):
+						frames[i] = np.nan
+
+				frame_mean = np.nanmean(frames, axis=0)
+				
+				frame = frame_mean.copy().astype(float)
+				frame = gauss_filter(frame, 2)
+				std_frame = std_filter(frame, 4)
+				
+				mask = std_frame > threshold_on_std
+				mask = fill_label_holes(mask)
+				frame[np.where(mask==1)] = np.nan
+
+			elif mode=="tiles":
+
+				frames = load_frames(img_num_channels[0,:], stack_path, normalize_input=False).astype(float)
+				frames = np.moveaxis(frames, -1, 0).astype(float)
+
+				for i in range(len(frames)):
+
+					if np.all(frames[i].flatten()==0):
+						frames[i,:,:] = np.nan
+						continue
+
+					f = frames[i].copy()
+					f = gauss_filter(f, 2)
+					std_frame = std_filter(f, 4)
+
+					mask = std_frame > threshold_on_std
+					mask = fill_label_holes(mask)
+					f[np.where(mask==1)] = np.nan
+
+					frames[i,:,:] = f
+				
+				frame = np.nanmedian(frames, axis=0)
 
 			# store
-			frame_mean_per_position.append(frame_mean)
+			frame_mean_per_position.append(frame)
 
-		background = np.mean(frame_mean_per_position,axis=0)
-		plt.imshow(background,cmap='gray')
-		plt.pause(2)
-		plt.show()
+		background = np.nanmedian(frame_mean_per_position,axis=0)
+		backgrounds.append({"bg": background, "well": well_path})
+
+	return backgrounds
 
 
 

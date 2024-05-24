@@ -25,7 +25,7 @@ except:
 # 				requires.append(str(item.req))
 
 setup(name='celldetective',
-			version='1.0.2.post1',
+			version='1.0.3',
 			description='description',
 			long_description=open('README.rst',encoding="utf8").read(),
 			long_description_content_type='text/markdown',

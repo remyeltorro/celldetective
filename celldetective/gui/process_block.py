@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
+from PyQt5.QtGui import QIcon, QDoubleValidator
 
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
@@ -18,7 +19,7 @@ from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
 from natsort import natsorted
-from superqt import QLabeledDoubleSlider, QLabeledRangeSlider, QLabeledSlider
+from superqt import QLabeledDoubleSlider, QLabeledRangeSlider, QLabeledSlider, QLabeledDoubleRangeSlider
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -28,6 +29,8 @@ import json
 import psutil
 from celldetective.neighborhood import compute_neighborhood_at_position
 from celldetective.io import estimate_background_per_condition
+from celldetective.gui.gui_utils import FigureCanvas
+import matplotlib.pyplot as plt
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -1069,6 +1072,7 @@ class PreprocessingPanel(QFrame):
 		exp_config = self.exp_dir + "config.ini"
 		self.channel_names, self.channels = extract_experiment_channels(exp_config)
 		self.channel_names = np.array(self.channel_names)
+		self.onlyFloat = QDoubleValidator()
 		
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -1176,30 +1180,47 @@ class PreprocessingPanel(QFrame):
 		channel_hbox.addWidget(self.tab_condition_channel_dropdown, 75)
 		tab_condition_layout.addLayout(channel_hbox, 0,0,1,3)
 
-		frame_selection_hbox = QHBoxLayout()
+		acquisition_mode_hbox = QHBoxLayout()
+		acquisition_mode_hbox.addWidget(QLabel('Stack mode: '), 25)
+		
+		self.timeseries_rb = QRadioButton('timeseries')
+		self.timeseries_rb.setChecked(True)
+		self.tiles_rb = QRadioButton('tiles')
 
-		frame_selection_hbox.addWidget(QLabel('Time range: '), 25)
+		acquisition_mode_hbox.addWidget(self.timeseries_rb, 37, alignment=Qt.AlignCenter)
+		acquisition_mode_hbox.addWidget(self.tiles_rb, 38, alignment=Qt.AlignCenter)
+		tab_condition_layout.addLayout(acquisition_mode_hbox, 1,0,1,3)
+
+		frame_selection_hbox = QHBoxLayout()
+		self.time_range_lbl = QLabel('Time range: ')
+		frame_selection_hbox.addWidget(self.time_range_lbl, 25)
 		self.frame_range_slider = QLabeledRangeSlider()
 		self.frame_range_slider.setOrientation(1)
 		self.frame_range_slider.setRange(0,self.parent.len_movie)
 		self.frame_range_slider.setValue((0,5))
 		frame_selection_hbox.addWidget(self.frame_range_slider, 75)
-		tab_condition_layout.addLayout(frame_selection_hbox, 1,0,1,3)
+		tab_condition_layout.addLayout(frame_selection_hbox, 2,0,1,3)
 
-		tab_condition_layout.addWidget(QLabel("Threshold: "), 2, 0)
+		self.timeseries_rb.toggled.connect(self.activate_time_range)
+		self.tiles_rb.toggled.connect(self.activate_time_range)
+		
+
+		tab_condition_layout.addWidget(QLabel("Threshold: "), 3, 0)
 		self.tab_cdt_std_le = QLineEdit()
-		tab_condition_layout.addWidget(self.tab_cdt_std_le, 2, 1)
+		self.tab_cdt_std_le.setText('1000,0')
+		self.tab_cdt_std_le.setValidator(self.onlyFloat)
+		tab_condition_layout.addWidget(self.tab_cdt_std_le, 3, 1)
 
 		self.check_threshold_cdt_btn = QPushButton()
 		self.check_threshold_cdt_btn.setIcon(icon(MDI6.image_check, color="k"))
 		self.check_threshold_cdt_btn.setStyleSheet(self.parent.parent.button_select_all)
-		tab_condition_layout.addWidget(self.check_threshold_cdt_btn, 2, 2)
+		tab_condition_layout.addWidget(self.check_threshold_cdt_btn, 3, 2)
 
 		control_bg_layout = QHBoxLayout()
 		control_bg_layout.addWidget(QLabel('well: '),25)
 		self.well_slider = QLabeledSlider()
 		self.well_slider.setOrientation(1)
-		self.well_slider.setRange(0,len(self.wells))
+		self.well_slider.setRange(1,len(self.wells))
 		self.well_slider.setValue(0)
 		control_bg_layout.addWidget(self.well_slider,70)
 
@@ -1211,19 +1232,19 @@ class PreprocessingPanel(QFrame):
 		print(self.exp_dir, self.well_slider.value(),self.frame_range_slider.value())
 		self.check_bg_btn.clicked.connect(self.estimate_bg)
 
-		tab_condition_layout.addLayout(control_bg_layout,3,0,1,3)
+		tab_condition_layout.addLayout(control_bg_layout,4,0,1,3)
 
 
 		self.regress_cb = QCheckBox('Regress background to each frame?')
-		tab_condition_layout.addWidget(self.regress_cb, 4,0,1,3)
+		tab_condition_layout.addWidget(self.regress_cb, 5,0,1,3)
 
 		self.tab_cdt_subtract = QRadioButton('Subtract')
 		self.tab_cdt_divide = QRadioButton('Divide')
 		self.tab_cdt_sd_btn_group = QButtonGroup(self)
 		self.tab_cdt_sd_btn_group.addButton(self.tab2_subtract)
 		self.tab_cdt_sd_btn_group.addButton(self.tab2_divide)
-		tab_condition_layout.addWidget(self.tab_cdt_subtract, 5, 0, alignment=Qt.AlignRight)
-		tab_condition_layout.addWidget(self.tab_cdt_divide, 5, 1, alignment=Qt.AlignRight)
+		tab_condition_layout.addWidget(self.tab_cdt_subtract, 6, 0, alignment=Qt.AlignRight)
+		tab_condition_layout.addWidget(self.tab_cdt_divide, 6, 1, alignment=Qt.AlignRight)
 
 		self.tab_cdt_clip = QRadioButton('Clip')
 		self.tab_cdt_no_clip = QRadioButton("Don't clip")
@@ -1232,8 +1253,8 @@ class PreprocessingPanel(QFrame):
 		self.tab_cdt_clip_group.addButton(self.tab_cdt_no_clip)
 		self.tab_cdt_clip.setEnabled(False)
 		self.tab_cdt_no_clip.setEnabled(False)
-		tab_condition_layout.addWidget(self.tab_cdt_clip, 6, 0, alignment=Qt.AlignLeft)
-		tab_condition_layout.addWidget(self.tab_cdt_no_clip, 6, 1, alignment=Qt.AlignLeft)
+		tab_condition_layout.addWidget(self.tab_cdt_clip, 7, 0, alignment=Qt.AlignLeft)
+		tab_condition_layout.addWidget(self.tab_cdt_no_clip, 7, 1, alignment=Qt.AlignLeft)
 		#self.tab2_subtract.toggled.connect(self.show_clipping_options)
 		#self.tab2_divide.toggled.connect(self.show_clipping_options)
 
@@ -1243,26 +1264,77 @@ class PreprocessingPanel(QFrame):
 		self.view_bg_btn.setToolTip("View corrected image")
 		self.view_bg_btn.setIconSize(QSize(20, 20))
 		#self.view_norm_btn.clicked.connect(self.preview_normalisation)
-		tab_condition_layout.addWidget(self.view_bg_btn, 6, 2)
+		tab_condition_layout.addWidget(self.view_bg_btn, 7, 2)
 
 		tab_cdt_submit = QPushButton()
 		tab_cdt_submit.setText('Add channel')
 		tab_cdt_submit.setStyleSheet(self.parent.parent.button_style_sheet_2)
-		tab_condition_layout.addWidget(tab_cdt_submit, 7, 0, 1, 3)
+		tab_condition_layout.addWidget(tab_cdt_submit, 8, 0, 1, 3)
 		#tab2_submit.clicked.connect(self.add_item_to_list)
 
 
 		return tab_condition_layout
 
+	def activate_time_range(self):
+
+		if self.timeseries_rb.isChecked():
+			self.frame_range_slider.setEnabled(True)
+			self.time_range_lbl.setEnabled(True)
+		elif self.tiles_rb.isChecked():
+			self.frame_range_slider.setEnabled(False)
+			self.time_range_lbl.setEnabled(False)
+
 	def estimate_bg(self):
 
-		print(self.tab_condition_channel_dropdown.currentText())
-		estimate_background_per_condition(self.exp_dir, 
-										  well_option = self.well_slider.value(),
+		if self.timeseries_rb.isChecked():
+			mode = "timeseries"
+		elif self.tiles_rb.isChecked():
+			mode = "tiles"
+
+		bg = estimate_background_per_condition(
+										  self.exp_dir, 
+										  well_option = self.well_slider.value() - 1,
 										  frame_range = self.frame_range_slider.value(),
 										  target_channel = self.tab_condition_channel_dropdown.currentText(),
 										  show_progress_per_pos = True,
+										  threshold_on_std = float(self.tab_cdt_std_le.text().replace(',','.')),
+										  mode = mode,
 										  )
+		bg = bg[0]
+		bg = bg['bg']
+
+		self.fig_bg, self.ax_bg = plt.subplots(figsize=(5, 5))
+		self.imshow_bg = FigureCanvas(self.fig_bg, title="Reconstructed background", interactive=True)
+		self.ax_bg.clear()
+		self.im_bg = self.ax_bg.imshow(bg, cmap='gray')
+		self.ax_bg.set_xticks([])
+		self.ax_bg.set_yticks([])
+		self.fig_bg.set_facecolor('none')  # or 'None'
+		self.fig_bg.canvas.setStyleSheet("background-color: transparent;")
+		self.imshow_bg.canvas.draw()
+
+		self.contrast_hbox = QHBoxLayout()
+		self.contrast_hbox.addWidget(QLabel('contrast: '), 10)
+		self.constrast_slider_bg = QLabeledDoubleRangeSlider()
+		self.constrast_slider_bg.setSingleStep(0.00001)
+		self.constrast_slider_bg.setTickInterval(0.00001)
+		self.constrast_slider_bg.setOrientation(1)
+		self.constrast_slider_bg.setRange(np.amin(bg[bg==bg]),
+											  np.amax(bg[bg==bg]))
+		self.constrast_slider_bg.setValue([np.percentile(bg[bg==bg].flatten(), 1),
+											   np.percentile(bg[bg==bg].flatten(), 99.99)])
+		self.im_bg.set_clim(vmin=np.percentile(bg[bg==bg].flatten(), 1),
+								 vmax=np.percentile(bg[bg==bg].flatten(), 99.99))
+		self.constrast_slider_bg.valueChanged.connect(self.change_bg_contrast)
+		self.contrast_hbox.addWidget(self.constrast_slider_bg, 90)
+		self.imshow_bg.layout.addLayout(self.contrast_hbox)
+		self.imshow_bg.show()
+
+	def change_bg_contrast(self, value):
+		vmin = value[0]
+		vmax = value[1]
+		self.im_bg.set_clim(vmin=vmin, vmax=vmax)
+		self.fig_bg.canvas.draw_idle()
 
 	def populate_field_norm_tab(self):
 

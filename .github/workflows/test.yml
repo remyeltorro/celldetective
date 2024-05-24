@@ -1,4 +1,4 @@
-name: Test the package after each push
+name: unitary tests
 
 on:
   push:

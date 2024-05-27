@@ -23,6 +23,8 @@ from celldetective.utils import _estimate_scale_factor, _extract_channel_indices
 import matplotlib.pyplot as plt
 from celldetective.filters import std_filter, median_filter, gauss_filter
 from stardist import fill_label_holes
+from celldetective.utils import interpolate_nan
+from scipy.interpolate import griddata
 
 def get_experiment_wells(experiment):
 	
@@ -137,8 +139,8 @@ def get_experiment_pharmaceutical_agents(experiment, dtype=str):
 def _interpret_wells_and_positions(experiment, well_option, position_option):
 	
 	wells = get_experiment_wells(experiment)
-	nbr_of_wells = len(wells)    
-	
+	nbr_of_wells = len(wells)
+
 	if well_option=='*':
 		well_indices = np.arange(len(wells))
 	elif isinstance(well_option, int):
@@ -152,7 +154,8 @@ def _interpret_wells_and_positions(experiment, well_option, position_option):
 		position_indices = np.array([position_option], dtype=int)
 	elif isinstance(position_option, list):
 		position_indices = position_option
-	
+
+
 	return well_indices, position_indices
 		
 def extract_well_name_and_number(well):
@@ -337,6 +340,7 @@ def correct_background(experiment,
 					   show_progress_per_well = True,
 					   show_progress_per_pos = False,
 					   export = False,
+					   return_stacks = False,
 					   ):
 	
 	config = get_config(experiment)
@@ -344,6 +348,7 @@ def correct_background(experiment,
 	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
 	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
 
+	print(f"{position_option=}")
 	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
 	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
 	print(f"{channel_indices=}")
@@ -351,7 +356,8 @@ def correct_background(experiment,
 	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 	
 	real_well_index = 0
-	print(f"{wells[well_indices]=}")
+	stacks = []
+
 	for widx, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
 		
 		any_movie = False # assume no table
@@ -359,34 +365,43 @@ def correct_background(experiment,
 		well_index = widx
 		well_name, well_number = extract_well_name_and_number(well_path)
 		print('estimate background...')
-		background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=well_option, target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
+		background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=widx, target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
 		background = background[0]
 		background = background['bg']
 		print('background estimated')
 
 		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
 		real_pos_index = 0
-		print(f"{positions[position_indices]=}")
-		for pidx,pos_path in enumerate(tqdm(positions[position_indices], disable=not show_progress_per_pos)):
-			
-			pos_name = extract_position_name(pos_path)
-			print(pos_name)
+		selection = positions[position_indices]
+		print(f"{selection.shape=}")
+		if isinstance(selection[0],np.ndarray):
+			selection = selection[0]
+
+		for pidx,pos_path in enumerate(tqdm(selection, disable=not show_progress_per_pos)):
+			print(f"{pos_path=}")
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
-			apply_background_to_stack(stack_path, 
-									  background,
-									  target_channel_index=channel_indices[0],
-									  nbr_channels=nbr_channels,
-									  stack_length=len_movie,
-									  threshold_on_std=threshold_on_std,
-									  optimize_option=optimize_option,
-									  opt_coef_range=opt_coef_range,
-									  opt_coef_nbr=opt_coef_nbr,
-									  operation=operation,
-									  clip=clip,
-									  export=export,
-									  prefix="Corrected"
-									  )
+			corrected_stack = apply_background_to_stack(stack_path, 
+													  background,
+													  target_channel_index=channel_indices[0],
+													  nbr_channels=nbr_channels,
+													  stack_length=len_movie,
+													  threshold_on_std=threshold_on_std,
+													  optimize_option=optimize_option,
+													  opt_coef_range=opt_coef_range,
+													  opt_coef_nbr=opt_coef_nbr,
+													  operation=operation,
+													  clip=clip,
+													  export=export,
+													  prefix="Corrected"
+													  )
+			if return_stacks:
+				stacks.append(corrected_stack)
+			else:
+				del corrected_stack
 			gc.collect()
+
+	if return_stacks:
+		return stacks
 
 
 
@@ -407,11 +422,8 @@ def apply_background_to_stack(stack_path, background, target_channel_index=None,
 		
 	corrected_stack = []
 
-	print(np.arange(stack_length*nbr_channels - nbr_channels))
 	for i in range(int(stack_length*nbr_channels) - int(nbr_channels)):
 		
-		print(i)
-
 		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 		target_img = frames[:,:,target_channel_index].copy()
 
@@ -434,9 +446,15 @@ def apply_background_to_stack(stack_path, background, target_channel_index=None,
 
 		if operation=="divide":
 			correction = np.divide(target_img, background*c, where=background==background)
-		
+			correction[background!=background] = np.nan
+			correction[target_img!=target_img] = np.nan
+			fill_val = 1.0
+
 		elif operation=="subtract":
 			correction = np.subtract(target_img, background*c, where=background==background)
+			correction[background!=background] = np.nan
+			correction[target_img!=target_img] = np.nan
+			fill_val = 0.0
 			if clip:
 				correction[correction<=0.] = 0.
 

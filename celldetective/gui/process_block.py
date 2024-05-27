@@ -1156,8 +1156,8 @@ class PreprocessingPanel(QFrame):
 		self.tab_condition = QWidget()
 
 		self.normalisation_list = QListWidget()
-		self.tabs.addTab(self.tab2, 'Per-field')
-		self.tabs.addTab(self.tab_condition, 'Per-condition')
+		self.tabs.addTab(self.tab2, 'Fit method')
+		self.tabs.addTab(self.tab_condition, 'Model-free method')
 
 		self.tab2.setLayout(self.populate_field_norm_tab())
 		self.tab_condition.setLayout(self.populate_condition_norm_tab())
@@ -1175,7 +1175,101 @@ class PreprocessingPanel(QFrame):
 		layout.addLayout(hbox)
 		self.del_norm_btn.clicked.connect(self.remove_item_from_list)
 		layout.addWidget(self.normalisation_list)
+
+		self.submit_preprocessing_btn = QPushButton("Submit")
+		self.submit_preprocessing_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.submit_preprocessing_btn.clicked.connect(self.launch_preprocessing)
+		layout.addWidget(self.submit_preprocessing_btn)
+
 		self.grid_contents.addLayout(layout, 0,0,1,4)
+
+	def launch_preprocessing(self):
+		
+		msgBox1 = QMessageBox()
+		msgBox1.setIcon(QMessageBox.Question)
+		msgBox1.setText("Do you want to apply the preprocessing\nto all wells and positions?")
+		msgBox1.setWindowTitle("Selection")
+		msgBox1.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+		returnValue = msgBox1.exec()
+		if returnValue == QMessageBox.Cancel:
+			return None
+		elif returnValue == QMessageBox.Yes:
+			self.parent.well_list.setCurrentIndex(self.parent.well_list.count()-1)
+			self.parent.position_list.setCurrentIndex(0)
+		elif returnValue == QMessageBox.No:
+			msgBox2 = QMessageBox()
+			msgBox2.setIcon(QMessageBox.Question)
+			msgBox2.setText("Do you want to apply the preprocessing\nto the positions selected at the top only?")
+			msgBox2.setWindowTitle("Selection")
+			msgBox2.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+			returnValue = msgBox2.exec()
+			if returnValue == QMessageBox.Cancel:
+				return None
+			if returnValue == QMessageBox.No:
+				return None
+		print('Proceed with correction...')
+
+		for correction_protocol in self.background_correction:
+			if correction_protocol['correction_type']=='model-free':
+
+				if self.parent.well_list.currentText()=='*':
+					well_option = "*"
+				else:
+					well_option = self.parent.well_list.currentIndex()
+
+				
+				if self.parent.position_list.currentText()=='*':
+					pos_option = "*"
+				else:
+					pos_option = self.parent.position_list.currentIndex()-1
+
+				if self.timeseries_rb.isChecked():
+					mode = "timeseries"
+				elif self.tiles_rb.isChecked():
+					mode = "tiles"
+
+				if self.regress_cb.isChecked():
+					optimize_option = True
+					opt_coef_range = self.coef_range_slider.value()
+					opt_coef_nbr = int(self.nbr_coef_le.text())
+				else:
+					optimize_option = False
+					opt_coef_range = None
+					opt_coef_nbr = None
+
+				if self.tab_cdt_subtract.isChecked():
+					operation = "subtract"
+				else:
+					operation = "divide"
+					clip = None
+
+				if self.tab_cdt_clip.isChecked() and self.tab_cdt_subtract.isChecked():
+					clip = True
+				else:
+					clip = False
+
+				correct_background(self.exp_dir, 
+								   well_option=well_option, #+1 ??
+								   position_option=pos_option,
+								   target_channel=self.tab_condition_channel_dropdown.currentText(),
+								   mode = mode,
+								   threshold_on_std = float(self.tab_cdt_std_le.text().replace(',','.')),
+								   frame_range = self.frame_range_slider.value(),
+								   optimize_option = optimize_option,
+								   opt_coef_range = opt_coef_range,
+								   opt_coef_nbr = opt_coef_nbr,
+								   operation = operation,
+								   clip = clip,
+								   export= True,
+								   return_stacks=False,
+								   show_progress_per_well = True,
+								   show_progress_per_pos = True,
+								)
+
+				self.parent.movie_prefix = "Corrected_"			
+
+
+
 
 	def populate_condition_norm_tab(self):
 
@@ -1358,6 +1452,16 @@ class PreprocessingPanel(QFrame):
 
 	def preview_correction(self):
 
+		if self.parent.well_list.currentText()=="*" or self.parent.position_list.currentText()=="*":
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a single position...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+
 		if self.timeseries_rb.isChecked():
 			mode = "timeseries"
 		elif self.tiles_rb.isChecked():
@@ -1383,9 +1487,7 @@ class PreprocessingPanel(QFrame):
 		else:
 			clip = False
 
-		print(f"{self.parent.well_list.currentIndex()=}")
-		print('start correction!!')
-		correct_background(self.exp_dir, 
+		corrected_stacks = correct_background(self.exp_dir, 
 						   well_option=self.parent.well_list.currentIndex(), #+1 ??
 						   position_option=self.parent.position_list.currentIndex()-1, #+1??
 						   target_channel=self.tab_condition_channel_dropdown.currentText(),
@@ -1397,11 +1499,67 @@ class PreprocessingPanel(QFrame):
 						   opt_coef_nbr = opt_coef_nbr,
 						   operation = operation,
 						   clip = clip,
-						   export=True,
+						   export= False,
+						   return_stacks=True,
 						   show_progress_per_well = True,
 						   show_progress_per_pos = False,
 							)
+		
+		self.corrected_stack = corrected_stacks[0]
+		self.fig_corr_stack, self.ax_corr_stack = plt.subplots(figsize=(5, 5))
+		self.imshow_corr_stack = FigureCanvas(self.fig_corr_stack, title="Corrected channel", interactive=True)
+		self.ax_corr_stack.clear()
+		self.im_corr_stack = self.ax_corr_stack.imshow(self.corrected_stack[0], cmap='gray',interpolation='none')
 
+		self.ax_corr_stack.set_xticks([])
+		self.ax_corr_stack.set_yticks([])
+		self.fig_corr_stack.set_facecolor('none')  # or 'None'
+		self.fig_corr_stack.canvas.setStyleSheet("background-color: transparent;")
+		self.imshow_corr_stack.canvas.draw()	
+
+		self.frame_nbr_corr_hbox = QHBoxLayout()
+		self.frame_nbr_corr_hbox.setContentsMargins(15,0,15,0)
+		self.frame_nbr_corr_hbox.addWidget(QLabel('frame: '), 10)
+		self.frame_corr_slider = QLabeledSlider()
+		self.frame_corr_slider.setSingleStep(1)
+		self.frame_corr_slider.setTickInterval(1)
+		self.frame_corr_slider.setOrientation(1)
+		self.frame_corr_slider.setRange(0,len(self.corrected_stack)-1)
+		self.frame_corr_slider.setValue(0)
+		self.frame_corr_slider.valueChanged.connect(self.change_frame_corr)
+		self.frame_nbr_corr_hbox.addWidget(self.frame_corr_slider, 90)
+		self.imshow_corr_stack.layout.addLayout(self.frame_nbr_corr_hbox)
+
+		self.contrast_corr_hbox = QHBoxLayout()
+		self.contrast_corr_hbox.addWidget(QLabel('contrast: '), 10)
+		self.constrast_slider_corr = QLabeledDoubleRangeSlider()
+		self.constrast_slider_corr.setSingleStep(0.00001)
+		self.constrast_slider_corr.setTickInterval(0.00001)
+		self.constrast_slider_corr.setOrientation(1)
+		self.constrast_slider_corr.setRange(np.amin(self.corrected_stack[self.corrected_stack==self.corrected_stack]),
+											  np.amax(self.corrected_stack[self.corrected_stack==self.corrected_stack]))
+		self.constrast_slider_corr.setValue([np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 1),
+											   np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 99.99)])
+		self.im_corr_stack.set_clim(vmin=np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 1),
+								 vmax=np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 99.99))
+		self.constrast_slider_corr.valueChanged.connect(self.change_corr_contrast)
+		self.contrast_corr_hbox.addWidget(self.constrast_slider_corr, 90)
+		self.imshow_corr_stack.layout.addLayout(self.contrast_corr_hbox)
+
+
+		self.imshow_corr_stack.show()
+
+	def change_corr_contrast(self, value):
+		
+		vmin = value[0]
+		vmax = value[1]
+		self.im_corr_stack.set_clim(vmin=vmin, vmax=vmax)
+		self.fig_corr_stack.canvas.draw_idle()
+
+	def change_frame_corr(self, value):
+		
+		self.im_corr_stack.set_data(self.corrected_stack[value])
+		self.change_corr_contrast(self.constrast_slider_corr.value())
 
 	def add_item_to_list(self):
 
@@ -1430,7 +1588,9 @@ class PreprocessingPanel(QFrame):
 		else:
 			clip = False
 
-		dictionary = {"threshold_on_std": float(self.tab_cdt_std_le.text().replace(',','.')),
+		dictionary = {
+					  "correction_type": "model-free",
+					  "threshold_on_std": float(self.tab_cdt_std_le.text().replace(',','.')),
 					  "target_channel": self.tab_condition_channel_dropdown.currentText(),
 					  "frame_range": self.frame_range_slider.value(),
 					  "mode": mode,

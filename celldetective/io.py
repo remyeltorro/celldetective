@@ -245,6 +245,8 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
 
 	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, "*")
+	#print(f"{well_indices=}")
+
 	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
 	nbr_channels = _extract_nbr_channels_from_config(config)
 	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
@@ -270,13 +272,13 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
 
 			if mode=="timeseries":
-
+				#print(f"{img_num_channels[0,frame_range[0]:frame_range[1]]=} {stack_path=}")
 				frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
 				frames = np.moveaxis(frames, -1, 0).astype(float)
 
 				for i in range(len(frames)):
 					if np.all(frames[i].flatten()==0):
-						frames[i] = np.nan
+						frames[i,:,:] = np.nan
 
 				frame_mean = np.nanmean(frames, axis=0)
 				
@@ -319,6 +321,134 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 
 	return backgrounds
 
+
+def correct_background(experiment, 
+					   well_option='*',
+					   position_option='*',
+					   target_channel=None,
+					   mode = None,
+					   threshold_on_std = 1,
+					   frame_range = None,
+					   optimize_option = False,
+					   opt_coef_range = None,
+					   opt_coef_nbr = None,
+					   operation = 'divide',
+					   clip = False,
+					   show_progress_per_well = True,
+					   show_progress_per_pos = False,
+					   export = False,
+					   ):
+	
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
+	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
+
+	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
+	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
+	print(f"{channel_indices=}")
+	nbr_channels = _extract_nbr_channels_from_config(config)
+	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
+	
+	real_well_index = 0
+	print(f"{wells[well_indices]=}")
+	for widx, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
+		
+		any_movie = False # assume no table
+		
+		well_index = widx
+		well_name, well_number = extract_well_name_and_number(well_path)
+		print('estimate background...')
+		background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=well_option, target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
+		background = background[0]
+		background = background['bg']
+		print('background estimated')
+
+		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
+		real_pos_index = 0
+		print(f"{positions[position_indices]=}")
+		for pidx,pos_path in enumerate(tqdm(positions[position_indices], disable=not show_progress_per_pos)):
+			
+			pos_name = extract_position_name(pos_path)
+			print(pos_name)
+			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
+			apply_background_to_stack(stack_path, 
+									  background,
+									  target_channel_index=channel_indices[0],
+									  nbr_channels=nbr_channels,
+									  stack_length=len_movie,
+									  threshold_on_std=threshold_on_std,
+									  optimize_option=optimize_option,
+									  opt_coef_range=opt_coef_range,
+									  opt_coef_nbr=opt_coef_nbr,
+									  operation=operation,
+									  clip=clip,
+									  export=export,
+									  prefix="Corrected"
+									  )
+			gc.collect()
+
+
+
+def apply_background_to_stack(stack_path, background, target_channel_index=None, nbr_channels=None, stack_length=None, threshold_on_std=1, optimize_option=True, opt_coef_range=(0.95,1.05), opt_coef_nbr=100, operation='divide', clip=False, export=False, prefix="Corrected"):
+
+	if stack_length is None:
+		stack_length = auto_load_number_of_frames(stack_path)
+		if stack_length is None:
+			print('stack length not provided')
+			return None
+
+	if optimize_option:
+		coefficients = np.linspace(opt_coef_range[0], opt_coef_range[1], int(opt_coef_nbr))
+		coefficients = np.append(coefficients, [1.0])
+	if export and prefix is not None:
+		path,file = os.path.split(stack_path)
+		newfile = '_'.join([prefix,file])
+		
+	corrected_stack = []
+
+	print(np.arange(stack_length*nbr_channels - nbr_channels))
+	for i in range(int(stack_length*nbr_channels) - int(nbr_channels)):
+		
+		print(i)
+
+		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
+		target_img = frames[:,:,target_channel_index].copy()
+
+		if optimize_option:
+			target_copy = target_img.copy()
+			f = gauss_filter(target_img.copy(), 2)
+			std_frame = std_filter(f, 4)
+			mask = std_frame > threshold_on_std
+			mask = fill_label_holes(mask)
+			target_copy[np.where(mask==1)] = np.nan
+			loss = []
+			for c in coefficients:
+				diff = np.subtract(target_copy, c*background, where=target_copy==target_copy)
+				s = np.sum(np.abs(diff, where=diff==diff), where=diff==diff)
+				loss.append(s)
+			c = coefficients[np.argmin(loss)]
+			print(f"Optimal coefficient: {c}")		
+		else:
+			c=1
+
+		if operation=="divide":
+			correction = np.divide(target_img, background*c, where=background==background)
+		
+		elif operation=="subtract":
+			correction = np.subtract(target_img, background*c, where=background==background)
+			if clip:
+				correction[correction<=0.] = 0.
+
+		frames[:,:,target_channel_index] = correction
+		corrected_stack.append(frames)
+
+	corrected_stack = np.array(corrected_stack)
+
+	if export and prefix is not None:
+		save_tiff_imagej_compatible(os.sep.join([path,newfile]), corrected_stack, axes='TYXC')
+
+	return corrected_stack
 
 
 

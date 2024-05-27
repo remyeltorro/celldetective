@@ -1,14 +1,14 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QRadioButton, QButtonGroup, QComboBox,QTabWidget,QSizePolicy,QListWidget, QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+from PyQt5.QtWidgets import QFrame, QGridLayout, QRadioButton, QButtonGroup, QGroupBox, QComboBox,QTabWidget,QSizePolicy,QListWidget, QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
 	QMessageBox, QWidget, QLineEdit, QScrollArea
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
-from PyQt5.QtGui import QIcon, QDoubleValidator
+from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
-from celldetective.io import locate_segmentation_model
+from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
@@ -19,7 +19,7 @@ from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
 from natsort import natsorted
-from superqt import QLabeledDoubleSlider, QLabeledRangeSlider, QLabeledSlider, QLabeledDoubleRangeSlider
+from superqt import QLabeledDoubleSlider, QLabeledSlider, QLabeledRangeSlider, QLabeledSlider, QLabeledDoubleRangeSlider
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -31,6 +31,10 @@ from celldetective.neighborhood import compute_neighborhood_at_position
 from celldetective.io import estimate_background_per_condition
 from celldetective.gui.gui_utils import FigureCanvas
 import matplotlib.pyplot as plt
+from celldetective.filters import std_filter, median_filter, gauss_filter
+from stardist import fill_label_holes
+from celldetective.io import correct_background
+from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -1072,7 +1076,9 @@ class PreprocessingPanel(QFrame):
 		exp_config = self.exp_dir + "config.ini"
 		self.channel_names, self.channels = extract_experiment_channels(exp_config)
 		self.channel_names = np.array(self.channel_names)
+		self.background_correction = []
 		self.onlyFloat = QDoubleValidator()
+		self.onlyInt = QIntValidator()
 		
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -1120,19 +1126,21 @@ class PreprocessingPanel(QFrame):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.w.adjustSize()
+			self.parent.scroll.setMinimumHeight(int(500))
+			#self.parent.w.adjustSize()
 			self.parent.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.w.adjustSize()
-			self.parent.adjustSize()
+			#self.parent.w.adjustSize()
+			#self.parent.adjustSize()
+			self.parent.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent.screen_height)))
+			self.parent.scroll.setMinimumWidth(410)
 
 	def populate_contents(self):
 
 		self.ContentsFrame = QFrame()
 		self.grid_contents = QGridLayout(self.ContentsFrame)
-		self.grid_contents.setContentsMargins(0,0,0,0)
 
 		layout = QVBoxLayout()
 		self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
@@ -1165,13 +1173,14 @@ class PreprocessingPanel(QFrame):
 		self.del_norm_btn.setIconSize(QSize(20, 20))
 		hbox.addWidget(self.del_norm_btn, alignment=Qt.AlignRight)
 		layout.addLayout(hbox)
-		#self.del_norm_btn.clicked.connect(self.remove_item_from_list)
+		self.del_norm_btn.clicked.connect(self.remove_item_from_list)
 		layout.addWidget(self.normalisation_list)
 		self.grid_contents.addLayout(layout, 0,0,1,4)
 
 	def populate_condition_norm_tab(self):
 
 		tab_condition_layout = QGridLayout(self.tab_condition)
+		tab_condition_layout.setContentsMargins(15,15,15,15)
 		
 		channel_hbox = QHBoxLayout()
 		self.tab_condition_channel_dropdown = QComboBox()
@@ -1182,98 +1191,467 @@ class PreprocessingPanel(QFrame):
 
 		acquisition_mode_hbox = QHBoxLayout()
 		acquisition_mode_hbox.addWidget(QLabel('Stack mode: '), 25)
-		
+
+		self.acq_mode_group = QButtonGroup()
 		self.timeseries_rb = QRadioButton('timeseries')
 		self.timeseries_rb.setChecked(True)
 		self.tiles_rb = QRadioButton('tiles')
 
-		acquisition_mode_hbox.addWidget(self.timeseries_rb, 37, alignment=Qt.AlignCenter)
-		acquisition_mode_hbox.addWidget(self.tiles_rb, 38, alignment=Qt.AlignCenter)
+		self.acq_mode_group.addButton(self.timeseries_rb, 0)
+		self.acq_mode_group.addButton(self.tiles_rb, 1)
+
+		# acq_options_hbox = QHBoxLayout()
+		# acq_options_hbox.setContentsMargins(0,0,0,0)
+		# acq_options_hbox.setSpacing(0)
+
+		# self.timeseries_rb = QRadioButton('timeseries')
+		# self.timeseries_rb.setChecked(True)
+		# self.tiles_rb = QRadioButton('tiles')
+
+		acquisition_mode_hbox.addWidget(self.timeseries_rb, 75//2, alignment=Qt.AlignCenter)
+		acquisition_mode_hbox.addWidget(self.tiles_rb, 75//2, alignment=Qt.AlignCenter)
+		# self.acq_mode_group.setLayout(acq_options_hbox)
+
+		# acquisition_mode_hbox.addWidget(self.acq_mode_group, 75)
 		tab_condition_layout.addLayout(acquisition_mode_hbox, 1,0,1,3)
 
 		frame_selection_hbox = QHBoxLayout()
 		self.time_range_lbl = QLabel('Time range: ')
+		self.time_range_lbl.setToolTip('Frame range for which the background\nis most likely to be observed.')
 		frame_selection_hbox.addWidget(self.time_range_lbl, 25)
 		self.frame_range_slider = QLabeledRangeSlider()
 		self.frame_range_slider.setOrientation(1)
 		self.frame_range_slider.setRange(0,self.parent.len_movie)
 		self.frame_range_slider.setValue((0,5))
+		self.frame_range_slider.setStyleSheet('')
+		self.frame_range_slider.setToolTip('frame [#]')
 		frame_selection_hbox.addWidget(self.frame_range_slider, 75)
-		tab_condition_layout.addLayout(frame_selection_hbox, 2,0,1,3)
+		tab_condition_layout.addLayout(frame_selection_hbox, 2,0,1,3) # error triggered from parenting problem?
 
 		self.timeseries_rb.toggled.connect(self.activate_time_range)
 		self.tiles_rb.toggled.connect(self.activate_time_range)
 		
-
-		tab_condition_layout.addWidget(QLabel("Threshold: "), 3, 0)
+		threshold_hbox = QHBoxLayout()
+		self.thresh_lbl = QLabel("Threshold: ")
+		self.thresh_lbl.setToolTip('Threshold on the STD-filtered image.\nPixel values above the threshold are\nconsidered as non-background and are\nmasked prior to background estimation.')
+		threshold_hbox.addWidget(self.thresh_lbl, 25)
 		self.tab_cdt_std_le = QLineEdit()
-		self.tab_cdt_std_le.setText('1000,0')
+		self.tab_cdt_std_le.setText('2,0')
 		self.tab_cdt_std_le.setValidator(self.onlyFloat)
-		tab_condition_layout.addWidget(self.tab_cdt_std_le, 3, 1)
+		self.tab_cdt_std_le.setPlaceholderText('px > thresh are masked')
+		threshold_hbox.addWidget(self.tab_cdt_std_le, 70)
 
 		self.check_threshold_cdt_btn = QPushButton()
 		self.check_threshold_cdt_btn.setIcon(icon(MDI6.image_check, color="k"))
 		self.check_threshold_cdt_btn.setStyleSheet(self.parent.parent.button_select_all)
-		tab_condition_layout.addWidget(self.check_threshold_cdt_btn, 3, 2)
+		self.check_threshold_cdt_btn.clicked.connect(self.set_std_threshold)
+		threshold_hbox.addWidget(self.check_threshold_cdt_btn, 5)
+
+		tab_condition_layout.addLayout(threshold_hbox, 3, 0, 1, 3)
 
 		control_bg_layout = QHBoxLayout()
-		control_bg_layout.addWidget(QLabel('well: '),25)
+		control_bg_layout.addWidget(QLabel('QC for well: '),25)
 		self.well_slider = QLabeledSlider()
 		self.well_slider.setOrientation(1)
 		self.well_slider.setRange(1,len(self.wells))
 		self.well_slider.setValue(0)
+		self.well_slider.setToolTip('well [#]')
 		control_bg_layout.addWidget(self.well_slider,70)
 
 		self.check_bg_btn = QPushButton()
 		self.check_bg_btn.setIcon(icon(MDI6.image_check, color="k"))
 		self.check_bg_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.check_bg_btn.setToolTip('View background.')
+		self.check_bg_btn.setToolTip('View reconstructed background.')
 		control_bg_layout.addWidget(self.check_bg_btn,5)
-		print(self.exp_dir, self.well_slider.value(),self.frame_range_slider.value())
 		self.check_bg_btn.clicked.connect(self.estimate_bg)
 
 		tab_condition_layout.addLayout(control_bg_layout,4,0,1,3)
 
 
-		self.regress_cb = QCheckBox('Regress background to each frame?')
+		self.regress_cb = QCheckBox('Optimize for each frame?')
+		self.regress_cb.toggled.connect(self.activate_coef_options)
+		self.regress_cb.setChecked(False)
 		tab_condition_layout.addWidget(self.regress_cb, 5,0,1,3)
 
+
+		coef_range_hbox = QHBoxLayout()
+		self.coef_range_lbl = QLabel('Coef. range: ')
+		self.coef_range_lbl.setToolTip('Coefficient range to increase or decrease the background intensity level...')
+		coef_range_hbox.addWidget(self.coef_range_lbl, 25)
+		self.coef_range_slider = QLabeledDoubleRangeSlider()
+		self.coef_range_slider.setOrientation(1)
+		self.coef_range_slider.setRange(0.75,1.25)
+		self.coef_range_slider.setValue((0.95,1.05))
+		self.coef_range_slider.setSingleStep(0.00001)
+		self.coef_range_slider.setTickInterval(0.00001)
+		coef_range_hbox.addWidget(self.coef_range_slider, 75)
+		tab_condition_layout.addLayout(coef_range_hbox, 6,0,1,3) # error triggered from parenting problem?
+
+		coef_nbr_hbox = QHBoxLayout()
+		self.nbr_coefs_lbl = QLabel("Nbr of coefs: ")
+		self.nbr_coefs_lbl.setToolTip('Number of coefficients to be tested within range.\nThe more, the slower.')
+		coef_nbr_hbox.addWidget(self.nbr_coefs_lbl, 25)
+		self.nbr_coef_le = QLineEdit()
+		self.nbr_coef_le.setText('100')
+		self.nbr_coef_le.setValidator(self.onlyInt)
+		self.nbr_coef_le.setPlaceholderText('nbr of coefs')
+		coef_nbr_hbox.addWidget(self.nbr_coef_le, 75)
+		tab_condition_layout.addLayout(coef_nbr_hbox, 7,0,1,3)
+
+		self.coef_widgets = [self.coef_range_lbl, self.coef_range_slider, self.nbr_coefs_lbl, self.nbr_coef_le]
+		for c in self.coef_widgets:
+			c.setEnabled(False)
+
+
+		operation_hbox = QHBoxLayout()
 		self.tab_cdt_subtract = QRadioButton('Subtract')
 		self.tab_cdt_divide = QRadioButton('Divide')
 		self.tab_cdt_sd_btn_group = QButtonGroup(self)
-		self.tab_cdt_sd_btn_group.addButton(self.tab2_subtract)
-		self.tab_cdt_sd_btn_group.addButton(self.tab2_divide)
-		tab_condition_layout.addWidget(self.tab_cdt_subtract, 6, 0, alignment=Qt.AlignRight)
-		tab_condition_layout.addWidget(self.tab_cdt_divide, 6, 1, alignment=Qt.AlignRight)
+		self.tab_cdt_sd_btn_group.addButton(self.tab_cdt_subtract)
+		self.tab_cdt_sd_btn_group.addButton(self.tab_cdt_divide)
+		self.tab_cdt_subtract.toggled.connect(self.activate_clipping_options)
+		self.tab_cdt_divide.toggled.connect(self.activate_clipping_options)
 
+		operation_hbox.addWidget(QLabel('Operation:'), 25)
+		operation_hbox.addWidget(self.tab_cdt_subtract, 75//2, alignment=Qt.AlignCenter)
+		operation_hbox.addWidget(self.tab_cdt_divide, 75//2, alignment=Qt.AlignCenter)
+		tab_condition_layout.addLayout(operation_hbox, 8, 0, 1, 3)
+
+		clip_hbox = QHBoxLayout()
 		self.tab_cdt_clip = QRadioButton('Clip')
 		self.tab_cdt_no_clip = QRadioButton("Don't clip")
+
 		self.tab_cdt_clip_group = QButtonGroup(self)
 		self.tab_cdt_clip_group.addButton(self.tab_cdt_clip)
 		self.tab_cdt_clip_group.addButton(self.tab_cdt_no_clip)
-		self.tab_cdt_clip.setEnabled(False)
-		self.tab_cdt_no_clip.setEnabled(False)
-		tab_condition_layout.addWidget(self.tab_cdt_clip, 7, 0, alignment=Qt.AlignLeft)
-		tab_condition_layout.addWidget(self.tab_cdt_no_clip, 7, 1, alignment=Qt.AlignLeft)
+		#self.tab_cdt_clip.setEnabled(True)
+		#self.tab_cdt_no_clip.setEnabled(False)
+
+		clip_hbox.addWidget(QLabel(''), 25)
+		clip_hbox.addWidget(self.tab_cdt_clip, 75//4, alignment=Qt.AlignCenter)
+		clip_hbox.addWidget(self.tab_cdt_no_clip, 75//4, alignment=Qt.AlignCenter)
+		clip_hbox.addWidget(QLabel(''), 75//2)
+		tab_condition_layout.addLayout(clip_hbox, 9, 0, 1, 3)
 		#self.tab2_subtract.toggled.connect(self.show_clipping_options)
 		#self.tab2_divide.toggled.connect(self.show_clipping_options)
 
-		self.view_bg_btn = QPushButton("")
-		self.view_bg_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.view_bg_btn.setIcon(icon(MDI6.eye_outline, color="black"))
-		self.view_bg_btn.setToolTip("View corrected image")
-		self.view_bg_btn.setIconSize(QSize(20, 20))
-		#self.view_norm_btn.clicked.connect(self.preview_normalisation)
-		tab_condition_layout.addWidget(self.view_bg_btn, 7, 2)
+		self.test_correction_btn = QPushButton("")
+		self.test_correction_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.test_correction_btn.setIcon(icon(MDI6.eye_outline, color="black"))
+		self.test_correction_btn.setToolTip("View corrected image")
+		self.test_correction_btn.setIconSize(QSize(20, 20))
+		self.test_correction_btn.clicked.connect(self.preview_correction)
+		tab_condition_layout.addWidget(self.test_correction_btn, 9, 2)
 
 		tab_cdt_submit = QPushButton()
 		tab_cdt_submit.setText('Add channel')
 		tab_cdt_submit.setStyleSheet(self.parent.parent.button_style_sheet_2)
-		tab_condition_layout.addWidget(tab_cdt_submit, 8, 0, 1, 3)
-		#tab2_submit.clicked.connect(self.add_item_to_list)
+		tab_condition_layout.addWidget(tab_cdt_submit, 10, 0, 1, 3)
+		tab_cdt_submit.clicked.connect(self.add_item_to_list)
+		
+		self.tab_cdt_subtract.click()
+		self.tab_cdt_no_clip.click()
+
 
 
 		return tab_condition_layout
+
+	def preview_correction(self):
+
+		if self.timeseries_rb.isChecked():
+			mode = "timeseries"
+		elif self.tiles_rb.isChecked():
+			mode = "tiles"
+
+		if self.regress_cb.isChecked():
+			optimize_option = True
+			opt_coef_range = self.coef_range_slider.value()
+			opt_coef_nbr = int(self.nbr_coef_le.text())
+		else:
+			optimize_option = False
+			opt_coef_range = None
+			opt_coef_nbr = None
+
+		if self.tab_cdt_subtract.isChecked():
+			operation = "subtract"
+		else:
+			operation = "divide"
+			clip = None
+
+		if self.tab_cdt_clip.isChecked() and self.tab_cdt_subtract.isChecked():
+			clip = True
+		else:
+			clip = False
+
+		print(f"{self.parent.well_list.currentIndex()=}")
+		print('start correction!!')
+		correct_background(self.exp_dir, 
+						   well_option=self.parent.well_list.currentIndex(), #+1 ??
+						   position_option=self.parent.position_list.currentIndex()-1, #+1??
+						   target_channel=self.tab_condition_channel_dropdown.currentText(),
+						   mode = mode,
+						   threshold_on_std = float(self.tab_cdt_std_le.text().replace(',','.')),
+						   frame_range = self.frame_range_slider.value(),
+						   optimize_option = optimize_option,
+						   opt_coef_range = opt_coef_range,
+						   opt_coef_nbr = opt_coef_nbr,
+						   operation = operation,
+						   clip = clip,
+						   export=True,
+						   show_progress_per_well = True,
+						   show_progress_per_pos = False,
+							)
+
+
+	def add_item_to_list(self):
+
+		if self.timeseries_rb.isChecked():
+			mode = "timeseries"
+		elif self.tiles_rb.isChecked():
+			mode = "tiles"
+
+		if self.regress_cb.isChecked():
+			optimize_option = True
+			opt_coef_range = self.coef_range_slider.value()
+			opt_coef_nbr = int(self.nbr_coef_le.text())
+		else:
+			optimize_option = False
+			opt_coef_range = None
+			opt_coef_nbr = None
+
+		if self.tab_cdt_subtract.isChecked():
+			operation = "subtract"
+		else:
+			operation = "divide"
+			clip = None
+
+		if self.tab_cdt_clip.isChecked() and self.tab_cdt_subtract.isChecked():
+			clip = True
+		else:
+			clip = False
+
+		dictionary = {"threshold_on_std": float(self.tab_cdt_std_le.text().replace(',','.')),
+					  "target_channel": self.tab_condition_channel_dropdown.currentText(),
+					  "frame_range": self.frame_range_slider.value(),
+					  "mode": mode,
+					  "optimize_option": optimize_option,
+					  "opt_coef_range": opt_coef_range,
+					  "opt_coef_nbr": opt_coef_nbr,
+					  "operation": operation,
+					  "clip": clip
+					 }
+
+		self.background_correction.append(dictionary)
+		correction_description = ""
+		for index, (key, value) in enumerate(dictionary.items()):
+			if index > 0:
+				correction_description += ", "
+			correction_description += str(key) + " : " + str(value)
+		self.normalisation_list.addItem(correction_description)
+
+	def remove_item_from_list(self):
+		current_item = self.normalisation_list.currentRow()
+		if current_item > -1:
+			del self.background_correction[current_item]
+			self.normalisation_list.takeItem(current_item)
+
+
+	def activate_clipping_options(self):
+		
+		if self.tab_cdt_subtract.isChecked():
+			self.tab_cdt_clip.setEnabled(True)
+			self.tab_cdt_no_clip.setEnabled(True)
+
+		else:
+			self.tab_cdt_clip.setEnabled(False)
+			self.tab_cdt_no_clip.setEnabled(False)
+
+
+	def activate_coef_options(self):
+		
+
+		if self.regress_cb.isChecked():
+			for c in self.coef_widgets:
+				c.setEnabled(True)
+		else:
+			for c in self.coef_widgets:
+				c.setEnabled(False)			
+
+	def locate_image(self):
+
+		"""
+		Load the first frame of the first movie found in the experiment folder as a sample.
+		"""
+
+		movies = glob(self.parent.pos + os.sep.join(['movie', f"{self.parent.movie_prefix}*.tif"]))
+
+		if len(movies) == 0:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a position containing a movie...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.current_stack = None
+				return None
+		else:
+			self.current_stack = movies[0]
+			self.n_channels = len(self.channel_names)
+			self.len_movie = auto_load_number_of_frames(self.current_stack)
+			if self.len_movie is None:
+				stack = imread(self.current_stack)
+				self.len_movie = len(stack)
+				del stack
+				gc.collect()
+			channel_indices = _extract_channel_indices_from_config(self.parent.exp_config, [self.tab_condition_channel_dropdown.currentText()])
+			ch_idx = channel_indices[0]
+
+			self.mid_time = self.len_movie // 2
+			self.test_frame = load_frames(
+										self.n_channels * self.mid_time + np.arange(self.n_channels), 
+										self.current_stack,
+										normalize_input=False
+										).astype(float)[:,:,ch_idx]
+			self.compute_mask(float(self.tab_cdt_std_le.text().replace(',','.')))
+
+	def compute_mask(self, threshold_value):
+		
+		processed_frame = self.test_frame.copy().astype(float)
+		processed_frame = gauss_filter(processed_frame, 2)
+		std_frame = std_filter(processed_frame, 4)
+		
+		self.mask = std_frame > threshold_value
+		self.mask = fill_label_holes(self.mask).astype(int)
+
+	def get_current_threshold(self):
+		self.thresh = float(self.tab_cdt_std_le.text().replace(',','.'))
+
+	def set_std_threshold(self):
+
+		self.locate_image()
+		if self.current_stack is not None:
+			
+			self.fig_std_thresh, self.ax_std_thresh = plt.subplots(figsize=(5, 5))
+			self.imshow_std_thresh = FigureCanvas(self.fig_std_thresh, title="Set the exclusion threshold", interactive=True)
+			self.ax_std_thresh.clear()
+			self.im_std_thresh = self.ax_std_thresh.imshow(self.test_frame, cmap='gray')
+			self.im_mask = self.ax_std_thresh.imshow(np.ma.masked_where(self.mask==0, self.mask), alpha=0.5, interpolation='none')
+
+			self.ax_std_thresh.set_xticks([])
+			self.ax_std_thresh.set_yticks([])
+			self.fig_std_thresh.set_facecolor('none')  # or 'None'
+			self.fig_std_thresh.canvas.setStyleSheet("background-color: transparent;")
+			self.imshow_std_thresh.canvas.draw()	
+
+			self.thresh_hbox = QHBoxLayout()
+			self.thresh_hbox.setContentsMargins(15,0,15,0)
+			self.thresh_hbox.addWidget(QLabel('threshold: '), 10)
+			self.thresh_slider = QLabeledDoubleSlider()
+			self.thresh_slider.setSingleStep(0.00001)
+			self.thresh_slider.setTickInterval(0.00001)
+			self.thresh_slider.setOrientation(1)
+			self.thresh_slider.setRange(0,30)
+			self.get_current_threshold()
+			self.thresh_slider.setValue(self.thresh)
+			self.thresh_slider.valueChanged.connect(self.change_threshold)
+			self.thresh_hbox.addWidget(self.thresh_slider, 90)
+			self.imshow_std_thresh.layout.addLayout(self.thresh_hbox)
+
+
+			self.frame_nbr_hbox = QHBoxLayout()
+			self.frame_nbr_hbox.setContentsMargins(15,0,15,0)
+			self.frame_nbr_hbox.addWidget(QLabel('frame: '), 10)
+			self.frame_slider = QLabeledSlider()
+			self.frame_slider.setSingleStep(1)
+			self.frame_slider.setTickInterval(1)
+			self.frame_slider.setOrientation(1)
+			self.frame_slider.setRange(0,self.len_movie-1)
+			self.frame_slider.setValue(int(self.mid_time))
+			self.frame_slider.valueChanged.connect(self.change_frame_std)
+			self.frame_nbr_hbox.addWidget(self.frame_slider, 90)
+			self.imshow_std_thresh.layout.addLayout(self.frame_nbr_hbox)
+
+			self.alpha_hbox = QHBoxLayout()
+			self.alpha_hbox.setContentsMargins(15,0,15,0)
+			self.alpha_hbox.addWidget(QLabel('transparency: '), 10)
+			self.alpha_slider = QLabeledDoubleSlider()
+			self.alpha_slider.setSingleStep(0.001)
+			self.alpha_slider.setTickInterval(0.001)
+			self.alpha_slider.setOrientation(1)
+			self.alpha_slider.setRange(0,1)
+			self.alpha_slider.setValue(0.5)
+			self.alpha_slider.valueChanged.connect(self.change_alpha)
+			self.alpha_hbox.addWidget(self.alpha_slider, 90)
+			self.imshow_std_thresh.layout.addLayout(self.alpha_hbox)
+
+
+			self.contrast_hbox = QHBoxLayout()
+			self.contrast_hbox.addWidget(QLabel('contrast: '), 10)
+			self.constrast_slider_std = QLabeledDoubleRangeSlider()
+			self.constrast_slider_std.setSingleStep(0.00001)
+			self.constrast_slider_std.setTickInterval(0.00001)
+			self.constrast_slider_std.setOrientation(1)
+			self.constrast_slider_std.setRange(np.amin(self.test_frame[self.test_frame==self.test_frame]),
+												  np.amax(self.test_frame[self.test_frame==self.test_frame]))
+			self.constrast_slider_std.setValue([np.percentile(self.test_frame[self.test_frame==self.test_frame].flatten(), 1),
+												   np.percentile(self.test_frame[self.test_frame==self.test_frame].flatten(), 99.99)])
+			self.im_std_thresh.set_clim(vmin=np.percentile(self.test_frame[self.test_frame==self.test_frame].flatten(), 1),
+									 vmax=np.percentile(self.test_frame[self.test_frame==self.test_frame].flatten(), 99.99))
+			self.constrast_slider_std.valueChanged.connect(self.change_std_contrast)
+			self.contrast_hbox.addWidget(self.constrast_slider_std, 90)
+			self.imshow_std_thresh.layout.addLayout(self.contrast_hbox)
+
+
+			self.apply_thresh_hbox = QHBoxLayout()
+			self.apply_std_btn = QPushButton('Apply')
+			self.apply_std_btn.clicked.connect(self.apply_threshold_in_le)
+			self.apply_std_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+			self.apply_thresh_hbox.addWidget(QLabel(''),33)
+			self.apply_thresh_hbox.addWidget(self.apply_std_btn, 33)
+			self.apply_thresh_hbox.addWidget(QLabel(''),33)		
+			self.imshow_std_thresh.layout.addLayout(self.apply_thresh_hbox)
+
+			self.imshow_std_thresh.show()
+
+
+	def change_std_contrast(self, value):
+		
+		vmin = value[0]
+		vmax = value[1]
+		self.im_std_thresh.set_clim(vmin=vmin, vmax=vmax)
+		self.fig_std_thresh.canvas.draw_idle()		
+
+	def apply_threshold_in_le(self):
+		self.tab_cdt_std_le.setText(str(self.thresh_slider.value()).replace('.',','))
+		self.imshow_std_thresh.close()
+
+	def change_alpha(self, value):
+		
+		self.im_mask.set_alpha(value)
+		self.imshow_std_thresh.canvas.draw_idle()
+
+
+	def change_frame_std(self, value):
+		
+		channel_indices = _extract_channel_indices_from_config(self.parent.exp_config, [self.tab_condition_channel_dropdown.currentText()])
+		ch_idx = channel_indices[0]	
+
+		self.test_frame = load_frames(
+									self.n_channels * value + np.arange(self.n_channels), 
+									self.current_stack,
+									normalize_input=False
+									).astype(float)[:,:,ch_idx]
+		self.im_std_thresh.set_data(self.test_frame)
+		self.change_threshold(self.thresh_slider.value())	
+		self.change_std_contrast(self.constrast_slider_std.value())
+
+	def change_threshold(self, value):
+
+		self.compute_mask(value)
+		mask = np.ma.masked_where(self.mask == 0, self.mask)
+		self.im_mask.set_data(mask)
+		self.imshow_std_thresh.canvas.draw_idle()
 
 	def activate_time_range(self):
 
@@ -1306,7 +1684,7 @@ class PreprocessingPanel(QFrame):
 		self.fig_bg, self.ax_bg = plt.subplots(figsize=(5, 5))
 		self.imshow_bg = FigureCanvas(self.fig_bg, title="Reconstructed background", interactive=True)
 		self.ax_bg.clear()
-		self.im_bg = self.ax_bg.imshow(bg, cmap='gray')
+		self.im_bg = self.ax_bg.imshow(bg, cmap='gray', interpolation='none')
 		self.ax_bg.set_xticks([])
 		self.ax_bg.set_yticks([])
 		self.fig_bg.set_facecolor('none')  # or 'None'

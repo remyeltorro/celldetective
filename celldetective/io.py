@@ -186,7 +186,7 @@ def interpret_wells_and_positions(experiment, well_option, position_option):
 
 	if well_option=='*':
 		well_indices = np.arange(nbr_of_wells)
-	elif isinstance(well_option, int):
+	elif isinstance(well_option, int) or isinstance(well_option, np.int_):
 		well_indices = [int(well_option)]
 	elif isinstance(well_option, list):
 		well_indices = well_option

@@ -237,7 +237,7 @@ def correct_background(experiment,
 		well_name, _ = extract_well_name_and_number(well_path)
 
 		try:
-			background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=well_indices[k], target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
+			background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=int(well_indices[k]), target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
 			background = background[0]
 			background = background['bg']
 		except Exception as e:

@@ -136,16 +136,51 @@ def get_experiment_pharmaceutical_agents(experiment, dtype=str):
 	return np.array([dtype(c) for c in pharmaceutical_agents])
 
 
-def _interpret_wells_and_positions(experiment, well_option, position_option):
+def interpret_wells_and_positions(experiment, well_option, position_option):
 	
 	"""
-	For given experiment, provide well selection and position selection
-	Well 0 is W1 and so on...
-	Ideally, works with QComboBox of GUI
-	--> return well indices and position indices
+	Interpret well and position options for a given experiment.
+
+	This function takes an experiment and well/position options to return the selected
+	wells and positions. It supports selection of all wells or specific wells/positions
+	as specified. The well numbering starts from 0 (i.e., Well 0 is W1 and so on).
+
+	Parameters
+	----------
+	experiment : object
+		The experiment object containing well information.
+	well_option : str, int, or list of int
+		The well selection option:
+		- '*' : Select all wells.
+		- int : Select a specific well by its index.
+		- list of int : Select multiple wells by their indices.
+	position_option : str, int, or list of int
+		The position selection option:
+		- '*' : Select all positions (returns None).
+		- int : Select a specific position by its index.
+		- list of int : Select multiple positions by their indices.
+
+	Returns
+	-------
+	well_indices : numpy.ndarray or list of int
+		The indices of the selected wells.
+	position_indices : numpy.ndarray or list of int or None
+		The indices of the selected positions. Returns None if all positions are selected.
+
+	Examples
+	--------
+	>>> experiment = ...  # Some experiment object
+	>>> interpret_wells_and_positions(experiment, '*', '*')
+	(array([0, 1, 2, ..., n-1]), None)
+	
+	>>> interpret_wells_and_positions(experiment, 2, '*')
+	([2], None)
+	
+	>>> interpret_wells_and_positions(experiment, [1, 3, 5], 2)
+	([1, 3, 5], array([2]))
 
 	"""
-
+	
 	wells = get_experiment_wells(experiment)
 	nbr_of_wells = len(wells)
 
@@ -167,6 +202,38 @@ def _interpret_wells_and_positions(experiment, well_option, position_option):
 		
 def extract_well_name_and_number(well):
 	
+	"""
+	Extract the well name and number from a given well path.
+
+	This function takes a well path string, splits it by the OS-specific path separator,
+	and extracts the well name and number. The well name is the last component of the path,
+	and the well number is derived by removing the 'W' prefix and converting the remaining
+	part to an integer.
+
+	Parameters
+	----------
+	well : str
+		The well path string, where the well name is the last component.
+
+	Returns
+	-------
+	well_name : str
+		The name of the well, extracted from the last component of the path.
+	well_number : int
+		The well number, obtained by stripping the 'W' prefix from the well name
+		and converting the remainder to an integer.
+
+	Examples
+	--------
+	>>> well_path = "path/to/W23"
+	>>> extract_well_name_and_number(well_path)
+	('W23', 23)
+
+	>>> well_path = "another/path/W1"
+	>>> extract_well_name_and_number(well_path)
+	('W1', 1)
+	"""
+
 	split_well_path = well.split(os.sep)
 	split_well_path = list(filter(None, split_well_path))
 	well_name = split_well_path[-1]
@@ -176,6 +243,34 @@ def extract_well_name_and_number(well):
 
 def extract_position_name(pos):
 	
+	"""
+	Extract the position name from a given position path.
+
+	This function takes a position path string, splits it by the OS-specific path separator,
+	filters out any empty components, and extracts the position name, which is the last
+	component of the path.
+
+	Parameters
+	----------
+	pos : str
+		The position path string, where the position name is the last component.
+
+	Returns
+	-------
+	pos_name : str
+		The name of the position, extracted from the last component of the path.
+
+	Examples
+	--------
+	>>> pos_path = "path/to/position1"
+	>>> extract_position_name(pos_path)
+	'position1'
+
+	>>> pos_path = "another/path/positionA"
+	>>> extract_position_name(pos_path)
+	'positionA'
+	"""
+
 	split_pos_path = pos.split(os.sep)
 	split_pos_path = list(filter(None, split_pos_path))
 	pos_name = split_pos_path[-1]
@@ -237,238 +332,50 @@ def get_position_table(pos, population, return_path=False):
 
 def get_position_movie_path(pos, prefix=''):
 
+	"""
+	Get the path of the movie file for a given position.
+
+	This function constructs the path to a movie file within a given position directory.
+	It searches for TIFF files that match the specified prefix. If multiple matching files
+	are found, the first one is returned.
+
+	Parameters
+	----------
+	pos : str
+		The directory path for the position.
+	prefix : str, optional
+		The prefix to filter movie files. Defaults to an empty string.
+
+	Returns
+	-------
+	stack_path : str or None
+		The path to the first matching movie file, or None if no matching file is found.
+
+	Examples
+	--------
+	>>> pos_path = "path/to/position1"
+	>>> get_position_movie_path(pos_path, prefix='experiment_')
+	'path/to/position1/movie/experiment_001.tif'
+
+	>>> pos_path = "another/path/positionA"
+	>>> get_position_movie_path(pos_path)
+	'another/path/positionA/movie/001.tif'
+
+	>>> pos_path = "nonexistent/path"
+	>>> get_position_movie_path(pos_path)
+	None
+	"""
+	
+
 	if not pos.endswith(os.sep):
 		pos+=os.sep
 	movies = glob(pos+os.sep.join(['movie',prefix+'*.tif']))
 	if len(movies)>0:
 		stack_path = movies[0]
 	else:
-		stack_path = np.nan
+		stack_path = None
 	
 	return stack_path
-
-def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel=None, frame_range=[0,5], mode="timeseries", show_progress_per_pos=False, show_progress_per_well=True):
-	
-	config = get_config(experiment)
-	wells = get_experiment_wells(experiment)
-	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
-	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
-
-	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, "*")
-
-	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
-	nbr_channels = _extract_nbr_channels_from_config(config)
-	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
-	
-	backgrounds = []
-
-	for k, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
-		
-		well_name, well_number = extract_well_name_and_number(well_path)
-		well_idx = well_indices[k]
-		
-		positions = get_positions_in_well(well_path)
-
-		frame_mean_per_position = []
-
-		for l,pos_path in enumerate(tqdm(positions, disable=not show_progress_per_pos)):
-			
-			pos_name = extract_position_name(pos_path)
-			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
-
-			if mode=="timeseries":
-
-				frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
-				frames = np.moveaxis(frames, -1, 0).astype(float)
-
-				for i in range(len(frames)):
-					if np.all(frames[i].flatten()==0):
-						frames[i,:,:] = np.nan
-
-				frame_mean = np.nanmean(frames, axis=0)
-				
-				frame = frame_mean.copy().astype(float)
-				frame = gauss_filter(frame, 2)
-				std_frame = std_filter(frame, 4)
-				
-				mask = std_frame > threshold_on_std
-				mask = fill_label_holes(mask)
-				frame[np.where(mask==1)] = np.nan
-
-			elif mode=="tiles":
-
-				frames = load_frames(img_num_channels[0,:], stack_path, normalize_input=False).astype(float)
-				frames = np.moveaxis(frames, -1, 0).astype(float)
-
-				for i in range(len(frames)):
-
-					if np.all(frames[i].flatten()==0):
-						frames[i,:,:] = np.nan
-						continue
-
-					f = frames[i].copy()
-					f = gauss_filter(f, 2)
-					std_frame = std_filter(f, 4)
-
-					mask = std_frame > threshold_on_std
-					mask = fill_label_holes(mask)
-					f[np.where(mask==1)] = np.nan
-
-					frames[i,:,:] = f
-				
-				frame = np.nanmedian(frames, axis=0)
-
-			# store
-			frame_mean_per_position.append(frame)
-
-		background = np.nanmedian(frame_mean_per_position,axis=0)
-		backgrounds.append({"bg": background, "well": well_path})
-
-	return backgrounds
-
-
-def correct_background(experiment, 
-					   well_option='*',
-					   position_option='*',
-					   target_channel=None,
-					   mode = None,
-					   threshold_on_std = 1,
-					   frame_range = None,
-					   optimize_option = False,
-					   opt_coef_range = None,
-					   opt_coef_nbr = None,
-					   operation = 'divide',
-					   clip = False,
-					   show_progress_per_well = True,
-					   show_progress_per_pos = False,
-					   export = False,
-					   return_stacks = False,
-					   ):
-	
-	config = get_config(experiment)
-	wells = get_experiment_wells(experiment)
-	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
-	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
-
-	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
-	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
-	nbr_channels = _extract_nbr_channels_from_config(config)
-	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
-	
-	stacks = []
-
-	for k, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
-		
-		well_name, well_number = extract_well_name_and_number(well_path)
-
-		print('Estimate background...')
-		try:
-			background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=well_indices[k], target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
-			background = background[0]
-			background = background['bg']
-			print('background estimated')
-		except Exception as e:
-			print(e)
-			print('Background could not be estimated... Skipping well...')
-			continue
-
-		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
-		selection = positions[position_indices]
-		if isinstance(selection[0],np.ndarray):
-			selection = selection[0]
-
-		for pidx,pos_path in enumerate(tqdm(selection, disable=not show_progress_per_pos)):
-			print(f"{pos_path=}")
-			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
-			corrected_stack = apply_background_to_stack(stack_path, 
-													  background,
-													  target_channel_index=channel_indices[0],
-													  nbr_channels=nbr_channels,
-													  stack_length=len_movie,
-													  threshold_on_std=threshold_on_std,
-													  optimize_option=optimize_option,
-													  opt_coef_range=opt_coef_range,
-													  opt_coef_nbr=opt_coef_nbr,
-													  operation=operation,
-													  clip=clip,
-													  export=export,
-													  prefix="Corrected"
-													  )
-			if return_stacks:
-				stacks.append(corrected_stack)
-			else:
-				del corrected_stack
-			gc.collect()
-
-	if return_stacks:
-		return stacks
-
-
-
-def apply_background_to_stack(stack_path, background, target_channel_index=None, nbr_channels=None, stack_length=None, threshold_on_std=1, optimize_option=True, opt_coef_range=(0.95,1.05), opt_coef_nbr=100, operation='divide', clip=False, export=False, prefix="Corrected"):
-
-	if stack_length is None:
-		stack_length = auto_load_number_of_frames(stack_path)
-		if stack_length is None:
-			print('stack length not provided')
-			return None
-
-	if optimize_option:
-		coefficients = np.linspace(opt_coef_range[0], opt_coef_range[1], int(opt_coef_nbr))
-		coefficients = np.append(coefficients, [1.0])
-	if export and prefix is not None:
-		path,file = os.path.split(stack_path)
-		newfile = '_'.join([prefix,file])
-		
-	corrected_stack = []
-
-	for i in range(int(stack_length*nbr_channels) - int(nbr_channels)):
-		
-		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
-		target_img = frames[:,:,target_channel_index].copy()
-
-		if optimize_option:
-			target_copy = target_img.copy()
-			f = gauss_filter(target_img.copy(), 2)
-			std_frame = std_filter(f, 4)
-			mask = std_frame > threshold_on_std
-			mask = fill_label_holes(mask)
-			target_copy[np.where(mask==1)] = np.nan
-			loss = []
-			
-			# brute-force regression, could do gradient descent instead
-			for c in coefficients:
-				diff = np.subtract(target_copy, c*background, where=target_copy==target_copy)
-				s = np.sum(np.abs(diff, where=diff==diff), where=diff==diff)
-				loss.append(s)
-			c = coefficients[np.argmin(loss)]
-			print(f"Optimal coefficient: {c}")		
-		else:
-			c=1
-
-		if operation=="divide":
-			correction = np.divide(target_img, background*c, where=background==background)
-			correction[background!=background] = np.nan
-			correction[target_img!=target_img] = np.nan
-			fill_val = 1.0
-
-		elif operation=="subtract":
-			correction = np.subtract(target_img, background*c, where=background==background)
-			correction[background!=background] = np.nan
-			correction[target_img!=target_img] = np.nan
-			fill_val = 0.0
-			if clip:
-				correction[correction<=0.] = 0.
-
-		frames[:,:,target_channel_index] = correction
-		corrected_stack.append(frames)
-
-	corrected_stack = np.array(corrected_stack)
-
-	if export and prefix is not None:
-		save_tiff_imagej_compatible(os.sep.join([path,newfile]), corrected_stack, axes='TYXC')
-
-	return corrected_stack
 
 
 
@@ -541,7 +448,7 @@ def load_experiment_tables(experiment, population='targets', well_option='*',pos
 	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
 	well_labels = _extract_labels_from_config(config,len(wells))
 	
-	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
+	well_indices, position_indices = interpret_wells_and_positions(experiment, well_option, position_option)
 
 	df = []
 	df_pos_info = []
@@ -561,7 +468,7 @@ def load_experiment_tables(experiment, population='targets', well_option='*',pos
 		well_cell_type = cell_types[widx]
 		well_pharmaceutical_agent = pharmaceutical_agents[widx]
 		
-		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
+		positions = get_positions_in_well(well_path)
 		if position_indices is not None:
 			try:
 				positions = positions[position_indices]
@@ -2198,7 +2105,7 @@ def get_positions_in_well(well):
 		well = well[:-1]
 
 	w_numeric = os.path.split(well)[-1].replace('W','')
-	positions = glob(os.sep.join([well,f'{w_numeric}*{os.sep}']))		
+	positions = natsorted(glob(os.sep.join([well,f'{w_numeric}*{os.sep}'])))
 
 	return np.array(positions,dtype=str)
 

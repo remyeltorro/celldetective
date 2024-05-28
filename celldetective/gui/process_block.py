@@ -28,12 +28,11 @@ from tifffile import imwrite
 import json
 import psutil
 from celldetective.neighborhood import compute_neighborhood_at_position
-from celldetective.io import estimate_background_per_condition
 from celldetective.gui.gui_utils import FigureCanvas
 import matplotlib.pyplot as plt
 from celldetective.filters import std_filter, median_filter, gauss_filter
 from stardist import fill_label_holes
-from celldetective.io import correct_background
+from celldetective.preprocessing import correct_background, estimate_background_per_condition
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 
 class ProcessPanel(QFrame):

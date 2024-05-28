@@ -453,19 +453,19 @@ class ConfigMeasurementsPlot(QWidget):
 				padding: 0px;
 				""")
 			self.plotvbox.addWidget(self.select_pos_label, alignment=Qt.AlignCenter)
-
-			self.select_option = [QRadioButton() for i in range(2)]
-			self.select_label = ['name', 'spatial']
-			select_hbox = QHBoxLayout()
-			select_hbox.setContentsMargins(30,30,30,30)
-			self.select_btn_group = QButtonGroup()
-			for i in range(2):
-				self.select_option[i].setText(self.select_label[i])
-				#self.select_option[i].toggled.connect(self.switch_selection_mode)
-				self.select_btn_group.addButton(self.select_option[i])
-				select_hbox.addWidget(self.select_option[i],33, alignment=Qt.AlignCenter)
-			self.select_btn_group.buttonClicked[int].connect(self.switch_selection_mode)
-			self.plotvbox.addLayout(select_hbox)
+			#
+			# self.select_option = [QRadioButton() for i in range(2)]
+			# self.select_label = ['name', 'spatial']
+			# select_hbox = QHBoxLayout()
+			# select_hbox.setContentsMargins(30,30,30,30)
+			# self.select_btn_group = QButtonGroup()
+			# for i in range(2):
+			# 	self.select_option[i].setText(self.select_label[i])
+			# 	#self.select_option[i].toggled.connect(self.switch_selection_mode)
+			# 	self.select_btn_group.addButton(self.select_option[i])
+			# 	select_hbox.addWidget(self.select_option[i],33, alignment=Qt.AlignCenter)
+			# self.select_btn_group.buttonClicked[int].connect(self.switch_selection_mode)
+			# self.plotvbox.addLayout(select_hbox)
 
 			self.look_for_metadata()
 			if self.metadata_found:
@@ -491,7 +491,7 @@ class ConfigMeasurementsPlot(QWidget):
 
 			# if self.df is not None and len(self.ks_estimators_per_position)>0:
 			# 	self.plot_survivals()
-			self.select_btn_group.buttons()[0].click()
+			#self.select_btn_group.buttons()[0].click()
 			self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 			self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 			#self.scroll.setWidgetResizable(True)

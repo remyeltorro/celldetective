@@ -6,6 +6,7 @@ from fonticon_mdi6 import MDI6
 import gc
 
 from celldetective.gui.signal_annotator import MeasureAnnotator
+from celldetective.gui.signal_annotator2 import MeasureAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
 from celldetective.io import locate_segmentation_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI, SignalAnnotator2
@@ -960,8 +961,8 @@ class NeighPanel(QFrame):
 		self.visu_btn = QPushButton()
 		self.visu_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
 		self.visu_btn.setIconSize(QSize(20, 20))
-		self.visu_btn.clicked.connect(self.check_signals2)
-		self.visu_btn.setToolTip("Open signal annotator for two populations.")
+		self.visu_btn.clicked.connect(self.check_measurements2)
+		self.visu_btn.setToolTip("Open measurement annotator for two populations.")
 		self.visu_btn.setStyleSheet(self.parent.parent.button_select_all)
 		#self.grid_contents.addWidget(self.visu_btn, 1,1,1,1,alignment=Qt.AlignRight)
 		rel_layout.addWidget(self.visu_btn, 6)
@@ -976,6 +977,36 @@ class NeighPanel(QFrame):
 		rel_layout.addWidget(self.config_rel_annotator_btn, 6)
 		self.grid_contents.addLayout(rel_layout, 1,0,1,4)
 
+		signal_hlayout = QHBoxLayout()
+		self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
+		self.signal_analysis_action.setStyleSheet("""
+		font-size: 10px;
+		padding-left: 10px;
+		padding-top: 5px;""")
+
+		self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
+		self.signal_analysis_action.setIconSize(QSize(20, 20))
+		self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
+		#self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
+		signal_hlayout.addWidget(self.signal_analysis_action, 90)
+
+		self.check_signals_btn = QPushButton()
+		self.check_signals_btn.setIcon(icon(MDI6.eye_check_outline, color="black"))
+		self.check_signals_btn.setIconSize(QSize(20, 20))
+		self.check_signals_btn.clicked.connect(self.check_signals2)
+		self.check_signals_btn.setToolTip("Open signal annotator for two populations.")
+		self.check_signals_btn.setStyleSheet(self.parent.parent.button_select_all)
+		signal_hlayout.addWidget(self.check_signals_btn, 6)
+
+		self.config_signal_annotator_btn = QPushButton()
+		self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
+		self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
+		self.config_signal_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
+		self.config_signal_annotator_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
+		signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
+
+		self.grid_contents.addLayout(signal_hlayout, 2,0,1,4)
 		# def generate_signal_analysis_options(self):
 		# 	signal_layout = QVBoxLayout()
 		# 	signal_hlayout = QHBoxLayout()
@@ -1063,11 +1094,11 @@ class NeighPanel(QFrame):
 
 		# self.grid_contents.addLayout(mask_neigh_hbox, 1,0,1,4)
 
-		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
+		self.grid_contents.addWidget(QHSeperationLine(), 3, 0, 1, 4)
 		self.submit_btn = QPushButton("Submit")
 		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
 		self.submit_btn.clicked.connect(self.process_neighborhood)
-		self.grid_contents.addWidget(self.submit_btn, 3, 0, 1, 4)
+		self.grid_contents.addWidget(self.submit_btn, 4, 0, 1, 4)
 
 	def open_signal_annotator_configuration_ui(self):
 		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
@@ -1162,3 +1193,10 @@ class NeighPanel(QFrame):
 		if test:
 			self.SignalAnnotator2 = SignalAnnotator2(self)
 			self.SignalAnnotator2.show()
+
+	def check_measurements2(self):
+
+		test = self.parent.locate_selected_position()
+		if test:
+			self.MeasurementAnnotator2 = MeasureAnnotator2(self)
+			self.MeasurementAnnotator2.show()

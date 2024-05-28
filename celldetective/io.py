@@ -138,13 +138,21 @@ def get_experiment_pharmaceutical_agents(experiment, dtype=str):
 
 def _interpret_wells_and_positions(experiment, well_option, position_option):
 	
+	"""
+	For given experiment, provide well selection and position selection
+	Well 0 is W1 and so on...
+	Ideally, works with QComboBox of GUI
+	--> return well indices and position indices
+
+	"""
+
 	wells = get_experiment_wells(experiment)
 	nbr_of_wells = len(wells)
 
 	if well_option=='*':
-		well_indices = np.arange(len(wells))
+		well_indices = np.arange(nbr_of_wells)
 	elif isinstance(well_option, int):
-		well_indices = np.array([well_option], dtype=int)
+		well_indices = [int(well_option)]
 	elif isinstance(well_option, list):
 		well_indices = well_option
 		
@@ -154,7 +162,6 @@ def _interpret_wells_and_positions(experiment, well_option, position_option):
 		position_indices = np.array([position_option], dtype=int)
 	elif isinstance(position_option, list):
 		position_indices = position_option
-
 
 	return well_indices, position_indices
 		
@@ -248,7 +255,6 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
 
 	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, "*")
-	#print(f"{well_indices=}")
 
 	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
 	nbr_channels = _extract_nbr_channels_from_config(config)
@@ -256,26 +262,22 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 	
 	backgrounds = []
 
-	real_well_index = 0
-	for widx, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
+	for k, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
 		
-		any_movie = False # assume no table
-		
-		well_index = widx
 		well_name, well_number = extract_well_name_and_number(well_path)
+		well_idx = well_indices[k]
 		
-		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
-		real_pos_index = 0
+		positions = get_positions_in_well(well_path)
+
 		frame_mean_per_position = []
 
-		for pidx,pos_path in enumerate(tqdm(positions, disable=not show_progress_per_pos)):
+		for l,pos_path in enumerate(tqdm(positions, disable=not show_progress_per_pos)):
 			
 			pos_name = extract_position_name(pos_path)
-			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
 
 			if mode=="timeseries":
-				#print(f"{img_num_channels[0,frame_range[0]:frame_range[1]]=} {stack_path=}")
+
 				frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
 				frames = np.moveaxis(frames, -1, 0).astype(float)
 
@@ -348,32 +350,30 @@ def correct_background(experiment,
 	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
 	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
 
-	print(f"{position_option=}")
 	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
 	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
-	print(f"{channel_indices=}")
 	nbr_channels = _extract_nbr_channels_from_config(config)
 	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 	
-	real_well_index = 0
 	stacks = []
 
-	for widx, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
+	for k, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
 		
-		any_movie = False # assume no table
-		
-		well_index = widx
 		well_name, well_number = extract_well_name_and_number(well_path)
-		print('estimate background...')
-		background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=widx, target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
-		background = background[0]
-		background = background['bg']
-		print('background estimated')
+
+		print('Estimate background...')
+		try:
+			background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=well_indices[k], target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
+			background = background[0]
+			background = background['bg']
+			print('background estimated')
+		except Exception as e:
+			print(e)
+			print('Background could not be estimated... Skipping well...')
+			continue
 
 		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
-		real_pos_index = 0
 		selection = positions[position_indices]
-		print(f"{selection.shape=}")
 		if isinstance(selection[0],np.ndarray):
 			selection = selection[0]
 
@@ -435,6 +435,8 @@ def apply_background_to_stack(stack_path, background, target_channel_index=None,
 			mask = fill_label_holes(mask)
 			target_copy[np.where(mask==1)] = np.nan
 			loss = []
+			
+			# brute-force regression, could do gradient descent instead
 			for c in coefficients:
 				diff = np.subtract(target_copy, c*background, where=target_copy==target_copy)
 				s = np.sum(np.abs(diff, where=diff==diff), where=diff==diff)
@@ -545,12 +547,13 @@ def load_experiment_tables(experiment, population='targets', well_option='*',pos
 	df_pos_info = []
 	real_well_index = 0
 	
-	for widx, well_path in enumerate(tqdm(wells[well_indices])):
+	for k, well_path in enumerate(tqdm(wells[well_indices])):
 		
 		any_table = False # assume no table
 		
-		well_index = widx
 		well_name, well_number = extract_well_name_and_number(well_path)
+		widx = well_indices[k]
+
 		well_alias = well_labels[widx]
 		
 		well_concentration = concentrations[widx]

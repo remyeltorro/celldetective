@@ -1266,7 +1266,7 @@ class PreprocessingPanel(QFrame):
 								   show_progress_per_pos = True,
 								)
 
-				self.parent.movie_prefix = "Corrected_"			
+				#self.parent.movie_prefix = "Corrected_"			
 
 
 

@@ -223,7 +223,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.threshold_slider.setTickInterval(0.00001)
 		self.threshold_slider.setOrientation(1)
 		self.threshold_slider.setDecimals(3)
-		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.threshold_slider.setValue([np.percentile(self.img.flatten(), 90), np.amax(self.img)])
 		self.threshold_slider.valueChanged.connect(self.threshold_changed)
 
@@ -367,7 +367,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.contrast_slider.setSingleStep(0.00001)
 		self.contrast_slider.setTickInterval(0.00001)
 		self.contrast_slider.setOrientation(1)
-		self.contrast_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.contrast_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.contrast_slider.setValue([np.percentile(self.img.flatten(), 1), np.percentile(self.img.flatten(), 99.99)])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
 		contrast_hbox.addWidget(QLabel('contrast: '))
@@ -480,10 +480,10 @@ class ThresholdConfigWizard(QMainWindow):
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
 		# self.ax_hist.set_yticks([])
-		self.ax_hist.set_xlim(np.amin(self.img), np.amax(self.img))
+		self.ax_hist.set_xlim(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.ax_hist.set_ylim(0, self.hist_y.max())
 
-		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.threshold_slider.setValue([np.nanpercentile(self.img.flatten(), 90), np.amax(self.img)])
 		self.add_hist_threshold()
 
@@ -505,12 +505,12 @@ class ThresholdConfigWizard(QMainWindow):
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
 		# self.ax_hist.set_yticks([])
-		self.ax_hist.set_xlim(np.amin(self.img), np.amax(self.img))
+		self.ax_hist.set_xlim(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.ax_hist.set_ylim(0, self.hist_y.max())
 		self.add_hist_threshold()
 		self.canvas_hist.canvas.draw()
 
-		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.threshold_slider.setValue([np.nanpercentile(self.img.flatten(), 90), np.amax(self.img)])
 		self.threshold_changed(self.threshold_slider.value())
 
@@ -571,7 +571,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.vmax = np.nanpercentile(self.img.flatten(), 99.)
 
 		self.contrast_slider.disconnect()
-		self.contrast_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.contrast_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.contrast_slider.setValue([self.vmin, self.vmax])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
 
@@ -945,7 +945,7 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.contrast_slider.setSingleStep(0.00001)
 		self.contrast_slider.setTickInterval(0.00001)
 		self.contrast_slider.setOrientation(1)
-		self.contrast_slider.setRange(np.amin(self.frame), np.amax(self.frame))
+		self.contrast_slider.setRange(np.amin(self.frame[self.frame==self.frame]), np.amax(self.frame[self.frame==self.frame]))
 		self.contrast_slider.setValue(
 			[np.percentile(self.frame.flatten(), 1), np.percentile(self.frame.flatten(), 99.99)])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
@@ -989,11 +989,11 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.ax_hist.set_xlabel('intensity [a.u.]')
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
-		self.ax_hist.set_xlim(np.amin(self.frame), np.amax(self.frame))
+		self.ax_hist.set_xlim(np.amin(self.frame[self.frame==self.frame]), np.amax(self.frame[self.frame==self.frame]))
 		self.ax_hist.set_ylim(0, self.hist_y.max())
 		self.threshold_slider.setSingleStep(0.001)
 		self.threshold_slider.setTickInterval(0.001)
-		self.threshold_slider.setRange(np.amin(self.frame), np.amax(self.frame))
+		self.threshold_slider.setRange(np.amin(self.frame[self.frame==self.frame]), np.amax(self.frame[self.frame==self.frame]))
 		self.threshold_slider.setValue(np.percentile(self.frame,90))
 		self.add_hist_threshold()
 
@@ -1212,7 +1212,8 @@ class ThresholdSpot(ThresholdConfigWizard):
 		self.contrast_slider.setSingleStep(0.00001)
 		self.contrast_slider.setTickInterval(0.00001)
 		self.contrast_slider.setOrientation(1)
-		self.contrast_slider.setRange(np.amin(self.frame[:, :, self.current_channel]), np.amax(self.frame[:, :, self.current_channel]))
+		selection = self.frame[:, :, self.current_channel]
+		self.contrast_slider.setRange(np.amin(selection[selection==selection]), np.amax(selection[selection==selection]))
 		self.contrast_slider.setValue(
 			[np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)

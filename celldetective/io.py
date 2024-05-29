@@ -1978,11 +1978,11 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 		channel_axis = np.argmin(frames.shape)
 		frames = np.moveaxis(frames, channel_axis, -1)
 	if frames.ndim==2:
-		frames = frames[:,:,np.newaxis]
+		frames = frames[:,:,np.newaxis].astype(float)
 	if normalize_input:
 		frames = normalize_multichannel(frames, **normalize_kwargs)
 	if scale is not None:
-		frames = zoom(frames, [scale,scale,1], order=3)
+		frames = zoom(frames, [scale,scale,1], order=3, prefilter=False)
 	
 	# add a fake pixel to prevent auto normalization errors on images that are uniform
 	# to revisit

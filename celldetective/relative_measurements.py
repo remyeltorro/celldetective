@@ -134,6 +134,8 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist, target_lysis_c
 
                 if len(rel_dist_crop[rel_dist_crop == rel_dist_crop]) > 0:
                     pre_lysis_d_rel = np.nanmean(rel_dist_crop)
+                else:
+                    pre_lysis_d_rel = np.nanmean(relative_distance[:])
                 if len(rel_v_crop[rel_v_crop == rel_v_crop]) > 0:
                     pre_lysis_v_rel = np.nanmean(rel_v_crop)
                 else:
@@ -141,6 +143,8 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist, target_lysis_c
 
                 if len(nk_lamp_crop[nk_lamp_crop == nk_lamp_crop]) > 0:
                     nk_lamp = np.nanmean(nk_lamp_crop)
+                else:
+                    nk_lamp=np.nanmean(lamp[:])
 
                 syn_class = nk_synapse
 

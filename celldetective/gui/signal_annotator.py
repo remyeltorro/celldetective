@@ -1435,6 +1435,7 @@ class MeasureAnnotator(SignalAnnotator):
 
             if len(yvalues) > 0:
                 self.cell_ax.boxplot(all_yvalues, showfliers=self.show_fliers)
+                self.cell_ax.set_xticklabels(labels)
                 ylim = self.cell_ax.get_ylim()
                 self.cell_ax.set_ylim(ylim)
                 x_pos = np.arange(len(all_yvalues)) + 1
@@ -2326,7 +2327,6 @@ class MeasureAnnotator(SignalAnnotator):
             self.nbr_channels = len(self.channels)
             self.current_channel = 0
             self.img = load_frames(0, self.stack_path, normalize_input=False)
-            print(self.img.shape)
             print(f'{self.stack_path} successfully located.')
 
     def reload_frame(self):

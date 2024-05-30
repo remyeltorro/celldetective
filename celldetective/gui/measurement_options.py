@@ -37,6 +37,9 @@ from pathlib import Path, PurePath
 import gc
 from stardist import fill_label_holes
 
+from celldetective.gui.viewers import CellEdgeVisualizer
+from celldetective.gui.layouts import BackgroundFitCorrectionLayout, OperationLayout
+from celldetective.gui.gui_utils import ThresholdLineEdit
 
 class ConfigMeasurements(QMainWindow):
     """
@@ -291,7 +294,7 @@ class ConfigMeasurements(QMainWindow):
 
         self.view_contour_btn = QPushButton("")
         self.view_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.view_contour_btn.setIcon(icon(MDI6.eye_outline, color="black"))
+        self.view_contour_btn.setIcon(icon(MDI6.eye_plus_outline, color="black"))
         self.view_contour_btn.setToolTip("View contour")
         self.view_contour_btn.setIconSize(QSize(20, 20))
         contour_layout.addWidget(self.view_contour_btn, 5)
@@ -582,6 +585,8 @@ class ConfigMeasurements(QMainWindow):
                 print(measurement_instructions)
                 if 'background_correction' in measurement_instructions:
                     self.background_correction = measurement_instructions['background_correction']
+                    if self.background_correction is None:
+                        self.background_correction = []
                     if (self.background_correction is not None) and len(self.background_correction) > 0:
                         self.normalisation_list.clear()
                         for norm_params in self.background_correction:
@@ -702,30 +707,46 @@ class ConfigMeasurements(QMainWindow):
         Load the first frame of the first movie found in the experiment folder as a sample.
         """
 
-        movies = glob(self.parent.parent.pos + os.sep.join(['movie', f"{self.parent.parent.movie_prefix}*.tif"]))
+        movies = glob(self.parent.parent.pos + os.sep.join(['movie', f"{self.parent.movie_prefix}*.tif"]))
 
         if len(movies) == 0:
             msgBox = QMessageBox()
             msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("No movies are detected in the experiment folder. Cannot load an image...")
+            msgBox.setText("Please select a position containing a movie...")
             msgBox.setWindowTitle("Warning")
             msgBox.setStandardButtons(QMessageBox.Ok)
             returnValue = msgBox.exec()
             if returnValue == QMessageBox.Ok:
-                self.test_frame = None
+                self.current_stack = None
                 return None
         else:
-            self.stack0 = movies[0]
-            n_channels = len(self.channels)
-            len_movie_auto = auto_load_number_of_frames(self.stack0)
-            if len_movie_auto is None:
-                stack = imread(self.stack0)
-                len_movie_auto = len(stack)
-                del stack
-                gc.collect()
-            self.mid_time = len_movie_auto // 2
-            self.test_frame = load_frames(n_channels * self.mid_time + np.arange(n_channels), self.stack0, scale=None,
-                                          normalize_input=False)
+            self.current_stack = movies[0]
+
+        # movies = glob(self.parent.parent.pos + os.sep.join(['movie', f"{self.parent.parent.movie_prefix}*.tif"]))
+
+        # if len(movies) == 0:
+        #     msgBox = QMessageBox()
+        #     msgBox.setIcon(QMessageBox.Warning)
+        #     msgBox.setText("No movies are detected in the experiment folder. Cannot load an image...")
+        #     msgBox.setWindowTitle("Warning")
+        #     msgBox.setStandardButtons(QMessageBox.Ok)
+        #     returnValue = msgBox.exec()
+        #     if returnValue == QMessageBox.Ok:
+        #         self.test_frame = None
+        #         self.stack0 = None
+        #         return None
+        # else:
+        #     self.stack0 = movies[0]
+        #     n_channels = len(self.channels)
+        #     len_movie_auto = auto_load_number_of_frames(self.stack0)
+        #     if len_movie_auto is None:
+        #         stack = imread(self.stack0)
+        #         len_movie_auto = len(stack)
+        #         del stack
+        #         gc.collect()
+        #     self.mid_time = len_movie_auto // 2
+        #     self.test_frame = load_frames(n_channels * self.mid_time + np.arange(n_channels), self.stack0, scale=None,
+        #                                   normalize_input=False)
 
     def control_haralick_digitalization(self):
 
@@ -791,119 +812,20 @@ class ConfigMeasurements(QMainWindow):
         Show the ROI for the selected contour measurement on experimental data.
 
         """
-
-        if self.parent.parent.position_list.currentText() == '*':
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("Please select a single position to visualize the border selection.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Ok:
-                return None
-            else:
-                return None
-
         self.locate_image()
 
-        self.locate_mask()
-        if self.test_mask is None:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("The segmentation results could not be found for this position.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Yes:
-                return None
-            else:
-                return None
-        # plt.imshow(self.test_frame[:,:,0])
-        # plt.pause(2)
-        # plt.close()
+        if self.current_stack is not None:
 
-        # plt.imshow(self.test_mask)
-        # plt.pause(2)
-        # plt.close()
-
-        if (self.test_frame is not None) and (self.test_mask is not None):
-
-            values = self.contours_list.list_widget.selectedItems()
-            if len(values) > 0:
-                distance = values[0].text()
-                if '-' in distance:
-                    if distance[0] != '-':
-                        border_dist = distance.split('-')
-                        border_dist = [float(d) for d in border_dist]
-                    else:
-                        border_dist = float(distance)
-                elif distance.isnumeric():
-                    border_dist = float(distance)
-
-                print(border_dist)
-                border_label = contour_of_instance_segmentation(self.test_mask, border_dist)
-
-                self.fig_contour, self.ax_contour = plt.subplots(figsize=(5, 5))
-                self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
-                self.ax_contour.clear()
-                self.im_contour = self.ax_contour.imshow(self.test_frame[:, :, 0], cmap='gray')
-                self.im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label == 0, border_label),
-                                                      cmap='viridis', interpolation='none')
-                self.ax_contour.set_xticks([])
-                self.ax_contour.set_yticks([])
-                self.ax_contour.set_title(border_dist)
-                self.fig_contour.set_facecolor('none')  # or 'None'
-                self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
-                self.imshow_contour.canvas.draw()
-
-                self.imshow_contour.layout.setContentsMargins(30, 30, 30, 30)
-                self.channel_hbox_contour = QHBoxLayout()
-                self.channel_hbox_contour.addWidget(QLabel('channel: '), 10)
-                self.channel_cb_contour = QComboBox()
-                self.channel_cb_contour.addItems(self.channel_names)
-                self.channel_cb_contour.currentIndexChanged.connect(self.switch_channel_contour)
-                self.channel_hbox_contour.addWidget(self.channel_cb_contour, 90)
-                self.imshow_contour.layout.addLayout(self.channel_hbox_contour)
-
-                self.contrast_hbox_contour = QHBoxLayout()
-                self.contrast_hbox_contour.addWidget(QLabel('contrast: '), 10)
-                self.contrast_slider_contour = QLabeledDoubleRangeSlider()
-                self.contrast_slider_contour.setSingleStep(0.00001)
-                self.contrast_slider_contour.setTickInterval(0.00001)
-                self.contrast_slider_contour.setOrientation(1)
-                self.contrast_slider_contour.setRange(np.amin(self.test_frame[:, :, 0]),
-                                                      np.amax(self.test_frame[:, :, 0]))
-                self.contrast_slider_contour.setValue([np.percentile(self.test_frame[:, :, 0].flatten(), 1),
-                                                       np.percentile(self.test_frame[:, :, 0].flatten(), 99.99)])
-                self.im_contour.set_clim(vmin=np.percentile(self.test_frame[:, :, 0].flatten(), 1),
-                                         vmax=np.percentile(self.test_frame[:, :, 0].flatten(), 99.99))
-                self.contrast_slider_contour.valueChanged.connect(self.contrast_im_contour)
-                self.contrast_hbox_contour.addWidget(self.contrast_slider_contour, 90)
-                self.imshow_contour.layout.addLayout(self.contrast_hbox_contour)
-
-                self.alpha_mask_hbox_contour = QHBoxLayout()
-                self.alpha_mask_hbox_contour.addWidget(QLabel('mask transparency: '), 10)
-                self.transparency_slider = QLabeledDoubleSlider()
-                self.transparency_slider.setSingleStep(0.001)
-                self.transparency_slider.setTickInterval(0.001)
-                self.transparency_slider.setOrientation(1)
-                self.transparency_slider.setRange(0, 1)
-                self.transparency_slider.setValue(0.5)
-                self.transparency_slider.valueChanged.connect(self.make_contour_transparent)
-                self.alpha_mask_hbox_contour.addWidget(self.transparency_slider, 90)
-                self.imshow_contour.layout.addLayout(self.alpha_mask_hbox_contour)
-
-                self.imshow_contour.show()
-
-        else:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("No contour was selected. Please first add a contour to the list.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Yes:
-                return None
+            self.viewer = CellEdgeVisualizer(cell_type=self.mode,
+                                             stack_path=self.current_stack,
+                                             parent_list_widget=self.contours_list.list_widget,
+                                             n_channels=len(self.channel_names),
+                                             target_channel=0,
+                                             window_title='Set an edge measurement',
+                                             channel_cb=True,
+                                             channel_names = self.channel_names,
+                                             )
+            self.viewer.show()
 
     def locate_mask(self):
 
@@ -962,8 +884,11 @@ class ConfigMeasurements(QMainWindow):
         self.tabs.addTab(self.tab1, 'Local')
         self.tabs.addTab(self.tab2, 'Field')
         self.tab1.setLayout(self.populate_local_norm_tab())
-        self.tab2.setLayout(self.populate_field_norm_tab())
+
+        self.fit_correction_layout = BackgroundFitCorrectionLayout(self, self.tab2)
+        #self.tab2.setLayout(self.fit_correction_layout)
         layout.addWidget(self.tabs)
+
         self.norm_list_lbl = QLabel('Background correction to perform:')
         hbox = QHBoxLayout()
         hbox.addWidget(self.norm_list_lbl)
@@ -982,18 +907,19 @@ class ConfigMeasurements(QMainWindow):
 
         channel_lbl = QLabel()
         channel_lbl.setText("Channel: ")
-        tab1_layout.addWidget(channel_lbl, 0, 0)
 
         self.tab1_channel_dropdown = QComboBox()
+
         self.tab1_channel_dropdown.addItems(self.channel_names)
-        tab1_layout.addWidget(self.tab1_channel_dropdown, 0, 1)
+
 
         tab1_lbl = QLabel()
-        tab1_lbl.setText("Outer distance (in px): ")
-        tab1_layout.addWidget(tab1_lbl, 1, 0)
+        tab1_lbl.setText("Distance: ")
 
-        self.tab1_txt_distance = QLineEdit()
-        tab1_layout.addWidget(self.tab1_txt_distance, 1, 1)
+        # self.tab1_txt_distance = QLineEdit()
+        # self.tab1_txt_distance.setText('5')
+        # self.tab1_txt_distance.setValidator(self.onlyInt)
+        # tab1_layout.addWidget(self.tab1_txt_distance, 1, 1)
 
         self.tab1_vis_brdr = QPushButton()
         self.tab1_vis_brdr.setStyleSheet(self.parent.parent.parent.button_select_all)
@@ -1001,118 +927,61 @@ class ConfigMeasurements(QMainWindow):
         self.tab1_vis_brdr.setToolTip("View contour")
         self.tab1_vis_brdr.setIconSize(QSize(20, 20))
         self.tab1_vis_brdr.clicked.connect(self.view_normalisation_contour)
-        tab1_layout.addWidget(self.tab1_vis_brdr, 1, 2)
 
         tab1_lbl_type = QLabel()
         tab1_lbl_type.setText("Type: ")
-        tab1_layout.addWidget(tab1_lbl_type, 2, 0)
 
         self.tab1_dropdown = QComboBox()
         self.tab1_dropdown.addItem("Mean")
         self.tab1_dropdown.addItem("Median")
-        tab1_layout.addWidget(self.tab1_dropdown, 2, 1)
 
-        self.tab1_subtract = QRadioButton('Subtract')
-        self.tab1_divide = QRadioButton('Divide')
-        tab1_layout.addWidget(self.tab1_subtract, 3, 0, alignment=Qt.AlignRight)
-        tab1_layout.addWidget(self.tab1_divide, 3, 1, alignment=Qt.AlignRight)
+        # self.tab1_subtract = QRadioButton('Subtract')
+        # self.tab1_divide = QRadioButton('Divide')
+        # tab1_layout.addWidget(self.tab1_subtract, 3, 0, alignment=Qt.AlignRight)
+        # tab1_layout.addWidget(self.tab1_divide, 3, 1, alignment=Qt.AlignRight)
+
+        self.operation_layout = OperationLayout()
 
         tab1_submit = QPushButton()
         tab1_submit.setText('Add channel')
         tab1_submit.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-        tab1_layout.addWidget(tab1_submit, 4, 0, 1, 3)
         tab1_submit.clicked.connect(self.add_item_to_list)
+
+        self.tab1_txt_distance = ThresholdLineEdit(init_value=5,
+                                                   connected_buttons=[self.tab1_vis_brdr, tab1_submit],
+                                                   placeholder='px distance from edge',
+                                                   value_type='integer'
+                                                   )
+
+        channel_hbox = QHBoxLayout()
+        channel_hbox.addWidget(channel_lbl, 25)
+        channel_hbox.addWidget(self.tab1_channel_dropdown, 75)
+        tab1_layout.addLayout(channel_hbox, 0, 0, 1, 3)
+
+        threshold_hbox = QHBoxLayout()
+        threshold_hbox.addWidget(tab1_lbl, 25)
+        threshold_hbox.addWidget(self.tab1_txt_distance, 70)
+        threshold_hbox.addWidget(self.tab1_vis_brdr, 5)
+        tab1_layout.addLayout(threshold_hbox, 1, 0, 1, 3)
+
+        model_hbox = QHBoxLayout()
+        model_hbox.addWidget(tab1_lbl_type, 25)
+        model_hbox.addWidget(self.tab1_dropdown, 75)
+        tab1_layout.addLayout(model_hbox, 2, 0, 1, 3)
+
+        tab1_layout.addLayout(self.operation_layout, 3, 0, 1, 3)
+        tab1_layout.addWidget(tab1_submit, 4, 0, 1, 3)
 
         return tab1_layout
 
-    def populate_field_norm_tab(self):
 
-        tab2_layout = QGridLayout(self.tab2)
-
-        channel_lbl = QLabel()
-        channel_lbl.setText("Channel: ")
-        tab2_layout.addWidget(channel_lbl, 0, 0)
-
-        self.tab2_channel_dropdown = QComboBox()
-        self.tab2_channel_dropdown.addItems(self.channel_names)
-        tab2_layout.addWidget(self.tab2_channel_dropdown, 0, 1)
-
-        tab2_lbl = QLabel()
-        tab2_lbl.setText("std threshold: ")
-        tab2_layout.addWidget(tab2_lbl, 1, 0)
-
-        self.tab2_txt_threshold = QLineEdit()
-        tab2_layout.addWidget(self.tab2_txt_threshold, 1, 1)
-
-        self.norm_digit_btn = QPushButton()
-        self.norm_digit_btn.setIcon(icon(MDI6.image_check, color="k"))
-        self.norm_digit_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-
-        self.norm_digit_btn.clicked.connect(self.show_threshold_visual)
-        tab2_layout.addWidget(self.norm_digit_btn, 1, 2)
-
-        tab2_lbl_type = QLabel()
-        tab2_lbl_type.setText("Type: ")
-        tab2_layout.addWidget(tab2_lbl_type, 2, 0)
-
-        self.tab2_dropdown = QComboBox()
-        self.tab2_dropdown.addItems(["Paraboloid", "Plane"])
-        tab2_layout.addWidget(self.tab2_dropdown, 2, 1)
-
-        self.tab2_subtract = QRadioButton('Subtract')
-        self.tab2_divide = QRadioButton('Divide')
-        self.tab2_sd_btn_group = QButtonGroup(self)
-        self.tab2_sd_btn_group.addButton(self.tab2_subtract)
-        self.tab2_sd_btn_group.addButton(self.tab2_divide)
-        tab2_layout.addWidget(self.tab2_subtract, 3, 0, alignment=Qt.AlignRight)
-        tab2_layout.addWidget(self.tab2_divide, 3, 1, alignment=Qt.AlignRight)
-
-        self.tab2_clip = QRadioButton('Clip')
-        self.tab2_no_clip = QRadioButton("Don't clip")
-        self.tab2_clip_group = QButtonGroup(self)
-        self.tab2_clip_group.addButton(self.tab2_clip)
-        self.tab2_clip_group.addButton(self.tab2_no_clip)
-        self.tab2_clip.setEnabled(False)
-        self.tab2_no_clip.setEnabled(False)
-        tab2_layout.addWidget(self.tab2_clip, 4, 0, alignment=Qt.AlignLeft)
-        tab2_layout.addWidget(self.tab2_no_clip, 4, 1, alignment=Qt.AlignLeft)
-        self.tab2_subtract.toggled.connect(self.show_clipping_options)
-        self.tab2_divide.toggled.connect(self.show_clipping_options)
-
-        self.view_norm_btn = QPushButton("")
-        self.view_norm_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.view_norm_btn.setIcon(icon(MDI6.eye_outline, color="black"))
-        self.view_norm_btn.setToolTip("View corrected image")
-        self.view_norm_btn.setIconSize(QSize(20, 20))
-        self.view_norm_btn.clicked.connect(self.preview_normalisation)
-        tab2_layout.addWidget(self.view_norm_btn, 4, 2)
-
-        tab2_submit = QPushButton()
-        tab2_submit.setText('Add channel')
-        tab2_submit.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-        tab2_layout.addWidget(tab2_submit, 5, 0, 1, 3)
-        tab2_submit.clicked.connect(self.add_item_to_list)
-
-        return tab2_layout
-
-    def show_threshold_visual(self):
-        min_threshold = self.tab2_txt_threshold.text()
-        if min_threshold == "":
-            min_threshold = 0
-        current_channel = self.tab2_channel_dropdown.currentIndex()
-        self.threshold_visual = ThresholdNormalisation(min_threshold=float(min_threshold),
-                                                       current_channel=current_channel, parent=self)
-
-    def show_clipping_options(self):
-        if self.tab2_subtract.isChecked():
-            for button in self.tab2_clip_group.buttons():
-                button.setEnabled(True)
-        if self.tab2_divide.isChecked():
-            self.tab2_clip_group.setExclusive(False)
-            for button in self.tab2_clip_group.buttons():
-                button.setChecked(False)
-                button.setEnabled(False)
-            self.tab2_clip_group.setExclusive(True)
+    # def show_threshold_visual(self):
+    #     min_threshold = self.tab2_txt_threshold.text()
+    #     if min_threshold == "":
+    #         min_threshold = 0
+    #     current_channel = self.tab2_channel_dropdown.currentIndex()
+    #     self.threshold_visual = ThresholdNormalisation(min_threshold=float(min_threshold),
+    #                                                    current_channel=current_channel, parent=self)
 
     def add_item_to_list(self):
         check = self.check_the_information()
@@ -1262,53 +1131,70 @@ class ConfigMeasurements(QMainWindow):
 
         """
 
-        if self.parent.parent.position_list.currentText() == '*':
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("Please select a single position to visualize the border selection.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Ok:
-                return None
-            else:
-                return None
-
         self.locate_image()
 
-        self.locate_mask()
-        if self.test_mask is None:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("The segmentation results could not be found for this position.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Yes:
-                return None
-            else:
-                return None
+        if self.current_stack is not None:
 
-        if (self.test_frame is not None) and (self.test_mask is not None):
-            contour = float(self.tab1_txt_distance.text())
-            contour = contour * (-1)
-            border_label = contour_of_instance_segmentation(self.test_mask, contour)
+            self.viewer = CellEdgeVisualizer(cell_type=self.mode,
+                                             stack_path=self.current_stack,
+                                             parent_le = self.tab1_txt_distance,
+                                             n_channels=len(self.channel_names),
+                                             target_channel=self.tab1_channel_dropdown.currentIndex(),
+                                             edge_range = (0,30),
+                                             initial_edge= self.tab1_txt_distance.get_threshold(),
+                                             invert=True,
+                                             window_title='Set an edge distance to estimate local intensity',
+                                             channel_cb=False,
+                                             )
+            self.viewer.show()
 
-            self.fig_contour, self.ax_contour = plt.subplots(figsize=(5, 5))
-            self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
-            self.ax_contour.clear()
-            self.im_contour = self.ax_contour.imshow(self.test_frame[:, :, self.tab1_channel_dropdown.currentIndex()],
-                                                     cmap='gray')
-            self.im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label == 0, border_label),
-                                                  cmap='viridis', interpolation='none')
-            self.ax_contour.set_xticks([])
-            self.ax_contour.set_yticks([])
-            self.ax_contour.set_title(contour * (-1))
-            self.fig_contour.set_facecolor('none')  # or 'None'
-            self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
-            self.imshow_contour.canvas.draw()
+        # if self.parent.parent.position_list.currentText() == '*':
+        #     msgBox = QMessageBox()
+        #     msgBox.setIcon(QMessageBox.Warning)
+        #     msgBox.setText("Please select a single position to visualize the border selection.")
+        #     msgBox.setWindowTitle("Warning")
+        #     msgBox.setStandardButtons(QMessageBox.Ok)
+        #     returnValue = msgBox.exec()
+        #     if returnValue == QMessageBox.Ok:
+        #         return None
+        #     else:
+        #         return None
 
-            self.imshow_contour.show()
+        # self.locate_image()
+
+        # self.locate_mask()
+        # if self.test_mask is None:
+        #     msgBox = QMessageBox()
+        #     msgBox.setIcon(QMessageBox.Warning)
+        #     msgBox.setText("The segmentation results could not be found for this position.")
+        #     msgBox.setWindowTitle("Warning")
+        #     msgBox.setStandardButtons(QMessageBox.Ok)
+        #     returnValue = msgBox.exec()
+        #     if returnValue == QMessageBox.Yes:
+        #         return None
+        #     else:
+        #         return None
+
+        # if (self.test_frame is not None) and (self.test_mask is not None):
+        #     contour = float(self.tab1_txt_distance.text())
+        #     contour = contour * (-1)
+        #     border_label = contour_of_instance_segmentation(self.test_mask, contour)
+
+        #     self.fig_contour, self.ax_contour = plt.subplots(figsize=(5, 5))
+        #     self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
+        #     self.ax_contour.clear()
+        #     self.im_contour = self.ax_contour.imshow(self.test_frame[:, :, self.tab1_channel_dropdown.currentIndex()],
+        #                                              cmap='gray')
+        #     self.im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label == 0, border_label),
+        #                                           cmap='viridis', interpolation='none')
+        #     self.ax_contour.set_xticks([])
+        #     self.ax_contour.set_yticks([])
+        #     self.ax_contour.set_title(contour * (-1))
+        #     self.fig_contour.set_facecolor('none')  # or 'None'
+        #     self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
+        #     self.imshow_contour.canvas.draw()
+
+        #     self.imshow_contour.show()
 
     # def enable_step_size(self):
     #     if self.radial_intensity_btn.isChecked():

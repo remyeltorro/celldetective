@@ -464,6 +464,8 @@ def fit_plane(image, cell_masks=None):
 					   y=yy,
 					   weights=weights,
 					   params=params, max_nfev=3000)
+	del model
+	collect()
 
 	return result.best_fit
 
@@ -520,7 +522,8 @@ def fit_paraboloid(image, cell_masks=None):
 					   params=params, max_nfev=3000)
 
 	#print(result.fit_report())
-
+	del model
+	collect()
 	return result.best_fit
 
 
@@ -602,11 +605,12 @@ def fit_and_apply_model_background_to_stack(stack_path,
 											prefix="Corrected"
 											):
 
-	if stack_length is None:
-		stack_length = auto_load_number_of_frames(stack_path)
-		if stack_length is None:
-			print('stack length not provided')
-			return None
+	stack_length_auto = auto_load_number_of_frames(stack_path)
+	if stack_length_auto is None and stack_length is None:
+		print('stack length not provided')
+		return None
+	if stack_length_auto is not None:
+		stack_length = stack_length_auto
 
 	if export:
 		path,file = os.path.split(stack_path)
@@ -644,8 +648,18 @@ def fit_and_apply_model_background_to_stack(stack_path,
 			if clip:
 				correction[correction<=0.] = 0.
 
-		frames[:,:,target_channel_index] = correction
+		frames[:,:,target_channel_index] = correction.copy()
 		corrected_stack.append(frames)
+
+		del frames
+		del correction
+		del background
+		del masks
+		del std_frame
+		del target_img
+		del target_copy
+		del f
+		collect()
 
 	corrected_stack = np.array(corrected_stack)
 

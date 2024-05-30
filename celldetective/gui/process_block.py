@@ -32,11 +32,11 @@ from celldetective.gui.gui_utils import FigureCanvas
 import matplotlib.pyplot as plt
 from celldetective.filters import std_filter, median_filter, gauss_filter
 from stardist import fill_label_holes
-from celldetective.preprocessing import correct_background, estimate_background_per_condition
+from celldetective.preprocessing import correct_background_model_free, estimate_background_per_condition, correct_background_model
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
-from celldetective.gui.gui_utils import StackVisualizer, ThresholdedStackVisualizer, ThresholdLineEdit, QuickSliderLayout, BackgroundFitCorrectionLayout
-
-
+from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
+from celldetective.gui.viewers import StackVisualizer, ThresholdedStackVisualizer
+from celldetective.gui.layouts import BackgroundFitCorrectionLayout, OperationLayout
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -46,6 +46,8 @@ class ProcessPanel(QFrame):
 		self.mode = mode
 		self.exp_channels = self.parent.exp_channels
 		self.exp_dir = self.parent.exp_dir
+		self.exp_config = self.parent.exp_config
+		self.movie_prefix = self.parent.movie_prefix
 		self.threshold_config_targets = None
 		self.threshold_config_effectors = None
 		self.wells = np.array(self.parent.wells,dtype=str)
@@ -56,6 +58,7 @@ class ProcessPanel(QFrame):
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
+		self.grid.setContentsMargins(5,5,5,5)
 		self.generate_header()
 	
 	def generate_header(self):
@@ -99,7 +102,7 @@ class ProcessPanel(QFrame):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.scroll.setMinimumHeight(int(500))
+			self.parent.scroll.setMinimumHeight(int(550))
 			#self.parent.w.adjustSize()
 			self.parent.adjustSize()
 			#self.parent.scroll.adjustSize()
@@ -109,12 +112,13 @@ class ProcessPanel(QFrame):
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
 			self.parent.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent.screen_height)))
-			self.parent.scroll.setMinimumWidth(410)
+			self.parent.scroll.setMinimumWidth(425)
 
 			#self.parent.scroll.adjustSize()
 
 	def populate_contents(self):
 		self.ContentsFrame = QFrame()
+		self.ContentsFrame.setContentsMargins(5,5,5,5)
 		self.grid_contents = QGridLayout(self.ContentsFrame)
 		self.grid_contents.setContentsMargins(0,0,0,0)
 		self.generate_segmentation_options()
@@ -1216,64 +1220,53 @@ class PreprocessingPanel(QFrame):
 				return None
 		print('Proceed with correction...')
 
-		for correction_protocol in self.background_correction:
+		if self.parent.well_list.currentText()=='*':
+			well_option = "*"
+		else:
+			well_option = self.parent.well_list.currentIndex()
+
+		if self.parent.position_list.currentText()=='*':
+			pos_option = "*"
+		else:
+			pos_option = self.parent.position_list.currentIndex()-1
+
+		for k,correction_protocol in enumerate(self.background_correction):
+			
+			movie_prefix = None
+			export_prefix = 'Corrected'
+			if k>0:
+				# switch source stack to cumulate multi-channel preprocessing
+				movie_prefix = 'Corrected'
+				export_prefix = None
+
 			if correction_protocol['correction_type']=='model-free':
 
-				if self.parent.well_list.currentText()=='*':
-					well_option = "*"
-				else:
-					well_option = self.parent.well_list.currentIndex()
-
-				
-				if self.parent.position_list.currentText()=='*':
-					pos_option = "*"
-				else:
-					pos_option = self.parent.position_list.currentIndex()-1
-
-				if self.timeseries_rb.isChecked():
-					mode = "timeseries"
-				elif self.tiles_rb.isChecked():
-					mode = "tiles"
-
-				if self.regress_cb.isChecked():
-					optimize_option = True
-					opt_coef_range = self.coef_range_slider.value()
-					opt_coef_nbr = int(self.nbr_coef_le.text())
-				else:
-					optimize_option = False
-					opt_coef_range = None
-					opt_coef_nbr = None
-
-				if self.tab_cdt_subtract.isChecked():
-					operation = "subtract"
-				else:
-					operation = "divide"
-					clip = None
-
-				if self.tab_cdt_clip.isChecked() and self.tab_cdt_subtract.isChecked():
-					clip = True
-				else:
-					clip = False
-
-				correct_background(self.exp_dir, 
-								   well_option=well_option, #+1 ??
+				correct_background_model_free(self.exp_dir, 
+								   well_option=well_option,
 								   position_option=pos_option,
-								   target_channel=self.tab_condition_channel_dropdown.currentText(),
-								   mode = mode,
-								   threshold_on_std = self.tab_cdt_std_le.get_threshold(),
-								   frame_range = self.frame_range_slider.value(),
-								   optimize_option = optimize_option,
-								   opt_coef_range = opt_coef_range,
-								   opt_coef_nbr = opt_coef_nbr,
-								   operation = operation,
-								   clip = clip,
 								   export= True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
 								   show_progress_per_pos = True,
+								   movie_prefix = movie_prefix,
+								   export_prefix = export_prefix,
+								   **correction_protocol,
 								)
+			
+			elif correction_protocol['correction_type']=='fit':
 
-				#self.parent.movie_prefix = "Corrected_"			
+				correct_background_model(self.exp_dir, 
+								   well_option=well_option,
+								   position_option=pos_option,
+								   export= True,
+								   return_stacks=False,
+								   show_progress_per_well = True,
+								   show_progress_per_pos = True,
+								   movie_prefix = movie_prefix,
+								   export_prefix = export_prefix,
+								   **correction_protocol,
+								)
+		print('Done.')
 
 
 
@@ -1419,60 +1412,14 @@ class PreprocessingPanel(QFrame):
 		for c in self.coef_widgets:
 			c.setEnabled(False)
 
+		self.operation_layout = OperationLayout()
+		self.tab_condition_layout.addLayout(self.operation_layout, 9, 0, 1, 3)		
 
-		operation_hbox = QHBoxLayout()
-		self.tab_cdt_subtract = QRadioButton('Subtract')
-		self.tab_cdt_divide = QRadioButton('Divide')
-		self.tab_cdt_sd_btn_group = QButtonGroup(self)
-		self.tab_cdt_sd_btn_group.addButton(self.tab_cdt_subtract)
-		self.tab_cdt_sd_btn_group.addButton(self.tab_cdt_divide)
-		self.tab_cdt_subtract.toggled.connect(self.activate_clipping_options)
-		self.tab_cdt_divide.toggled.connect(self.activate_clipping_options)
+		correction_layout = QHBoxLayout()
+		correction_layout.addWidget(self.tab_cdt_submit, 95)
+		correction_layout.addWidget(self.test_correction_btn, 5)
+		self.tab_condition_layout.addLayout(correction_layout, 10, 0, 1, 3)
 
-		operation_hbox.addWidget(QLabel('Operation:'), 25)
-		operation_hbox.addWidget(self.tab_cdt_subtract, 75//2, alignment=Qt.AlignCenter)
-		operation_hbox.addWidget(self.tab_cdt_divide, 75//2, alignment=Qt.AlignCenter)
-		self.tab_condition_layout.addLayout(operation_hbox, 8, 0, 1, 3)
-
-		clip_hbox = QHBoxLayout()
-		self.tab_cdt_clip = QRadioButton('Clip')
-		self.tab_cdt_no_clip = QRadioButton("Don't clip")
-
-		self.tab_cdt_clip_group = QButtonGroup(self)
-		self.tab_cdt_clip_group.addButton(self.tab_cdt_clip)
-		self.tab_cdt_clip_group.addButton(self.tab_cdt_no_clip)
-		#self.tab_cdt_clip.setEnabled(True)
-		#self.tab_cdt_no_clip.setEnabled(False)
-
-		clip_hbox.addWidget(QLabel(''), 25)
-		clip_hbox.addWidget(self.tab_cdt_clip, 75//4, alignment=Qt.AlignCenter)
-		clip_hbox.addWidget(self.tab_cdt_no_clip, 75//4, alignment=Qt.AlignCenter)
-		clip_hbox.addWidget(QLabel(''), 75//2)
-		self.tab_condition_layout.addLayout(clip_hbox, 9, 0, 1, 3)
-		#self.tab2_subtract.toggled.connect(self.show_clipping_options)
-		#self.tab2_divide.toggled.connect(self.show_clipping_options)
-
-
-		self.tab_condition_layout.addWidget(self.test_correction_btn, 9, 2)
-
-		self.tab_condition_layout.addWidget(self.tab_cdt_submit, 10, 0, 1, 3)
-		
-		test_btn = QPushButton('test')
-		test_btn.clicked.connect(self.open_test_widget)
-		self.tab_condition_layout.addWidget(test_btn, 11, 0, 1, 3)
-
-		self.tab_cdt_subtract.click()
-		self.tab_cdt_no_clip.click()
-
-	def open_test_widget(self):
-
-		pass
-		# self.locate_image()	
-		# self.set_target_channel()
-		# print(type(self.tab_cdt_std_le))
-		# if self.current_stack is not None:
-		# 	self.viewer = ThresholdedStackVisualizer(initial_threshold=float(self.tab_cdt_std_le.text().replace(',','.')),parent_le = self.tab_cdt_std_le,preprocessing=[['gauss',2],["std",4]], stack_path=self.current_stack, n_channels=len(self.channel_names), target_channel=self.target_channel, window_title='Test')
-		# 	self.viewer.show()
 
 	def preview_correction(self):
 
@@ -1500,18 +1447,18 @@ class PreprocessingPanel(QFrame):
 			opt_coef_range = None
 			opt_coef_nbr = None
 
-		if self.tab_cdt_subtract.isChecked():
+		if self.operation_layout.subtract_btn.isChecked():
 			operation = "subtract"
 		else:
 			operation = "divide"
 			clip = None
 
-		if self.tab_cdt_clip.isChecked() and self.tab_cdt_subtract.isChecked():
+		if self.operation_layout.clip_btn.isChecked() and self.operation_layout.subtract_btn.isChecked():
 			clip = True
 		else:
 			clip = False
 
-		corrected_stacks = correct_background(self.exp_dir, 
+		corrected_stacks = correct_background_model_free(self.exp_dir, 
 						   well_option=self.parent.well_list.currentIndex(), #+1 ??
 						   position_option=self.parent.position_list.currentIndex()-1, #+1??
 						   target_channel=self.tab_condition_channel_dropdown.currentText(),
@@ -1539,62 +1486,6 @@ class PreprocessingPanel(QFrame):
 		self.viewer.show()
 
 
-	# 	self.corrected_stack = corrected_stacks[0]
-	# 	self.fig_corr_stack, self.ax_corr_stack = plt.subplots(figsize=(5, 5))
-	# 	self.imshow_corr_stack = FigureCanvas(self.fig_corr_stack, title="Corrected channel", interactive=True)
-	# 	self.ax_corr_stack.clear()
-	# 	self.im_corr_stack = self.ax_corr_stack.imshow(self.corrected_stack[0], cmap='gray',interpolation='none')
-
-	# 	self.ax_corr_stack.set_xticks([])
-	# 	self.ax_corr_stack.set_yticks([])
-	# 	self.fig_corr_stack.set_facecolor('none')  # or 'None'
-	# 	self.fig_corr_stack.canvas.setStyleSheet("background-color: transparent;")
-	# 	self.imshow_corr_stack.canvas.draw()	
-
-	# 	self.frame_nbr_corr_hbox = QHBoxLayout()
-	# 	self.frame_nbr_corr_hbox.setContentsMargins(15,0,15,0)
-	# 	self.frame_nbr_corr_hbox.addWidget(QLabel('frame: '), 10)
-	# 	self.frame_corr_slider = QLabeledSlider()
-	# 	self.frame_corr_slider.setSingleStep(1)
-	# 	self.frame_corr_slider.setTickInterval(1)
-	# 	self.frame_corr_slider.setOrientation(1)
-	# 	self.frame_corr_slider.setRange(0,len(self.corrected_stack)-1)
-	# 	self.frame_corr_slider.setValue(0)
-	# 	self.frame_corr_slider.valueChanged.connect(self.change_frame_corr)
-	# 	self.frame_nbr_corr_hbox.addWidget(self.frame_corr_slider, 90)
-	# 	self.imshow_corr_stack.layout.addLayout(self.frame_nbr_corr_hbox)
-
-	# 	self.contrast_corr_hbox = QHBoxLayout()
-	# 	self.contrast_corr_hbox.addWidget(QLabel('contrast: '), 10)
-	# 	self.constrast_slider_corr = QLabeledDoubleRangeSlider()
-	# 	self.constrast_slider_corr.setSingleStep(0.00001)
-	# 	self.constrast_slider_corr.setTickInterval(0.00001)
-	# 	self.constrast_slider_corr.setOrientation(1)
-	# 	self.constrast_slider_corr.setRange(np.amin(self.corrected_stack[self.corrected_stack==self.corrected_stack]),
-	# 										  np.amax(self.corrected_stack[self.corrected_stack==self.corrected_stack]))
-	# 	self.constrast_slider_corr.setValue([np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 1),
-	# 										   np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 99.99)])
-	# 	self.im_corr_stack.set_clim(vmin=np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 1),
-	# 							 vmax=np.percentile(self.corrected_stack[self.corrected_stack==self.corrected_stack].flatten(), 99.99))
-	# 	self.constrast_slider_corr.valueChanged.connect(self.change_corr_contrast)
-	# 	self.contrast_corr_hbox.addWidget(self.constrast_slider_corr, 90)
-	# 	self.imshow_corr_stack.layout.addLayout(self.contrast_corr_hbox)
-
-
-	# 	self.imshow_corr_stack.show()
-
-	# def change_corr_contrast(self, value):
-		
-	# 	vmin = value[0]
-	# 	vmax = value[1]
-	# 	self.im_corr_stack.set_clim(vmin=vmin, vmax=vmax)
-	# 	self.fig_corr_stack.canvas.draw_idle()
-
-	# def change_frame_corr(self, value):
-		
-	# 	self.im_corr_stack.set_data(self.corrected_stack[value])
-	# 	self.change_corr_contrast(self.constrast_slider_corr.value())
-
 	def add_item_to_list(self):
 
 		if self.timeseries_rb.isChecked():
@@ -1611,13 +1502,13 @@ class PreprocessingPanel(QFrame):
 			opt_coef_range = None
 			opt_coef_nbr = None
 
-		if self.tab_cdt_subtract.isChecked():
+		if self.operation_layout.subtract_btn.isChecked():
 			operation = "subtract"
 		else:
 			operation = "divide"
 			clip = None
 
-		if self.tab_cdt_clip.isChecked() and self.tab_cdt_subtract.isChecked():
+		if self.operation_layout.clip_btn.isChecked() and self.operation_layout.subtract_btn.isChecked():
 			clip = True
 		else:
 			clip = False
@@ -1648,18 +1539,6 @@ class PreprocessingPanel(QFrame):
 		if current_item > -1:
 			del self.background_correction[current_item]
 			self.normalisation_list.takeItem(current_item)
-
-
-	def activate_clipping_options(self):
-		
-		if self.tab_cdt_subtract.isChecked():
-			self.tab_cdt_clip.setEnabled(True)
-			self.tab_cdt_no_clip.setEnabled(True)
-
-		else:
-			self.tab_cdt_clip.setEnabled(False)
-			self.tab_cdt_no_clip.setEnabled(False)
-
 
 	def activate_coef_options(self):
 		
@@ -1697,10 +1576,6 @@ class PreprocessingPanel(QFrame):
 		channel_indices = _extract_channel_indices_from_config(self.parent.exp_config, [self.tab_condition_channel_dropdown.currentText()])
 		self.target_channel = channel_indices[0]
 
-	def set_target_channel_for_fit(self):
-
-		channel_indices = _extract_channel_indices_from_config(self.parent.exp_config, [self.tab2_channel_dropdown.currentText()])
-		self.target_channel = channel_indices[0]
 
 	def compute_mask(self, threshold_value):
 		
@@ -1719,22 +1594,6 @@ class PreprocessingPanel(QFrame):
 		if self.current_stack is not None and thresh is not None:
 			self.viewer = ThresholdedStackVisualizer(initial_threshold=thresh,
 													 parent_le = self.tab_cdt_std_le,
-													 preprocessing=[['gauss',2],["std",4]],
-													 stack_path=self.current_stack,
-													 n_channels=len(self.channel_names),
-													 target_channel=self.target_channel,
-													 window_title='Set the exclusion threshold',
-													 )
-			self.viewer.show()
-
-	def set_std_threshold_for_fit(self):
-
-		self.locate_image()	
-		self.set_target_channel_for_fit()
-		thresh = self.tab2_txt_threshold.get_threshold()
-		if self.current_stack is not None and thresh is not None:
-			self.viewer = ThresholdedStackVisualizer(initial_threshold=thresh,
-													 parent_le = self.tab2_txt_threshold,
 													 preprocessing=[['gauss',2],["std",4]],
 													 stack_path=self.current_stack,
 													 n_channels=len(self.channel_names),

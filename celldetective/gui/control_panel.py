@@ -13,6 +13,8 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
 import subprocess
+from celldetective.gui.viewers import StackVisualizer
+from celldetective.utils import extract_experiment_channels
 
 class ControlPanel(QMainWindow):
 
@@ -33,7 +35,7 @@ class ControlPanel(QMainWindow):
 		self.w = QWidget()
 		self.grid = QGridLayout(self.w)
 		self.grid.setSpacing(5)
-		self.grid.setContentsMargins(20,20,20,20) #left top right bottom
+		self.grid.setContentsMargins(10,10,10,10) #left top right bottom
 
 		self.to_disable = []
 		self.generate_header()
@@ -44,11 +46,11 @@ class ControlPanel(QMainWindow):
 		
 		ProcessFrame = QFrame()
 		grid_process = QVBoxLayout(ProcessFrame)
-		grid_process.setContentsMargins(20,50,20,20)
+		grid_process.setContentsMargins(15,30,15,15)
 
 		AnalyzeFrame = QFrame()
 		grid_analyze = QVBoxLayout(AnalyzeFrame)
-		grid_analyze.setContentsMargins(20,50,20,20)
+		grid_analyze.setContentsMargins(15,30,15,15)
 		self.SurvivalBlock = AnalysisPanel(self,title='Survival')
 
 		grid_process.addWidget(self.PreprocessingPanel)
@@ -62,7 +64,7 @@ class ControlPanel(QMainWindow):
 		self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 		self.scroll.setWidgetResizable(True)
 		desktop = QDesktopWidget()
-		self.scroll.setMinimumHeight(500)
+		self.scroll.setMinimumHeight(550)
 		#self.scroll.setMinimumHeight(int(0.4*screen_height))
 
 		tabWidget = QTabWidget()
@@ -85,7 +87,7 @@ class ControlPanel(QMainWindow):
 		self.initial_width = self.size().width()
 		self.screen_height = desktop.screenGeometry().height()
 		self.screen_width = desktop.screenGeometry().width()
-		self.scroll.setMinimumWidth(410)
+		self.scroll.setMinimumWidth(425)
 
 	def init_wells_and_positions(self):
 
@@ -140,8 +142,9 @@ class ControlPanel(QMainWindow):
 		self.exp_options_layout.addWidget(self.edit_config_button, 5, alignment=Qt.AlignRight)
 		self.grid.addLayout(self.exp_options_layout, 0,0,1,3)
 
+		well_layout = QHBoxLayout()
 		self.well_list = QComboBox()
-		thresh = 40
+		thresh = 32
 		self.well_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.well_labels]		
 		self.well_list.addItems(self.well_truncated) #self.well_labels
 		for i in range(len(self.well_labels)):
@@ -150,6 +153,7 @@ class ControlPanel(QMainWindow):
 		self.well_list.activated.connect(self.display_positions)
 		self.to_disable.append(self.well_list)
 
+		position_layout = QHBoxLayout()
 		self.position_list = QComboBox()
 		self.position_list.addItems(["*"])
 		self.position_list.addItems(self.positions[0])
@@ -157,15 +161,69 @@ class ControlPanel(QMainWindow):
 		self.to_disable.append(self.position_list)
 		#self.locate_selected_position()
 
-		self.grid.addWidget(QLabel("Well:"), 1, 0, 1,1, alignment=Qt.AlignRight)
-		self.grid.addWidget(self.well_list, 1, 1, 1, 2)
+		self.view_stack_btn = QPushButton()
+		self.view_stack_btn.setStyleSheet(self.parent.button_select_all)
+		self.view_stack_btn.setIcon(icon(MDI6.image_check, color="black"))
+		self.view_stack_btn.setToolTip("View stack.")
+		self.view_stack_btn.setIconSize(QSize(20, 20))
+		self.view_stack_btn.clicked.connect(self.view_current_stack)
+		self.view_stack_btn.setEnabled(False)
 
-		self.grid.addWidget(QLabel("Position:"),2,0,1,1, alignment=Qt.AlignRight)
-		self.grid.addWidget(self.position_list, 2,1,1,2)
+		well_layout.setContentsMargins(0,0,0,0)
+		well_lbl = QLabel('Well: ')
+		well_lbl.setAlignment(Qt.AlignRight)
+		well_layout.addWidget(well_lbl, 32)
+		well_layout.addWidget(self.well_list, 68)
+		self.grid.addLayout(well_layout, 1, 0, 1, 3)
+
+		position_layout.setContentsMargins(0,0,0,0)
+		pos_lbl = QLabel('Position: ')
+		pos_lbl.setAlignment(Qt.AlignRight)
+		position_layout.addWidget(pos_lbl, 32)
+		position_layout.addWidget(self.position_list, 63)
+		position_layout.addWidget(self.view_stack_btn, 5)
+		self.grid.addLayout(position_layout, 2, 0, 1, 3)
 
 		
 		hsep = QHSeperationLine()
 		self.grid.addWidget(hsep, 5, 0, 1, 3)
+
+	def locate_image(self):
+
+		"""
+		Load the first frame of the first movie found in the experiment folder as a sample.
+		"""
+
+		movies = glob(self.pos + os.sep.join(['movie', f"{self.movie_prefix}*.tif"]))
+
+		if len(movies) == 0:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a position containing a movie...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.current_stack = None
+				return None
+		else:
+			self.current_stack = movies[0]
+
+	def view_current_stack(self):
+		
+		self.locate_image()
+		if self.current_stack is not None:
+			self.viewer = StackVisualizer(
+										  stack_path=self.current_stack,
+										  window_title=f'Position {self.position_list.currentText()}',
+										  frame_slider = True,
+										  contrast_slider = True,
+										  channel_cb = True,
+										  channel_names = self.exp_channels,
+										  n_channels = self.nbr_channels,
+										  PxToUm = self.PxToUm,
+										 )
+			self.viewer.show()
 
 	def open_experiment_folder(self):
 
@@ -223,7 +281,6 @@ class ControlPanel(QMainWindow):
 		except:
 			print("Warning... pharmaceutical agents not found...")
 			self.pharmaceutical_agents = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]
-
 
 	def closeEvent(self, event):
 
@@ -399,6 +456,7 @@ class ControlPanel(QMainWindow):
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()
+				self.view_stack_btn.setEnabled(True)
 				# if os.path.exists(os.sep.join([self.pos,'labels_effectors', os.sep])):
 				self.ProcessEffectors.check_seg_btn.setEnabled(True)
 				# if os.path.exists(os.sep.join([self.pos,'labels_targets', os.sep])):

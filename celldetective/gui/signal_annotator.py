@@ -6,7 +6,7 @@ from matplotlib.widgets import Slider
 from tifffile import imread
 
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice, color_from_state
-from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QLabeledSlider
+from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QLabeledSlider, QSearchableComboBox
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
 from celldetective.io import auto_load_number_of_frames, load_frames, locate_stack
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
@@ -41,6 +41,7 @@ class SignalAnnotator(QMainWindow):
 		self.mode = self.parent.mode
 		self.pos = self.parent.parent.pos
 		self.exp_dir = self.parent.exp_dir
+		self.PxToUm = self.parent.parent.PxToUm
 		self.n_signals = 3
 		self.soft_path = get_software_location()
 		self.recently_modified = False
@@ -796,7 +797,7 @@ class SignalAnnotator(QMainWindow):
 
 	def generate_signal_choices(self):
 
-		self.signal_choice_cb = [QComboBox() for i in range(self.n_signals)]
+		self.signal_choice_cb = [QSearchableComboBox() for i in range(self.n_signals)]
 		self.signal_choice_label = [QLabel(f'signal {i + 1}: ') for i in range(self.n_signals)]
 		# self.log_btns = [QPushButton() for i in range(self.n_signals)]
 
@@ -984,6 +985,7 @@ class SignalAnnotator(QMainWindow):
 											  c=self.colors[0][:, 1], s=50, picker=True, pickradius=100)
 		self.class_scatter = self.ax.scatter(self.positions[0][:, 0], self.positions[0][:, 1], marker='o',
 											 facecolors='none', edgecolors=self.colors[0][:, 0], s=200)
+
 
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
@@ -1362,6 +1364,8 @@ class MeasureAnnotator(SignalAnnotator):
 		self.im = self.ax.imshow(self.img, cmap='gray')
 		self.status_scatter = self.ax.scatter(self.positions[0][:, 0], self.positions[0][:, 1], marker="o",
 											  facecolors='none', edgecolors=self.colors[0][:, 0], s=200, picker=True)
+
+
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
 		self.ax.set_aspect('equal')

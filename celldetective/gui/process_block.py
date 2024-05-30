@@ -35,7 +35,7 @@ from stardist import fill_label_holes
 from celldetective.preprocessing import correct_background_model_free, estimate_background_per_condition, correct_background_model
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
-from celldetective.gui.viewers import StackVisualizer, ThresholdedStackVisualizer
+from celldetective.gui.viewers import StackVisualizer, CellSizeViewer, ThresholdedStackVisualizer
 from celldetective.gui.layouts import BackgroundFitCorrectionLayout, OperationLayout
 
 class ProcessPanel(QFrame):
@@ -561,7 +561,6 @@ class ProcessPanel(QFrame):
 			
 			layout = QVBoxLayout()
 			self.diamWidget.setLayout(layout)
-			self.diameter_le = QLineEdit('40')
 
 			self.view_diameter_btn = QPushButton()
 			self.view_diameter_btn.setStyleSheet(self.parent.parent.button_select_all)
@@ -569,6 +568,8 @@ class ProcessPanel(QFrame):
 			self.view_diameter_btn.setToolTip("View stack.")
 			self.view_diameter_btn.setIconSize(QSize(20, 20))
 			self.view_diameter_btn.clicked.connect(self.view_current_stack_with_scale_bar)
+
+			self.diameter_le = ThresholdLineEdit(init_value=40, connected_buttons=[self.view_diameter_btn],placeholder='cell diameter in pixels', value_type='float')
 
 			self.cellpose_channel_cb = [QComboBox() for i in range(2)]
 			self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
@@ -759,7 +760,9 @@ class ProcessPanel(QFrame):
 		
 		self.parent.locate_image()
 		if self.parent.current_stack is not None:
-			self.viewer = StackVisualizer(
+			self.viewer = CellSizeViewer(
+										  initial_diameter = float(self.diameter_le.text().replace(',','.')),
+										  parent_le = self.diameter_le,
 										  stack_path=self.parent.current_stack,
 										  window_title=f'Position {self.parent.position_list.currentText()}',
 										  frame_slider = True,
@@ -840,9 +843,9 @@ class ProcessPanel(QFrame):
 
 	def set_cellpose_scale(self):
 
-		scale = self.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		scale = self.parent.PxToUm * float(self.diameter_le.get_threshold()) / 30.0
 		if self.model_name=="CP_nuclei":
-			scale = self.parent.PxToUm * float(self.diameter_le.text()) / 17.0
+			scale = self.parent.PxToUm * float(self.diameter_le.get_threshold()) / 17.0
 		flow_thresh = self.flow_slider.value()
 		cellprob_thresh = self.cellprob_slider.value()
 		model_complete_path = locate_segmentation_model(self.model_name)

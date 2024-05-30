@@ -503,3 +503,68 @@ class CellEdgeVisualizer(StackVisualizer):
 			edge_size = self.edge_size
 
 		self.edge_labels = contour_of_instance_segmentation(self.init_label, edge_size)
+
+class CellSizeViewer(StackVisualizer):
+
+	"""
+	A widget around an imshow and accompanying sliders.
+	"""
+	def __init__(self, initial_diameter=40, parent_le=None, *args, **kwargs):
+		
+		super().__init__(*args, **kwargs)
+		self.diameter = initial_diameter
+		self.parent_le = parent_le
+		self.generate_circle()
+		self.generate_diameter_slider()
+
+		if isinstance(self.parent_le, QLineEdit):
+			self.generate_set_btn()
+
+	def generate_circle(self):
+
+		self.circ = plt.Circle((self.init_frame.shape[0]//2,self.init_frame.shape[1]//2), self.diameter//2, ec="tab:red",fill=False)
+		self.ax.add_patch(self.circ)
+
+		self.ax.callbacks.connect('xlim_changed',self.on_xlims_or_ylims_change)
+		self.ax.callbacks.connect('ylim_changed', self.on_xlims_or_ylims_change)
+
+	def on_xlims_or_ylims_change(self, event_ax):
+
+		xmin,xmax = event_ax.get_xlim()
+		ymin,ymax = event_ax.get_ylim()
+		self.circ.center = np.mean([xmin,xmax]), np.mean([ymin,ymax])
+
+	def generate_set_btn(self):
+		
+		apply_hbox = QHBoxLayout()
+		self.apply_threshold_btn = QPushButton('Set')
+		self.apply_threshold_btn.clicked.connect(self.set_threshold_in_parent_le)
+		#self.apply_threshold_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+		apply_hbox.addWidget(QLabel(''),33)
+		apply_hbox.addWidget(self.apply_threshold_btn, 33)
+		apply_hbox.addWidget(QLabel(''),33)		
+		self.canvas.layout.addLayout(apply_hbox)
+
+	def set_threshold_in_parent_le(self):
+		self.parent_le.set_threshold(self.diameter_slider.value())
+		self.close()
+
+	def generate_diameter_slider(self):
+
+		self.diameter_slider = QLabeledDoubleSlider()
+		diameter_layout = QuickSliderLayout(label='Diameter: ',
+										slider=self.diameter_slider,
+										slider_initial_value=self.diameter,
+										slider_range=(0,200),
+										decimal_option=True,
+										precision=1.0E-05,
+										)
+		diameter_layout.setContentsMargins(15,0,15,0)
+		self.diameter_slider.valueChanged.connect(self.change_diameter)
+		self.canvas.layout.addLayout(diameter_layout)
+
+	def change_diameter(self, value):
+		
+		self.diameter = value
+		self.circ.set_radius(self.diameter//2)
+		self.canvas.canvas.draw_idle()

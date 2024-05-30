@@ -563,6 +563,13 @@ class ProcessPanel(QFrame):
 			self.diamWidget.setLayout(layout)
 			self.diameter_le = QLineEdit('40')
 
+			self.view_diameter_btn = QPushButton()
+			self.view_diameter_btn.setStyleSheet(self.parent.parent.button_select_all)
+			self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
+			self.view_diameter_btn.setToolTip("View stack.")
+			self.view_diameter_btn.setIconSize(QSize(20, 20))
+			self.view_diameter_btn.clicked.connect(self.view_current_stack_with_scale_bar)
+
 			self.cellpose_channel_cb = [QComboBox() for i in range(2)]
 			self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
 			if self.model_name=="CP_nuclei":
@@ -583,7 +590,8 @@ class ProcessPanel(QFrame):
 
 			hbox = QHBoxLayout()
 			hbox.addWidget(QLabel('diameter [px]: '), 33)
-			hbox.addWidget(self.diameter_le, 66)
+			hbox.addWidget(self.diameter_le, 61)
+			hbox.addWidget(self.view_diameter_btn)
 			layout.addLayout(hbox)
 
 			self.flow_slider = QLabeledDoubleSlider()
@@ -746,6 +754,24 @@ class ProcessPanel(QFrame):
 
 		# QApplication.restoreOverrideCursor()
 		# self.unfreeze()
+
+	def view_current_stack_with_scale_bar(self):
+		
+		self.parent.locate_image()
+		if self.parent.current_stack is not None:
+			self.viewer = StackVisualizer(
+										  stack_path=self.parent.current_stack,
+										  window_title=f'Position {self.parent.position_list.currentText()}',
+										  frame_slider = True,
+										  contrast_slider = True,
+										  channel_cb = True,
+										  channel_names = self.parent.exp_channels,
+										  n_channels = self.parent.nbr_channels,
+										  PxToUm = 1,
+										 )
+			self.viewer.show()
+
+
 
 	def open_napari_tracking(self):
 		control_tracking_btrack(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode, threads=self.parent.parent.n_threads)

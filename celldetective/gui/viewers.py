@@ -3,6 +3,7 @@ from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.filters import *
 from celldetective.segmentation import filter_image
 from celldetective.measure import contour_of_instance_segmentation
+from celldetective.utils import _get_img_num_per_channel
 from tifffile import imread
 import matplotlib.pyplot as plt 
 from stardist import fill_label_holes
@@ -93,12 +94,14 @@ class StackVisualizer(QWidget):
 			gc.collect()
 
 		self.mid_time = self.stack_length // 2
-		self.init_frame = load_frames(self.n_channels * self.mid_time + np.arange(self.n_channels), 
+		self.img_num_per_channel = _get_img_num_per_channel(np.arange(self.n_channels), self.stack_length, self.n_channels)
+
+		self.init_frame = load_frames(self.img_num_per_channel[self.target_channel, self.mid_time], 
 									  self.stack_path,
-									  normalize_input=False).astype(float)[:,:,self.target_channel]
-		self.last_frame = load_frames(self.n_channels * (self.stack_length-1) + np.arange(self.n_channels), 
+									  normalize_input=False).astype(float)[:,:,0]
+		self.last_frame = load_frames(self.img_num_per_channel[self.target_channel, self.stack_length-1], 
 									  self.stack_path,
-									  normalize_input=False).astype(float)[:,:,self.target_channel]
+									  normalize_input=False).astype(float)[:,:,0]
 
 	def generate_figure_canvas(self):
 
@@ -109,6 +112,17 @@ class StackVisualizer(QWidget):
 		if self.PxToUm is not None:
 			scalebar = ScaleBar(self.PxToUm,
 								"um",
+								length_fraction=0.25,
+								location='upper right',
+								border_pad=0.4,
+								box_alpha=0.95,
+								color='white',
+								box_color='black',
+								)
+			if self.PxToUm==1:
+				scalebar = ScaleBar(1,
+								"px",
+								dimension="pixel-length",
 								length_fraction=0.25,
 								location='upper right',
 								border_pad=0.4,
@@ -189,9 +203,9 @@ class StackVisualizer(QWidget):
 		if self.mode == 'direct':
 			self.last_frame = self.stack[-1,:,:,self.target_channel]
 		elif self.mode == 'virtual':
-			self.last_frame = load_frames(self.n_channels * (self.stack_length-1) + np.arange(self.n_channels), 
+			self.last_frame = load_frames(self.img_num_per_channel[self.target_channel, self.stack_length-1], 
 										  self.stack_path,
-										  normalize_input=False).astype(float)[:,:,self.target_channel]
+										  normalize_input=False).astype(float)[:,:,0]
 		self.change_frame(self.frame_slider.value())
 		self.init_contrast = False
 
@@ -199,10 +213,10 @@ class StackVisualizer(QWidget):
 		
 		if self.mode=='virtual':
 
-			self.init_frame = load_frames(self.n_channels * value + np.arange(self.n_channels), 
+			self.init_frame = load_frames(self.img_num_per_channel[self.target_channel, value], 
 								self.stack_path,
 								normalize_input=False
-								).astype(float)[:,:,self.target_channel]
+								).astype(float)[:,:,0]
 		elif self.mode=='direct':
 			self.init_frame = self.stack[value,:,:,self.target_channel].copy()
 		

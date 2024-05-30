@@ -11,6 +11,8 @@ from celldetective.filters import std_filter, gauss_filter
 from stardist import fill_label_holes
 from csbdeep.io import save_tiff_imagej_compatible
 from gc import collect
+from lmfit import Parameters, Model, models
+import matplotlib.pyplot as plt
 
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", show_progress_per_pos=False, show_progress_per_well=True):
 	
@@ -141,7 +143,8 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 
 	return backgrounds
 
-def correct_background(experiment, 
+def correct_background_model_free(
+					   experiment, 
 					   well_option='*',
 					   position_option='*',
 					   target_channel="channel_name",
@@ -157,6 +160,9 @@ def correct_background(experiment,
 					   show_progress_per_pos = False,
 					   export = False,
 					   return_stacks = False,
+					   movie_prefix=None,
+					   export_prefix='Corrected',
+					   **kwargs,
 					   ):
 
 	"""
@@ -223,7 +229,8 @@ def correct_background(experiment,
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
 	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
-	movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
+	if movie_prefix is None:
+		movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
 
 	well_indices, position_indices = interpret_wells_and_positions(experiment, well_option, position_option)
 	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
@@ -266,7 +273,7 @@ def correct_background(experiment,
 														operation=operation,
 														clip=clip,
 														export=export,
-														prefix="Corrected"
+														prefix=export_prefix,
 													  )
 			print('Correction successful.')
 			if return_stacks:
@@ -342,9 +349,12 @@ def apply_background_to_stack(stack_path, background, target_channel_index=0, nb
 	if optimize_option:
 		coefficients = np.linspace(opt_coef_range[0], opt_coef_range[1], int(opt_coef_nbr))
 		coefficients = np.append(coefficients, [1.0])
-	if export and prefix is not None:
+	if export:
 		path,file = os.path.split(stack_path)
-		newfile = '_'.join([prefix,file])
+		if prefix is None:
+			newfile = file
+		else:
+			newfile = '_'.join([prefix,file])
 
 	corrected_stack = []
 
@@ -394,7 +404,264 @@ def apply_background_to_stack(stack_path, background, target_channel_index=0, nb
 
 	corrected_stack = np.array(corrected_stack)
 
-	if export and prefix is not None:
+	if export:
 		save_tiff_imagej_compatible(os.sep.join([path,newfile]), corrected_stack, axes='TYXC')
 
 	return corrected_stack
+
+def paraboloid(x, y, a, b, c, d, e, g):
+	return a * x ** 2 + b * y ** 2 + c * x * y + d * x + e * y + g
+
+
+def plane(x, y, a, b, c):
+	return a * x + b * y + c
+
+
+def fit_plane(image, cell_masks=None):
+	"""
+	Fit a plane to the given image data.
+
+	Parameters:
+	- image (numpy.ndarray): The input image data.
+	- cell_masks (numpy.ndarray, optional): An array specifying cell masks. If provided, areas covered by
+											cell masks will be excluded from the fitting process.
+
+	Returns:
+	- numpy.ndarray: The fitted plane.
+
+	This function fits a plane to the given image data using least squares regression. It constructs a mesh
+	grid based on the dimensions of the image and fits a plane model to the data points. If cell masks are
+	provided, areas covered by cell masks will be excluded from the fitting process.
+
+	Example:
+	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+	>>> result = fit_plane(image)
+	>>> print(result)
+	[[1. 2. 3.]
+	 [4. 5. 6.]
+	 [7. 8. 9.]]
+
+	Note:
+	- The 'cell_masks' parameter allows excluding areas covered by cell masks from the fitting process.
+	"""
+	data = np.empty(image.shape)
+	x = np.arange(0, image.shape[1])
+	y = np.arange(0, image.shape[0])
+	xx, yy = np.meshgrid(x, y)
+
+	params = Parameters()
+	params.add('a', value=1)
+	params.add('b', value=1)
+	params.add('c', value=1)
+
+	model = Model(plane, independent_vars=['x', 'y'])
+
+	weights = np.ones_like(xx, dtype=float)
+	weights[np.where(cell_masks > 0)] = 0.
+
+	result = model.fit(image,
+					   x=xx,
+					   y=yy,
+					   weights=weights,
+					   params=params, max_nfev=3000)
+
+	return result.best_fit
+
+
+def fit_paraboloid(image, cell_masks=None):
+	"""
+	Fit a paraboloid to the given image data.
+
+	Parameters:
+	- image (numpy.ndarray): The input image data.
+	- cell_masks (numpy.ndarray, optional): An array specifying cell masks. If provided, areas covered by
+											cell masks will be excluded from the fitting process.
+
+	Returns:
+	- numpy.ndarray: The fitted paraboloid.
+
+	This function fits a paraboloid to the given image data using least squares regression. It constructs
+	a mesh grid based on the dimensions of the image and fits a paraboloid model to the data points. If cell
+	masks are provided, areas covered by cell masks will be excluded from the fitting process.
+
+	Example:
+	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+	>>> result = fit_paraboloid(image)
+	>>> print(result)
+	[[1. 2. 3.]
+	 [4. 5. 6.]
+	 [7. 8. 9.]]
+
+	Note:
+	- The 'cell_masks' parameter allows excluding areas covered by cell masks from the fitting process.
+	"""
+	data = np.empty(image.shape)
+	x = np.arange(0, image.shape[1])
+	y = np.arange(0, image.shape[0])
+	xx, yy = np.meshgrid(x, y)
+
+	params = Parameters()
+	params.add('a', value=1.0E-05)
+	params.add('b', value=1.0E-05)
+	params.add('c', value=1.0E-06)
+	params.add('d', value=0.01)
+	params.add('e', value=0.01)
+	params.add('g', value=100)
+
+	model = Model(paraboloid, independent_vars=['x', 'y'])
+
+	weights = np.ones_like(xx, dtype=float)
+	weights[np.where(cell_masks > 0)] = 0.
+
+	result = model.fit(image,
+					   x=xx,
+					   y=yy,
+					   weights=weights,
+					   params=params, max_nfev=3000)
+
+	#print(result.fit_report())
+
+	return result.best_fit
+
+
+def correct_background_model(
+						   experiment, 
+						   well_option='*',
+						   position_option='*',
+						   target_channel="channel_name",
+						   threshold_on_std = 1,
+						   model = 'paraboloid',
+						   operation = 'divide',
+						   clip = False,
+						   show_progress_per_well = True,
+						   show_progress_per_pos = False,
+						   export = False,
+						   return_stacks = False,
+						   movie_prefix=None,
+						   export_prefix='Corrected',
+						   **kwargs,
+						   ):
+
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
+	if movie_prefix is None:
+		movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
+
+	well_indices, position_indices = interpret_wells_and_positions(experiment, well_option, position_option)
+	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
+	nbr_channels = _extract_nbr_channels_from_config(config)
+	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
+	
+	stacks = []
+
+	for k, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
+		
+		well_name, _ = extract_well_name_and_number(well_path)
+		positions = get_positions_in_well(well_path)
+		selection = positions[position_indices]
+		if isinstance(selection[0],np.ndarray):
+			selection = selection[0]
+
+		for pidx,pos_path in enumerate(tqdm(selection, disable=not show_progress_per_pos)):
+			
+			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
+			print(f'Applying the correction to position {extract_position_name(pos_path)}...')
+			print(stack_path)
+
+			corrected_stack = fit_and_apply_model_background_to_stack(stack_path, 
+														target_channel_index=channel_indices[0],
+														model = model,
+														nbr_channels=nbr_channels,
+														stack_length=len_movie,
+														threshold_on_std=threshold_on_std,
+														operation=operation,
+														clip=clip,
+														export=export,
+														prefix=export_prefix,
+													  )
+			print('Correction successful.')
+			if return_stacks:
+				stacks.append(corrected_stack)
+			else:
+				del corrected_stack
+			collect()
+
+	if return_stacks:
+		return stacks
+
+def fit_and_apply_model_background_to_stack(stack_path,
+											target_channel_index=0,
+											nbr_channels=1,
+											stack_length=45,
+											threshold_on_std=1, 
+											operation='divide',
+											model='paraboloid',
+											clip=False, 
+											export=False,
+											prefix="Corrected"
+											):
+
+	if stack_length is None:
+		stack_length = auto_load_number_of_frames(stack_path)
+		if stack_length is None:
+			print('stack length not provided')
+			return None
+
+	if export:
+		path,file = os.path.split(stack_path)
+		if prefix is None:
+			newfile = file
+		else:
+			newfile = '_'.join([prefix,file])
+
+	corrected_stack = []
+
+	for i in tqdm(range(0,int(stack_length*nbr_channels) - nbr_channels,nbr_channels)):
+		
+		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
+		target_img = frames[:,:,target_channel_index].copy()
+
+		target_copy = target_img.copy()
+		f = gauss_filter(target_img.copy(), 2)
+		std_frame = std_filter(f, 4)
+		masks = std_frame > threshold_on_std
+		masks = fill_label_holes(masks).astype(int)
+
+		background = fit_background_model(target_img, cell_masks=masks, model=model)	
+
+		if operation=="divide":
+			correction = np.divide(target_img, background, where=background==background)
+			correction[background!=background] = np.nan
+			correction[target_img!=target_img] = np.nan
+			fill_val = 1.0
+
+		elif operation=="subtract":
+			correction = np.subtract(target_img, background, where=background==background)
+			correction[background!=background] = np.nan
+			correction[target_img!=target_img] = np.nan
+			fill_val = 0.0
+			if clip:
+				correction[correction<=0.] = 0.
+
+		frames[:,:,target_channel_index] = correction
+		corrected_stack.append(frames)
+
+	corrected_stack = np.array(corrected_stack)
+
+	if export:
+		save_tiff_imagej_compatible(os.sep.join([path,newfile]), corrected_stack, axes='TYXC')
+
+	return corrected_stack
+
+def fit_background_model(img, cell_masks=None, model='paraboloid'):
+	
+	if model == "paraboloid":
+		bg = fit_paraboloid(img.astype(float), cell_masks=cell_masks).astype(float)
+	elif model == "plane":
+		bg = fit_plane(img.astype(float), cell_masks=cell_masks).astype(float)
+
+	if bg is not None:
+		bg = np.array(bg)
+
+	return bg

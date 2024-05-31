@@ -625,40 +625,13 @@ def fit_and_apply_model_background_to_stack(stack_path,
 		
 		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 		target_img = frames[:,:,target_channel_index].copy()
-
-		target_copy = target_img.copy()
-		f = gauss_filter(target_img.copy(), 2)
-		std_frame = std_filter(f, 4)
-		masks = std_frame > threshold_on_std
-		masks = fill_label_holes(masks).astype(int)
-
-		background = fit_background_model(target_img, cell_masks=masks, model=model)	
-
-		if operation=="divide":
-			correction = np.divide(target_img, background, where=background==background)
-			correction[background!=background] = np.nan
-			correction[target_img!=target_img] = np.nan
-			fill_val = 1.0
-
-		elif operation=="subtract":
-			correction = np.subtract(target_img, background, where=background==background)
-			correction[background!=background] = np.nan
-			correction[target_img!=target_img] = np.nan
-			fill_val = 0.0
-			if clip:
-				correction[correction<=0.] = 0.
-
+		correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip)
 		frames[:,:,target_channel_index] = correction.copy()
 		corrected_stack.append(frames)
 
 		del frames
-		del correction
-		del background
-		del masks
-		del std_frame
 		del target_img
-		del target_copy
-		del f
+		del correction
 		collect()
 
 	corrected_stack = np.array(corrected_stack)
@@ -667,6 +640,35 @@ def fit_and_apply_model_background_to_stack(stack_path,
 		save_tiff_imagej_compatible(os.sep.join([path,newfile]), corrected_stack, axes='TYXC')
 
 	return corrected_stack
+
+def field_correction(img, threshold_on_std=1, operation='divide', model='paraboloid', clip=False, return_bg=False):
+		
+		target_copy = img.copy().astype(float)
+		f = gauss_filter(target_copy, 2)
+		std_frame = std_filter(f, 4)
+		masks = std_frame > threshold_on_std
+		masks = fill_label_holes(masks).astype(int)
+
+		background = fit_background_model(img, cell_masks=masks, model=model)
+
+		if operation=="divide":
+			correction = np.divide(img, background, where=background==background)
+			correction[background!=background] = np.nan
+			correction[img!=img] = np.nan
+			fill_val = 1.0
+
+		elif operation=="subtract":
+			correction = np.subtract(img, background, where=background==background)
+			correction[background!=background] = np.nan
+			correction[img!=img] = np.nan
+			fill_val = 0.0
+			if clip:
+				correction[correction<=0.] = 0.
+
+		if return_bg:
+			return correction.copy(), background
+		else:
+			return correction.copy()
 
 def fit_background_model(img, cell_masks=None, model='paraboloid'):
 	

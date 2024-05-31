@@ -12,7 +12,7 @@ from natsort import natsorted
 from glob import glob
 import os
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QListWidget
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QListWidget
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import FigureCanvas, QuickSliderLayout, center_window
 from celldetective.gui import Styles
@@ -28,7 +28,7 @@ class StackVisualizer(QWidget, Styles):
 	"""
 	A widget around an imshow and accompanying sliders.
 	"""
-	def __init__(self, stack=None, stack_path=None, frame_slider=True, contrast_slider=True, channel_cb=False, channel_names=None, n_channels=1, target_channel=0, window_title='View', PxToUm=None, imshow_kwargs={}):
+	def __init__(self, stack=None, stack_path=None, frame_slider=True, contrast_slider=True, channel_cb=False, channel_names=None, n_channels=1, target_channel=0, window_title='View', PxToUm=None, background_color='transparent',imshow_kwargs={}):
 		super().__init__()
 
 		#self.setWindowTitle(window_title)
@@ -37,6 +37,7 @@ class StackVisualizer(QWidget, Styles):
 		self.stack = stack
 		self.stack_path = stack_path
 		self.create_frame_slider = frame_slider
+		self.background_color = background_color
 		self.create_contrast_slider = contrast_slider
 		self.create_channel_cb = channel_cb
 		self.n_channels = n_channels
@@ -105,7 +106,7 @@ class StackVisualizer(QWidget, Styles):
 
 	def generate_figure_canvas(self):
 
-		self.fig, self.ax = plt.subplots(figsize=(5, 5))
+		self.fig, self.ax = plt.subplots(tight_layout=True) #figsize=(5, 5)
 		self.canvas = FigureCanvas(self.fig, title=self.window_title, interactive=True)
 		self.ax.clear()
 		self.im = self.ax.imshow(self.init_frame, cmap='gray', interpolation='none', **self.imshow_kwargs)
@@ -134,7 +135,7 @@ class StackVisualizer(QWidget, Styles):
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
 		self.fig.set_facecolor('none')  # or 'None'
-		self.fig.canvas.setStyleSheet("background-color: transparent;")
+		self.fig.canvas.setStyleSheet(f"background-color: {self.background_color};")
 		self.canvas.canvas.draw()
 
 	def generate_channel_cb(self):

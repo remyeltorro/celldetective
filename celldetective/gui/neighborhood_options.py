@@ -21,196 +21,140 @@ from tifffile import imread
 from pathlib import Path, PurePath
 import gc
 import pandas as pd
-from celldetective.gui.viewers import CellSizeViewer
+from celldetective.gui.viewers import CellSizeViewer, CellEdgeVisualizer
+from celldetective.gui import Styles
 
-class ConfigNeighborhoods(QMainWindow):
+class ConfigNeighborhoods(QWidget, Styles):
 	
 	"""
-	UI to set measurement instructions.
+	Widget to configure neighborhood measurements.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, neighborhood_type='distance_threshold',neighborhood_parameter_name='threshold distance', parent=None, *args, **kwargs):
 		
-		super().__init__()
+		super().__init__(*args, **kwargs)
 		self.parent = parent
-		self.setWindowTitle("Configure neighborhoods")
-		#self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
+		self.attr_parent = self.parent.parent
 
-		self.exp_dir = self.parent.exp_dir
-		self.neigh_instructions = self.parent.exp_dir + os.sep.join(["configs","neighborhood_instructions.json"])
+		self.neighborhood_type = neighborhood_type
+		self.neighborhood_parameter_name = neighborhood_parameter_name
+
+		self.setWindowTitle('Configure neighborhoods')
+		self.neigh_instructions = self.attr_parent.exp_dir + os.sep.join(["configs","neighborhood_instructions.json"])
 		self.clear_previous = False
 		self.not_status_reference = False
 		self.not_status_neighbor = False	
 
-		exp_config = self.exp_dir +"config.ini"
-		self.channel_names, self.channels = extract_experiment_channels(exp_config)
-		self.channel_names = np.array(self.channel_names)
-		self.channels = np.array(self.channels)
-
-		self.screen_height = self.parent.parent.parent.screen_height
-		center_window(self)
-
+		self.screen_height = self.attr_parent.screen_height
 		self.setMinimumWidth(750)
 		self.setMinimumHeight(int(0.5*self.screen_height))
 		self.setMaximumHeight(int(0.95*self.screen_height))
 		
-		self.populate_widget()
-		self.load_previous_neighborhood_instructions()
+		self.generate_main_layout()
+		#self.load_previous_neighborhood_instructions()
+		center_window(self)
+		self.setAttribute(Qt.WA_DeleteOnClose)
 
-	def populate_widget(self):
+	def generate_main_layout(self):
 
-		"""
-		Create the multibox design.
-
-		"""
-		
-		# Create button widget and layout
-		self.scroll_area = QScrollArea(self)
-		self.button_widget = QWidget()
-		main_layout = QVBoxLayout()
-		self.button_widget.setLayout(main_layout)
+		main_layout = QVBoxLayout(self)
 		main_layout.setContentsMargins(30,30,30,30)
 
-		# second frame for ISOTROPIC MEASUREMENTS
-		pop_hbox = QHBoxLayout()
+		populations_layout = QHBoxLayout()
 
+		# Reference population
 		self.reference_population_frame = QFrame()
 		self.reference_population_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_reference_frame()
-		pop_hbox.addWidget(self.reference_population_frame, 50)
+		populations_layout.addWidget(self.reference_population_frame, 50)
 
+		# Neighbor population
 		self.neigh_population_frame = QFrame()
 		self.neigh_population_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-		self.populate_neigh_frame()
-		pop_hbox.addWidget(self.neigh_population_frame, 50)
-		main_layout.addLayout(pop_hbox)
+		self.populate_neighbor_frame()
+		populations_layout.addWidget(self.neigh_population_frame, 50)
+		main_layout.addLayout(populations_layout)
 
-		self.radii_frame = QFrame()
-		self.radii_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-		self.populate_radii_frame()
-		main_layout.addWidget(self.radii_frame)
+		# Measurements
+
+		self.measurement_frame = QFrame()
+		self.measurement_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+		self.populate_measurement_frame()
+		# if self.neighborhood_type=='distance_threshold':
+		# 	self.populate_radii_frame()
+		# elif self.neighborhood_type=='mask_contact':
+		# 	self.populate_contact_frame()
+		main_layout.addWidget(self.measurement_frame)
 
 		self.clear_previous_btn = QCheckBox('clear previous neighborhoods')
 		main_layout.addWidget(self.clear_previous_btn, alignment=Qt.AlignRight)
 
 		main_layout.addWidget(QLabel(''))
 		self.submit_btn = QPushButton('Set')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.write_instructions)
 		main_layout.addWidget(self.submit_btn)
 
-		#self.populate_left_panel()
-		#grid.addLayout(self.left_side, 0, 0, 1, 1)
-		self.button_widget.adjustSize()
-
-		self.scroll_area.setAlignment(Qt.AlignCenter)
-		self.scroll_area.setWidget(self.button_widget)
-		self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-		self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-		self.scroll_area.setWidgetResizable(True)
-		self.setCentralWidget(self.scroll_area)
-		self.show()
-
+		self.adjustSize()
 		QApplication.processEvents()
-		#self.adjustScrollArea()
 
-
-	def populate_reference_frame(self):
-
-		"""
-		Add widgets and layout in the reference population frame.
-		"""
-
-		grid = QVBoxLayout(self.reference_population_frame)
-		grid.setSpacing(15)
-		self.ref_lbl = QLabel("REFERENCE")
-		self.ref_lbl.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
-		grid.addWidget(self.ref_lbl, 30, alignment=Qt.AlignCenter)
-		self.generate_reference_contents()
-		grid.addWidget(self.ContentsReference, 70)
-
-	def populate_neigh_frame(self):
-
-		"""
-		Add widgets and layout in the neighbor population frame.
-		"""
-
-		grid = QVBoxLayout(self.neigh_population_frame)
-		grid.setSpacing(15)
-
-		self.neigh_lbl = QLabel("NEIGHBORS")
-		self.neigh_lbl.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
-		grid.addWidget(self.neigh_lbl, 30, alignment=Qt.AlignCenter)
-		self.generate_neighbors_contents()
-		grid.addWidget(self.ContentsNeigh, 70)
-
-	def populate_radii_frame(self):
-
+	def populate_measurement_frame(self):
+		
 		"""
 		Add widgets and layout in the radii frame.
 		"""
 
-		grid = QVBoxLayout(self.radii_frame)
+		grid = QVBoxLayout(self.measurement_frame)
 
-		self.dist_lbl = QLabel("NEIGHBORHOOD CUT-DISTANCES")
-		self.dist_lbl.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
+		self.dist_lbl = QLabel(f"NEIGHBORHOOD {self.neighborhood_parameter_name.upper()}")
+		self.dist_lbl.setStyleSheet(self.block_title)
 		grid.addWidget(self.dist_lbl, alignment=Qt.AlignCenter)
-		self.generate_radii_contents()
-		grid.addWidget(self.ContentsIso) #1, 0, 1, 4, alignment=Qt.AlignTop
 
-
-	def generate_radii_contents(self):
-
-		self.ContentsIso = QFrame()
-		layout = QVBoxLayout(self.ContentsIso)
+		self.ContentsMeasurements = QFrame()
+		layout = QVBoxLayout(self.ContentsMeasurements)
 		layout.setContentsMargins(0,0,0,0)
 
-		radii_layout = QHBoxLayout()
-		self.radii_lbl = QLabel('Cut-distance radii:')
-		self.radii_lbl.setToolTip('From reference cells, in pixel units. Define radii for neighborhood computations.')
-		radii_layout.addWidget(self.radii_lbl, 85)
+		list_header_layout = QHBoxLayout()
+		meas = self.neighborhood_parameter_name.split(' ')[-1]
+		lbl = QLabel(f'{meas} [px]:')
+		lbl.setToolTip('')
+		list_header_layout.addWidget(lbl, 85)
 
-		self.del_radius_btn = QPushButton("")
-		self.del_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.del_radius_btn.setIcon(icon(MDI6.trash_can,color="black"))
-		self.del_radius_btn.setToolTip("Remove radius")
-		self.del_radius_btn.setIconSize(QSize(20, 20))
-		radii_layout.addWidget(self.del_radius_btn, 5)
+		self.delete_measurement_btn = QPushButton("")
+		self.delete_measurement_btn.setStyleSheet(self.button_select_all)
+		self.delete_measurement_btn.setIcon(icon(MDI6.trash_can,color="black"))
+		self.delete_measurement_btn.setToolTip("Remove radius")
+		self.delete_measurement_btn.setIconSize(QSize(20, 20))
+		list_header_layout.addWidget(self.delete_measurement_btn, 5)
 
-		self.add_radius_btn = QPushButton("")
-		self.add_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.add_radius_btn.setIcon(icon(MDI6.plus,color="black"))
-		self.add_radius_btn.setToolTip("Add radius")
-		self.add_radius_btn.setIconSize(QSize(20, 20))	
-		radii_layout.addWidget(self.add_radius_btn, 5)
+		self.add_measurement_btn = QPushButton("")
+		self.add_measurement_btn.setStyleSheet(self.button_select_all)
+		self.add_measurement_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.add_measurement_btn.setToolTip("Add a neighborhood measurement")
+		self.add_measurement_btn.setIconSize(QSize(20, 20))	
+		list_header_layout.addWidget(self.add_measurement_btn, 5)
 
-		self.view_diameter_btn = QPushButton()
-		self.view_diameter_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
-		self.view_diameter_btn.setToolTip("View stack.")
-		self.view_diameter_btn.setIconSize(QSize(20, 20))
-		self.view_diameter_btn.clicked.connect(self.view_current_stack_with_circle)
-		radii_layout.addWidget(self.view_diameter_btn, 5)
+		self.viewer_btn = QPushButton()
+		self.viewer_btn.setStyleSheet(self.button_select_all)
+		self.viewer_btn.setIcon(icon(MDI6.image_check, color="black"))
+		self.viewer_btn.setToolTip("View stack.")
+		self.viewer_btn.setIconSize(QSize(20, 20))
+		if self.neighborhood_type=='distance_threshold':
+			self.viewer_btn.clicked.connect(self.view_current_stack_with_circle)
+		elif self.neighborhood_type=='mask_contact':
+			self.viewer_btn.clicked.connect(self.view_current_stack_with_edge)			
+		list_header_layout.addWidget(self.viewer_btn, 5)
 
-		layout.addLayout(radii_layout)
+		layout.addLayout(list_header_layout)
 
+		self.measurements_list = ListWidget(self, DistanceChoice, initial_features=["60"], dtype=int)
+		layout.addWidget(self.measurements_list)
 
-		self.radii_list = ListWidget(self, DistanceChoice, initial_features=["60"], dtype=int)
-		layout.addWidget(self.radii_list)
+		self.delete_measurement_btn.clicked.connect(self.measurements_list.removeSel)
+		self.add_measurement_btn.clicked.connect(self.measurements_list.addItem)
 
-
-		self.del_radius_btn.clicked.connect(self.radii_list.removeSel)
-		self.add_radius_btn.clicked.connect(self.radii_list.addItem)
+		grid.addWidget(self.ContentsMeasurements)
 
 	def view_current_stack_with_circle(self):
 		
@@ -218,7 +162,7 @@ class ConfigNeighborhoods(QMainWindow):
 		if self.parent.parent.current_stack is not None:
 			self.viewer = CellSizeViewer(
 										  initial_diameter = 100,
-										  parent_list_widget = self.radii_list.list_widget,
+										  parent_list_widget = self.measurements_list.list_widget,
 										  stack_path=self.parent.parent.current_stack,
 										  window_title=f'Position {self.parent.parent.position_list.currentText()}',
 										  frame_slider = True,
@@ -231,123 +175,169 @@ class ConfigNeighborhoods(QMainWindow):
 										 )
 			self.viewer.show()
 
-	def generate_reference_contents(self):
+	def view_current_stack_with_edge(self):
+		
+		self.attr_parent.locate_image()
+		if self.attr_parent.current_stack is not None:
+			self.viewer = CellEdgeVisualizer(
+										  cell_type='effectors',
+										  edge_range=(1,30),
+										  invert=True,
+										  initial_edge=3,
+										  parent_list_widget = self.measurements_list.list_widget,
+										  stack_path=self.attr_parent.current_stack,
+										  window_title=f'Position {self.attr_parent.position_list.currentText()}',
+										  frame_slider = True,
+										  contrast_slider = True,
+										  channel_cb = True,
+										  channel_names = self.attr_parent.exp_channels,
+										  n_channels = self.attr_parent.nbr_channels,
+										  PxToUm = 1,
+										 )
+			self.viewer.show()
+
+
+	def populate_reference_frame(self):
+		
+		"""
+		Add widgets and layout in the reference population frame.
+		"""
+
+		grid = QVBoxLayout(self.reference_population_frame)
+		grid.setSpacing(15)
+		self.ref_lbl = QLabel("REFERENCE")
+		self.ref_lbl.setStyleSheet(self.block_title)
+		grid.addWidget(self.ref_lbl, 30, alignment=Qt.AlignCenter)
 
 		self.ContentsReference = QFrame()
 		layout = QVBoxLayout(self.ContentsReference)
 		layout.setContentsMargins(15,15,15,15)
 
-		pop_hbox = QHBoxLayout()
-		pop_hbox.addWidget(QLabel('population: '),30)
-		self.ref_pop_cb = QComboBox()
-		self.ref_pop_cb.addItems(['targets','effectors'])
-		pop_hbox.addWidget(self.ref_pop_cb,70)
-		layout.addLayout(pop_hbox)
+		population_layout = QHBoxLayout()
+		population_layout.addWidget(QLabel('population: '),30)
+		self.reference_population_cb = QComboBox()
+		self.reference_population_cb.addItems(['targets','effectors'])
+		population_layout.addWidget(self.reference_population_cb,70)
+		layout.addLayout(population_layout)
 
-		status_hbox = QHBoxLayout()
-		status_hbox.addWidget(QLabel('status: '), 30)
-		self.ref_pop_status_cb = QComboBox()
-		#self.ref_pop_status_cb.addItems(['--'])
+		status_layout = QHBoxLayout()
 
-		status_cb_hbox = QHBoxLayout()
-		status_cb_hbox.setContentsMargins(0,0,0,0)
-		status_cb_hbox.addWidget(self.ref_pop_status_cb,90)
-		# replace with not gate
+		status_layout.addWidget(QLabel('status: '), 30)
 
-		self.ref_not_gate_btn = QPushButton("")
-		self.ref_not_gate_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.ref_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
-		self.ref_not_gate_btn.setToolTip("NOT (flip zeros and ones)")
-		self.ref_not_gate_btn.setIconSize(QSize(20, 20))
-		self.ref_not_gate_btn.clicked.connect(self.switch_not_reference)
-		status_cb_hbox.addWidget(self.ref_not_gate_btn, 5)
-		status_hbox.addLayout(status_cb_hbox,70)
-		layout.addLayout(status_hbox)
+		self.reference_population_status_cb = QComboBox()
+		status_layout.addWidget(self.reference_population_status_cb,65)
 
-		event_hbox = QHBoxLayout()
-		event_hbox.addWidget(QLabel('event time: '),30)
+		self.reference_switch_status_btn = QPushButton("")
+		self.reference_switch_status_btn.setStyleSheet(self.button_select_all)
+		self.reference_switch_status_btn.setIcon(icon(MDI6.invert_colors,color="black"))
+		self.reference_switch_status_btn.setToolTip("NOT (flip zeros and ones)")
+		self.reference_switch_status_btn.setIconSize(QSize(20, 20))
+		self.reference_switch_status_btn.clicked.connect(self.switch_not_reference)
+		status_layout.addWidget(self.reference_switch_status_btn, 5)
+
+		layout.addLayout(status_layout)
+
+		event_layout = QHBoxLayout()
+		event_layout.addWidget(QLabel('event time: '),30)
 		self.event_time_cb = QComboBox()
-		#self.event_time_cb.addItems(['--'])
-		event_hbox.addWidget(self.event_time_cb,70)
-		layout.addLayout(event_hbox)
+		event_layout.addWidget(self.event_time_cb,70)
+		layout.addLayout(event_layout)
 		
-		self.set_combo_boxes_reference()
-		self.ref_pop_cb.currentIndexChanged.connect(self.set_combo_boxes_reference)
+		self.fill_cbs_of_reference_population()
+		self.reference_population_cb.currentIndexChanged.connect(self.fill_cbs_of_reference_population)
 
-	def switch_not_reference(self):
-		self.not_status_reference = not self.not_status_reference
-		if self.not_status_reference:
-			self.ref_not_gate_btn.setIcon(icon(MDI6.gate_not,color="#1565c0"))
-			self.ref_not_gate_btn.setIconSize(QSize(20, 20))
-		else:
-			self.ref_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
-			self.ref_not_gate_btn.setIconSize(QSize(20, 20))
+		grid.addWidget(self.ContentsReference, 70)
 
-	def generate_neighbors_contents(self):
+	def populate_neighbor_frame(self):
+
+		"""
+		Add widgets and layout in the neighbor population frame.
+		"""
+
+		grid = QVBoxLayout(self.neigh_population_frame)
+		grid.setSpacing(15)
+		self.ref_lbl = QLabel("NEIGHBOR")
+		self.ref_lbl.setStyleSheet(self.block_title)
+		grid.addWidget(self.ref_lbl, 30, alignment=Qt.AlignCenter)
 
 		self.ContentsNeigh = QFrame()
 		layout = QVBoxLayout(self.ContentsNeigh)
 		layout.setContentsMargins(15,15,15,15)
 
-		pop_hbox = QHBoxLayout()
-		pop_hbox.addWidget(QLabel('population: '),30)
-		self.neigh_pop_cb = QComboBox()
-		self.neigh_pop_cb.addItems(['targets','effectors'])
-		self.neigh_pop_cb.currentIndexChanged.connect(self.set_combo_boxes_neigh)
+		population_layout = QHBoxLayout()
+		population_layout.addWidget(QLabel('population: '),30)
+		self.neighbor_population_cb = QComboBox()
+		self.neighbor_population_cb.addItems(['targets','effectors'])
+		population_layout.addWidget(self.neighbor_population_cb,70)
+		layout.addLayout(population_layout)
 
-		pop_hbox.addWidget(self.neigh_pop_cb,70)
-		layout.addLayout(pop_hbox)
+		status_layout = QHBoxLayout()
 
-		status_hbox = QHBoxLayout()
-		status_hbox.addWidget(QLabel('status: '),30)
-		self.neigh_pop_status_cb = QComboBox()
-		self.set_combo_boxes_neigh()
+		status_layout.addWidget(QLabel('status: '), 30)
 
-		status_cb_hbox = QHBoxLayout()
-		status_cb_hbox.setContentsMargins(0,0,0,0)
-		status_cb_hbox.addWidget(self.neigh_pop_status_cb,90)
-		self.neigh_not_gate_btn = QPushButton("")
-		self.neigh_not_gate_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-		self.neigh_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
-		self.neigh_not_gate_btn.setToolTip("NOT (flip zeros and ones)")
-		self.neigh_not_gate_btn.setIconSize(QSize(20, 20))
-		self.neigh_not_gate_btn.clicked.connect(self.switch_not_neigh)
-		status_cb_hbox.addWidget(self.neigh_not_gate_btn, 5)
-		status_hbox.addLayout(status_cb_hbox, 70)
-		layout.addLayout(status_hbox)
+		self.neighbor_population_status_cb = QComboBox()
+		status_layout.addWidget(self.neighbor_population_status_cb,65)
 
-		self.cum_presence_btn = QCheckBox('cumulated presence')
-		layout.addWidget(self.cum_presence_btn)
+		self.neighbor_switch_status_btn = QPushButton("")
+		self.neighbor_switch_status_btn.setStyleSheet(self.button_select_all)
+		self.neighbor_switch_status_btn.setIcon(icon(MDI6.invert_colors,color="black"))
+		self.neighbor_switch_status_btn.setToolTip("NOT (flip zeros and ones)")
+		self.neighbor_switch_status_btn.setIconSize(QSize(20, 20))
+		self.neighbor_switch_status_btn.clicked.connect(self.switch_not_neigh)
+		status_layout.addWidget(self.neighbor_switch_status_btn, 5)
+		layout.addLayout(status_layout)
+
+		self.cumulated_presence_btn = QCheckBox('cumulated presence')
+		layout.addWidget(self.cumulated_presence_btn)
 
 		self.symmetrize_btn = QCheckBox('symmetrize')
 		layout.addWidget(self.symmetrize_btn)
+		
+		self.fill_cbs_of_neighbor_population()
+		self.neighbor_population_cb.currentIndexChanged.connect(self.fill_cbs_of_neighbor_population)
 
-	def switch_not_neigh(self):
-		self.not_status_neighbor = not self.not_status_neighbor
-		if self.not_status_neighbor:
-			self.neigh_not_gate_btn.setIcon(icon(MDI6.gate_not,color="#1565c0"))
-			self.neigh_not_gate_btn.setIconSize(QSize(20, 20))
-		else:
-			self.neigh_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
-			self.neigh_not_gate_btn.setIconSize(QSize(20, 20))
+		grid.addWidget(self.ContentsNeigh, 70)
 
-	def set_combo_boxes_neigh(self):
-		pop = self.neigh_pop_cb.currentText()
-		class_cols, status_cols, _ = self.locate_population_columns(pop)
-		self.neigh_pop_status_cb.clear()
-		self.neigh_pop_status_cb.addItems(['--','class','status']+class_cols+status_cols)
+	def fill_cbs_of_neighbor_population(self):
 
-	def set_combo_boxes_reference(self):
-		pop = self.ref_pop_cb.currentText()
-		class_cols, status_cols, time_cols = self.locate_population_columns(pop)
-		self.ref_pop_status_cb.clear()
-		self.ref_pop_status_cb.addItems(['--','class', 'status']+class_cols+status_cols)
+		population = self.neighbor_population_cb.currentText()
+		class_cols, status_cols, time_cols = self.locate_population_specific_columns(population)
+		self.neighbor_population_status_cb.clear()
+		self.neighbor_population_status_cb.addItems(['--','class', 'status']+class_cols+status_cols)
+
+	def fill_cbs_of_reference_population(self):
+
+		population = self.reference_population_cb.currentText()
+		class_cols, status_cols, time_cols = self.locate_population_specific_columns(population)
+		self.reference_population_status_cb.clear()
+		self.reference_population_status_cb.addItems(['--','class', 'status']+class_cols+status_cols)
 		self.event_time_cb.addItems(['--', 't0']+time_cols)
 
-	def locate_population_columns(self, population):
+	def switch_not_reference(self):
+		
+		self.not_status_reference = not self.not_status_reference
+		if self.not_status_reference:
+			self.reference_switch_status_btn.setIcon(icon(MDI6.invert_colors,color=self.celldetective_blue))
+			self.reference_switch_status_btn.setIconSize(QSize(20, 20))
+		else:
+			self.reference_switch_status_btn.setIcon(icon(MDI6.invert_colors,color="black"))
+			self.reference_switch_status_btn.setIconSize(QSize(20, 20))
+
+	def switch_not_neigh(self):
+		
+		self.not_status_neighbor = not self.not_status_neighbor
+		if self.not_status_neighbor:
+			self.neighbor_switch_status_btn.setIcon(icon(MDI6.invert_colors,color=self.celldetective_blue))
+			self.neighbor_switch_status_btn.setIconSize(QSize(20, 20))
+		else:
+			self.neighbor_switch_status_btn.setIcon(icon(MDI6.invert_colors,color="black"))
+			self.neighbor_switch_status_btn.setIconSize(QSize(20, 20))
+
+
+	def locate_population_specific_columns(self, population):
 
 		# Look for all classes and times
-		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{population}.csv']))
+		tables = glob(self.attr_parent.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{population}.csv']))
 		self.all_columns = []
 		for tab in tables:
 			cols = pd.read_csv(tab, nrows=1).columns.tolist()
@@ -387,10 +377,10 @@ class ConfigNeighborhoods(QMainWindow):
 		print('Writing instructions...')
 		
 		neighborhood_options = {}
-		pop = [self.ref_pop_cb.currentText(), self.neigh_pop_cb.currentText()]
+		pop = [self.reference_population_cb.currentText(), self.neighbor_population_cb.currentText()]
 		neighborhood_options.update({'population': pop})
 		
-		status_options = [self.ref_pop_status_cb.currentText(), self.neigh_pop_status_cb.currentText()]
+		status_options = [self.reference_population_status_cb.currentText(), self.neighbor_population_status_cb.currentText()]
 		for k in range(2):
 			if status_options[k]=='--':
 				status_options[k] = None
@@ -399,7 +389,8 @@ class ConfigNeighborhoods(QMainWindow):
 		else:
 			mode = 'self'
 
-		distances = self.radii_list.getItems()
+		# TO ADAPT
+		distances = self.measurements_list.getItems()
 		neighborhood_options.update({'distance': distances})	
 		neighborhood_options.update({'clear_neigh': self.clear_previous_btn.isChecked()})
 		event_time_col = self.event_time_cb.currentText()
@@ -407,9 +398,8 @@ class ConfigNeighborhoods(QMainWindow):
 			event_time_col = None
 		neighborhood_options.update({'event_time_col': event_time_col})		
 
-
-		neighborhood_kwargs = {'mode': mode, 'status': status_options, 'not_status_option': [self.not_status_reference, self.not_status_neighbor], 
-							  'compute_cum_sum': self.cum_presence_btn.isChecked(), 'attention_weight': True, 'symmetrize': self.symmetrize_btn.isChecked(),
+		neighborhood_kwargs = {'mode': mode, 'status': status_options, 'not_status_option': [self.switch_not_reference, self.switch_not_neigh], 
+							  'compute_cum_sum': self.cumulated_presence_btn.isChecked(), 'attention_weight': True, 'symmetrize': self.symmetrize_btn.isChecked(),
 							  'include_dead_weight': True}
 
 		neighborhood_options.update({'neighborhood_kwargs': neighborhood_kwargs})
@@ -422,62 +412,461 @@ class ConfigNeighborhoods(QMainWindow):
 		self.close()
 		
 
-	def load_previous_neighborhood_instructions(self):
+# class ConfigNeighborhoods(QMainWindow):
+	
+# 	"""
+# 	UI to set measurement instructions.
 
-		"""
-		Read the measurmeent options from a previously written json file and format properly for the UI.
-		"""
+# 	"""
 
-		print('Reading instructions..')
-		if os.path.exists(self.neigh_instructions):
-			with open(self.neigh_instructions, 'r') as f:
-				neigh_instructions = json.load(f)
-				print(neigh_instructions)
+# 	def __init__(self, parent=None):
+		
+# 		super().__init__()
+# 		self.parent = parent
+# 		self.setWindowTitle("Configure neighborhoods")
+# 		#self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 
-				if 'distance' in neigh_instructions:
-					distances = neigh_instructions['distance']
-					distances = [str(d) for d in distances]
-					self.radii_list.list_widget.clear()
-					self.radii_list.list_widget.addItems(distances)
+# 		self.exp_dir = self.parent.exp_dir
+# 		self.neigh_instructions = self.parent.exp_dir + os.sep.join(["configs","neighborhood_instructions.json"])
+# 		self.clear_previous = False
+# 		self.not_status_reference = False
+# 		self.not_status_neighbor = False	
 
-				if 'population' in neigh_instructions:
+# 		exp_config = self.exp_dir +"config.ini"
+# 		self.channel_names, self.channels = extract_experiment_channels(exp_config)
+# 		self.channel_names = np.array(self.channel_names)
+# 		self.channels = np.array(self.channels)
 
-					pop = neigh_instructions['population']
-					idx0 = self.ref_pop_cb.findText(pop[0])
-					self.ref_pop_cb.setCurrentIndex(idx0)
-					idx1 = self.neigh_pop_cb.findText(pop[1])
-					self.neigh_pop_cb.setCurrentIndex(idx1)
+# 		self.screen_height = self.parent.parent.parent.screen_height
 
-				if 'clear_neigh' in neigh_instructions:
-					clear_neigh = neigh_instructions['clear_neigh']
-					self.clear_previous_btn.setChecked(clear_neigh)
+# 		self.setMinimumWidth(750)
+# 		self.setMinimumHeight(int(0.5*self.screen_height))
+# 		self.setMaximumHeight(int(0.95*self.screen_height))
+		
+# 		self.populate_widget()
+# 		self.load_previous_neighborhood_instructions()
+# 		center_window(self)
 
-				if 'event_time_col' in neigh_instructions:
-					event_time_col = neigh_instructions['event_time_col']
-					if event_time_col is None:
-						event_time_col = '--'
-					idx = self.event_time_cb.findText(event_time_col)
-					self.event_time_cb.setCurrentIndex(idx)
+# 	def populate_widget(self):
 
-				if 'neighborhood_kwargs' in neigh_instructions:
-					neighborhood_kwargs = neigh_instructions['neighborhood_kwargs']
-					if 'compute_cum_sum' in neighborhood_kwargs:
-						self.cum_presence_btn.setChecked(neighborhood_kwargs['compute_cum_sum'])
-					if 'symmetrize' in neighborhood_kwargs:
-						self.symmetrize_btn.setChecked(neighborhood_kwargs['symmetrize'])
-					if 'status' in neighborhood_kwargs:
-						status_options = neighborhood_kwargs['status']
-						status_options = ['--' if s is None else s for s in status_options]
-						idx0 = self.ref_pop_status_cb.findText(status_options[0])
-						self.ref_pop_status_cb.setCurrentIndex(idx0)
-						idx1 = self.neigh_pop_status_cb.findText(status_options[1])
-						self.neigh_pop_status_cb.setCurrentIndex(idx1)
-					if 'not_status_option' in neighborhood_kwargs:
-						not_status_option = neighborhood_kwargs['not_status_option']
-						if not_status_option[0]:
-							self.ref_not_gate_btn.click()
-						if not_status_option[1]:
-							self.neigh_not_gate_btn.click()
+# 		"""
+# 		Create the multibox design.
+
+# 		"""
+		
+# 		# Create button widget and layout
+# 		self.scroll_area = QScrollArea(self)
+# 		self.button_widget = QWidget()
+# 		main_layout = QVBoxLayout()
+# 		self.button_widget.setLayout(main_layout)
+# 		main_layout.setContentsMargins(30,30,30,30)
+
+# 		# second frame for ISOTROPIC MEASUREMENTS
+# 		pop_hbox = QHBoxLayout()
+
+# 		self.reference_population_frame = QFrame()
+# 		self.reference_population_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+# 		self.populate_reference_frame()
+# 		pop_hbox.addWidget(self.reference_population_frame, 50)
+
+# 		self.neigh_population_frame = QFrame()
+# 		self.neigh_population_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+# 		self.populate_neigh_frame()
+# 		pop_hbox.addWidget(self.neigh_population_frame, 50)
+# 		main_layout.addLayout(pop_hbox)
+
+# 		self.radii_frame = QFrame()
+# 		self.radii_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+# 		self.populate_radii_frame()
+# 		main_layout.addWidget(self.radii_frame)
+
+# 		self.clear_previous_btn = QCheckBox('clear previous neighborhoods')
+# 		main_layout.addWidget(self.clear_previous_btn, alignment=Qt.AlignRight)
+
+# 		main_layout.addWidget(QLabel(''))
+# 		self.submit_btn = QPushButton('Set')
+# 		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+# 		self.submit_btn.clicked.connect(self.write_instructions)
+# 		main_layout.addWidget(self.submit_btn)
+
+# 		#self.populate_left_panel()
+# 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
+# 		self.button_widget.adjustSize()
+
+# 		self.scroll_area.setAlignment(Qt.AlignCenter)
+# 		self.scroll_area.setWidget(self.button_widget)
+# 		self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+# 		self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+# 		self.scroll_area.setWidgetResizable(True)
+# 		self.setCentralWidget(self.scroll_area)
+# 		self.show()
+
+# 		QApplication.processEvents()
+# 		#self.adjustScrollArea()
+
+
+# 	def populate_reference_frame(self):
+
+# 		"""
+# 		Add widgets and layout in the reference population frame.
+# 		"""
+
+# 		grid = QVBoxLayout(self.reference_population_frame)
+# 		grid.setSpacing(15)
+# 		self.ref_lbl = QLabel("REFERENCE")
+# 		self.ref_lbl.setStyleSheet("""
+# 			font-weight: bold;
+# 			padding: 0px;
+# 			""")
+# 		grid.addWidget(self.ref_lbl, 30, alignment=Qt.AlignCenter)
+# 		self.generate_reference_contents()
+# 		grid.addWidget(self.ContentsReference, 70)
+
+# 	def populate_neigh_frame(self):
+
+# 		"""
+# 		Add widgets and layout in the neighbor population frame.
+# 		"""
+
+# 		grid = QVBoxLayout(self.neigh_population_frame)
+# 		grid.setSpacing(15)
+
+# 		self.neigh_lbl = QLabel("NEIGHBORS")
+# 		self.neigh_lbl.setStyleSheet("""
+# 			font-weight: bold;
+# 			padding: 0px;
+# 			""")
+# 		grid.addWidget(self.neigh_lbl, 30, alignment=Qt.AlignCenter)
+# 		self.generate_neighbors_contents()
+# 		grid.addWidget(self.ContentsNeigh, 70)
+
+# 	def populate_radii_frame(self):
+
+# 		"""
+# 		Add widgets and layout in the radii frame.
+# 		"""
+
+# 		grid = QVBoxLayout(self.radii_frame)
+
+# 		self.dist_lbl = QLabel("NEIGHBORHOOD CUT-DISTANCES")
+# 		self.dist_lbl.setStyleSheet("""
+# 			font-weight: bold;
+# 			padding: 0px;
+# 			""")
+# 		grid.addWidget(self.dist_lbl, alignment=Qt.AlignCenter)
+# 		self.generate_radii_contents()
+# 		grid.addWidget(self.ContentsIso) #1, 0, 1, 4, alignment=Qt.AlignTop
+
+
+# 	def generate_radii_contents(self):
+
+# 		self.ContentsIso = QFrame()
+# 		layout = QVBoxLayout(self.ContentsIso)
+# 		layout.setContentsMargins(0,0,0,0)
+
+# 		radii_layout = QHBoxLayout()
+# 		self.radii_lbl = QLabel('Cut-distance radii:')
+# 		self.radii_lbl.setToolTip('From reference cells, in pixel units. Define radii for neighborhood computations.')
+# 		radii_layout.addWidget(self.radii_lbl, 85)
+
+# 		self.del_radius_btn = QPushButton("")
+# 		self.del_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+# 		self.del_radius_btn.setIcon(icon(MDI6.trash_can,color="black"))
+# 		self.del_radius_btn.setToolTip("Remove radius")
+# 		self.del_radius_btn.setIconSize(QSize(20, 20))
+# 		radii_layout.addWidget(self.del_radius_btn, 5)
+
+# 		self.add_radius_btn = QPushButton("")
+# 		self.add_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+# 		self.add_radius_btn.setIcon(icon(MDI6.plus,color="black"))
+# 		self.add_radius_btn.setToolTip("Add radius")
+# 		self.add_radius_btn.setIconSize(QSize(20, 20))	
+# 		radii_layout.addWidget(self.add_radius_btn, 5)
+
+# 		self.view_diameter_btn = QPushButton()
+# 		self.view_diameter_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+# 		self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
+# 		self.view_diameter_btn.setToolTip("View stack.")
+# 		self.view_diameter_btn.setIconSize(QSize(20, 20))
+# 		self.view_diameter_btn.clicked.connect(self.view_current_stack_with_circle)
+# 		radii_layout.addWidget(self.view_diameter_btn, 5)
+
+# 		layout.addLayout(radii_layout)
+
+
+# 		self.radii_list = ListWidget(self, DistanceChoice, initial_features=["60"], dtype=int)
+# 		layout.addWidget(self.radii_list)
+
+
+# 		self.del_radius_btn.clicked.connect(self.radii_list.removeSel)
+# 		self.add_radius_btn.clicked.connect(self.radii_list.addItem)
+
+# 	def view_current_stack_with_circle(self):
+		
+# 		self.parent.parent.locate_image()
+# 		if self.parent.parent.current_stack is not None:
+# 			self.viewer = CellSizeViewer(
+# 										  initial_diameter = 100,
+# 										  parent_list_widget = self.radii_list.list_widget,
+# 										  stack_path=self.parent.parent.current_stack,
+# 										  window_title=f'Position {self.parent.parent.position_list.currentText()}',
+# 										  frame_slider = True,
+# 										  contrast_slider = True,
+# 										  channel_cb = True,
+# 										  diameter_slider_range = (0,300),
+# 										  channel_names = self.parent.parent.exp_channels,
+# 										  n_channels = self.parent.parent.nbr_channels,
+# 										  PxToUm = 1,
+# 										 )
+# 			self.viewer.show()
+
+# 	def generate_reference_contents(self):
+
+# 		self.ContentsReference = QFrame()
+# 		layout = QVBoxLayout(self.ContentsReference)
+# 		layout.setContentsMargins(15,15,15,15)
+
+# 		pop_hbox = QHBoxLayout()
+# 		pop_hbox.addWidget(QLabel('population: '),30)
+# 		self.ref_pop_cb = QComboBox()
+# 		self.ref_pop_cb.addItems(['targets','effectors'])
+# 		pop_hbox.addWidget(self.ref_pop_cb,70)
+# 		layout.addLayout(pop_hbox)
+
+# 		status_hbox = QHBoxLayout()
+# 		status_hbox.addWidget(QLabel('status: '), 30)
+# 		self.ref_pop_status_cb = QComboBox()
+# 		#self.ref_pop_status_cb.addItems(['--'])
+
+# 		status_cb_hbox = QHBoxLayout()
+# 		status_cb_hbox.setContentsMargins(0,0,0,0)
+# 		status_cb_hbox.addWidget(self.ref_pop_status_cb,90)
+# 		# replace with not gate
+
+# 		self.ref_not_gate_btn = QPushButton("")
+# 		self.ref_not_gate_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+# 		self.ref_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
+# 		self.ref_not_gate_btn.setToolTip("NOT (flip zeros and ones)")
+# 		self.ref_not_gate_btn.setIconSize(QSize(20, 20))
+# 		self.ref_not_gate_btn.clicked.connect(self.switch_not_reference)
+# 		status_cb_hbox.addWidget(self.ref_not_gate_btn, 5)
+# 		status_hbox.addLayout(status_cb_hbox,70)
+# 		layout.addLayout(status_hbox)
+
+# 		event_hbox = QHBoxLayout()
+# 		event_hbox.addWidget(QLabel('event time: '),30)
+# 		self.event_time_cb = QComboBox()
+# 		#self.event_time_cb.addItems(['--'])
+# 		event_hbox.addWidget(self.event_time_cb,70)
+# 		layout.addLayout(event_hbox)
+		
+# 		self.set_combo_boxes_reference()
+# 		self.ref_pop_cb.currentIndexChanged.connect(self.set_combo_boxes_reference)
+
+# 	def switch_not_reference(self):
+# 		self.not_status_reference = not self.not_status_reference
+# 		if self.not_status_reference:
+# 			self.ref_not_gate_btn.setIcon(icon(MDI6.gate_not,color="#1565c0"))
+# 			self.ref_not_gate_btn.setIconSize(QSize(20, 20))
+# 		else:
+# 			self.ref_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
+# 			self.ref_not_gate_btn.setIconSize(QSize(20, 20))
+
+# 	def generate_neighbors_contents(self):
+
+# 		self.ContentsNeigh = QFrame()
+# 		layout = QVBoxLayout(self.ContentsNeigh)
+# 		layout.setContentsMargins(15,15,15,15)
+
+# 		pop_hbox = QHBoxLayout()
+# 		pop_hbox.addWidget(QLabel('population: '),30)
+# 		self.neigh_pop_cb = QComboBox()
+# 		self.neigh_pop_cb.addItems(['targets','effectors'])
+# 		self.neigh_pop_cb.currentIndexChanged.connect(self.set_combo_boxes_neigh)
+
+# 		pop_hbox.addWidget(self.neigh_pop_cb,70)
+# 		layout.addLayout(pop_hbox)
+
+# 		status_hbox = QHBoxLayout()
+# 		status_hbox.addWidget(QLabel('status: '),30)
+# 		self.neigh_pop_status_cb = QComboBox()
+# 		self.set_combo_boxes_neigh()
+
+# 		status_cb_hbox = QHBoxLayout()
+# 		status_cb_hbox.setContentsMargins(0,0,0,0)
+# 		status_cb_hbox.addWidget(self.neigh_pop_status_cb,90)
+# 		self.neigh_not_gate_btn = QPushButton("")
+# 		self.neigh_not_gate_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+# 		self.neigh_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
+# 		self.neigh_not_gate_btn.setToolTip("NOT (flip zeros and ones)")
+# 		self.neigh_not_gate_btn.setIconSize(QSize(20, 20))
+# 		self.neigh_not_gate_btn.clicked.connect(self.switch_not_neigh)
+# 		status_cb_hbox.addWidget(self.neigh_not_gate_btn, 5)
+# 		status_hbox.addLayout(status_cb_hbox, 70)
+# 		layout.addLayout(status_hbox)
+
+# 		self.cum_presence_btn = QCheckBox('cumulated presence')
+# 		layout.addWidget(self.cum_presence_btn)
+
+# 		self.symmetrize_btn = QCheckBox('symmetrize')
+# 		layout.addWidget(self.symmetrize_btn)
+
+# 	def switch_not_neigh(self):
+# 		self.not_status_neighbor = not self.not_status_neighbor
+# 		if self.not_status_neighbor:
+# 			self.neigh_not_gate_btn.setIcon(icon(MDI6.gate_not,color="#1565c0"))
+# 			self.neigh_not_gate_btn.setIconSize(QSize(20, 20))
+# 		else:
+# 			self.neigh_not_gate_btn.setIcon(icon(MDI6.gate_not,color="black"))
+# 			self.neigh_not_gate_btn.setIconSize(QSize(20, 20))
+
+# 	def set_combo_boxes_neigh(self):
+# 		pop = self.neigh_pop_cb.currentText()
+# 		class_cols, status_cols, _ = self.locate_population_columns(pop)
+# 		self.neigh_pop_status_cb.clear()
+# 		self.neigh_pop_status_cb.addItems(['--','class','status']+class_cols+status_cols)
+
+# 	def set_combo_boxes_reference(self):
+# 		pop = self.ref_pop_cb.currentText()
+# 		class_cols, status_cols, time_cols = self.locate_population_columns(pop)
+# 		self.ref_pop_status_cb.clear()
+# 		self.ref_pop_status_cb.addItems(['--','class', 'status']+class_cols+status_cols)
+# 		self.event_time_cb.addItems(['--', 't0']+time_cols)
+
+# 	def locate_population_columns(self, population):
+
+# 		# Look for all classes and times
+# 		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{population}.csv']))
+# 		self.all_columns = []
+# 		for tab in tables:
+# 			cols = pd.read_csv(tab, nrows=1).columns.tolist()
+# 			self.all_columns.extend(cols)
+# 		self.all_columns = np.unique(self.all_columns)
+
+# 		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
+# 		status_idx = np.array([s.startswith('status_') for s in self.all_columns])
+# 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
+
+# 		if len(class_idx)>0:
+# 			class_columns = list(self.all_columns[class_idx])
+# 			for c in ['class_id', 'class_color']:
+# 				if c in class_columns:
+# 					class_columns.remove(c)
+# 		else:
+# 			class_columns = []
+
+# 		if len(status_idx)>0:
+# 			status_columns = list(self.all_columns[status_idx])
+# 		else:
+# 			status_columns = []
+
+# 		if len(time_idx)>0:
+# 			time_columns = list(self.all_columns[time_idx])
+# 		else:
+# 			time_columns = []
+
+# 		return class_columns, status_columns, time_columns
+
+# 	def write_instructions(self):
+
+# 		"""
+# 		Write the selected options in a json file for later reading by the software.
+# 		"""
+
+# 		print('Writing instructions...')
+		
+# 		neighborhood_options = {}
+# 		pop = [self.ref_pop_cb.currentText(), self.neigh_pop_cb.currentText()]
+# 		neighborhood_options.update({'population': pop})
+		
+# 		status_options = [self.ref_pop_status_cb.currentText(), self.neigh_pop_status_cb.currentText()]
+# 		for k in range(2):
+# 			if status_options[k]=='--':
+# 				status_options[k] = None
+# 		if pop[0]!=pop[1]:
+# 			mode = 'two-pop'
+# 		else:
+# 			mode = 'self'
+
+# 		distances = self.radii_list.getItems()
+# 		neighborhood_options.update({'distance': distances})	
+# 		neighborhood_options.update({'clear_neigh': self.clear_previous_btn.isChecked()})
+# 		event_time_col = self.event_time_cb.currentText()
+# 		if event_time_col=='--':
+# 			event_time_col = None
+# 		neighborhood_options.update({'event_time_col': event_time_col})		
+
+
+# 		neighborhood_kwargs = {'mode': mode, 'status': status_options, 'not_status_option': [self.not_status_reference, self.not_status_neighbor], 
+# 							  'compute_cum_sum': self.cum_presence_btn.isChecked(), 'attention_weight': True, 'symmetrize': self.symmetrize_btn.isChecked(),
+# 							  'include_dead_weight': True}
+
+# 		neighborhood_options.update({'neighborhood_kwargs': neighborhood_kwargs})
+
+# 		print('Neighborhood instructions: ', neighborhood_options)
+# 		file_name = self.neigh_instructions
+# 		with open(file_name, 'w') as f:
+# 			json.dump(neighborhood_options, f, indent=4)
+# 		print('Done.')
+# 		self.close()
+		
+
+# 	def load_previous_neighborhood_instructions(self):
+
+# 		"""
+# 		Read the measurmeent options from a previously written json file and format properly for the UI.
+# 		"""
+
+# 		print('Reading instructions..')
+# 		if os.path.exists(self.neigh_instructions):
+# 			with open(self.neigh_instructions, 'r') as f:
+# 				neigh_instructions = json.load(f)
+# 				print(neigh_instructions)
+
+# 				if 'distance' in neigh_instructions:
+# 					distances = neigh_instructions['distance']
+# 					distances = [str(d) for d in distances]
+# 					self.radii_list.list_widget.clear()
+# 					self.radii_list.list_widget.addItems(distances)
+
+# 				if 'population' in neigh_instructions:
+
+# 					pop = neigh_instructions['population']
+# 					idx0 = self.ref_pop_cb.findText(pop[0])
+# 					self.ref_pop_cb.setCurrentIndex(idx0)
+# 					idx1 = self.neigh_pop_cb.findText(pop[1])
+# 					self.neigh_pop_cb.setCurrentIndex(idx1)
+
+# 				if 'clear_neigh' in neigh_instructions:
+# 					clear_neigh = neigh_instructions['clear_neigh']
+# 					self.clear_previous_btn.setChecked(clear_neigh)
+
+# 				if 'event_time_col' in neigh_instructions:
+# 					event_time_col = neigh_instructions['event_time_col']
+# 					if event_time_col is None:
+# 						event_time_col = '--'
+# 					idx = self.event_time_cb.findText(event_time_col)
+# 					self.event_time_cb.setCurrentIndex(idx)
+
+# 				if 'neighborhood_kwargs' in neigh_instructions:
+# 					neighborhood_kwargs = neigh_instructions['neighborhood_kwargs']
+# 					if 'compute_cum_sum' in neighborhood_kwargs:
+# 						self.cum_presence_btn.setChecked(neighborhood_kwargs['compute_cum_sum'])
+# 					if 'symmetrize' in neighborhood_kwargs:
+# 						self.symmetrize_btn.setChecked(neighborhood_kwargs['symmetrize'])
+# 					if 'status' in neighborhood_kwargs:
+# 						status_options = neighborhood_kwargs['status']
+# 						status_options = ['--' if s is None else s for s in status_options]
+# 						idx0 = self.ref_pop_status_cb.findText(status_options[0])
+# 						self.ref_pop_status_cb.setCurrentIndex(idx0)
+# 						idx1 = self.neigh_pop_status_cb.findText(status_options[1])
+# 						self.neigh_pop_status_cb.setCurrentIndex(idx1)
+# 					if 'not_status_option' in neighborhood_kwargs:
+# 						not_status_option = neighborhood_kwargs['not_status_option']
+# 						if not_status_option[0]:
+# 							self.ref_not_gate_btn.click()
+# 						if not_status_option[1]:
+# 							self.neigh_not_gate_btn.click()
 
 
 

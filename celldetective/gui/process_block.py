@@ -37,6 +37,7 @@ from celldetective.utils import _estimate_scale_factor, _extract_channel_indices
 from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
 from celldetective.gui.viewers import StackVisualizer, CellSizeViewer, ThresholdedStackVisualizer
 from celldetective.gui.layouts import BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout, OperationLayout
+from celldetective.gui import Styles
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -890,7 +891,7 @@ class ProcessPanel(QFrame):
 		self.process_population()
 
 
-class NeighPanel(QFrame):
+class NeighPanel(QFrame, Styles):
 	def __init__(self, parent):
 
 		super().__init__()		
@@ -911,10 +912,7 @@ class NeighPanel(QFrame):
 		"""
 
 		panel_title = QLabel(f"NEIGHBORHOOD")
-		panel_title.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
+		panel_title.setStyleSheet(self.block_title)
 
 		self.grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
 
@@ -922,15 +920,13 @@ class NeighPanel(QFrame):
 		self.select_all_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
 		self.select_all_btn.setIconSize(QSize(20, 20))
 		self.all_ticked = False
-		#self.select_all_btn.clicked.connect(self.tick_all_actions)
-		self.select_all_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.select_all_btn.setStyleSheet(self.button_select_all)
 		self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
-		#self.to_disable.append(self.all_tc_actions)
 		
 		self.collapse_btn = QPushButton()
 		self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_btn.setIconSize(QSize(25, 25))
-		self.collapse_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.collapse_btn.setStyleSheet(self.button_select_all)
 		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.populate_contents()
@@ -941,6 +937,7 @@ class NeighPanel(QFrame):
 		self.ContentsFrame.hide()
 
 	def collapse_advanced(self):
+
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
@@ -965,10 +962,7 @@ class NeighPanel(QFrame):
 		dist_neigh_hbox.setSpacing(0)
 
 		self.dist_neigh_action = QCheckBox("DISTANCE CUT")
-		self.dist_neigh_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			""")
+		self.dist_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
 		self.dist_neigh_action.setIcon(icon(MDI6.circle_expand, color='black'))
 		self.dist_neigh_action.setToolTip("Match cells for which the center of mass is within a threshold distance of each other.")
 		#self.segment_action.toggled.connect(self.enable_segmentation_model_list)
@@ -979,48 +973,55 @@ class NeighPanel(QFrame):
 		self.config_distance_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.config_distance_neigh_btn.setIconSize(QSize(20, 20))
 		self.config_distance_neigh_btn.setToolTip("Configure distance cut neighbourhood computation.")
-		self.config_distance_neigh_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.config_distance_neigh_btn.clicked.connect(self.open_config_neighborhood)
+		self.config_distance_neigh_btn.setStyleSheet(self.button_select_all)
+		self.config_distance_neigh_btn.clicked.connect(self.open_config_distance_threshold_neighborhood)
 		dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
 
 		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
 
-		# MASK INTERSECTION NEIGHBORHOOD
-		# mask_neigh_hbox = QHBoxLayout()
-		# mask_neigh_hbox.setContentsMargins(0,0,0,0)
-		# mask_neigh_hbox.setSpacing(0)
+		# DISTANCE NEIGHBORHOOD
+		contact_neighborhood_layout = QHBoxLayout()
+		contact_neighborhood_layout.setContentsMargins(0,0,0,0)
+		contact_neighborhood_layout.setSpacing(0)
 
-		# self.mask_neigh_action = QCheckBox("MASK INTERSECTION")
-		# self.mask_neigh_action.setStyleSheet("""
-		# 	font-size: 10px;
-		# 	padding-left: 10px;
-		# 	""")
-		# self.mask_neigh_action.setIcon(icon(MDI6.domino_mask, color='black'))
-		# self.mask_neigh_action.setToolTip("Match cells that are co-localizing.")
-		# #self.segment_action.toggled.connect(self.enable_segmentation_model_list)
-		# #self.to_disable.append(self.segment_action)
-		# mask_neigh_hbox.addWidget(self.mask_neigh_action, 95)
+		self.contact_neigh_action = QCheckBox("MASK CONTACT")
+		self.contact_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
+		self.contact_neigh_action.setIcon(icon(MDI6.transition_masked, color='black'))
+		self.contact_neigh_action.setToolTip("")
+		contact_neighborhood_layout.addWidget(self.contact_neigh_action, 95)
 		
-		# self.config_mask_neigh_btn = QPushButton()
-		# self.config_mask_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
-		# self.config_mask_neigh_btn.setIconSize(QSize(20, 20))
-		# self.config_mask_neigh_btn.setToolTip("Configure mask intersection computation.")
-		# self.config_mask_neigh_btn.setStyleSheet(self.parent.parent.button_select_all)
-		# #self.config_distance_neigh_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-		# mask_neigh_hbox.addWidget(self.config_mask_neigh_btn,5)
+		self.config_contact_neigh_btn = QPushButton()
+		self.config_contact_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
+		self.config_contact_neigh_btn.setIconSize(QSize(20, 20))
+		self.config_contact_neigh_btn.setToolTip("Configure distance cut neighbourhood computation.")
+		self.config_contact_neigh_btn.setStyleSheet(self.button_select_all)
+		self.config_contact_neigh_btn.clicked.connect(self.open_config_contact_neighborhood)
+		contact_neighborhood_layout.addWidget(self.config_contact_neigh_btn,5)
 
-		# self.grid_contents.addLayout(mask_neigh_hbox, 1,0,1,4)
+		self.grid_contents.addLayout(contact_neighborhood_layout, 1,0,1,4)
 
 		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
 		self.submit_btn = QPushButton("Submit")
-		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
 		self.submit_btn.clicked.connect(self.process_neighborhood)
 		self.grid_contents.addWidget(self.submit_btn, 3, 0, 1, 4)
 
-	def open_config_neighborhood(self):
+	def open_config_distance_threshold_neighborhood(self):
 
-		self.ConfigNeigh = ConfigNeighborhoods(self)
+		self.ConfigNeigh = ConfigNeighborhoods(parent=self,
+											   neighborhood_type='distance_threshold',
+											   neighborhood_parameter_name='threshold distance',
+											   )
 		self.ConfigNeigh.show()
+
+	def open_config_contact_neighborhood(self):
+
+		self.ConfigNeigh = ConfigNeighborhoods(parent=self,
+											   neighborhood_type='mask_contact',
+											   neighborhood_parameter_name='tolerance contact distance',
+											   )
+		self.ConfigNeigh.show()
+
 
 	def process_neighborhood(self):
 		

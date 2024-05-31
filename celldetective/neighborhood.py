@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from skimage.measure import regionprops_table
+from skimage.graph import pixel_graph
 from functools import reduce
 from mahotas.features import haralick
 from scipy.ndimage import zoom
@@ -10,6 +11,7 @@ import subprocess
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features
 from celldetective.io import get_position_table
 from scipy.spatial.distance import cdist
+from celldetective.measure import contour_of_instance_segmentation
 import re
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
@@ -698,6 +700,72 @@ def mean_neighborhood_after_event(neigh_table, neigh_col, event_time_col):
 	if event_time_col=='event_time_temp':
 		neigh_table = neigh_table.drop(columns='event_time_temp')
 	return neigh_table
+
+# New functions for direct cell-cell contact neighborhood
+
+def sign(num):
+	return -1 if num < 0 else 1
+
+def contact_neighborhood(labelsA, labelsB=None, border=3, connectivity=2):
+
+	labelsA = labelsA.astype(float)
+	if labelsB is not None:
+		labelsB = labelsB.astype(float)
+	
+	if border > 0:
+		labelsA_edge = contour_of_instance_segmentation(label=labelsA, distance=border * (-1)).astype(float)
+		labelsA[np.where(labelsA_edge>0)] = labelsA_edge[np.where(labelsA_edge>0)]
+		if labelsB is not None:
+			labelsB_edge = contour_of_instance_segmentation(label=labelsB, distance=border * (-1)).astype(float)
+			labelsB[np.where(labelsB_edge>0)] = labelsB_edge[np.where(labelsB_edge>0)]
+	
+	if labelsB is not None:
+		labelsA[labelsA!=0] = -labelsA[labelsA!=0]
+		labelsAB = merge_labels(labelsA, labelsB)
+		labelsBA = merge_labels(labelsB, labelsA)
+		label_cases = [labelsAB, labelsBA]
+	else:
+		label_cases = [labelsA]
+	
+	coocurrences = []
+	for lbl in label_cases:
+		coocurrences.extend(find_contact_neighbors(lbl, connectivity=connectivity))
+	
+	unique_pairs = np.unique(coocurrences,axis=0)
+	
+	if labelsB is not None:
+		neighs = np.unique([tuple(sorted(p)) for p in unique_pairs if p[0]!=p[1] and sign(p[0])!=sign(p[1])],axis=0)
+	else:
+		neighs = np.unique([tuple(sorted(p)) for p in unique_pairs if p[0]!=p[1]],axis=0)
+	
+	return neighs
+
+def merge_labels(labelsA, labelsB):
+	
+	labelsA = labelsA.astype(float)
+	labelsB = labelsB.astype(float)
+	
+	labelsAB = labelsA.copy()
+	labelsAB[np.where(labelsB!=0)] = labelsB[np.where(labelsB!=0)]
+	
+	return labelsAB
+
+def find_contact_neighbors(labels, connectivity=2):
+	
+	assert labels.ndim==2,"Wrong dimension for labels..."
+	g, nodes = pixel_graph(labels, mask=labels.astype(bool),connectivity=connectivity)
+	g.eliminate_zeros()
+
+	coo = g.tocoo()
+	center_coords = nodes[coo.row]
+	neighbor_coords = nodes[coo.col]
+
+	center_values = labels.ravel()[center_coords]
+	neighbor_values = labels.ravel()[neighbor_coords]
+	touching_masks = np.column_stack((center_values, neighbor_values)) 
+	
+	return touching_masks
+
 
 
 # def mask_intersection_neighborhood(setA, labelsA, setB, labelsB, threshold_iou=0.5, viewpoint='B'):

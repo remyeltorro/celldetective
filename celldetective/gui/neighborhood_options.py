@@ -21,6 +21,7 @@ from tifffile import imread
 from pathlib import Path, PurePath
 import gc
 import pandas as pd
+from celldetective.gui.viewers import CellSizeViewer
 
 class ConfigNeighborhoods(QMainWindow):
 	
@@ -177,7 +178,7 @@ class ConfigNeighborhoods(QMainWindow):
 		radii_layout = QHBoxLayout()
 		self.radii_lbl = QLabel('Cut-distance radii:')
 		self.radii_lbl.setToolTip('From reference cells, in pixel units. Define radii for neighborhood computations.')
-		radii_layout.addWidget(self.radii_lbl, 90)
+		radii_layout.addWidget(self.radii_lbl, 85)
 
 		self.del_radius_btn = QPushButton("")
 		self.del_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
@@ -192,13 +193,43 @@ class ConfigNeighborhoods(QMainWindow):
 		self.add_radius_btn.setToolTip("Add radius")
 		self.add_radius_btn.setIconSize(QSize(20, 20))	
 		radii_layout.addWidget(self.add_radius_btn, 5)
+
+		self.view_diameter_btn = QPushButton()
+		self.view_diameter_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
+		self.view_diameter_btn.setToolTip("View stack.")
+		self.view_diameter_btn.setIconSize(QSize(20, 20))
+		self.view_diameter_btn.clicked.connect(self.view_current_stack_with_circle)
+		radii_layout.addWidget(self.view_diameter_btn, 5)
+
 		layout.addLayout(radii_layout)
-		
+
+
 		self.radii_list = ListWidget(self, DistanceChoice, initial_features=["60"], dtype=int)
 		layout.addWidget(self.radii_list)
 
+
 		self.del_radius_btn.clicked.connect(self.radii_list.removeSel)
 		self.add_radius_btn.clicked.connect(self.radii_list.addItem)
+
+	def view_current_stack_with_circle(self):
+		
+		self.parent.parent.locate_image()
+		if self.parent.parent.current_stack is not None:
+			self.viewer = CellSizeViewer(
+										  initial_diameter = 100,
+										  parent_list_widget = self.radii_list.list_widget,
+										  stack_path=self.parent.parent.current_stack,
+										  window_title=f'Position {self.parent.parent.position_list.currentText()}',
+										  frame_slider = True,
+										  contrast_slider = True,
+										  channel_cb = True,
+										  diameter_slider_range = (0,300),
+										  channel_names = self.parent.parent.exp_channels,
+										  n_channels = self.parent.parent.nbr_channels,
+										  PxToUm = 1,
+										 )
+			self.viewer.show()
 
 	def generate_reference_contents(self):
 

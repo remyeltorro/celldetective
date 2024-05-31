@@ -507,16 +507,20 @@ class CellSizeViewer(StackVisualizer):
 	"""
 	A widget around an imshow and accompanying sliders.
 	"""
-	def __init__(self, initial_diameter=40, parent_le=None, *args, **kwargs):
+	def __init__(self, initial_diameter=40, diameter_slider_range=(0,200), parent_le=None, parent_list_widget=None, *args, **kwargs):
 		
 		super().__init__(*args, **kwargs)
 		self.diameter = initial_diameter
 		self.parent_le = parent_le
+		self.diameter_slider_range = diameter_slider_range
+		self.parent_list_widget = parent_list_widget
 		self.generate_circle()
 		self.generate_diameter_slider()
 
 		if isinstance(self.parent_le, QLineEdit):
 			self.generate_set_btn()
+		if isinstance(self.parent_list_widget, QListWidget):
+			self.generate_add_to_list_btn()
 
 	def generate_circle(self):
 
@@ -525,6 +529,24 @@ class CellSizeViewer(StackVisualizer):
 
 		self.ax.callbacks.connect('xlim_changed',self.on_xlims_or_ylims_change)
 		self.ax.callbacks.connect('ylim_changed', self.on_xlims_or_ylims_change)
+
+	def generate_add_to_list_btn(self):
+		
+		add_hbox = QHBoxLayout()
+		self.add_measurement_btn = QPushButton('Add measurement')
+		self.add_measurement_btn.clicked.connect(self.set_measurement_in_parent_list)
+		self.add_measurement_btn.setIcon(icon(MDI6.plus,color="white"))
+		self.add_measurement_btn.setIconSize(QSize(20, 20))
+		self.add_measurement_btn.setStyleSheet(self.button_style_sheet)
+		add_hbox.addWidget(QLabel(''),33)
+		add_hbox.addWidget(self.add_measurement_btn, 33)
+		add_hbox.addWidget(QLabel(''),33)		
+		self.canvas.layout.addLayout(add_hbox)
+
+	def set_measurement_in_parent_list(self):
+		
+		self.parent_list_widget.addItems([str(self.diameter_slider.value()//2)])
+		self.close()
 
 	def on_xlims_or_ylims_change(self, event_ax):
 
@@ -553,7 +575,7 @@ class CellSizeViewer(StackVisualizer):
 		diameter_layout = QuickSliderLayout(label='Diameter: ',
 										slider=self.diameter_slider,
 										slider_initial_value=self.diameter,
-										slider_range=(0,200),
+										slider_range=self.diameter_slider_range,
 										decimal_option=True,
 										precision=1.0E-05,
 										)

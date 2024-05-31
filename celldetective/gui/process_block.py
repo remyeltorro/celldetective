@@ -36,7 +36,7 @@ from celldetective.preprocessing import correct_background_model_free, estimate_
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
 from celldetective.gui.viewers import StackVisualizer, CellSizeViewer, ThresholdedStackVisualizer
-from celldetective.gui.layouts import BackgroundFitCorrectionLayout, OperationLayout
+from celldetective.gui.layouts import BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout, OperationLayout
 
 class ProcessPanel(QFrame):
 	def __init__(self, parent, mode):
@@ -53,8 +53,6 @@ class ProcessPanel(QFrame):
 		self.wells = np.array(self.parent.wells,dtype=str)
 		self.cellpose_calibrated = False
 		self.stardist_calibrated = False
-
-
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -1158,6 +1156,7 @@ class PreprocessingPanel(QFrame):
 		self.ContentsFrame.hide()
 
 	def collapse_advanced(self):
+
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
@@ -1177,51 +1176,20 @@ class PreprocessingPanel(QFrame):
 		self.ContentsFrame = QFrame()
 		self.grid_contents = QGridLayout(self.ContentsFrame)
 
-		layout = QVBoxLayout()
-		self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
-		self.normalisation_lbl.setStyleSheet("""
-			font-weight: bold;
-			padding: 0px;
-			""")
-		layout.addWidget(self.normalisation_lbl, alignment=Qt.AlignCenter)
-		self.tabs = QTabWidget()
-		self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-		
-		self.tab2 = QWidget()
-		self.tab_condition = QWidget()
+		self.model_free_correction_layout = BackgroundModelFreeCorrectionLayout(self)
+		self.fit_correction_layout = BackgroundFitCorrectionLayout(self)
 
-		self.normalisation_list = QListWidget()
-		self.tabs.addTab(self.tab2, 'Fit method')
-		self.tabs.addTab(self.tab_condition, 'Model-free method')
-
-		self.fit_correction_layout = BackgroundFitCorrectionLayout(self, self.tab2)
-		#self.tab2.setLayout(self.fit_correction_layout)
-
-		self.populate_condition_norm_tab()
-		self.tab_condition.setLayout(self.tab_condition_layout)
-
-		layout.addWidget(self.tabs)
-		self.norm_list_lbl = QLabel('Background corrections to perform:')
-		hbox = QHBoxLayout()
-		hbox.addWidget(self.norm_list_lbl)
-		self.del_norm_btn = QPushButton("")
-		self.del_norm_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.del_norm_btn.setIcon(icon(MDI6.trash_can, color="black"))
-		self.del_norm_btn.setToolTip("Remove background correction")
-		self.del_norm_btn.setIconSize(QSize(20, 20))
-		hbox.addWidget(self.del_norm_btn, alignment=Qt.AlignRight)
-		layout.addLayout(hbox)
-		self.del_norm_btn.clicked.connect(self.remove_item_from_list)
-		layout.addWidget(self.normalisation_list)
-
+		self.protocol_layout = ProtocolDesignerLayout(parent=self,
+											  tab_layouts=[self.fit_correction_layout, self.model_free_correction_layout],
+											  tab_names=['Fit', 'Model-free'],
+											  title='BACKGROUND CORRECTION',
+											  list_title='Corrections to apply:')
+		self.grid_contents.addLayout(self.protocol_layout,0,0,1,4)
 		self.submit_preprocessing_btn = QPushButton("Submit")
 		self.submit_preprocessing_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
 		self.submit_preprocessing_btn.clicked.connect(self.launch_preprocessing)
-		layout.addWidget(self.submit_preprocessing_btn)
+		self.grid_contents.addWidget(self.submit_preprocessing_btn, 1,0,1,4)
 
-		
-
-		self.grid_contents.addLayout(layout, 0,0,1,4)
 
 	def launch_preprocessing(self):
 		
@@ -1247,6 +1215,7 @@ class PreprocessingPanel(QFrame):
 				return None
 			if returnValue == QMessageBox.No:
 				return None
+		
 		print('Proceed with correction...')
 
 		if self.parent.well_list.currentText()=='*':
@@ -1259,7 +1228,8 @@ class PreprocessingPanel(QFrame):
 		else:
 			pos_option = self.parent.position_list.currentIndex()-1
 
-		for k,correction_protocol in enumerate(self.background_correction):
+
+		for k,correction_protocol in enumerate(self.protocol_layout.protocols):
 			
 			movie_prefix = None
 			export_prefix = 'Corrected'
@@ -1298,287 +1268,6 @@ class PreprocessingPanel(QFrame):
 		print('Done.')
 
 
-
-
-	def populate_condition_norm_tab(self):
-
-		self.tab_condition_layout = QGridLayout(self.tab_condition)
-		self.tab_condition_layout.setContentsMargins(15,15,15,15)
-		
-		channel_hbox = QHBoxLayout()
-		self.tab_condition_channel_dropdown = QComboBox()
-		self.tab_condition_channel_dropdown.addItems(self.channel_names)
-		channel_hbox.addWidget(QLabel('Channel: '), 25)
-		channel_hbox.addWidget(self.tab_condition_channel_dropdown, 75)
-		self.tab_condition_layout.addLayout(channel_hbox, 0,0,1,3)
-
-		acquisition_mode_hbox = QHBoxLayout()
-		acquisition_mode_hbox.addWidget(QLabel('Stack mode: '), 25)
-
-		self.acq_mode_group = QButtonGroup()
-		self.timeseries_rb = QRadioButton('timeseries')
-		self.timeseries_rb.setChecked(True)
-		self.tiles_rb = QRadioButton('tiles')
-
-		self.acq_mode_group.addButton(self.timeseries_rb, 0)
-		self.acq_mode_group.addButton(self.tiles_rb, 1)
-
-		# acq_options_hbox = QHBoxLayout()
-		# acq_options_hbox.setContentsMargins(0,0,0,0)
-		# acq_options_hbox.setSpacing(0)
-
-		# self.timeseries_rb = QRadioButton('timeseries')
-		# self.timeseries_rb.setChecked(True)
-		# self.tiles_rb = QRadioButton('tiles')
-
-		acquisition_mode_hbox.addWidget(self.timeseries_rb, 75//2, alignment=Qt.AlignCenter)
-		acquisition_mode_hbox.addWidget(self.tiles_rb, 75//2, alignment=Qt.AlignCenter)
-		# self.acq_mode_group.setLayout(acq_options_hbox)
-
-		# acquisition_mode_hbox.addWidget(self.acq_mode_group, 75)
-		self.tab_condition_layout.addLayout(acquisition_mode_hbox, 1,0,1,3)
-		
-		self.frame_range_slider = QLabeledRangeSlider()
-		frame_selection_layout = QuickSliderLayout(label='Time range: ',
-												  slider = self.frame_range_slider,
-												  slider_initial_value=(0,5),
-												  slider_range=(0,self.parent.len_movie),
-												  slider_tooltip='frame [#]',
-												  decimal_option = False,
-											 	 )
-		frame_selection_layout.qlabel.setToolTip('Frame range for which the background\nis most likely to be observed.')
-		self.tab_condition_layout.addLayout(frame_selection_layout, 2,0,1,3) # error triggered from parenting problem?
-
-		self.time_range_options = [self.frame_range_slider, frame_selection_layout.qlabel]
-		self.timeseries_rb.toggled.connect(self.activate_time_range)
-		self.tiles_rb.toggled.connect(self.activate_time_range)
-		
-		threshold_hbox = QHBoxLayout()
-		self.thresh_lbl = QLabel("Threshold: ")
-		self.thresh_lbl.setToolTip('Threshold on the STD-filtered image.\nPixel values above the threshold are\nconsidered as non-background and are\nmasked prior to background estimation.')
-		threshold_hbox.addWidget(self.thresh_lbl, 25)
-
-		self.check_threshold_cdt_btn = QPushButton()
-		self.check_threshold_cdt_btn.setIcon(icon(MDI6.image_check, color="k"))
-		self.check_threshold_cdt_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.check_threshold_cdt_btn.clicked.connect(self.set_std_threshold_for_model_free)
-
-		self.check_bg_btn = QPushButton()
-		self.check_bg_btn.setIcon(icon(MDI6.image_check, color="k"))
-		self.check_bg_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.check_bg_btn.setToolTip('View reconstructed background.')
-
-		self.test_correction_btn = QPushButton("")
-		self.test_correction_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.test_correction_btn.setIcon(icon(MDI6.eye_outline, color="black"))
-		self.test_correction_btn.setToolTip("View corrected image")
-		self.test_correction_btn.setIconSize(QSize(20, 20))
-		self.test_correction_btn.clicked.connect(self.preview_correction)
-
-		self.tab_cdt_submit = QPushButton()
-		self.tab_cdt_submit.setText('Add correction')
-		self.tab_cdt_submit.setIcon(icon(MDI6.plus, color="#1565c0"))
-		self.tab_cdt_submit.setToolTip('Add correction.')
-		self.tab_cdt_submit.setIconSize(QSize(25, 25))
-		#tab_cdt_submit.setStyleSheet(self.parent.parent.button_select_all)
-		self.tab_cdt_submit.setStyleSheet(self.parent.parent.button_style_sheet_2)
-		self.tab_cdt_submit.clicked.connect(self.add_item_to_list)
-
-		self.tab_cdt_std_le = ThresholdLineEdit(init_value=2, connected_buttons=[self.check_threshold_cdt_btn, self.check_bg_btn, self.test_correction_btn, self.tab_cdt_submit])
-		# self.tab_cdt_std_le = QLineEdit()
-		# self.tab_cdt_std_le.setText('2,0')
-		# self.tab_cdt_std_le.setValidator(self.onlyFloat)
-		# self.tab_cdt_std_le.setPlaceholderText('px > thresh are masked')
-		threshold_hbox.addWidget(self.tab_cdt_std_le, 70)
-
-		threshold_hbox.addWidget(self.check_threshold_cdt_btn, 5)
-
-		self.tab_condition_layout.addLayout(threshold_hbox, 3, 0, 1, 3)
-
-		self.well_slider = QLabeledSlider()
-		control_bg_layout = QuickSliderLayout(label='QC for well: ',
-											  slider = self.well_slider,
-											  slider_initial_value=1,
-											  slider_range=(1,len(self.wells)),
-											  slider_tooltip='well [#]',
-											  decimal_option = False,
-											  layout_ratio=(0.25,0.70)
-											  )
-
-		control_bg_layout.addWidget(self.check_bg_btn,5)
-
-		self.check_bg_btn.clicked.connect(self.estimate_bg)
-		self.tab_condition_layout.addLayout(control_bg_layout,4,0,1,3)
-
-
-		self.regress_cb = QCheckBox('Optimize for each frame?')
-		self.regress_cb.toggled.connect(self.activate_coef_options)
-		self.regress_cb.setChecked(False)
-		self.tab_condition_layout.addWidget(self.regress_cb, 5,0,1,3)
-
-
-		self.coef_range_slider = QLabeledDoubleRangeSlider()
-		self.coef_range_layout = QuickSliderLayout(label='Coef. range: ',
-											  slider = self.coef_range_slider,
-											  slider_initial_value=(0.95,1.05),
-											  slider_range=(0.75,1.25),
-											  slider_tooltip='Coefficient range to increase or decrease the background intensity level...',
-											  )
-		self.tab_condition_layout.addLayout(self.coef_range_layout, 6,0,1,3) # error triggered from parenting problem?
-
-		coef_nbr_hbox = QHBoxLayout()
-		self.nbr_coefs_lbl = QLabel("Nbr of coefs: ")
-		self.nbr_coefs_lbl.setToolTip('Number of coefficients to be tested within range.\nThe more, the slower.')
-		coef_nbr_hbox.addWidget(self.nbr_coefs_lbl, 25)
-		self.nbr_coef_le = QLineEdit()
-		self.nbr_coef_le.setText('100')
-		self.nbr_coef_le.setValidator(self.onlyInt)
-		self.nbr_coef_le.setPlaceholderText('nbr of coefs')
-		coef_nbr_hbox.addWidget(self.nbr_coef_le, 75)
-		self.tab_condition_layout.addLayout(coef_nbr_hbox, 7,0,1,3)
-
-		self.coef_widgets = [self.coef_range_layout.qlabel, self.coef_range_slider, self.nbr_coefs_lbl, self.nbr_coef_le]
-		for c in self.coef_widgets:
-			c.setEnabled(False)
-
-		self.operation_layout = OperationLayout()
-		self.tab_condition_layout.addLayout(self.operation_layout, 9, 0, 1, 3)		
-
-		correction_layout = QHBoxLayout()
-		correction_layout.addWidget(self.tab_cdt_submit, 95)
-		correction_layout.addWidget(self.test_correction_btn, 5)
-		self.tab_condition_layout.addLayout(correction_layout, 10, 0, 1, 3)
-
-
-	def preview_correction(self):
-
-		if self.parent.well_list.currentText()=="*" or self.parent.position_list.currentText()=="*":
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("Please select a single position...")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Ok)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				return None
-
-		if self.timeseries_rb.isChecked():
-			mode = "timeseries"
-		elif self.tiles_rb.isChecked():
-			mode = "tiles"
-
-		if self.regress_cb.isChecked():
-			optimize_option = True
-			opt_coef_range = self.coef_range_slider.value()
-			opt_coef_nbr = int(self.nbr_coef_le.text())
-		else:
-			optimize_option = False
-			opt_coef_range = None
-			opt_coef_nbr = None
-
-		if self.operation_layout.subtract_btn.isChecked():
-			operation = "subtract"
-		else:
-			operation = "divide"
-			clip = None
-
-		if self.operation_layout.clip_btn.isChecked() and self.operation_layout.subtract_btn.isChecked():
-			clip = True
-		else:
-			clip = False
-
-		corrected_stacks = correct_background_model_free(self.exp_dir, 
-						   well_option=self.parent.well_list.currentIndex(), #+1 ??
-						   position_option=self.parent.position_list.currentIndex()-1, #+1??
-						   target_channel=self.tab_condition_channel_dropdown.currentText(),
-						   mode = mode,
-						   threshold_on_std = self.tab_cdt_std_le.get_threshold(),
-						   frame_range = self.frame_range_slider.value(),
-						   optimize_option = optimize_option,
-						   opt_coef_range = opt_coef_range,
-						   opt_coef_nbr = opt_coef_nbr,
-						   operation = operation,
-						   clip = clip,
-						   export= False,
-						   return_stacks=True,
-						   show_progress_per_well = True,
-						   show_progress_per_pos = False,
-							)
-		
-
-		self.viewer = StackVisualizer(
-									  stack=corrected_stacks[0],
-									  window_title='Corrected channel',
-									  frame_slider = True,
-									  contrast_slider = True
-									 )
-		self.viewer.show()
-
-
-	def add_item_to_list(self):
-
-		if self.timeseries_rb.isChecked():
-			mode = "timeseries"
-		elif self.tiles_rb.isChecked():
-			mode = "tiles"
-
-		if self.regress_cb.isChecked():
-			optimize_option = True
-			opt_coef_range = self.coef_range_slider.value()
-			opt_coef_nbr = int(self.nbr_coef_le.text())
-		else:
-			optimize_option = False
-			opt_coef_range = None
-			opt_coef_nbr = None
-
-		if self.operation_layout.subtract_btn.isChecked():
-			operation = "subtract"
-		else:
-			operation = "divide"
-			clip = None
-
-		if self.operation_layout.clip_btn.isChecked() and self.operation_layout.subtract_btn.isChecked():
-			clip = True
-		else:
-			clip = False
-
-		dictionary = {
-					  "target_channel": self.tab_condition_channel_dropdown.currentText(),
-					  "correction_type": "model-free",
-					  "threshold_on_std": self.tab_cdt_std_le.get_threshold(),
-					  "frame_range": self.frame_range_slider.value(),
-					  "mode": mode,
-					  "optimize_option": optimize_option,
-					  "opt_coef_range": opt_coef_range,
-					  "opt_coef_nbr": opt_coef_nbr,
-					  "operation": operation,
-					  "clip": clip
-					 }
-
-		self.background_correction.append(dictionary)
-		correction_description = ""
-		for index, (key, value) in enumerate(dictionary.items()):
-			if index > 0:
-				correction_description += ", "
-			correction_description += str(key) + " : " + str(value)
-		self.normalisation_list.addItem(correction_description)
-
-	def remove_item_from_list(self):
-		current_item = self.normalisation_list.currentRow()
-		if current_item > -1:
-			del self.background_correction[current_item]
-			self.normalisation_list.takeItem(current_item)
-
-	def activate_coef_options(self):
-		
-
-		if self.regress_cb.isChecked():
-			for c in self.coef_widgets:
-				c.setEnabled(True)
-		else:
-			for c in self.coef_widgets:
-				c.setEnabled(False)			
-
 	def locate_image(self):
 
 		"""
@@ -1599,70 +1288,3 @@ class PreprocessingPanel(QFrame):
 				return None
 		else:
 			self.current_stack = movies[0]
-
-	def set_target_channel_for_model_free(self):
-
-		channel_indices = _extract_channel_indices_from_config(self.parent.exp_config, [self.tab_condition_channel_dropdown.currentText()])
-		self.target_channel = channel_indices[0]
-
-
-	def compute_mask(self, threshold_value):
-		
-		processed_frame = self.test_frame.copy().astype(float)
-		processed_frame = gauss_filter(processed_frame, 2)
-		std_frame = std_filter(processed_frame, 4)
-		
-		self.mask = std_frame > threshold_value
-		self.mask = fill_label_holes(self.mask).astype(int)
-
-	def set_std_threshold_for_model_free(self):
-
-		self.locate_image()	
-		self.set_target_channel_for_model_free()
-		thresh = self.tab_cdt_std_le.get_threshold()
-		if self.current_stack is not None and thresh is not None:
-			self.viewer = ThresholdedStackVisualizer(initial_threshold=thresh,
-													 parent_le = self.tab_cdt_std_le,
-													 preprocessing=[['gauss',2],["std",4]],
-													 stack_path=self.current_stack,
-													 n_channels=len(self.channel_names),
-													 target_channel=self.target_channel,
-													 window_title='Set the exclusion threshold',
-													 )
-			self.viewer.show()
-
-
-	def activate_time_range(self):
-
-		if self.timeseries_rb.isChecked():
-			for wg in self.time_range_options:
-				wg.setEnabled(True)
-		elif self.tiles_rb.isChecked():
-			for wg in self.time_range_options:
-				wg.setEnabled(False)
-
-	def estimate_bg(self):
-
-		if self.timeseries_rb.isChecked():
-			mode = "timeseries"
-		elif self.tiles_rb.isChecked():
-			mode = "tiles"
-
-		bg = estimate_background_per_condition(
-											  self.exp_dir, 
-											  well_option = self.well_slider.value() - 1,
-											  frame_range = self.frame_range_slider.value(),
-											  target_channel = self.tab_condition_channel_dropdown.currentText(),
-											  show_progress_per_pos = True,
-											  threshold_on_std = self.tab_cdt_std_le.get_threshold(),
-											  mode = mode,
-										  	)
-		bg = bg[0]
-		bg = bg['bg']
-
-		self.viewer = StackVisualizer(
-									  stack=[bg],
-									  window_title='Reconstructed background',
-									  frame_slider = False,
-									 )
-		self.viewer.show()

@@ -419,265 +419,6 @@ class FigureCanvas(QWidget):
 		plt.close(self.fig)
 		super(FigureCanvas, self).closeEvent(event)
 
-class StackVisualizer(QWidget):
-
-	"""
-	A widget around an imshow and accompanying sliders.
-	"""
-	def __init__(self, stack=None, stack_path=None, frame_slider=True, contrast_slider=True, channel_cb=False, channel_names=None, n_channels=1, target_channel=0, window_title='View', imshow_kwargs={}):
-		super().__init__()
-
-		#self.setWindowTitle(window_title)
-		self.window_title = window_title
-
-		self.stack = stack
-		self.stack_path = stack_path
-		self.create_frame_slider = frame_slider
-		self.create_contrast_slider = contrast_slider
-		self.create_channel_cb = channel_cb
-		self.n_channels = n_channels
-		self.channel_names = channel_names
-		self.target_channel = target_channel
-		self.imshow_kwargs = imshow_kwargs
-
-		self.load_stack() # need to get stack, frame etc
-		self.generate_figure_canvas()
-		if self.create_channel_cb:
-			self.generate_channel_cb()
-		if self.create_contrast_slider:
-			self.generate_contrast_slider()
-		if self.create_frame_slider:
-			self.generate_frame_slider()
-
-		center_window(self)
-		self.setAttribute(Qt.WA_DeleteOnClose)
-
-	def show(self):
-		self.canvas.show()
-
-	def load_stack(self):
-
-		if self.stack is not None:
-
-			if isinstance(self.stack, list):
-				self.stack = np.array(self.stack)
-
-			if self.stack.ndim==3:
-				print('No channel axis found...')
-				self.stack = self.stack[:,:,:,np.newaxis]
-				self.target_channel = 0
-
-			self.mode = 'direct'
-			self.stack_length = len(self.stack)
-			self.mid_time = self.stack_length // 2
-			self.init_frame = self.stack[self.mid_time,:,:,self.target_channel]
-		else:
-			self.mode = 'virtual'
-			assert isinstance(self.stack_path, str)
-			assert self.stack_path.endswith('.tif')
-			self.locate_image_virtual()
-
-	def locate_image_virtual(self):
-
-		self.stack_length = auto_load_number_of_frames(self.stack_path)
-		if self.stack_length is None:
-			stack = imread(self.stack_path)
-			self.stack_length = len(stack)
-			del stack
-			gc.collect()
-
-		self.mid_time = self.stack_length // 2
-		self.init_frame = load_frames(self.n_channels * self.mid_time + np.arange(self.n_channels), 
-									  self.stack_path,
-									  normalize_input=False).astype(float)[:,:,self.target_channel]
-
-	def generate_figure_canvas(self):
-
-		self.fig, self.ax = plt.subplots(figsize=(5, 5))
-		self.canvas = FigureCanvas(self.fig, title=self.window_title, interactive=True)
-		self.ax.clear()
-		self.im = self.ax.imshow(self.init_frame, cmap='gray', interpolation='none', **self.imshow_kwargs)
-		self.ax.set_xticks([])
-		self.ax.set_yticks([])
-		self.fig.set_facecolor('none')  # or 'None'
-		self.fig.canvas.setStyleSheet("background-color: transparent;")
-		self.canvas.canvas.draw()
-
-	def generate_channel_cb(self):
-
-		assert self.channel_names is not None
-		assert len(self.channel_names)==self.n_channels
-
-		channel_layout = QHBoxLayout()
-		channel_layout.setContentsMargins(15,0,15,0)
-		channel_layout.addWidget(QLabel('Channel: '), 25)
-
-		self.channels_cb = QComboBox()
-		self.channels_cb.addItems(self.channel_names)
-		self.channels_cb.currentIndexChanged.connect(self.set_channel_index)
-		channel_layout.addWidget(self.channels_cb, 75)
-
-	def generate_contrast_slider(self):
-		
-		self.contrast_slider = QLabeledDoubleRangeSlider()
-		contrast_layout = QuickSliderLayout(
-											label='Contrast: ',
-											slider=self.contrast_slider,
-											slider_initial_value=[np.nanpercentile(self.init_frame, 1),np.nanpercentile(self.init_frame, 99.99)],
-											slider_range=(np.nanmin(self.init_frame),np.nanmax(self.init_frame)),
-											decimal_option=True,
-											precision=1.0E-05,
-											)
-		contrast_layout.setContentsMargins(15,0,15,0)
-		self.im.set_clim(vmin=np.nanpercentile(self.init_frame, 1),vmax=np.nanpercentile(self.init_frame, 99.99))
-		self.contrast_slider.valueChanged.connect(self.change_contrast)
-		self.canvas.layout.addLayout(contrast_layout)
-
-	def generate_frame_slider(self):
-	
-		self.frame_slider = QLabeledSlider()
-		frame_layout = QuickSliderLayout(
-										label='Frame: ',
-										slider=self.frame_slider,
-										slider_initial_value=int(self.mid_time),
-										slider_range=(0,self.stack_length-1),
-										decimal_option=False,
-										)
-		frame_layout.setContentsMargins(15,0,15,0)
-		self.frame_slider.valueChanged.connect(self.change_frame)
-		self.canvas.layout.addLayout(frame_layout)
-
-	def set_target_channel(self, value):
-		
-		self.target_channel = value
-		self.change_frame(self.frame_slider.value())
-
-	def change_contrast(self, value):
-
-		vmin = value[0]
-		vmax = value[1]
-		self.im.set_clim(vmin=vmin, vmax=vmax)
-		self.fig.canvas.draw_idle()
-
-	def change_frame(self, value):
-		
-		if self.mode=='virtual':
-
-			self.init_frame = load_frames(self.n_channels * value + np.arange(self.n_channels), 
-								self.stack_path,
-								normalize_input=False
-								).astype(float)[:,:,self.target_channel]
-		elif self.mode=='direct':
-			self.init_frame = self.stack[value,:,:,self.target_channel].copy()
-		
-		self.im.set_data(self.init_frame)
-		
-		if self.create_contrast_slider:
-			self.change_contrast(self.contrast_slider.value())
-	
-	def closeEvent(self, event):
-		self.canvas.close()
-
-
-class ThresholdedStackVisualizer(StackVisualizer):
-
-	"""
-	A widget around an imshow and accompanying sliders.
-	"""
-	def __init__(self, preprocessing=None, parent_le=None, initial_threshold=5, initial_mask_alpha=0.5, *args, **kwargs):
-		
-		super().__init__(*args, **kwargs)
-		self.preprocessing = preprocessing
-		self.thresh = initial_threshold
-		self.mask_alpha = initial_mask_alpha
-		self.parent_le = parent_le
-		self.compute_mask(self.thresh)
-		self.generate_mask_imshow()
-		self.generate_threshold_slider()
-		self.generate_opacity_slider()
-		if isinstance(self.parent_le, QLineEdit):
-			self.generate_apply_btn()
-
-	def generate_apply_btn(self):
-		
-		apply_hbox = QHBoxLayout()
-		self.apply_threshold_btn = QPushButton('Apply')
-		self.apply_threshold_btn.clicked.connect(self.set_threshold_in_parent_le)
-		#self.apply_threshold_btn.setStyleSheet(self.parent.parent.button_style_sheet)
-		apply_hbox.addWidget(QLabel(''),33)
-		apply_hbox.addWidget(self.apply_threshold_btn, 33)
-		apply_hbox.addWidget(QLabel(''),33)		
-		self.canvas.layout.addLayout(apply_hbox)
-
-	def set_threshold_in_parent_le(self):
-		self.parent_le.set_threshold(self.threshold_slider.value())
-		self.close()
-
-	def generate_mask_imshow(self):
-		
-		self.im_mask = self.ax.imshow(np.ma.masked_where(self.mask==0, self.mask), alpha=self.mask_alpha, interpolation='none')
-		self.canvas.canvas.draw()
-
-	def generate_threshold_slider(self):
-
-		self.threshold_slider = QLabeledDoubleSlider()
-		thresh_layout = QuickSliderLayout(label='Threshold: ',
-										slider=self.threshold_slider,
-										slider_initial_value=self.thresh,
-										slider_range=(0,30),
-										decimal_option=True,
-										precision=1.0E-05,
-										)
-		thresh_layout.setContentsMargins(15,0,15,0)
-		self.threshold_slider.valueChanged.connect(self.change_threshold)
-		self.canvas.layout.addLayout(thresh_layout)
-
-	def generate_opacity_slider(self):
-
-		self.opacity_slider = QLabeledDoubleSlider()
-		opacity_layout = QuickSliderLayout(label='Opacity: ',
-										slider=self.opacity_slider,
-										slider_initial_value=0.5,
-										slider_range=(0,1),
-										decimal_option=True,
-										precision=1.0E-03
-										)
-		opacity_layout.setContentsMargins(15,0,15,0)
-		self.opacity_slider.valueChanged.connect(self.change_mask_opacity)
-		self.canvas.layout.addLayout(opacity_layout)
-
-	def change_mask_opacity(self, value):
-
-		self.mask_alpha = value
-		self.im_mask.set_alpha(self.mask_alpha)
-		self.canvas.canvas.draw_idle()
-
-	def change_threshold(self, value):
-		
-		self.thresh = value
-		self.compute_mask(self.thresh)
-		mask = np.ma.masked_where(self.mask == 0, self.mask)
-		self.im_mask.set_data(mask)
-		self.canvas.canvas.draw_idle()
-
-	def change_frame(self, value):
-		
-		super().change_frame(value)
-		self.change_threshold(self.threshold_slider.value())
-
-	def compute_mask(self, threshold_value):
-
-		self.preprocess_image()
-		self.mask = self.processed_image > threshold_value
-		self.mask = fill_label_holes(self.mask).astype(int)
-
-	def preprocess_image(self):
-		
-		if self.preprocessing is not None:
-
-			assert isinstance(self.preprocessing, list)
-			self.processed_image = filter_image(self.init_frame.copy(),filters=self.preprocessing)
-
 
 class QuickSliderLayout(QHBoxLayout):
 	
@@ -713,6 +454,7 @@ class ThresholdLineEdit(QLineEdit):
 	def __init__(self, init_value=2.0, connected_buttons=None, placeholder='px > thresh are masked',value_type='float',*args):
 		super().__init__(*args)
 
+		self.init_value = init_value
 		self.value_type = value_type 
 		self.connected_buttons = connected_buttons
 		self.setPlaceholderText(placeholder)
@@ -720,11 +462,13 @@ class ThresholdLineEdit(QLineEdit):
 		if self.value_type=="float":
 			self.setValidator(QDoubleValidator())
 		else:
+			self.init_value = int(self.init_value)
 			self.setValidator(QIntValidator())
 
 		if self.connected_buttons is not None:
 			self.textChanged.connect(self.enable_btn)
-		self.set_threshold(init_value)
+		print("init value of ",self.init_value," for threshold LE")
+		self.set_threshold(self.init_value)
 
 	def enable_btn(self):
 

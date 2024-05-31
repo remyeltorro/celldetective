@@ -15,15 +15,15 @@ import os
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QListWidget
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import FigureCanvas, QuickSliderLayout, center_window
+from celldetective.gui import Styles
 from superqt import QLabeledDoubleSlider, QLabeledSlider, QLabeledDoubleRangeSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from matplotlib_scalebar.scalebar import ScaleBar
-
 import gc
 
 
-class StackVisualizer(QWidget):
+class StackVisualizer(QWidget, Styles):
 
 	"""
 	A widget around an imshow and accompanying sliders.
@@ -260,7 +260,7 @@ class ThresholdedStackVisualizer(StackVisualizer):
 		apply_hbox = QHBoxLayout()
 		self.apply_threshold_btn = QPushButton('Apply')
 		self.apply_threshold_btn.clicked.connect(self.set_threshold_in_parent_le)
-		#self.apply_threshold_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+		self.apply_threshold_btn.setStyleSheet(self.button_style_sheet)
 		apply_hbox.addWidget(QLabel(''),33)
 		apply_hbox.addWidget(self.apply_threshold_btn, 33)
 		apply_hbox.addWidget(QLabel(''),33)		
@@ -404,9 +404,9 @@ class CellEdgeVisualizer(StackVisualizer):
 		add_hbox = QHBoxLayout()
 		self.add_measurement_btn = QPushButton('Add measurement')
 		self.add_measurement_btn.clicked.connect(self.set_measurement_in_parent_list)
-		self.add_measurement_btn.setIcon(icon(MDI6.plus,color="#1565c0"))
+		self.add_measurement_btn.setIcon(icon(MDI6.plus,color="white"))
 		self.add_measurement_btn.setIconSize(QSize(20, 20))
-		#self.apply_threshold_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+		self.add_measurement_btn.setStyleSheet(self.button_style_sheet)
 		add_hbox.addWidget(QLabel(''),33)
 		add_hbox.addWidget(self.add_measurement_btn, 33)
 		add_hbox.addWidget(QLabel(''),33)		
@@ -417,9 +417,7 @@ class CellEdgeVisualizer(StackVisualizer):
 		add_hbox = QHBoxLayout()
 		self.set_measurement_btn = QPushButton('Set')
 		self.set_measurement_btn.clicked.connect(self.set_measurement_in_parent_le)
-		#self.add_measurement_btn.setIcon(icon(MDI6.plus,color="#1565c0"))
-		#self.add_measurement_btn.setIconSize(QSize(20, 20))
-		#self.apply_threshold_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+		self.set_measurement_btn.setStyleSheet(self.button_style_sheet)
 		add_hbox.addWidget(QLabel(''),33)
 		add_hbox.addWidget(self.set_measurement_btn, 33)
 		add_hbox.addWidget(QLabel(''),33)		
@@ -443,7 +441,6 @@ class CellEdgeVisualizer(StackVisualizer):
 	def generate_edge_slider(self):
 
 		self.edge_slider = QLabeledSlider()
-		print(f"{self.edge_size=}")
 		edge_layout = QuickSliderLayout(label='Edge: ',
 										slider=self.edge_slider,
 										slider_initial_value=self.edge_size,
@@ -539,7 +536,7 @@ class CellSizeViewer(StackVisualizer):
 		apply_hbox = QHBoxLayout()
 		self.apply_threshold_btn = QPushButton('Set')
 		self.apply_threshold_btn.clicked.connect(self.set_threshold_in_parent_le)
-		#self.apply_threshold_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+		self.apply_threshold_btn.setStyleSheet(self.button_style_sheet)
 		apply_hbox.addWidget(QLabel(''),33)
 		apply_hbox.addWidget(self.apply_threshold_btn, 33)
 		apply_hbox.addWidget(QLabel(''),33)		

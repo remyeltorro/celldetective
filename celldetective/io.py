@@ -559,6 +559,9 @@ def locate_stack(position, prefix='Aligned'):
 
 	"""
 
+	if not position.endswith(os.sep):
+		position+=os.sep
+
 	stack_path = glob(position+os.sep.join(['movie', f'{prefix}*.tif']))
 	assert len(stack_path)>0,f"No movie with prefix {prefix} found..."
 	stack = imread(stack_path[0].replace('\\','/'))
@@ -603,7 +606,9 @@ def locate_labels(position, population='target'):
 
 	"""
 
-
+	if not position.endswith(os.sep):
+		position+=os.sep
+	
 	if population.lower()=="target" or population.lower()=="targets":
 		label_path = natsorted(glob(position+os.sep.join(["labels_targets", "*.tif"])))
 	elif population.lower()=="effector" or population.lower()=="effectors":

@@ -507,13 +507,14 @@ class CellSizeViewer(StackVisualizer):
 	"""
 	A widget around an imshow and accompanying sliders.
 	"""
-	def __init__(self, initial_diameter=40, diameter_slider_range=(0,200), parent_le=None, parent_list_widget=None, *args, **kwargs):
+	def __init__(self, initial_diameter=40, set_radius_in_list=False, diameter_slider_range=(0,200), parent_le=None, parent_list_widget=None, *args, **kwargs):
 		
 		super().__init__(*args, **kwargs)
 		self.diameter = initial_diameter
 		self.parent_le = parent_le
 		self.diameter_slider_range = diameter_slider_range
 		self.parent_list_widget = parent_list_widget
+		self.set_radius_in_list = set_radius_in_list
 		self.generate_circle()
 		self.generate_diameter_slider()
 
@@ -544,8 +545,12 @@ class CellSizeViewer(StackVisualizer):
 		self.canvas.layout.addLayout(add_hbox)
 
 	def set_measurement_in_parent_list(self):
+		if self.set_radius_in_list:
+			val = int(self.diameter_slider.value()//2)
+		else:
+			val = int(self.diameter_slider.value())
 		
-		self.parent_list_widget.addItems([str(self.diameter_slider.value()//2)])
+		self.parent_list_widget.addItems([str(val)])
 		self.close()
 
 	def on_xlims_or_ylims_change(self, event_ax):

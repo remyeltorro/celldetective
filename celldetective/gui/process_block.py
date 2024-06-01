@@ -899,6 +899,7 @@ class NeighPanel(QFrame, Styles):
 		self.exp_channels = self.parent.exp_channels
 		self.exp_dir = self.parent.exp_dir
 		self.wells = np.array(self.parent.wells,dtype=str)
+		self.protocols = []
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -916,12 +917,12 @@ class NeighPanel(QFrame, Styles):
 
 		self.grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
 
-		self.select_all_btn = QPushButton()
-		self.select_all_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
-		self.select_all_btn.setIconSize(QSize(20, 20))
-		self.all_ticked = False
-		self.select_all_btn.setStyleSheet(self.button_select_all)
-		self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
+		# self.select_all_btn = QPushButton()
+		# self.select_all_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
+		# self.select_all_btn.setIconSize(QSize(20, 20))
+		# self.all_ticked = False
+		# self.select_all_btn.setStyleSheet(self.button_select_all)
+		# self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
 		
 		self.collapse_btn = QPushButton()
 		self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
@@ -941,19 +942,24 @@ class NeighPanel(QFrame, Styles):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.w.adjustSize()
+			self.parent.scroll.setMinimumHeight(int(500))
+			#self.parent.w.adjustSize()
 			self.parent.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.w.adjustSize()
-			self.parent.adjustSize()
+			#self.parent.w.adjustSize()
+			#self.parent.adjustSize()
+			self.parent.scroll.setMinimumHeight(min(int(750), int(0.8*self.parent.screen_height)))
+			self.parent.scroll.setMinimumWidth(410)
+
 
 	def populate_contents(self):
 
 		self.ContentsFrame = QFrame()
 		self.grid_contents = QGridLayout(self.ContentsFrame)
 		self.grid_contents.setContentsMargins(0,0,0,0)
+		self.grid_contents.setSpacing(0)
 
 
 		# DISTANCE NEIGHBORHOOD
@@ -961,21 +967,21 @@ class NeighPanel(QFrame, Styles):
 		dist_neigh_hbox.setContentsMargins(0,0,0,0)
 		dist_neigh_hbox.setSpacing(0)
 
-		self.dist_neigh_action = QCheckBox("DISTANCE CUT")
+		self.dist_neigh_action = QLabel("ISOTROPIC DISTANCE THRESHOLD")
 		self.dist_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
-		self.dist_neigh_action.setIcon(icon(MDI6.circle_expand, color='black'))
-		self.dist_neigh_action.setToolTip("Match cells for which the center of mass is within a threshold distance of each other.")
+		#self.dist_neigh_action.setIcon(icon(MDI6.circle_expand, color='black'))
+		self.dist_neigh_action.setToolTip("")
 		#self.segment_action.toggled.connect(self.enable_segmentation_model_list)
 		#self.to_disable.append(self.segment_action)
-		dist_neigh_hbox.addWidget(self.dist_neigh_action, 95)
 		
 		self.config_distance_neigh_btn = QPushButton()
-		self.config_distance_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
+		self.config_distance_neigh_btn.setIcon(icon(MDI6.plus,color="black"))
 		self.config_distance_neigh_btn.setIconSize(QSize(20, 20))
-		self.config_distance_neigh_btn.setToolTip("Configure distance cut neighbourhood computation.")
+		self.config_distance_neigh_btn.setToolTip("")
 		self.config_distance_neigh_btn.setStyleSheet(self.button_select_all)
 		self.config_distance_neigh_btn.clicked.connect(self.open_config_distance_threshold_neighborhood)
 		dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
+		dist_neigh_hbox.addWidget(self.dist_neigh_action, 95)
 
 		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
 
@@ -984,27 +990,51 @@ class NeighPanel(QFrame, Styles):
 		contact_neighborhood_layout.setContentsMargins(0,0,0,0)
 		contact_neighborhood_layout.setSpacing(0)
 
-		self.contact_neigh_action = QCheckBox("MASK CONTACT")
+		self.contact_neigh_action = QLabel("MASK CONTACT")
 		self.contact_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
-		self.contact_neigh_action.setIcon(icon(MDI6.transition_masked, color='black'))
+		#self.contact_neigh_action.setIcon(icon(MDI6.transition_masked, color='black'))
 		self.contact_neigh_action.setToolTip("")
-		contact_neighborhood_layout.addWidget(self.contact_neigh_action, 95)
 		
 		self.config_contact_neigh_btn = QPushButton()
-		self.config_contact_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
+		self.config_contact_neigh_btn.setIcon(icon(MDI6.plus,color="black"))
 		self.config_contact_neigh_btn.setIconSize(QSize(20, 20))
-		self.config_contact_neigh_btn.setToolTip("Configure distance cut neighbourhood computation.")
+		self.config_contact_neigh_btn.setToolTip("")
 		self.config_contact_neigh_btn.setStyleSheet(self.button_select_all)
 		self.config_contact_neigh_btn.clicked.connect(self.open_config_contact_neighborhood)
 		contact_neighborhood_layout.addWidget(self.config_contact_neigh_btn,5)
+		contact_neighborhood_layout.addWidget(self.contact_neigh_action, 95)
 
 		self.grid_contents.addLayout(contact_neighborhood_layout, 1,0,1,4)
 
 		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
+
+		self.delete_protocol_btn = QPushButton('')
+		self.delete_protocol_btn.setStyleSheet(self.button_select_all)
+		self.delete_protocol_btn.setIcon(icon(MDI6.trash_can, color="black"))
+		self.delete_protocol_btn.setToolTip("Remove.")
+		self.delete_protocol_btn.setIconSize(QSize(20, 20))
+		self.delete_protocol_btn.clicked.connect(self.remove_protocol_from_list)
+
+		self.protocol_list_lbl = QLabel('Neighborhoods to compute: ')
+		self.protocol_list = QListWidget()
+
+		list_header_layout = QHBoxLayout()
+		list_header_layout.addWidget(self.protocol_list_lbl)
+		list_header_layout.addWidget(self.delete_protocol_btn, alignment=Qt.AlignRight)
+		self.grid_contents.addLayout(list_header_layout, 3, 0, 1, 4)
+		self.grid_contents.addWidget(self.protocol_list, 4, 0, 1, 4)
+
 		self.submit_btn = QPushButton("Submit")
 		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
 		self.submit_btn.clicked.connect(self.process_neighborhood)
-		self.grid_contents.addWidget(self.submit_btn, 3, 0, 1, 4)
+		self.grid_contents.addWidget(self.submit_btn, 5, 0, 1, 4)
+
+	def remove_protocol_from_list(self):
+
+		current_item = self.protocol_list.currentRow()
+		if current_item > -1:
+			del self.protocols[current_item]
+			self.protocol_list.takeItem(current_item)
 
 	def open_config_distance_threshold_neighborhood(self):
 

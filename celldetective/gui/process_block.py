@@ -27,7 +27,7 @@ from celldetective.gui.gui_utils import center_window
 from tifffile import imwrite
 import json
 import psutil
-from celldetective.neighborhood import compute_neighborhood_at_position
+from celldetective.neighborhood import compute_neighborhood_at_position, compute_contact_neighborhood_at_position
 from celldetective.gui.gui_utils import FigureCanvas
 import matplotlib.pyplot as plt
 from celldetective.filters import std_filter, median_filter, gauss_filter
@@ -1098,33 +1098,33 @@ class NeighPanel(QFrame, Styles):
 				if not os.path.exists(self.pos + os.sep.join(['output','tables'])+os.sep):
 					os.mkdir(self.pos + os.sep.join(['output','tables'])+os.sep)
 
-				if self.dist_neigh_action.isChecked():
-				
-					config = self.exp_dir + os.sep.join(["configs","neighborhood_instructions.json"])
-					
-					if not os.path.exists(config):
-						print('config could not be found', config)
-						msgBox = QMessageBox()
-						msgBox.setIcon(QMessageBox.Warning)
-						msgBox.setText("Please define a neighborhood first.")
-						msgBox.setWindowTitle("Info")
-						msgBox.setStandardButtons(QMessageBox.Ok)
-						returnValue = msgBox.exec()
-						return None
+				for protocol in self.protocols:
 
-					with open(config, 'r') as f:
-						config = json.load(f)
+					if protocol['neighborhood_type']=='distance_threshold':
+						
+						compute_neighborhood_at_position(self.pos, 
+														protocol['distance'], 
+														population=protocol['population'], 
+														theta_dist=None, 
+														img_shape=(self.parent.shape_x,self.parent.shape_y), 
+														return_tables=False,
+														clear_neigh=protocol['clear_neigh'],
+														event_time_col=protocol['event_time_col'],
+														neighborhood_kwargs=protocol['neighborhood_kwargs'],
+														)
 
-					compute_neighborhood_at_position(self.pos, 
-													config['distance'], 
-													population=config['population'], 
-													theta_dist=None, 
-													img_shape=(self.parent.shape_x,self.parent.shape_y), 
-													return_tables=False,
-													clear_neigh=config['clear_neigh'],
-													event_time_col=config['event_time_col'],
-													neighborhood_kwargs=config['neighborhood_kwargs'],
-													)
+					elif protocol['neighborhood_type']=='mask_contact':
+
+						compute_contact_neighborhood_at_position(self.pos, 
+														protocol['distance'], 
+														population=protocol['population'], 
+														theta_dist=None, 
+														img_shape=(self.parent.shape_x,self.parent.shape_y), 
+														return_tables=False,
+														clear_neigh=protocol['clear_neigh'],
+														event_time_col=protocol['event_time_col'],
+														neighborhood_kwargs=protocol['neighborhood_kwargs'],
+														)
 		print('Done.')
 
 

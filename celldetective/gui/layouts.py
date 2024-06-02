@@ -78,8 +78,10 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 
 		threshold_layout = QHBoxLayout()
 		threshold_layout.addWidget(self.thresh_lbl, 25)
-		threshold_layout.addWidget(self.threshold_le, 70)
-		threshold_layout.addWidget(self.threshold_viewer_btn, 5)
+		subthreshold_layout = QHBoxLayout()
+		subthreshold_layout.addWidget(self.threshold_le, 95)
+		subthreshold_layout.addWidget(self.threshold_viewer_btn, 5)
+		threshold_layout.addLayout(subthreshold_layout, 75)
 		self.addLayout(threshold_layout, 1, 0, 1, 3)
 
 		model_layout = QHBoxLayout()
@@ -528,8 +530,10 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 		
 		threshold_layout = QHBoxLayout()
 		threshold_layout.addWidget(self.thresh_lbl, 25)
-		threshold_layout.addWidget(self.threshold_le, 70)
-		threshold_layout.addWidget(self.threshold_viewer_btn, 5)
+		subthreshold_layout = QHBoxLayout()
+		subthreshold_layout.addWidget(self.threshold_le, 95)
+		subthreshold_layout.addWidget(self.threshold_viewer_btn, 5)
+		threshold_layout.addLayout(subthreshold_layout, 75)
 		self.addLayout(threshold_layout, 3, 0, 1, 3)
 
 		background_layout = QuickSliderLayout(label='QC for well: ',

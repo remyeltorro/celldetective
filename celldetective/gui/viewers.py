@@ -57,6 +57,7 @@ class StackVisualizer(QWidget, Styles):
 			self.generate_frame_slider()
 
 		center_window(self)
+		self.canvas.layout.setContentsMargins(15,15,15,30)
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def show(self):

@@ -30,6 +30,7 @@ from skimage.measure import regionprops_table
 import json
 import os
 
+from celldetective.gui.viewers import StackVisualizer
 
 class ThresholdConfigWizard(QMainWindow):
 	"""

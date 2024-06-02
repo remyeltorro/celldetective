@@ -89,6 +89,9 @@ class ControlPanel(QMainWindow):
 		self.screen_width = desktop.screenGeometry().width()
 		self.scroll.setMinimumWidth(425)
 
+	def parent(self):
+		return self.parent
+
 	def init_wells_and_positions(self):
 
 		"""
@@ -180,8 +183,11 @@ class ControlPanel(QMainWindow):
 		pos_lbl = QLabel('Position: ')
 		pos_lbl.setAlignment(Qt.AlignRight)
 		position_layout.addWidget(pos_lbl, 32)
-		position_layout.addWidget(self.position_list, 63)
-		position_layout.addWidget(self.view_stack_btn, 5)
+
+		subposition_layout = QHBoxLayout()
+		subposition_layout.addWidget(self.position_list, 95)
+		subposition_layout.addWidget(self.view_stack_btn, 5)
+		position_layout.addLayout(subposition_layout, 68)
 		self.grid.addLayout(position_layout, 2, 0, 1, 3)
 
 		

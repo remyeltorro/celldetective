@@ -410,7 +410,12 @@ class FigureCanvas(QWidget):
 		self.layout.addWidget(self.canvas)
 		if interactive:
 			self.layout.addWidget(self.toolbar)
+
 		center_window(self)
+		self.setAttribute(Qt.WA_DeleteOnClose)
+
+	def draw(self):
+		self.canvas.draw()
 
 	def closeEvent(self, event):
 		""" Delete figure on closing window. """

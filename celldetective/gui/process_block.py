@@ -572,7 +572,6 @@ class ProcessPanel(QFrame):
 			hbox.addWidget(QLabel('diameter [px]: '), 33)
 			hbox.addWidget(self.diameter_le, 66)
 			layout.addLayout(hbox)
-
 			self.flow_slider = QLabeledDoubleSlider()
 			self.flow_slider.setOrientation(1)
 			self.flow_slider.setRange(-6,6)
@@ -853,7 +852,7 @@ class ProcessPanel(QFrame):
 class NeighPanel(QFrame):
 	def __init__(self, parent):
 
-		super().__init__()		
+		super().__init__()
 		self.parent = parent
 		self.exp_channels = self.parent.exp_channels
 		self.exp_dir = self.parent.exp_dir
@@ -895,7 +894,6 @@ class NeighPanel(QFrame):
 		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.populate_contents()
-		
 		self.grid.addWidget(self.ContentsFrame, 1, 0, 1, 4, alignment=Qt.AlignTop)
 		self.collapse_btn.clicked.connect(lambda: self.ContentsFrame.setHidden(not self.ContentsFrame.isHidden()))
 		self.collapse_btn.clicked.connect(self.collapse_advanced)

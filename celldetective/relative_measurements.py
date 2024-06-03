@@ -104,15 +104,27 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist, target_lysis_c
                         (coords[idx1, 0] - coords_nk[idx2, 0]) ** 2 + (coords[idx1, 1] - coords_nk[idx2, 1]) ** 2)
                     relative_distance_xy1[t, 0] = coords[idx1, 0] - coords_nk[idx2, 0]
                     relative_distance_xy1[t, 1] = coords[idx1, 1] - coords_nk[idx2, 1]
-                    relative_angle1[t] = np.arctan2(relative_distance_xy1[t, 1],
-                                                    relative_distance_xy1[t, 0]) * 180 / np.pi
+                    angle1 = np.arctan2(relative_distance_xy1[t, 1], relative_distance_xy1[t, 0]) * 180 / np.pi
+                    if angle1 < 0:
+                        angle1 += 360
+                    relative_angle1[t] = angle1
                     relative_distance_xy2[t, 0] = coords_nk[idx2, 0] - coords[idx1, 0]
                     relative_distance_xy2[t, 1] = coords_nk[idx2, 1] - coords[idx1, 1]
-                    relative_angle2[t] = np.arctan2(relative_distance_xy2[t, 1],
-                                                    relative_distance_xy2[t, 0]) * 180 / np.pi
+                    angle2 = np.arctan2(relative_distance_xy2[t, 1], relative_distance_xy2[t, 0]) * 180 / np.pi
+                    if angle2 < 0:
+                        angle2 += 360
+                    relative_angle2[t] = angle2
 
             dddt = derivative(relative_distance, full_timeline, **velocity_kwargs)
+            angular_velocity = np.zeros(len(full_timeline))
+            angular_velocity[:] = np.nan
 
+            for t in range(1, len(relative_angle1)):
+                if not np.isnan(relative_angle1[t]) and not np.isnan(relative_angle1[t - 1]):
+                    delta_angle = relative_angle1[t] - relative_angle1[t - 1]
+                    delta_time = full_timeline[t] - full_timeline[t - 1]
+                    if delta_time != 0:
+                        angular_velocity[t] = delta_angle / delta_time
             nk_synapse = group_nk.loc[group_nk['FRAME'] <= ceil(t0), 'live_status'].to_numpy()
             if len(nk_synapse) > 0:
                 nk_synapse = int(np.any(nk_synapse.astype(bool)))
@@ -160,7 +172,7 @@ def relative_quantities_per_pos2(pos, target_classes, neigh_dist, target_lysis_c
             for t in range(len(relative_distance)):
                 df_rel.append({'TARGET_ID': tid, 'EFFECTOR_ID': nk, 'FRAME': t, 'distance': relative_distance[t],
                                'velocity': dddt[t], 't0_lysis': t0, 'angle_tc-eff': relative_angle1[t],
-                               'angle-eff-tc': relative_angle2[t],'probability':0})
+                               'angle-eff-tc': relative_angle2[t],'probability':0,'angular_velocity': angular_velocity[t]})
     pts = pd.DataFrame(pts)
     probs = probabilities(pts)
     df_rel = pd.DataFrame(df_rel)

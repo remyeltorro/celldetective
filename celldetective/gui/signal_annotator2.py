@@ -2543,7 +2543,6 @@ class SignalAnnotator2(QMainWindow):
                 for t,idx in zip(self.effector_loc_t,self.effector_loc_idx):
                     self.effector_previous_color.append(self.effector_colors[t][idx].copy())
                     self.effector_colors[t][idx] = 'magenta'
-                    print(self.effector_colors)
 
 
 

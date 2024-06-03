@@ -225,8 +225,9 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 		status_layout.addWidget(QLabel('status: '), 30)
 
+		status_sublayout = QHBoxLayout()
 		self.reference_population_status_cb = QComboBox()
-		status_layout.addWidget(self.reference_population_status_cb,65)
+		status_sublayout.addWidget(self.reference_population_status_cb,95)
 
 		self.reference_switch_status_btn = QPushButton("")
 		self.reference_switch_status_btn.setStyleSheet(self.button_select_all)
@@ -234,8 +235,9 @@ class ConfigNeighborhoods(QWidget, Styles):
 		self.reference_switch_status_btn.setToolTip("NOT (flip zeros and ones)")
 		self.reference_switch_status_btn.setIconSize(QSize(20, 20))
 		self.reference_switch_status_btn.clicked.connect(self.switch_not_reference)
-		status_layout.addWidget(self.reference_switch_status_btn, 5)
+		status_sublayout.addWidget(self.reference_switch_status_btn, 5)
 
+		status_layout.addLayout(status_sublayout, 70)
 		layout.addLayout(status_layout)
 
 		event_layout = QHBoxLayout()
@@ -275,9 +277,10 @@ class ConfigNeighborhoods(QWidget, Styles):
 		status_layout = QHBoxLayout()
 
 		status_layout.addWidget(QLabel('status: '), 30)
+		status_sublayout = QHBoxLayout()
 
 		self.neighbor_population_status_cb = QComboBox()
-		status_layout.addWidget(self.neighbor_population_status_cb,65)
+		status_sublayout.addWidget(self.neighbor_population_status_cb,95)
 
 		self.neighbor_switch_status_btn = QPushButton("")
 		self.neighbor_switch_status_btn.setStyleSheet(self.button_select_all)
@@ -285,7 +288,8 @@ class ConfigNeighborhoods(QWidget, Styles):
 		self.neighbor_switch_status_btn.setToolTip("NOT (flip zeros and ones)")
 		self.neighbor_switch_status_btn.setIconSize(QSize(20, 20))
 		self.neighbor_switch_status_btn.clicked.connect(self.switch_not_neigh)
-		status_layout.addWidget(self.neighbor_switch_status_btn, 5)
+		status_sublayout.addWidget(self.neighbor_switch_status_btn, 5)
+		status_layout.addLayout(status_sublayout, 70)
 		layout.addLayout(status_layout)
 
 		self.cumulated_presence_btn = QCheckBox('cumulated presence')

@@ -122,12 +122,14 @@ class SegmentationModelLoader(QWidget, Styles):
 		
 		self.base_block = QGridLayout()
 		
+		pixel_calib_layout = QHBoxLayout()
 		self.calibration_label = QLabel("pixel calibration: ")
-		self.base_block.addWidget(self.calibration_label,0,0,1,1, alignment=Qt.AlignLeft)
 		self.spatial_calib_le = QLineEdit("0,1")
 		self.qdv = QDoubleValidator(0.0, np.amax([self.parent_window.parent_window.shape_x, self.parent_window.parent_window.shape_y]), 8, notation=QDoubleValidator.StandardNotation)
 		self.spatial_calib_le.setValidator(self.qdv)
-		self.base_block.addWidget(self.spatial_calib_le, 0,1,1,2,alignment=Qt.AlignRight)
+		pixel_calib_layout.addWidget(self.calibration_label, 30)
+		pixel_calib_layout.addWidget(self.spatial_calib_le, 70)
+		self.base_block.addLayout(pixel_calib_layout, 0,0,1,3)
 
 		self.channel_options = ["--","live_nuclei_channel", "dead_nuclei_channel", "effector_fluo_channel", "brightfield_channel", "adhesion_channel", "fluo_channel_1", "fluo_channel_2"]
 		exp_channels = self.parent_window.parent_window.exp_channels
@@ -136,17 +138,21 @@ class SegmentationModelLoader(QWidget, Styles):
 				self.channel_options.append(ec)
 		self.channel_options += ['None']
 
+		channel_1_layout = QHBoxLayout()
 		self.ch_1_label = QLabel("channel 1: ")
-		self.base_block.addWidget(self.ch_1_label, 1, 0, 1, 1, alignment=Qt.AlignLeft)
 		self.combo_ch1 = QComboBox()
 		self.combo_ch1.addItems(self.channel_options)
-		self.base_block.addWidget(self.combo_ch1, 1, 1, 1, 2, alignment=Qt.AlignRight)
+		channel_1_layout.addWidget(self.ch_1_label,30)
+		channel_1_layout.addWidget(self.combo_ch1, 70)
+		self.base_block.addLayout(channel_1_layout, 1, 0, 1, 3, alignment=Qt.AlignRight)
 
+		channel_2_layout = QHBoxLayout()
 		self.ch_2_label = QLabel("channel 2: ")
-		self.base_block.addWidget(self.ch_2_label, 2, 0, 1, 1, alignment=Qt.AlignLeft)
 		self.combo_ch2 = QComboBox()
 		self.combo_ch2.addItems(self.channel_options)
-		self.base_block.addWidget(self.combo_ch2, 2, 1, 1, 2, alignment=Qt.AlignRight)
+		channel_2_layout.addWidget(self.ch_2_label, 30)
+		channel_2_layout.addWidget(self.combo_ch2, 70)
+		self.base_block.addLayout(channel_2_layout, 2, 0, 1, 3, alignment=Qt.AlignRight)
 
 	def generate_stardist_specific_block(self):
 

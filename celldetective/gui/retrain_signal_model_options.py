@@ -24,7 +24,7 @@ import pandas as pd
 from functools import partial
 from celldetective.gui import Styles
 
-class ConfigSignalModelTraining(QWidget, Styles):
+class ConfigSignalModelTraining(QMainWindow, Styles):
 	
 	"""
 	UI to set measurement instructions.
@@ -42,7 +42,7 @@ class ConfigSignalModelTraining(QWidget, Styles):
 		self.soft_path = get_software_location()
 		self.pretrained_model = None 
 		self.dataset_folder = None
-		self.signal_models_dir = self.soft_path+'/celldetective/models/signal_detection/'
+		self.signal_models_dir = self.soft_path+os.sep+os.sep.join(['celldetective','models','signal_detection'])
 
 		self.onlyFloat = QDoubleValidator()
 		self.onlyInt = QIntValidator()
@@ -55,7 +55,6 @@ class ConfigSignalModelTraining(QWidget, Styles):
 		self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
 		#self.load_previous_measurement_instructions()
-		self.setLayout(self.main_layout)
 
 	def populate_widget(self):
 
@@ -68,7 +67,7 @@ class ConfigSignalModelTraining(QWidget, Styles):
 		self.scroll_area = QScrollArea(self)
 		self.button_widget = QWidget()
 		self.main_layout = QVBoxLayout()
-		self.button_widget.setLayout(main_layout)
+		self.button_widget.setLayout(self.main_layout)
 		self.main_layout.setContentsMargins(30,30,30,30)
 
 		# first frame for FEATURES

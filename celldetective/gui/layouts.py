@@ -24,7 +24,7 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 		
 		if hasattr(self.parent_window.parent_window, 'locate_image'):
 			self.attr_parent = self.parent_window.parent_window
-		elif hasattr(self.parent.parent.parent, 'locate_image'):
+		elif hasattr(self.parent_window.parent_window.parent_window, 'locate_image'):
 			self.attr_parent = self.parent_window.parent_window.parent_window
 		else:
 			self.attr_parent = self.parent_window.parent_window.parent_window.parent_window

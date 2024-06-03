@@ -10,11 +10,12 @@ from PyQt5.QtCore import Qt, QSize
 import os
 from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit
+from celldetective.gui import Styles
 
 def step_function(t, t_shift, dt):
 	return 1/(1+np.exp(-(t-t_shift)/dt))
 
-class ClassifierWidget(QWidget):
+class ClassifierWidget(QWidget, Styles):
 
 	def __init__(self, parent_window):
 

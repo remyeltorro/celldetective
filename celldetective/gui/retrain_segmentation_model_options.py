@@ -23,7 +23,7 @@ from datetime import datetime
 from functools import partial
 from celldetective.gui import Styles
 
-class ConfigSegmentationModelTraining(QWidget):
+class ConfigSegmentationModelTraining(QMainWindow, Styles):
 	
 	"""
 	UI to set segmentation model training instructions.
@@ -55,8 +55,6 @@ class ConfigSegmentationModelTraining(QWidget):
 		self.populate_widget()
 		#self.load_previous_measurement_instructions()
 
-		self.setLayout(self.main_layout)
-
 	def populate_widget(self):
 
 		"""
@@ -68,7 +66,7 @@ class ConfigSegmentationModelTraining(QWidget):
 		self.scroll_area = QScrollArea(self)
 		self.button_widget = QWidget()
 		self.main_layout = QVBoxLayout()
-		self.button_widget.setLayout(main_layout)
+		self.button_widget.setLayout(self.main_layout)
 		self.main_layout.setContentsMargins(30,30,30,30)
 
 		# first frame for FEATURES

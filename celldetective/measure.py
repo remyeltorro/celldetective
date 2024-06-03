@@ -807,7 +807,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
             for op in operations:
                 func = eval('np.'+op)
-                intensity_values = func(projection, axis=(0,1), where=projection!=0.)
+                intensity_values = func(projection, axis=(0,1), where=projection==projection)
                 for k in range(crop.shape[-1]):
                     positions.loc[group.index, f'{channels[k]}_custom_kernel_{op}'] = intensity_values[k]
 

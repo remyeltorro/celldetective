@@ -347,10 +347,12 @@ class SegmentationModelLoader(QWidget, Styles):
 		else:
 			if self.mode=="targets":	
 				self.parent_window.threshold_config_targets = self.filename
+				self.parent_window.seg_model_list.setCurrentText('Threshold')
 				print('Path to threshold configuration successfully set in the software')
 				self.close()
 			elif self.mode=="effectors":
 				self.parent_window.threshold_config_effectors = self.filename
+				self.parent_window.seg_model_list.setCurrentText('Threshold')
 				print('Path to threshold configuration successfully set in the software')
 				self.close()	
 

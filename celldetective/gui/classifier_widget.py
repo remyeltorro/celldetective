@@ -16,19 +16,19 @@ def step_function(t, t_shift, dt):
 
 class ClassifierWidget(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 
 		super().__init__()
 
-		self.parent = parent
-		self.screen_height = self.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.screen_width
+		self.parent_window = parent_window
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
+		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
 		self.currentAlpha = 1.0
 
 		self.setWindowTitle("Custom classification")
 
-		self.mode = self.parent.mode
-		self.df = self.parent.df
+		self.mode = self.parent_window.mode
+		self.df = self.parent_window.df
 
 		is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
 		is_number_test = is_number(self.df.dtypes)
@@ -53,7 +53,7 @@ class ClassifierWidget(QWidget):
 		fig_btn_hbox = QHBoxLayout()
 		fig_btn_hbox.addWidget(QLabel(''), 95)
 		self.project_times_btn = QPushButton('')
-		self.project_times_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.project_times_btn.setStyleSheet(self.parent_window.parent_window.parent_window.button_select_all)
 		self.project_times_btn.setIcon(icon(MDI6.math_integral,color="black"))
 		self.project_times_btn.setToolTip("Project measurements at all times.")
 		self.project_times_btn.setIconSize(QSize(20, 20))
@@ -111,7 +111,7 @@ class ClassifierWidget(QWidget):
 			self.features_cb[i].setCurrentIndex(i)
 
 			self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
-			self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.log_btns[i].setStyleSheet(self.button_select_all)
 			self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
 
 		hbox_classify = QHBoxLayout()

@@ -386,7 +386,7 @@ class CellEdgeVisualizer(StackVisualizer):
 
 	def locate_labels_virtual(self):
 
-		labels_path = str(Path(self.stack_path).parent.parent) + os.sep + f'labels_{self.cell_type}' + os.sep
+		labels_path = str(Path(self.stack_path).parent_window.parent_window) + os.sep + f'labels_{self.cell_type}' + os.sep
 		self.mask_paths = natsorted(glob(labels_path + '*.tif'))
 		
 		if len(self.mask_paths) == 0:

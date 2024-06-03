@@ -17,18 +17,19 @@ from glob import glob
 from natsort import natsorted
 import os
 import pandas as pd
+from celldetective.gui import Styles
 
-class AnalysisPanel(QFrame):
-	def __init__(self, parent, title=None):
+class AnalysisPanel(QFrame, Styles):
+	def __init__(self, parent_window, title=None):
 
 		super().__init__()		
-		self.parent = parent
+		self.parent_window = parent_window
 		self.title = title
 		if self.title is None:
 			self.title=''
-		self.exp_channels = self.parent.exp_channels
-		self.exp_dir = self.parent.exp_dir
-		self.soft_path = self.parent.parent.soft_path
+		self.exp_channels = self.parent_window.exp_channels
+		self.exp_dir = self.parent_window.exp_dir
+		self.soft_path = self.parent_window.parent_window.soft_path
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QVBoxLayout(self)
@@ -52,7 +53,7 @@ class AnalysisPanel(QFrame):
 
 		self.survival_btn = QPushButton("plot survival")
 		self.survival_btn.setIcon(QIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','survival2.png']))))
-		self.survival_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.survival_btn.setStyleSheet(self.button_style_sheet_2)
 		self.survival_btn.setIconSize(QSize(35, 35))
 		self.survival_btn.clicked.connect(self.configure_survival)
 		self.grid.addWidget(self.survival_btn)
@@ -67,7 +68,7 @@ class AnalysisPanel(QFrame):
 
 		self.plot_signal_btn = QPushButton("plot signals")
 		self.plot_signal_btn.setIcon(QIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','signals_icon.png']))))
-		self.plot_signal_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.plot_signal_btn.setStyleSheet(self.button_style_sheet_2)
 		self.plot_signal_btn.setIconSize(QSize(35, 35))
 		self.plot_signal_btn.clicked.connect(self.configure_plot_signals)
 		self.grid.addWidget(self.plot_signal_btn)

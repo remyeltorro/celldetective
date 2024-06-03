@@ -25,23 +25,23 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.cm import tab10
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
+from celldetective.gui import Styles
 
-
-class SignalAnnotator(QMainWindow):
+class SignalAnnotator(QMainWindow, Styles):
 	"""
 	UI to set tracking parameters for bTrack.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Signal annotator")
-		self.mode = self.parent.mode
-		self.pos = self.parent.parent.pos
-		self.exp_dir = self.parent.exp_dir
-		self.PxToUm = self.parent.parent.PxToUm
+		self.mode = self.parent_window.mode
+		self.pos = self.parent_window.parent_window.pos
+		self.exp_dir = self.parent_window.exp_dir
+		self.PxToUm = self.parent_window.parent_window.PxToUm
 		self.n_signals = 3
 		self.soft_path = get_software_location()
 		self.recently_modified = False
@@ -53,8 +53,8 @@ class SignalAnnotator(QMainWindow):
 			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_effectors.json"
 			self.trajectories_path = self.pos + 'output/tables/trajectories_effectors.csv'
 
-		self.screen_height = self.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.screen_width
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
+		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
 
 		# default params
 		self.class_name = 'class'
@@ -123,7 +123,7 @@ class SignalAnnotator(QMainWindow):
 		class_hbox.addWidget(self.class_choice_cb, 70)
 
 		self.add_class_btn = QPushButton('')
-		self.add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.add_class_btn.setStyleSheet(self.button_select_all)
 		self.add_class_btn.setIcon(icon(MDI6.plus, color="black"))
 		self.add_class_btn.setToolTip("Add a new event class")
 		self.add_class_btn.setIconSize(QSize(20, 20))
@@ -131,7 +131,7 @@ class SignalAnnotator(QMainWindow):
 		class_hbox.addWidget(self.add_class_btn, 5)
 
 		self.del_class_btn = QPushButton('')
-		self.del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_class_btn.setStyleSheet(self.button_select_all)
 		self.del_class_btn.setIcon(icon(MDI6.delete, color="black"))
 		self.del_class_btn.setToolTip("Delete an event class")
 		self.del_class_btn.setIconSize(QSize(20, 20))
@@ -147,19 +147,19 @@ class SignalAnnotator(QMainWindow):
 		options_hbox = QHBoxLayout()
 		options_hbox.setContentsMargins(150, 30, 50, 0)
 		self.event_btn = QRadioButton('event')
-		self.event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.event_btn.setStyleSheet(self.button_style_sheet_2)
 		self.event_btn.toggled.connect(self.enable_time_of_interest)
 
 		self.no_event_btn = QRadioButton('no event')
-		self.no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.no_event_btn.setStyleSheet(self.button_style_sheet_2)
 		self.no_event_btn.toggled.connect(self.enable_time_of_interest)
 
 		self.else_btn = QRadioButton('else')
-		self.else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.else_btn.setStyleSheet(self.button_style_sheet_2)
 		self.else_btn.toggled.connect(self.enable_time_of_interest)
 
 		self.suppr_btn = QRadioButton('mark for\nsuppression')
-		self.suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.suppr_btn.setStyleSheet(self.button_style_sheet_2)
 		self.suppr_btn.toggled.connect(self.enable_time_of_interest)
 
 		options_hbox.addWidget(self.event_btn, 25)
@@ -180,13 +180,13 @@ class SignalAnnotator(QMainWindow):
 		self.correct_btn = QPushButton('correct')
 		self.correct_btn.setIcon(icon(MDI6.redo_variant, color="white"))
 		self.correct_btn.setIconSize(QSize(20, 20))
-		self.correct_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.correct_btn.setStyleSheet(self.button_style_sheet)
 		self.correct_btn.clicked.connect(self.show_annotation_buttons)
 		self.correct_btn.setEnabled(False)
 		main_action_hbox.addWidget(self.correct_btn)
 
 		self.cancel_btn = QPushButton('cancel')
-		self.cancel_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.cancel_btn.setStyleSheet(self.button_style_sheet_2)
 		self.cancel_btn.setShortcut(QKeySequence("Esc"))
 		self.cancel_btn.setEnabled(False)
 		self.cancel_btn.clicked.connect(self.cancel_selection)
@@ -213,7 +213,7 @@ class SignalAnnotator(QMainWindow):
 		plot_buttons_hbox = QHBoxLayout()
 		plot_buttons_hbox.setContentsMargins(0, 0, 0, 0)
 		self.normalize_features_btn = QPushButton('')
-		self.normalize_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.normalize_features_btn.setStyleSheet(self.button_select_all)
 		self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical, color="black"))
 		self.normalize_features_btn.setIconSize(QSize(25, 25))
 		self.normalize_features_btn.setFixedSize(QSize(30, 30))
@@ -226,7 +226,7 @@ class SignalAnnotator(QMainWindow):
 
 		self.log_btn = QPushButton()
 		self.log_btn.setIcon(icon(MDI6.math_log, color="black"))
-		self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.log_btn.setStyleSheet(self.button_select_all)
 		self.log_btn.clicked.connect(self.switch_to_log)
 		plot_buttons_hbox.addWidget(self.log_btn, 5)
 
@@ -249,12 +249,12 @@ class SignalAnnotator(QMainWindow):
 
 		btn_hbox = QHBoxLayout()
 		self.save_btn = QPushButton('Save')
-		self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.save_btn.setStyleSheet(self.button_style_sheet)
 		self.save_btn.clicked.connect(self.save_trajectories)
 		btn_hbox.addWidget(self.save_btn, 90)
 
 		self.export_btn = QPushButton('')
-		self.export_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.export_btn.setStyleSheet(self.button_select_all)
 		self.export_btn.clicked.connect(self.export_signals)
 		self.export_btn.setIcon(icon(MDI6.export, color="black"))
 		self.export_btn.setIconSize(QSize(25, 25))
@@ -270,7 +270,7 @@ class SignalAnnotator(QMainWindow):
 		self.first_frame_btn.clicked.connect(self.set_first_frame)
 		self.first_frame_btn.setShortcut(QKeySequence('f'))
 		self.first_frame_btn.setIcon(icon(MDI6.page_first, color="black"))
-		self.first_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.first_frame_btn.setStyleSheet(self.button_select_all)
 		self.first_frame_btn.setFixedSize(QSize(60, 60))
 		self.first_frame_btn.setIconSize(QSize(30, 30))
 
@@ -278,14 +278,14 @@ class SignalAnnotator(QMainWindow):
 		self.last_frame_btn.clicked.connect(self.set_last_frame)
 		self.last_frame_btn.setShortcut(QKeySequence('l'))
 		self.last_frame_btn.setIcon(icon(MDI6.page_last, color="black"))
-		self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.last_frame_btn.setStyleSheet(self.button_select_all)
 		self.last_frame_btn.setFixedSize(QSize(60, 60))
 		self.last_frame_btn.setIconSize(QSize(30, 30))
 
 		self.stop_btn = QPushButton()
 		self.stop_btn.clicked.connect(self.stop)
 		self.stop_btn.setIcon(icon(MDI6.stop, color="black"))
-		self.stop_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.stop_btn.setStyleSheet(self.button_select_all)
 		self.stop_btn.setFixedSize(QSize(60, 60))
 		self.stop_btn.setIconSize(QSize(30, 30))
 
@@ -293,7 +293,7 @@ class SignalAnnotator(QMainWindow):
 		self.start_btn.clicked.connect(self.start)
 		self.start_btn.setIcon(icon(MDI6.play, color="black"))
 		self.start_btn.setFixedSize(QSize(60, 60))
-		self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.start_btn.setStyleSheet(self.button_select_all)
 		self.start_btn.setIconSize(QSize(30, 30))
 		self.start_btn.hide()
 
@@ -634,7 +634,7 @@ class SignalAnnotator(QMainWindow):
 
 		"""
 
-		movies = glob(self.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
+		movies = glob(self.pos + f"movie/{self.parent_window.parent_window.movie_prefix}*.tif")
 
 		if len(movies) == 0:
 			msgBox = QMessageBox()
@@ -647,7 +647,7 @@ class SignalAnnotator(QMainWindow):
 				self.close()
 		else:
 			self.stack_path = movies[0]
-			self.len_movie = self.parent.parent.len_movie
+			self.len_movie = self.parent_window.parent_window.len_movie
 			len_movie_auto = auto_load_number_of_frames(self.stack_path)
 			if len_movie_auto is not None:
 				self.len_movie = len_movie_auto
@@ -1300,13 +1300,13 @@ class SignalAnnotator(QMainWindow):
 
 
 class MeasureAnnotator(SignalAnnotator):
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		QMainWindow.__init__(self)
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Signal annotator")
-		self.mode = self.parent.mode
-		self.pos = self.parent.parent.pos
-		self.exp_dir = self.parent.exp_dir
+		self.mode = self.parent_window.mode
+		self.pos = self.parent_window.parent_window.pos
+		self.exp_dir = self.parent_window.exp_dir
 		self.n_signals = 3
 		self.soft_path = get_software_location()
 		self.recently_modified = False
@@ -1319,8 +1319,8 @@ class MeasureAnnotator(SignalAnnotator):
 			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_effectors.json"
 			self.trajectories_path = self.pos + 'output/tables/trajectories_effectors.csv'
 
-		self.screen_height = self.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.screen_width
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
+		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
 		self.current_frame = 0
 		self.show_fliers = False
 		self.status_name = 'group'
@@ -1589,7 +1589,7 @@ class MeasureAnnotator(SignalAnnotator):
 		class_hbox.addWidget(self.class_choice_cb, 70)
 
 		self.add_class_btn = QPushButton('')
-		self.add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.add_class_btn.setStyleSheet(self.button_select_all)
 		self.add_class_btn.setIcon(icon(MDI6.plus, color="black"))
 		self.add_class_btn.setToolTip("Add a new characteristic group")
 		self.add_class_btn.setIconSize(QSize(20, 20))
@@ -1597,7 +1597,7 @@ class MeasureAnnotator(SignalAnnotator):
 		class_hbox.addWidget(self.add_class_btn, 5)
 
 		self.del_class_btn = QPushButton('')
-		self.del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_class_btn.setStyleSheet(self.button_select_all)
 		self.del_class_btn.setIcon(icon(MDI6.delete, color="black"))
 		self.del_class_btn.setToolTip("Delete a characteristic group")
 		self.del_class_btn.setIconSize(QSize(20, 20))
@@ -1617,7 +1617,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.time_of_interest_le.setValidator(self.int_validator)
 		time_option_hbox.addWidget(self.time_of_interest_le)
 		self.del_cell_btn = QPushButton('')
-		self.del_cell_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_cell_btn.setStyleSheet(self.button_select_all)
 		self.del_cell_btn.setIcon(icon(MDI6.delete, color="black"))
 		self.del_cell_btn.setToolTip("Delete cell")
 		self.del_cell_btn.setIconSize(QSize(20, 20))
@@ -1629,13 +1629,13 @@ class MeasureAnnotator(SignalAnnotator):
 		self.correct_btn = QPushButton('correct')
 		self.correct_btn.setIcon(icon(MDI6.redo_variant, color="white"))
 		self.correct_btn.setIconSize(QSize(20, 20))
-		self.correct_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.correct_btn.setStyleSheet(self.button_style_sheet)
 		self.correct_btn.clicked.connect(self.show_annotation_buttons)
 		self.correct_btn.setEnabled(False)
 		main_action_hbox.addWidget(self.correct_btn)
 
 		self.cancel_btn = QPushButton('cancel')
-		self.cancel_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.cancel_btn.setStyleSheet(self.button_style_sheet_2)
 		self.cancel_btn.setShortcut(QKeySequence("Esc"))
 		self.cancel_btn.setEnabled(False)
 		self.cancel_btn.clicked.connect(self.cancel_selection)
@@ -1665,7 +1665,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.outliers_check.toggled.connect(self.show_outliers)
 
 		self.normalize_features_btn = QPushButton('')
-		self.normalize_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.normalize_features_btn.setStyleSheet(self.button_select_all)
 		self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical, color="black"))
 		self.normalize_features_btn.setIconSize(QSize(25, 25))
 		self.normalize_features_btn.setFixedSize(QSize(30, 30))
@@ -1679,7 +1679,7 @@ class MeasureAnnotator(SignalAnnotator):
 
 		self.log_btn = QPushButton()
 		self.log_btn.setIcon(icon(MDI6.math_log, color="black"))
-		self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.log_btn.setStyleSheet(self.button_select_all)
 		self.log_btn.clicked.connect(self.switch_to_log)
 		plot_buttons_hbox.addWidget(self.log_btn, 5)
 
@@ -1702,7 +1702,7 @@ class MeasureAnnotator(SignalAnnotator):
 
 		btn_hbox = QHBoxLayout()
 		self.save_btn = QPushButton('Save')
-		self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.save_btn.setStyleSheet(self.button_style_sheet)
 		self.save_btn.clicked.connect(self.save_trajectories)
 		btn_hbox.addWidget(self.save_btn, 90)
 		self.left_panel.addLayout(btn_hbox)
@@ -1716,7 +1716,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.first_frame_btn.clicked.connect(self.set_previous_frame)
 		self.first_frame_btn.setShortcut(QKeySequence('f'))
 		self.first_frame_btn.setIcon(icon(MDI6.page_first, color="black"))
-		self.first_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.first_frame_btn.setStyleSheet(self.button_select_all)
 		self.first_frame_btn.setFixedSize(QSize(60, 60))
 		self.first_frame_btn.setIconSize(QSize(30, 30))
 
@@ -1724,7 +1724,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.last_frame_btn.clicked.connect(self.set_next_frame)
 		self.last_frame_btn.setShortcut(QKeySequence('l'))
 		self.last_frame_btn.setIcon(icon(MDI6.page_last, color="black"))
-		self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.last_frame_btn.setStyleSheet(self.button_select_all)
 		self.last_frame_btn.setFixedSize(QSize(60, 60))
 		self.last_frame_btn.setIconSize(QSize(30, 30))
 
@@ -1738,7 +1738,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.start_btn.clicked.connect(self.start)
 		self.start_btn.setIcon(icon(MDI6.play, color="black"))
 		self.start_btn.setFixedSize(QSize(60, 60))
-		self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.start_btn.setStyleSheet(self.button_select_all)
 		self.start_btn.setIconSize(QSize(30, 30))
 		self.start_btn.hide()
 
@@ -2296,7 +2296,7 @@ class MeasureAnnotator(SignalAnnotator):
 
 		print("this is the loaded position: ", self.pos)
 		if isinstance(self.pos, str):
-			movies = glob(self.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
+			movies = glob(self.pos + f"movie/{self.parent_window.parent_window.movie_prefix}*.tif")
 
 		else:
 			msgBox = QMessageBox()
@@ -2321,7 +2321,7 @@ class MeasureAnnotator(SignalAnnotator):
 				self.close()
 		else:
 			self.stack_path = movies[0]
-			self.len_movie = self.parent.parent.len_movie
+			self.len_movie = self.parent_window.parent_window.len_movie
 			len_movie_auto = auto_load_number_of_frames(self.stack_path)
 			if len_movie_auto is not None:
 				self.len_movie = len_movie_auto

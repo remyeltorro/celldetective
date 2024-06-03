@@ -48,22 +48,22 @@ class ConfigMeasurements(QMainWindow, Styles):
 
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent_window=None):
 
         super().__init__()
 
-        self.parent = parent
+        self.parent_window = parent_window
         self.setWindowTitle("Configure measurements")
         self.setWindowIcon(QIcon(os.sep.join(['celldetective', 'icons', 'mexican-hat.png'])))
-        self.mode = self.parent.mode
-        self.exp_dir = self.parent.exp_dir
+        self.mode = self.parent_window.mode
+        self.exp_dir = self.parent_window.exp_dir
         self.background_correction = []
         if self.mode == "targets":
             self.config_name = "btrack_config_targets.json"
-            self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_targets.json"
+            self.measure_instructions_path = self.parent_window.exp_dir + "configs/measurement_instructions_targets.json"
         elif self.mode == "effectors":
             self.config_name = "btrack_config_effectors.json"
-            self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_effectors.json"
+            self.measure_instructions_path = self.parent_window.exp_dir + "configs/measurement_instructions_effectors.json"
         self.soft_path = get_software_location()
         self.clear_previous = False
 
@@ -73,7 +73,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         self.channel_names = np.array(self.channel_names)
         self.channels = np.array(self.channels)
 
-        self.screen_height = self.parent.parent.parent.screen_height
+        self.screen_height = self.parent_window.parent_window.parent_window.screen_height
         center_window(self)
 
         self.onlyFloat = QDoubleValidator()
@@ -105,7 +105,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         self.local_correction_layout = LocalCorrectionLayout(self)
         self.fit_correction_layout = BackgroundFitCorrectionLayout(self)
         
-        self.protocol_layout = ProtocolDesignerLayout(parent=self,
+        self.protocol_layout = ProtocolDesignerLayout(parent_window=self,
                                                       tab_layouts=[ self.local_correction_layout, self.fit_correction_layout],
                                                       tab_names=['Local', 'Fit'],
                                                       title='BACKGROUND CORRECTION',
@@ -722,7 +722,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         Load the first frame of the first movie found in the experiment folder as a sample.
         """
 
-        movies = glob(self.parent.parent.pos + os.sep.join(['movie', f"{self.parent.movie_prefix}*.tif"]))
+        movies = glob(self.parent_window.parent_window.pos + os.sep.join(['movie', f"{self.parent_window.movie_prefix}*.tif"]))
 
         if len(movies) == 0:
             msgBox = QMessageBox()
@@ -824,7 +824,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         Load the first mask of the detected movie.
         """
 
-        labels_path = str(Path(self.stack0).parent.parent) + f'/labels_{self.mode}/'
+        labels_path = str(Path(self.stack0).parent_window.parent_window) + f'/labels_{self.mode}/'
         masks = natsorted(glob(labels_path + '*.tif'))
         if len(masks) == 0:
             print('no mask found')
@@ -1060,7 +1060,7 @@ class ConfigMeasurements(QMainWindow, Styles):
             self.locate_mask()
             if self.test_mask is not None:
                 self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
-                                                 mask=self.test_mask, parent=self)
+                                                 mask=self.test_mask, parent_window=self)
         # for dictionary in self.background_correction:
         #     if self.spot_channel.currentText() in dictionary['target channel']:
         #         if dictionary['mode'] == 'field':

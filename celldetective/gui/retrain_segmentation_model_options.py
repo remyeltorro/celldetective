@@ -21,22 +21,23 @@ from tifffile import imread
 from pathlib import Path, PurePath
 from datetime import datetime
 from functools import partial
+from celldetective.gui import Styles
 
-class ConfigSegmentationModelTraining(QMainWindow):
+class ConfigSegmentationModelTraining(QWidget):
 	
 	"""
 	UI to set segmentation model training instructions.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Train segmentation model")
 		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
-		self.mode = self.parent.mode
-		self.exp_dir = self.parent.exp_dir
+		self.mode = self.parent_window.mode
+		self.exp_dir = self.parent_window.exp_dir
 		self.soft_path = get_software_location()
 		self.pretrained_model = None 
 		self.dataset_folder = None
@@ -45,7 +46,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		self.onlyFloat = QDoubleValidator()
 		self.onlyInt = QIntValidator()
 
-		self.screen_height = self.parent.parent.parent.screen_height
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		center_window(self)
 
 		self.setMinimumWidth(500)
@@ -53,6 +54,8 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
 		#self.load_previous_measurement_instructions()
+
+		self.setLayout(self.main_layout)
 
 	def populate_widget(self):
 
@@ -64,30 +67,30 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		# Create button widget and layout
 		self.scroll_area = QScrollArea(self)
 		self.button_widget = QWidget()
-		main_layout = QVBoxLayout()
+		self.main_layout = QVBoxLayout()
 		self.button_widget.setLayout(main_layout)
-		main_layout.setContentsMargins(30,30,30,30)
+		self.main_layout.setContentsMargins(30,30,30,30)
 
 		# first frame for FEATURES
 		self.model_frame = QFrame()
 		self.model_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_model_frame()
-		main_layout.addWidget(self.model_frame)
+		self.main_layout.addWidget(self.model_frame)
 
 		self.data_frame = QFrame()
 		self.data_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_data_frame()
-		main_layout.addWidget(self.data_frame)
+		self.main_layout.addWidget(self.data_frame)
 
 		self.hyper_frame = QFrame()
 		self.hyper_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_hyper_frame()
-		main_layout.addWidget(self.hyper_frame)
+		self.main_layout.addWidget(self.hyper_frame)
 
 		self.submit_btn = QPushButton('Train')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.prep_model)
-		main_layout.addWidget(self.submit_btn)
+		self.main_layout.addWidget(self.submit_btn)
 		self.submit_btn.setEnabled(False)
 
 		#self.populate_left_panel()
@@ -215,7 +218,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		self.cancel_dataset = QPushButton()
 		self.cancel_dataset.setIcon(icon(MDI6.close,color="black"))
 		self.cancel_dataset.clicked.connect(self.clear_dataset)
-		self.cancel_dataset.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.cancel_dataset.setStyleSheet(self.button_select_all)
 		self.cancel_dataset.setIconSize(QSize(20, 20))
 		self.cancel_dataset.setVisible(False)
 		train_data_layout.addWidget(self.cancel_dataset, 5)
@@ -292,7 +295,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		self.cancel_pretrained = QPushButton()
 		self.cancel_pretrained.setIcon(icon(MDI6.close,color="black"))
 		self.cancel_pretrained.clicked.connect(self.clear_pretrained)
-		self.cancel_pretrained.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.cancel_pretrained.setStyleSheet(self.button_select_all)
 		self.cancel_pretrained.setIconSize(QSize(20, 20))
 		self.cancel_pretrained.setVisible(False)
 		pretrained_layout.addWidget(self.cancel_pretrained, 5)
@@ -318,13 +321,13 @@ class ConfigSegmentationModelTraining(QMainWindow):
 
 			self.normalization_mode_btns[i].setIcon(icon(MDI6.percent_circle,color="#1565c0"))
 			self.normalization_mode_btns[i].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)	
+			self.normalization_mode_btns[i].setStyleSheet(self.button_select_all)	
 			self.normalization_mode_btns[i].setToolTip("Switch to absolute normalization values.")
 			self.normalization_mode_btns[i].clicked.connect(partial(self.switch_normalization_mode, i))
 
 			self.normalization_clip_btns[i].setIcon(icon(MDI6.content_cut,color="black"))
 			self.normalization_clip_btns[i].setIconSize(QSize(20, 20))	
-			self.normalization_clip_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)	
+			self.normalization_clip_btns[i].setStyleSheet(self.button_select_all)	
 			self.normalization_clip_btns[i].clicked.connect(partial(self.switch_clipping_mode, i))
 			self.normalization_clip_btns[i].setToolTip('clip')
 
@@ -337,7 +340,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		self.channel_items = ['--', 'brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 
 							 'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2','None'
 							]
-		exp_ch = self.parent.parent.exp_channels
+		exp_ch = self.parent_window.parent_window.exp_channels
 		for c in exp_ch:
 			if c not in self.channel_items:
 				self.channel_items.append(c)
@@ -452,9 +455,9 @@ class ConfigSegmentationModelTraining(QMainWindow):
 
 	def set_cellpose_scale(self):
 
-		scale = self.parent.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		scale = self.parent_window.parent_window.PxToUm * float(self.diameter_le.text()) / 30.0
 		if self.model_name=="CP_nuclei":
-			scale = self.parent.parent.PxToUm * float(self.diameter_le.text()) / 17.0
+			scale = self.parent_window.parent_window.PxToUm * float(self.diameter_le.text()) / 17.0
 		self.spatial_calib_le.setText(str(scale))
 		self.diamWidget.close()		
 
@@ -647,7 +650,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		with open(model_folder+"training_instructions.json", 'w') as f:
 			json.dump(training_instructions, f, indent=4)
 		
-		train_segmentation_model(model_folder+"training_instructions.json", use_gpu=self.parent.parent.parent.use_gpu)
+		train_segmentation_model(model_folder+"training_instructions.json", use_gpu=self.parent_window.parent_window.parent_window.use_gpu)
 
 		# self.parent.refresh_signal_models()
 
@@ -673,7 +676,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		if self.normalization_mode[index]:
 			self.normalization_mode_btns[index].setIcon(icon(MDI6.percent_circle,color="#1565c0"))
 			self.normalization_mode_btns[index].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[index].setStyleSheet(self.parent.parent.parent.button_select_all)	
+			self.normalization_mode_btns[index].setStyleSheet(self.button_select_all)	
 			self.normalization_mode_btns[index].setToolTip("Switch to absolute normalization values.")
 			self.normalization_min_value_lbl[index].setText('Min %: ')
 			self.normalization_max_value_lbl[index].setText('Max %: ')
@@ -683,7 +686,7 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		else:
 			self.normalization_mode_btns[index].setIcon(icon(MDI6.percent_circle_outline,color="black"))
 			self.normalization_mode_btns[index].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[index].setStyleSheet(self.parent.parent.parent.button_select_all)	
+			self.normalization_mode_btns[index].setStyleSheet(self.button_select_all)	
 			self.normalization_mode_btns[index].setToolTip("Switch to percentile normalization values.")
 			self.normalization_min_value_lbl[index].setText('Min: ')
 			self.normalization_min_value_le[index].setText('0')
@@ -698,9 +701,9 @@ class ConfigSegmentationModelTraining(QMainWindow):
 		if self.clip_option[index]:
 			self.normalization_clip_btns[index].setIcon(icon(MDI6.content_cut,color="#1565c0"))
 			self.normalization_clip_btns[index].setIconSize(QSize(20, 20))
-			self.normalization_clip_btns[index].setStyleSheet(self.parent.parent.parent.button_select_all)	
+			self.normalization_clip_btns[index].setStyleSheet(self.button_select_all)	
 
 		else:
 			self.normalization_clip_btns[index].setIcon(icon(MDI6.content_cut,color="black"))
 			self.normalization_clip_btns[index].setIconSize(QSize(20, 20))		
-			self.normalization_clip_btns[index].setStyleSheet(self.parent.parent.parent.button_select_all)	
+			self.normalization_clip_btns[index].setStyleSheet(self.button_select_all)	

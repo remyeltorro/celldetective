@@ -36,10 +36,10 @@ class PandasModel(QAbstractTableModel):
 
 class QueryWidget(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Filter table")
 		# Create the QComboBox and add some items
 		center_window(self)
@@ -57,7 +57,7 @@ class QueryWidget(QWidget):
 	def filter_table(self):
 		try:
 			query_text = self.query_le.text().replace('class', '`class`')
-			tab = self.parent.data.query(query_text)
+			tab = self.parent_window.data.query(query_text)
 			self.subtable = TableUI(tab, query_text, plot_mode="scatter")
 			self.subtable.show()
 			self.close()
@@ -67,10 +67,10 @@ class QueryWidget(QWidget):
 
 class RenameColWidget(QWidget):
 
-	def __init__(self, parent, column=None):
+	def __init__(self, parent_window, column=None):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.column = column
 		if self.column is None:
 			self.column = ''
@@ -93,11 +93,11 @@ class RenameColWidget(QWidget):
 		
 		old_name = self.column
 		new_name = self.new_col_name.text()
-		self.parent.data = self.parent.data.rename(columns={old_name: new_name})
+		self.parent_window.data = self.parent_window.data.rename(columns={old_name: new_name})
 		print(self.parent.data.columns)
 
-		self.parent.model = PandasModel(self.parent.data)
-		self.parent.table_view.setModel(self.parent.model)
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
 
 

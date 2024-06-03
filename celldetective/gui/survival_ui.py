@@ -27,39 +27,37 @@ from lifelines import KaplanMeierFitter
 import matplotlib.cm as mcm
 import math
 from celldetective.events import switch_to_events
+from celldetective.gui import Styles
 
-class ConfigSurvival(QWidget):
+class ConfigSurvival(QWidget, Styles):
 	
 	"""
 	UI to set survival instructions.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Configure survival")
 		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 
-		self.exp_dir = self.parent.exp_dir
+		self.exp_dir = self.parent_window.exp_dir
 		self.soft_path = get_software_location()		
 		self.exp_config = self.exp_dir +"config.ini"
-		self.wells = np.array(self.parent.parent.wells,dtype=str)
+		self.wells = np.array(self.parent_window.parent_window.wells,dtype=str)
 		self.well_labels = _extract_labels_from_config(self.exp_config,len(self.wells))
-		self.FrameToMin = self.parent.parent.FrameToMin
+		self.FrameToMin = self.parent_window.parent_window.FrameToMin
 		self.float_validator = QDoubleValidator()
 		self.auto_close = False
 
-		print('Parent wells: ', self.wells)
-
-
-		self.well_option = self.parent.parent.well_list.currentIndex()
-		self.position_option = self.parent.parent.position_list.currentIndex()
+		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
+		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
 		self.interpret_pos_location()
 		#self.config_path = self.exp_dir + self.config_name
 
-		self.screen_height = self.parent.parent.parent.screen_height
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		center_window(self)
 
 		self.setMinimumWidth(350)
@@ -137,7 +135,7 @@ class ConfigSurvival(QWidget):
 		main_layout.addLayout(time_calib_layout)
 
 		self.submit_btn = QPushButton('Submit')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.process_survival)
 		main_layout.addWidget(self.submit_btn)
 
@@ -216,7 +214,7 @@ class ConfigSurvival(QWidget):
 
 			self.legend_btn = QPushButton('')
 			self.legend_btn.setIcon(icon(MDI6.text_box,color="black"))
-			self.legend_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.legend_btn.setStyleSheet(self.button_select_all)
 			self.legend_btn.setToolTip('Show or hide the legend')
 			self.legend_visible = True
 			self.legend_btn.clicked.connect(self.show_hide_legend)
@@ -225,7 +223,7 @@ class ConfigSurvival(QWidget):
 
 			self.log_btn = QPushButton('')
 			self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-			self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.log_btn.setStyleSheet(self.button_select_all)
 			self.log_btn.clicked.connect(self.switch_to_log)
 			self.log_btn.setToolTip('Enable or disable log scale')
 			plot_buttons_hbox.addWidget(self.log_btn, 5, alignment=Qt.AlignRight)
@@ -369,12 +367,12 @@ class ConfigSurvival(QWidget):
 
 		"""
 
-		self.well_option = self.parent.parent.well_list.currentIndex()
+		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
 		if self.well_option==len(self.wells):
 			wo = '*'
 		else:
 			wo = self.well_option
-		self.position_option = self.parent.parent.position_list.currentIndex()
+		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
 		if self.position_option==0:
 			po = '*'
 		else:

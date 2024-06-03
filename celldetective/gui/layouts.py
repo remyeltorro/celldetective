@@ -17,17 +17,17 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 	
 	"""docstring for ClassName"""
 	
-	def __init__(self, parent=None, *args):
+	def __init__(self, parent_window=None, *args):
 		super().__init__(*args)
 
-		self.parent = parent
+		self.parent_window = parent_window
 		
-		if hasattr(self.parent.parent, 'locate_image'):
-			self.attr_parent = self.parent.parent
+		if hasattr(self.parent_window.parent_window, 'locate_image'):
+			self.attr_parent = self.parent_window.parent_window
 		elif hasattr(self.parent.parent.parent, 'locate_image'):
-			self.attr_parent = self.parent.parent.parent
+			self.attr_parent = self.parent_window.parent_window.parent_window
 		else:
-			self.attr_parent = self.parent.parent.parent.parent
+			self.attr_parent = self.parent_window.parent_window.parent_window.parent_window
 
 		self.channel_names = self.attr_parent.exp_channels
 		self.setContentsMargins(15,15,15,15)
@@ -103,13 +103,13 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 	def add_instructions_to_parent_list(self):
 
 		self.generate_instructions()
-		self.parent.protocols.append(self.instructions)
+		self.parent_window.protocols.append(self.instructions)
 		correction_description = ""
 		for index, (key, value) in enumerate(self.instructions.items()):
 			if index > 0:
 				correction_description += ", "
 			correction_description += str(key) + " : " + str(value)
-		self.parent.protocol_list.addItem(correction_description)
+		self.parent_window.protocol_list.addItem(correction_description)
 
 	def generate_instructions(self):
 
@@ -210,12 +210,12 @@ class LocalCorrectionLayout(BackgroundFitCorrectionLayout):
 		
 		super().__init__(*args)
 		
-		if hasattr(self.parent.parent, 'locate_image'):
-			self.attr_parent = self.parent.parent
-		elif hasattr(self.parent.parent.parent, 'locate_image'):
-			self.attr_parent = self.parent.parent.parent
+		if hasattr(self.parent_window.parent_window, 'locate_image'):
+			self.attr_parent = self.parent_window.parent_window
+		elif hasattr(self.parent_window.parent_window.parent_window, 'locate_image'):
+			self.attr_parent = self.parent_window.parent_window.parent_window
 		else:
-			self.attr_parent = self.parent.parent.parent.parent
+			self.attr_parent = self.parent_window.parent_window.parent_window.parent_window
 
 		self.thresh_lbl.setText('Distance: ')
 		self.thresh_lbl.setToolTip('Distance from the cell mask over which to estimate local intensity.')
@@ -240,7 +240,7 @@ class LocalCorrectionLayout(BackgroundFitCorrectionLayout):
 
 		if self.attr_parent.current_stack is not None and thresh is not None:
 			
-			self.viewer = CellEdgeVisualizer(cell_type=self.parent.parent.mode,
+			self.viewer = CellEdgeVisualizer(cell_type=self.parent_window.parent_window.mode,
 											 stack_path=self.attr_parent.current_stack,
 											 parent_le = self.threshold_le,
 											 n_channels=len(self.channel_names),
@@ -341,14 +341,13 @@ class ProtocolDesignerLayout(QVBoxLayout, Styles):
 		in preprocessing and measurements
 	"""
 	
-	def __init__(self, parent=None, tab_layouts=[], tab_names=[], title='',list_title='',*args):
+	def __init__(self, parent_window=None, tab_layouts=[], tab_names=[], title='',list_title='',*args):
 		
 		super().__init__(*args)
 
 		self.title = title
-		self.parent = parent
-		print('parent',self.parent)
-		self.channel_names = self.parent.channel_names
+		self.parent_window = parent_window
+		self.channel_names = self.parent_window.channel_names
 		self.tab_layouts = tab_layouts
 		self.tab_names = tab_names
 		self.list_title = list_title
@@ -372,7 +371,7 @@ class ProtocolDesignerLayout(QVBoxLayout, Styles):
 		for k in range(len(self.tab_layouts)):
 			wg = QWidget()
 			print('almost there',self.channel_names)
-			self.tab_layouts[k].parent = self
+			self.tab_layouts[k].parent_window = self
 			wg.setLayout(self.tab_layouts[k])
 			self.tabs.addTab(wg, self.tab_names[k])
 		
@@ -411,15 +410,15 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 	
 	"""docstring for ClassName"""
 	
-	def __init__(self, parent=None, *args):
+	def __init__(self, parent_window=None, *args):
 		super().__init__(*args)
 
-		self.parent = parent
+		self.parent_window = parent_window
 
-		if hasattr(self.parent.parent, 'exp_config'):
-			self.attr_parent = self.parent.parent
+		if hasattr(self.parent_window.parent_window, 'exp_config'):
+			self.attr_parent = self.parent_window.parent_window
 		else:
-			self.attr_parent = self.parent.parent.parent
+			self.attr_parent = self.parent_window.parent_window.parent_window
 
 		self.channel_names = self.attr_parent.exp_channels
 
@@ -441,7 +440,10 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 		self.acq_mode_group.addButton(self.timeseries_rb, 0)
 		self.acq_mode_group.addButton(self.tiles_rb, 1)
 
-		self.frame_range_slider = QLabeledRangeSlider()
+		from PyQt5.QtWidgets import QSlider
+		from superqt import QRangeSlider
+		self.frame_range_slider = QLabeledRangeSlider(parent=None)
+		print('here ok')
 
 		self.timeseries_rb.toggled.connect(self.activate_time_range)
 		self.tiles_rb.toggled.connect(self.activate_time_range)
@@ -475,7 +477,7 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 		self.threshold_le = ThresholdLineEdit(init_value=2, connected_buttons=[self.threshold_viewer_btn,
 																				self.background_viewer_btn, self.corrected_stack_viewer_btn, self.add_correction_btn])
 
-		self.well_slider = QLabeledSlider()
+		self.well_slider = QLabeledSlider(parent=None)
 
 		self.background_viewer_btn.clicked.connect(self.estimate_bg)
 
@@ -483,7 +485,7 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 		self.regress_cb.toggled.connect(self.activate_coef_options)
 		self.regress_cb.setChecked(False)
 
-		self.coef_range_slider = QLabeledDoubleRangeSlider()
+		self.coef_range_slider = QLabeledDoubleRangeSlider(parent=None)
 		self.coef_range_layout = QuickSliderLayout(label='Coef. range: ',
 											  slider = self.coef_range_slider,
 											  slider_initial_value=(0.95,1.05),
@@ -570,13 +572,13 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 	def add_instructions_to_parent_list(self):
 
 		self.generate_instructions()
-		self.parent.protocols.append(self.instructions)
+		self.parent_window.protocols.append(self.instructions)
 		correction_description = ""
 		for index, (key, value) in enumerate(self.instructions.items()):
 			if index > 0:
 				correction_description += ", "
 			correction_description += str(key) + " : " + str(value)
-		self.parent.protocol_list.addItem(correction_description)
+		self.parent_window.protocol_list.addItem(correction_description)
 
 	def generate_instructions(self):
 

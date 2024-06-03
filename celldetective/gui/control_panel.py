@@ -15,18 +15,20 @@ import gc
 import subprocess
 from celldetective.gui.viewers import StackVisualizer
 from celldetective.utils import extract_experiment_channels
+from celldetective.gui import Styles
 
-class ControlPanel(QMainWindow):
+class ControlPanel(QMainWindow, Styles):
 
-	def __init__(self, parent=None, exp_dir=""):
+	def __init__(self, parent_window=None, exp_dir=""):
 		
 		super().__init__()
+		
 		self.exp_dir = exp_dir
 		if not self.exp_dir.endswith(os.sep):
 			self.exp_dir = self.exp_dir+os.sep
 		self.setWindowTitle("celldetective")
 		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','logo.png'])))
-		self.parent = parent
+		self.parent_window = parent_window
 		center_window(self)
 
 		self.init_wells_and_positions()
@@ -73,7 +75,7 @@ class ControlPanel(QMainWindow):
 
 		tab_index_analyze = tabWidget.addTab(AnalyzeFrame, "Analyze")
 		tabWidget.setTabIcon(tab_index_analyze, icon(MDI6.poll, color='black'))
-		tabWidget.setStyleSheet(self.parent.qtab_style)
+		tabWidget.setStyleSheet(self.qtab_style)
 
 		self.grid.addWidget(tabWidget, 7,0,1,3, alignment=Qt.AlignTop)
 		self.grid.setSpacing(5)
@@ -88,9 +90,6 @@ class ControlPanel(QMainWindow):
 		self.screen_height = desktop.screenGeometry().height()
 		self.screen_width = desktop.screenGeometry().width()
 		self.scroll.setMinimumWidth(425)
-
-	def parent(self):
-		return self.parent
 
 	def init_wells_and_positions(self):
 
@@ -128,7 +127,7 @@ class ControlPanel(QMainWindow):
 		self.folder_exp_btn.setIconSize(QSize(20, 20))
 		self.folder_exp_btn.setToolTip("Experiment folder")
 		self.folder_exp_btn.clicked.connect(self.open_experiment_folder)
-		self.folder_exp_btn.setStyleSheet(self.parent.button_select_all)
+		self.folder_exp_btn.setStyleSheet(self.button_select_all)
 
 
 		self.edit_config_button = QPushButton()
@@ -136,7 +135,7 @@ class ControlPanel(QMainWindow):
 		self.edit_config_button.setIconSize(QSize(20, 20))
 		self.edit_config_button.setToolTip("Configuration file")
 		self.edit_config_button.clicked.connect(self.open_config_editor)
-		self.edit_config_button.setStyleSheet(self.parent.button_select_all)
+		self.edit_config_button.setStyleSheet(self.button_select_all)
 
 		self.exp_options_layout = QHBoxLayout()
 		self.exp_options_layout.addWidget(experiment_label, 32, alignment=Qt.AlignRight)
@@ -165,7 +164,7 @@ class ControlPanel(QMainWindow):
 		#self.locate_selected_position()
 
 		self.view_stack_btn = QPushButton()
-		self.view_stack_btn.setStyleSheet(self.parent.button_select_all)
+		self.view_stack_btn.setStyleSheet(self.button_select_all)
 		self.view_stack_btn.setIcon(icon(MDI6.image_check, color="black"))
 		self.view_stack_btn.setToolTip("View stack.")
 		self.view_stack_btn.setIconSize(QSize(20, 20))
@@ -380,6 +379,7 @@ class ControlPanel(QMainWindow):
 			self.position_list.clear()
 			self.position_list.addItems(["*"])
 			self.position_list.addItems(self.positions[pos_index])
+		self.update_position_options()
 	
 	def open_config_editor(self):
 		self.cfg_editor = ConfigEditor(self)
@@ -456,9 +456,11 @@ class ControlPanel(QMainWindow):
 			#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
 			self.ProcessTargets.check_signals_btn.setEnabled(False)
 			self.ProcessEffectors.check_signals_btn.setEnabled(False)
+			self.view_stack_btn.setEnabled(False)
 		elif self.well_list.currentText()=='*':
 			self.ProcessTargets.view_tab_btn.setEnabled(True)
-			self.ProcessEffectors.view_tab_btn.setEnabled(True)			
+			self.ProcessEffectors.view_tab_btn.setEnabled(True)	
+			self.view_stack_btn.setEnabled(False)	
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()

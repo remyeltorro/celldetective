@@ -31,11 +31,11 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 	"""
 
-	def __init__(self, neighborhood_type='distance_threshold',neighborhood_parameter_name='threshold distance', parent=None, *args, **kwargs):
+	def __init__(self, neighborhood_type='distance_threshold',neighborhood_parameter_name='threshold distance', parent_window=None, *args, **kwargs):
 		
 		super().__init__(*args, **kwargs)
-		self.parent = parent
-		self.attr_parent = self.parent.parent
+		self.parent_window = parent_window
+		self.attr_parent = self.parent_window.parent_window
 
 		self.neighborhood_type = neighborhood_type
 		self.neighborhood_parameter_name = neighborhood_parameter_name
@@ -158,20 +158,20 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 	def view_current_stack_with_circle(self):
 		
-		self.parent.parent.locate_image()
-		if self.parent.parent.current_stack is not None:
+		self.parent_window.parent_window.locate_image()
+		if self.parent_window.parent_window.current_stack is not None:
 			self.viewer = CellSizeViewer(
 										  initial_diameter = 100,
 										  parent_list_widget = self.measurements_list.list_widget,
 										  set_radius_in_list = True,
-										  stack_path=self.parent.parent.current_stack,
-										  window_title=f'Position {self.parent.parent.position_list.currentText()}',
+										  stack_path=self.parent_window.parent_window.current_stack,
+										  window_title=f'Position {self.parent_window.parent_window.position_list.currentText()}',
 										  frame_slider = True,
 										  contrast_slider = True,
 										  channel_cb = True,
 										  diameter_slider_range = (0,300),
-										  channel_names = self.parent.parent.exp_channels,
-										  n_channels = self.parent.parent.nbr_channels,
+										  channel_names = self.parent_window.parent_window.exp_channels,
+										  n_channels = self.parent_window.parent_window.nbr_channels,
 										  PxToUm = 1,
 										 )
 			self.viewer.show()
@@ -412,13 +412,13 @@ class ConfigNeighborhoods(QWidget, Styles):
 			json.dump(neighborhood_options, f, indent=4)
 
 
-		self.parent.protocols.append(neighborhood_options)
+		self.parent_window.protocols.append(neighborhood_options)
 		correction_description = ""
 		for index, (key, value) in enumerate(neighborhood_options.items()):
 			if index > 0:
 				correction_description += ", "
 			correction_description += str(key) + " : " + str(value)
-		self.parent.protocol_list.addItem(correction_description)
+		self.parent_window.protocol_list.addItem(correction_description)
 		
 		print('Done.')
 		self.close()

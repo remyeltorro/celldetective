@@ -47,9 +47,9 @@ class QHSeperationLine(QFrame):
 
 class FeatureChoice(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Add feature")
 		# Create the QComboBox and add some items
 		self.combo_box = QComboBox(self)
@@ -92,16 +92,16 @@ class FeatureChoice(QWidget):
 
 	def add_current_feature(self):
 		filtername = self.combo_box.currentText()
-		self.parent.list_widget.addItems([filtername])
+		self.parent_window.list_widget.addItems([filtername])
 		self.close()
 
 
 class FilterChoice(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Add filter")
 		# Create the QComboBox and add some items
 		center_window(self)
@@ -151,7 +151,7 @@ class FilterChoice(QWidget):
 	def add_current_feature(self):
 
 		filtername = self.combo_box.currentText()
-		self.parent.list_widget.addItems([filtername])
+		self.parent_window.list_widget.addItems([filtername])
 
 		filter_instructions = [filtername.split('_')[0]]
 		for a in self.arguments_le:
@@ -167,7 +167,7 @@ class FilterChoice(QWidget):
 
 		print(f'You added filter {filter_instructions}.')
 
-		self.parent.items.append(filter_instructions)
+		self.parent_window.items.append(filter_instructions)
 		self.close()
 
 	def update_arguments(self):
@@ -201,9 +201,9 @@ class OperationChoice(QWidget):
 
 	"""
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Add feature")
 		# Create the QComboBox and add some items
 		self.combo_box = QComboBox(self)
@@ -222,16 +222,16 @@ class OperationChoice(QWidget):
 
 	def add_current_feature(self):
 		filtername = self.combo_box.currentText()
-		self.parent.list_widget.addItems([filtername])
+		self.parent_window.list_widget.addItems([filtername])
 		self.close()
 
 
 class GeometryChoice(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Set distances")
 		center_window(self)
 
@@ -286,15 +286,15 @@ class GeometryChoice(QWidget):
 			values = [value + '-' + value2]
 		else:
 			values = [value]
-		self.parent.list_widget.addItems(values)
+		self.parent_window.list_widget.addItems(values)
 		self.close()
 
 
 class DistanceChoice(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Set distances")
 		center_window(self)
 
@@ -318,7 +318,7 @@ class DistanceChoice(QWidget):
 	def add_current_feature(self):
 		value = self.dist_le.text()
 		values = [value]
-		self.parent.list_widget.addItems(values)
+		self.parent_window.list_widget.addItems(values)
 		self.close()
 
 
@@ -327,10 +327,10 @@ class ListWidget(QWidget):
 	Generic list widget.
 	"""
 
-	def __init__(self, parent, choiceWidget, initial_features, dtype=str, channel_names=None):
+	def __init__(self, parent_window, choiceWidget, initial_features, dtype=str, channel_names=None):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.initial_features = initial_features
 		self.choiceWidget = choiceWidget
 		self.dtype = dtype
@@ -746,16 +746,16 @@ def color_from_class(cclass, recently_modified=False):
 
 class ChannelChoice(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		#self.channel_names = channel_names
 		self.setWindowTitle("Choose target channel")
 		# Create the QComboBox and add some items
 		self.combo_box = QComboBox(self)
 		center_window(self)
 
-		channels = parent.channel_names
+		channels = parent_window.channel_names
 
 		self.combo_box.addItems(channels)
 
@@ -769,5 +769,5 @@ class ChannelChoice(QWidget):
 
 	def add_current_channel(self):
 		filtername = self.combo_box.currentText()
-		self.parent.list_widget.addItems([filtername])
+		self.parent_window.list_widget.addItems([filtername])
 		self.close()

@@ -585,7 +585,15 @@ class ProcessPanel(QFrame, Styles):
 				else:
 					self.cellpose_channel_cb[k].addItems(list(self.exp_channels))					
 				idx = self.cellpose_channel_cb[k].findText(self.cellpose_channel_template[k])
-				self.cellpose_channel_cb[k].setCurrentIndex(idx)
+				if idx>0:
+					self.cellpose_channel_cb[k].setCurrentIndex(idx)
+				else:
+					self.cellpose_channel_cb[k].setCurrentIndex(0)			
+
+				if k==1:
+					idx = self.cellpose_channel_cb[k].findText('None')
+					self.cellpose_channel_cb[k].setCurrentIndex(idx)
+
 				layout.addLayout(hbox_channel)
 
 			hbox = QHBoxLayout()
@@ -648,7 +656,11 @@ class ProcessPanel(QFrame, Styles):
 				else:
 					self.stardist_channel_cb[k].addItems(list(self.exp_channels))					
 				idx = self.stardist_channel_cb[k].findText(self.stardist_channel_template[k])
-				self.stardist_channel_cb[k].setCurrentIndex(idx)
+				if idx>0:
+					self.stardist_channel_cb[k].setCurrentIndex(idx)
+				else:
+					self.stardist_channel_cb[k].setCurrentIndex(0)
+
 				layout.addLayout(hbox_channel)
 
 			self.set_stardist_scale_btn = QPushButton('set')

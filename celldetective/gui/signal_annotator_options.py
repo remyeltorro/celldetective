@@ -14,7 +14,7 @@ from fonticon_mdi6 import MDI6
 import os
 from celldetective.gui import Styles
 
-class ConfigSignalAnnotator(QWidget, Styles):
+class ConfigSignalAnnotator(QMainWindow, Styles):
 	
 	"""
 	UI to set normalization and animation parameters for the annotator tool. 
@@ -50,7 +50,6 @@ class ConfigSignalAnnotator(QWidget, Styles):
 		self.populate_widget()
 		#self.load_previous_measurement_instructions()
 
-		self.setLayout(self.main_layout)
 
 	def populate_widget(self):
 		
@@ -68,7 +67,7 @@ class ConfigSignalAnnotator(QWidget, Styles):
 		sub_layout = QVBoxLayout()
 		sub_layout.setContentsMargins(10,10,10,20)
 
-		self.button_widget.setLayout(main_layout)
+		self.button_widget.setLayout(self.main_layout)
 		sub_layout.setContentsMargins(30,30,30,30)
 
 		sub_layout.addWidget(QLabel('Modality: '))

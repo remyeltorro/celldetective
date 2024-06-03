@@ -257,9 +257,11 @@ def update_effector_table(df_relative, df_effector):
     df_effector['group_neighborhood']=1
     effectors = np.unique(df_relative['EFFECTOR_ID'].to_numpy())
     for effector in effectors:
-        if effector in df_effector['TRACK_ID'].values:
+        try:
             # Set group_neighborhood to 0 where TRACK_ID matches effector
             df_effector.loc[df_effector['TRACK_ID'] == effector, 'group_neighborhood'] = 0
+        except:
+            df_effector.loc[df_effector['ID'] == effector, 'group_neighborhood'] = 0
     return df_effector
 
 

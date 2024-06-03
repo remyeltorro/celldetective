@@ -427,8 +427,8 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
     df_props = pd.DataFrame(props)
     if spot_detection is not None:
         df_props = df_props.merge(df_spots, how='outer', on='label')
-        df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
-        df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
+        df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0).infer_objects(copy=False)
+        df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0).infer_objects(copy=False)
 
 
 

@@ -1138,14 +1138,20 @@ class SignalAnnotator2(QMainWindow):
         if self.effector_track_of_interest is not None:
             #print(self.df_effectors['TRACK_ID']==self.effector_track_of_interest)
             #print
-            cclass_effectors = self.df_effectors.loc[
-                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest,
-                self.effector_class_name
-            ].to_numpy()[0]
+            try:
+                cclass_effectors = self.df_effectors.loc[
+                    self.df_effectors['TRACK_ID'] == self.effector_track_of_interest,
+                    self.effector_class_name].to_numpy()[0]
 
-            t0_effectors = self.df_effectors.loc[
-                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+                t0_effectors = self.df_effectors.loc[
+                    self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+            except:
+                cclass_effectors = self.df_effectors.loc[
+                    self.df_effectors['ID'] == self.effector_track_of_interest,
+                    self.effector_class_name].to_numpy()[0]
 
+                t0_effectors = self.df_effectors.loc[
+                    self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
             if cclass_effectors==0:
                 self.effector_event_btn.setChecked(True)
                 self.effector_time_of_interest_le.setText(str(t0_effectors))
@@ -1304,11 +1310,18 @@ class SignalAnnotator2(QMainWindow):
                 cclass_effector = 2
             elif self.effector_suppr_btn.isChecked():
                 cclass_effector = 42
-            self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass_effector
-            self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name] = t0_effector
-
-            indices = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].index
-            timeline = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+            try:
+                self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass_effector
+                self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name] = t0_effector
+            except:
+                self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass_effector
+                self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name] = t0_effector
+            try:
+                indices = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].index
+                timeline = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+            except:
+                indices = self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_class_name].index
+                timeline = self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
             status = np.zeros_like(timeline)
             if t0_effector > 0:
                 status[timeline>=t0_effector] = 1.
@@ -1553,7 +1566,11 @@ class SignalAnnotator2(QMainWindow):
 
             # Load and prep tracks
             self.df_effectors = pd.read_csv(self.effector_trajectories_path)
-            self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            try:
+                self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            except:
+                self.df_effectors = self.df_effectors.sort_values(by=['ID', 'FRAME'])
+
 
             cols = np.array(self.df_effectors.columns)
             self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
@@ -1610,7 +1627,11 @@ class SignalAnnotator2(QMainWindow):
             self.df_effectors['y_anim'] = self.df_effectors['y_anim'].astype(int)
 
             self.extract_scatter_from_effector_trajectories()
-            self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            try:
+                self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            except:
+                self.effector_track_of_interest = self.df_effectors['ID'].min()
+
 
             self.loc_t = []
             self.loc_idx = []
@@ -1628,7 +1649,7 @@ class SignalAnnotator2(QMainWindow):
             # self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
             # print(self.columns_to_rescale)
 
-            cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.effector_class_cols
+            cols_to_remove = ['status','status_color','class_color','TRACK_ID','ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.effector_class_cols
             cols = np.array(list(self.df_effectors.columns))
             time_cols = np.array([c.startswith('t_') for c in cols])
             time_cols = list(cols[time_cols])
@@ -1840,9 +1861,12 @@ class SignalAnnotator2(QMainWindow):
 
 
     def make_effector_status_column(self):
-
+        if 'TRACK_ID' in self.df_effectors.columns:
+            id_type="TRACK_ID"
+        else:
+            id_type="ID"
         print('remaking the status column')
-        for tid, group in self.df_effectors.groupby('TRACK_ID'):
+        for tid, group in self.df_effectors.groupby(id_type):
 
             indices = group.index
             t0 = group[self.effector_time_name].to_numpy()[0]
@@ -1991,10 +2015,17 @@ class SignalAnnotator2(QMainWindow):
                         if self.effector_button1.isChecked():
                             self.lines[i].set_label('effector ' + signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
-                            xdata = self.df_effectors.loc[
-                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_effectors.loc[self.df_effectors[
+                            try:
+
+                                xdata = self.df_effectors.loc[
+                                    self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                                ydata = self.df_effectors.loc[self.df_effectors[
                                                               'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                            except:
+                                xdata = self.df_effectors.loc[
+                                    self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                                ydata = self.df_effectors.loc[self.df_effectors[
+                                                              'ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
                         if self.relative_button1.isChecked():
                             self.lines[i].set_label('relative ' + signal_choice)
                             print(
@@ -2014,10 +2045,18 @@ class SignalAnnotator2(QMainWindow):
                         if self.effector_button2.isChecked():
                             self.lines[i].set_label('effector ' + signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
-                            xdata = self.df_effectors.loc[
-                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_effectors.loc[self.df_effectors[
-                                                              'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                            try:
+
+                                xdata = self.df_effectors.loc[
+                                    self.df_effectors[
+                                        'TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                                ydata = self.df_effectors.loc[self.df_effectors[
+                                                                  'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                            except:
+                                xdata = self.df_effectors.loc[
+                                    self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                                ydata = self.df_effectors.loc[self.df_effectors[
+                                                                  'ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
                         if self.relative_button2.isChecked():
                             self.lines[i].set_label('relative ' + signal_choice)
                             print(
@@ -2036,11 +2075,17 @@ class SignalAnnotator2(QMainWindow):
                             ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
                         if self.effector_button3.isChecked():
                             self.lines[i].set_label('effector ' + signal_choice)
-                            print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
-                            xdata = self.df_effectors.loc[
-                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_effectors.loc[self.df_effectors[
+                            try:
+
+                                xdata = self.df_effectors.loc[
+                                    self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                                ydata = self.df_effectors.loc[self.df_effectors[
                                                               'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                            except:
+                                xdata = self.df_effectors.loc[
+                                    self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                                ydata = self.df_effectors.loc[self.df_effectors[
+                                                              'ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
                         if self.relative_button3.isChecked():
                             self.lines[i].set_label('relative ' + signal_choice)
                             print(
@@ -2118,8 +2163,11 @@ class SignalAnnotator2(QMainWindow):
             self.effector_positions.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['x_anim', 'y_anim']].to_numpy())
             self.effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['class_color', 'status_color']].to_numpy())
             self.initial_effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME'] == t, ['class_color', 'status_color']].to_numpy())
-            self.effector_tracks.append(self.df_effectors.loc[self.df_effectors['FRAME']==t, 'TRACK_ID'].to_numpy())
-
+            try:
+                self.effector_tracks.append(self.df_effectors.loc[self.df_effectors['FRAME']==t, 'TRACK_ID'].to_numpy())
+            except:
+                self.effector_tracks.append(
+                    self.df_effectors.loc[self.df_effectors['FRAME'] == t, 'ID'].to_numpy())
 
     def load_annotator_config(self):
 
@@ -2664,9 +2712,17 @@ class SignalAnnotator2(QMainWindow):
         # self.eff_cell_sel.removeWidget(self.neigh_eff_combo)
         self.eff_cell_sel.addWidget(self.eff_cell)
         self.eff_cell_sel.addWidget(self.neigh_eff_combo, alignment=Qt.AlignLeft)
-        self.effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}"
+        try:
+            self.effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}"
+        except:
+            self.effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}"
+
         self.eff_cls = QLabel(self.effector_cell_class)
-        self.effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}"
+        try:
+            self.effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}"
+        except:
+            self.effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}"
+
         self.eff_tm=QLabel(self.effector_cell_time)
         try:
             self.effector_probabilty = f"probability: {self.df_relative.loc[(self.df_relative['TARGET_ID']==self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID']==self.effector_track_of_interest),'probability'].to_numpy()[0]}"
@@ -2806,8 +2862,12 @@ class SignalAnnotator2(QMainWindow):
             effector_class = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
         except:
             effector_class = 0
-        effector_time = \
-        self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+        try:
+            effector_time = \
+            self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+        except:
+            effector_time = \
+            self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
 
         try:
             effector_probability = self.df_relative.loc[
@@ -3153,7 +3213,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                             labels.append(signal_choice)
 
                         if self.effector_button1.isChecked():
-                            if 'TRACK_ID' in self.df_targets.columns:
+                            if 'TRACK_ID' in self.df_effectors.columns:
                                 self.lines[i].set_label('effector ' + signal_choice)
                                 print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
                                 ydata = self.df_effectors.loc[
@@ -3217,7 +3277,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                             all_yvalues.append(all_ydata)
                             labels.append(signal_choice)
                         if self.effector_button2.isChecked():
-                            if 'TRACK_ID' in self.df_targets.columns:
+                            if 'TRACK_ID' in self.df_effectors.columns:
                                 self.lines[i].set_label('effector ' + signal_choice)
                                 print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
                                 ydata = self.df_effectors.loc[
@@ -3282,7 +3342,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                             all_yvalues.append(all_ydata)
                             labels.append(signal_choice)
                         if self.effector_button3.isChecked():
-                            if 'TRACK_ID' in self.df_targets.columns:
+                            if 'TRACK_ID' in self.df_effectors.columns:
                                 self.lines[i].set_label('effector ' + signal_choice)
                                 print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
                                 ydata = self.df_effectors.loc[
@@ -4076,7 +4136,10 @@ class MeasureAnnotator2(SignalAnnotator2):
 
             # Load and prep tracks
             self.df_effectors = pd.read_csv(self.effector_trajectories_path)
-            self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            try:
+                self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            except:
+                self.df_effectors = self.df_effectors.sort_values(by=['ID', 'FRAME'])
 
             cols = np.array(self.df_effectors.columns)
             self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
@@ -4133,7 +4196,11 @@ class MeasureAnnotator2(SignalAnnotator2):
             self.df_effectors['y_anim'] = self.df_effectors['y_anim'].astype(int)
 
             self.extract_scatter_from_effector_trajectories()
-            self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            try:
+                self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            except:
+                self.effector_track_of_interest = self.df_effectors['ID'].min()
+
 
             self.loc_t = []
             self.loc_idx = []
@@ -4529,27 +4596,27 @@ class MeasureAnnotator2(SignalAnnotator2):
                 pass
             self.draw_frame(self.current_frame)
             self.fcanvas.canvas.draw()
-    def plot_red_points(self, ax):
-        yvalues = []
-        current_frame = self.current_frame
-        for i in range(len(self.signal_choice_cb)):
-            signal_choice = self.signal_choice_cb[i].currentText()
-            if signal_choice != "--":
-                print(f'plot signal {signal_choice} for cell {self.track_of_interest} at frame {current_frame}')
-                if 'TRACK_ID' in self.df_tracks.columns:
-                    ydata = self.df_tracks.loc[
-                        (self.df_tracks['TRACK_ID'] == self.track_of_interest) &
-                        (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
-                else:
-                    ydata = self.df_tracks.loc[
-                        (self.df_tracks['ID'] == self.track_of_interest) &
-                        (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
-                ydata = ydata[ydata == ydata]  # remove nan
-                yvalues.extend(ydata)
-        x_pos = np.arange(len(yvalues)) + 1
-        ax.plot(x_pos, yvalues, marker='H', linestyle='None', color=tab10.colors[3],
-                alpha=1)  # Plot red points representing cells
-        self.cell_fcanvas.canvas.draw()
+    # def plot_red_points(self, ax):
+    #     yvalues = []
+    #     current_frame = self.current_frame
+    #     for i in range(len(self.signal_choice_cb)):
+    #         signal_choice = self.signal_choice_cb[i].currentText()
+    #         if signal_choice != "--":
+    #             print(f'plot signal {signal_choice} for cell {self.track_of_interest} at frame {current_frame}')
+    #             if 'TRACK_ID' in self.df_tracks.columns:
+    #                 ydata = self.df_tracks.loc[
+    #                     (self.df_tracks['TRACK_ID'] == self.track_of_interest) &
+    #                     (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
+    #             else:
+    #                 ydata = self.df_tracks.loc[
+    #                     (self.df_tracks['ID'] == self.track_of_interest) &
+    #                     (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
+    #             ydata = ydata[ydata == ydata]  # remove nan
+    #             yvalues.extend(ydata)
+    #     x_pos = np.arange(len(yvalues)) + 1
+    #     ax.plot(x_pos, yvalues, marker='H', linestyle='None', color=tab10.colors[3],
+    #             alpha=1)  # Plot red points representing cells
+    #     self.cell_fcanvas.canvas.draw()
 
     def show_outliers(self):
         if self.outliers_check.isChecked():
@@ -4597,8 +4664,10 @@ class MeasureAnnotator2(SignalAnnotator2):
             effector_class = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
         except:
             effector_class = 0
-        effector_time = \
-        self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+        try:
+            effector_time = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+        except:
+            effector_time = self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
 
         try:
             effector_probability = self.df_relative.loc[

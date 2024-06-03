@@ -663,7 +663,7 @@ class ProcessPanel(QFrame, Styles):
 		for w_idx in self.well_index:
 
 			pos = self.parent_window.positions[w_idx]
-			if self.parent.position_list.currentText()=="*":
+			if self.parent_window.position_list.currentText()=="*":
 				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
 				print("Processing all positions...")
 			else:

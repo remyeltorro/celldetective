@@ -358,7 +358,7 @@ def apply_background_to_stack(stack_path, background, target_channel_index=0, nb
 
 	corrected_stack = []
 
-	for i in range(0,int(stack_length*nbr_channels) - nbr_channels,nbr_channels):
+	for i in range(0,int(stack_length*nbr_channels),nbr_channels):
 		
 		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 		target_img = frames[:,:,target_channel_index].copy()
@@ -621,7 +621,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 
 	corrected_stack = []
 
-	for i in tqdm(range(0,int(stack_length*nbr_channels) - nbr_channels,nbr_channels)):
+	for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
 		
 		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 		target_img = frames[:,:,target_channel_index].copy()

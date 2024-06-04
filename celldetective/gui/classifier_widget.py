@@ -10,25 +10,26 @@ from PyQt5.QtCore import Qt, QSize
 import os
 from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit
+from celldetective.gui import Styles
 
 def step_function(t, t_shift, dt):
 	return 1/(1+np.exp(-(t-t_shift)/dt))
 
-class ClassifierWidget(QWidget):
+class ClassifierWidget(QWidget, Styles):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 
 		super().__init__()
 
-		self.parent = parent
-		self.screen_height = self.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.screen_width
+		self.parent_window = parent_window
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
+		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
 		self.currentAlpha = 1.0
 
 		self.setWindowTitle("Custom classification")
 
-		self.mode = self.parent.mode
-		self.df = self.parent.df
+		self.mode = self.parent_window.mode
+		self.df = self.parent_window.df
 
 		is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
 		is_number_test = is_number(self.df.dtypes)
@@ -53,7 +54,7 @@ class ClassifierWidget(QWidget):
 		fig_btn_hbox = QHBoxLayout()
 		fig_btn_hbox.addWidget(QLabel(''), 95)
 		self.project_times_btn = QPushButton('')
-		self.project_times_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.project_times_btn.setStyleSheet(self.parent_window.parent_window.parent_window.button_select_all)
 		self.project_times_btn.setIcon(icon(MDI6.math_integral,color="black"))
 		self.project_times_btn.setToolTip("Project measurements at all times.")
 		self.project_times_btn.setIconSize(QSize(20, 20))
@@ -111,7 +112,7 @@ class ClassifierWidget(QWidget):
 			self.features_cb[i].setCurrentIndex(i)
 
 			self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
-			self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.log_btns[i].setStyleSheet(self.button_select_all)
 			self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
 
 		hbox_classify = QHBoxLayout()
@@ -161,7 +162,7 @@ class ClassifierWidget(QWidget):
 		self.propscanvas.canvas.draw_idle()
 		self.propscanvas.canvas.setMinimumHeight(self.screen_height//5)
 
-	def update_props_scatter(self):
+	def update_props_scatter(self, feature_changed=True):
 
 		if not self.project_times:
 			self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
@@ -172,14 +173,15 @@ class ClassifierWidget(QWidget):
 			self.ax_props.set_ylabel(self.features_cb[0].currentText())
 		else:
 			self.scat_props.set_offsets(self.df[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-			colors = [color_from_class(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
+			colors = [color_from_class(c) for c in self.df[self.class_name].to_numpy()]
 			self.scat_props.set_facecolor(colors)
 			self.scat_props.set_alpha(self.currentAlpha)
 			self.ax_props.set_xlabel(self.features_cb[1].currentText())
 			self.ax_props.set_ylabel(self.features_cb[0].currentText())
-
 		self.ax_props.set_xlim(1*self.df[self.features_cb[1].currentText()].min(),1.0*self.df[self.features_cb[1].currentText()].max())
 		self.ax_props.set_ylim(1*self.df[self.features_cb[0].currentText()].min(),1.0*self.df[self.features_cb[0].currentText()].max())
+		if feature_changed:
+			self.propscanvas.canvas.toolbar.update()
 		self.propscanvas.canvas.draw_idle()
 
 	def apply_property_query(self):
@@ -210,16 +212,25 @@ class ClassifierWidget(QWidget):
 		self.update_props_scatter()
 
 	def set_frame(self, value):
+		xlim=self.ax_props.get_xlim()
+		ylim=self.ax_props.get_ylim()
 		self.currentFrame = value
-		self.update_props_scatter()
+		self.update_props_scatter(feature_changed=False)
+		self.ax_props.set_xlim(xlim)
+		self.ax_props.set_ylim(ylim)
+
 
 	def set_transparency(self, value):
+		xlim=self.ax_props.get_xlim()
+		ylim=self.ax_props.get_ylim()
 		self.currentAlpha = value
 		#fc = self.scat_props.get_facecolors()
 		#fc[:, 3] = value
 		#self.scat_props.set_facecolors(fc)
 		#self.propscanvas.canvas.draw_idle()
-		self.update_props_scatter()
+		self.update_props_scatter(feature_changed=False)
+		self.ax_props.set_xlim(xlim)
+		self.ax_props.set_ylim(ylim)
 
 	def switch_projection(self):
 		if self.project_times:

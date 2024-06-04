@@ -6,7 +6,7 @@ import json
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau, CSVLogger
 from tensorflow.keras.losses import CategoricalCrossentropy, MeanSquaredError, MeanAbsoluteError
-from tensorflow.keras.metrics import Precision, Recall
+from tensorflow.keras.metrics import Precision, Recall, MeanIoU
 from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
 from tensorflow.keras.utils import to_categorical, plot_model
@@ -92,6 +92,7 @@ class TimeHistory(Callback):
 
 def analyze_signals(trajectories, model, interpolate_na=True,
 					selected_signals=None,
+					model_path=None,
 					column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
 					plot_outcome=False, output_dir=None):
 
@@ -139,7 +140,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 	"""
 
-	model_path = locate_signal_model(model)
+	model_path = locate_signal_model(model, path=model_path)
 	complete_path = model_path #+model
 	complete_path = rf"{complete_path}"
 	model_config_path = os.sep.join([complete_path,'config_input.json'])
@@ -196,6 +197,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		for j,col in enumerate(selected_signals):
 			signal = group[col].to_numpy()
 			signals[i,frames,j] = signal
+			signals[i,max(frames):,j] = signal[-1]
 
 	# for i in range(5):
 	# 	print('pre model')
@@ -422,6 +424,7 @@ class SignalDetectionModel(object):
 		self.dense_collection = dense_collection
 		self.dropout_rate = dropout_rate
 		self.label = label
+		self.show_plots = True
 
 
 		if self.pretrained is not None:
@@ -430,6 +433,7 @@ class SignalDetectionModel(object):
 		else:
 			print("Create models from scratch...")
 			self.create_models_from_scratch()
+			print("Models successfully created.")
 
 	
 	def load_pretrained_model(self):
@@ -545,10 +549,10 @@ class SignalDetectionModel(object):
 		except:
 			pass
 	
-	def fit_from_directory(self, ds_folders, normalize=True, normalization_percentile=None, normalization_values = None, 
+	def fit_from_directory(self, datasets, normalize=True, normalization_percentile=None, normalization_values = None, 
 						  normalization_clip = None, channel_option=["live_nuclei_channel"], model_name=None, target_directory=None, 
 						  augment=True, augmentation_factor=2, validation_split=0.20, test_split=0.0, batch_size = 64, epochs=300, 
-						  recompile_pretrained=False, learning_rate=0.01, loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False)):
+						  recompile_pretrained=False, learning_rate=0.01, loss_reg="mse", loss_class = CategoricalCrossentropy(from_logits=False), show_plots=True):
 		
 		"""
 		Trains the model using data from specified directories.
@@ -600,19 +604,17 @@ class SignalDetectionModel(object):
 		- The method automatically splits the dataset into training, validation, and test sets according to the specified splits.
 		"""
 
-
 		if not hasattr(self, 'normalization_percentile'):
 			self.normalization_percentile = normalization_percentile
 		if not hasattr(self, 'normalization_values'):
 			self.normalization_values = normalization_values
 		if not hasattr(self, 'normalization_clip'):
 			self.normalization_clip = normalization_clip
-		print('Actual clip option:', self.normalization_clip)
 		
 		self.normalize = normalize
 		self.normalization_percentile, self. normalization_values, self.normalization_clip =  _interpret_normalization_parameters(self.n_channels, self.normalization_percentile, self.normalization_values, self.normalization_clip)
 
-		self.ds_folders = [rf'{d}' for d in ds_folders]
+		self.datasets = [rf'{d}' if isinstance(d,str) else d for d in datasets]
 		self.batch_size = batch_size
 		self.epochs = epochs
 		self.validation_split = validation_split
@@ -626,29 +628,24 @@ class SignalDetectionModel(object):
 		self.learning_rate = learning_rate
 		self.loss_reg = loss_reg
 		self.loss_class = loss_class
-
-
-		if not os.path.exists(self.model_folder):
-			#shutil.rmtree(self.model_folder)
-			os.mkdir(self.model_folder)
-
+		self.show_plots = show_plots
 		self.channel_option = channel_option
 		assert self.n_channels==len(self.channel_option), f'Mismatch between the channel option and the number of channels of the model...'
 		
+		if isinstance(self.datasets[0], dict):
+			self.datasets = [self.datasets]
+
 		self.list_of_sets = []
-		print(self.ds_folders)
-		for f in self.ds_folders:
-			self.list_of_sets.extend(glob(os.sep.join([f,"*.npy"])))
-		print(f"Found {len(self.list_of_sets)} annotation files...")
-		self.generate_sets()
+		for ds in self.datasets:
+			if isinstance(ds,str):
+				self.list_of_sets.extend(glob(os.sep.join([ds,"*.npy"])))
+			else:
+				self.list_of_sets.append(ds)
+		
+		print(f"Found {len(self.list_of_sets)} datasets...")
 
-		self.train_classifier()
-		self.train_regressor()
-
-		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length, 'label': self.label, 'normalize': self.normalize, 'normalization_percentile': self.normalization_percentile, 'normalization_values': self.normalization_values, 'normalization_clip': self.normalization_clip}
-		json_string = json.dumps(config_input)
-		with open(os.sep.join([self.model_folder,"config_input.json"]), 'w') as outfile:
-			outfile.write(json_string)
+		self.prepare_sets()
+		self.train_generic()
 
 	def fit(self, x_train, y_time_train, y_class_train, normalize=True, normalization_percentile=None, normalization_values = None, normalization_clip = None, pad=True, validation_data=None, test_data=None, channel_option=["live_nuclei_channel","dead_nuclei_channel"], model_name=None, 
 			target_directory=None, augment=True, augmentation_factor=3, validation_split=0.25, batch_size = 64, epochs=300,
@@ -691,7 +688,7 @@ class SignalDetectionModel(object):
 
 		# If y-class is not one-hot encoded, encode it
 		if self.y_class_train.shape[-1] != self.n_classes:
-			self.class_weights = compute_weights(self.y_class_train)
+			self.class_weights = compute_weights(y=self.y_class_train,class_weight="balanced", classes=np.unique(self.y_class_train))
 			self.y_class_train = to_categorical(self.y_class_train)
 
 		if self.normalize:
@@ -753,12 +750,20 @@ class SignalDetectionModel(object):
 		self.loss_reg = loss_reg
 		self.loss_class = loss_class
 
-		if os.path.exists(self.model_folder):
-			shutil.rmtree(self.model_folder)
-		os.mkdir(self.model_folder)
+		self.train_generic()
+
+	def train_generic(self):
+		
+		if not os.path.exists(self.model_folder):
+			os.mkdir(self.model_folder)
 
 		self.train_classifier()
 		self.train_regressor()
+
+		config_input = {"channels": self.channel_option, "model_signal_length": self.model_signal_length, 'label': self.label, 'normalize': self.normalize, 'normalization_percentile': self.normalization_percentile, 'normalization_values': self.normalization_values, 'normalization_clip': self.normalization_clip}
+		json_string = json.dumps(config_input)
+		with open(os.sep.join([self.model_folder,"config_input.json"]), 'w') as outfile:
+			outfile.write(json_string)
 
 	def predict_class(self, x, normalize=True, pad=True, return_one_hot=False, interpolate=True):
 
@@ -936,21 +941,21 @@ class SignalDetectionModel(object):
 				self.model_class.set_weights(clone_model(self.model_class).get_weights())
 				self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
 							  loss=self.loss_class, 
-							  metrics=['accuracy', Precision(), Recall()])
+							  metrics=['accuracy', Precision(), Recall(), MeanIoU(num_classes=self.n_classes, name='iou', dtype=float, sparse_y_true=False, sparse_y_pred=False)])
 			else:
 				self.initial_model = clone_model(self.model_class)
 				self.model_class.set_weights(self.initial_model.get_weights())
 				# Recompile to avoid crash
 				self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
 							  loss=self.loss_class, 
-							  metrics=['accuracy', Precision(), Recall()])
+							  metrics=['accuracy', Precision(), Recall(),MeanIoU(num_classes=self.n_classes, name='iou', dtype=float, sparse_y_true=False, sparse_y_pred=False)])
 				# Reset weights
 				self.model_class.set_weights(self.initial_model.get_weights())			
 		else:
 			print("Compiling the classifier...")
 			self.model_class.compile(optimizer=Adam(learning_rate=self.learning_rate), 
 						  loss=self.loss_class, 
-						  metrics=['accuracy', Precision(), Recall()])
+						  metrics=['accuracy', Precision(), Recall(),MeanIoU(num_classes=self.n_classes, name='iou', dtype=float, sparse_y_true=False, sparse_y_pred=False)])
 			
 		self.gather_callbacks("classifier")
 
@@ -979,7 +984,8 @@ class SignalDetectionModel(object):
 								validation_split = self.validation_split,
 								verbose=1)			
 
-		self.plot_model_history(mode="classifier")
+		if self.show_plots:
+			self.plot_model_history(mode="classifier")
 
 		# Set current classification model as the best model
 		self.model_class = load_model(os.sep.join([self.model_folder,"classifier.h5"]))
@@ -1008,10 +1014,12 @@ class SignalDetectionModel(object):
 			results = confusion_matrix(ground_truth,predictions)
 			self.dico.update({"test_IoU": IoU_score, "test_balanced_accuracy": balanced_accuracy, "test_confusion": results, 'test_precision': precision, 'test_recall': recall})
 
-			try:
-				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
-			except:
-				pass
+			if self.show_plots:
+				try:
+					plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
+				except Exception as e:
+					print(e)
+					pass
 			print("Test set: ",classification_report(ground_truth,predictions))
 
 		if hasattr(self, 'x_val'):
@@ -1035,10 +1043,11 @@ class SignalDetectionModel(object):
 			results = confusion_matrix(ground_truth,predictions)
 			self.dico.update({"val_IoU": IoU_score, "val_balanced_accuracy": balanced_accuracy, "val_confusion": results, 'val_precision': precision, 'val_recall': recall})
 
-			try:
-				plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
-			except:
-				pass
+			if self.show_plots:
+				try:
+					plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
+				except:
+					pass
 			print("Validation set: ",classification_report(ground_truth,predictions))
 
 
@@ -1110,7 +1119,8 @@ class SignalDetectionModel(object):
 								validation_split = self.validation_split,
 								verbose=1)			
 
-		self.plot_model_history(mode="regressor")
+		if self.show_plots:
+			self.plot_model_history(mode="regressor")
 		self.dico.update({"history_regressor": self.history_regressor, "execution_time_regressor": self.cb[-1].times})
 		
 
@@ -1119,8 +1129,10 @@ class SignalDetectionModel(object):
 		self.model_reg.load_weights(os.sep.join([self.model_folder,"regressor.h5"]))
 		self.evaluate_regression_model()
 		
-		np.save(os.sep.join([self.model_folder,"scores.npy"]), self.dico)
-		
+		try:
+			np.save(os.sep.join([self.model_folder,"scores.npy"]), self.dico)
+		except Exception as e:
+			print(e)
 
 
 	def plot_model_history(self, mode="regressor"):
@@ -1198,7 +1210,8 @@ class SignalDetectionModel(object):
 			test_mae = mae(ground_truth, predictions).numpy()
 			print(f"MSE on test set: {test_mse}...")
 			print(f"MAE on test set: {test_mae}...")
-			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"test_regression.png"]))
+			if self.show_plots:
+				regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"test_regression.png"]))
 			self.dico.update({"test_mse": test_mse, "test_mae": test_mae})
 
 		if hasattr(self, 'x_val'):
@@ -1210,7 +1223,8 @@ class SignalDetectionModel(object):
 			val_mse = mse(ground_truth, predictions).numpy()
 			val_mae = mae(ground_truth, predictions).numpy()
 
-			regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"validation_regression.png"]))
+			if self.show_plots:
+				regression_plot(predictions, ground_truth, savepath=os.sep.join([self.model_folder,"validation_regression.png"]))
 			print(f"MSE on validation set: {val_mse}...")
 			print(f"MAE on validation set: {val_mae}...")
 
@@ -1237,17 +1251,17 @@ class SignalDetectionModel(object):
 		
 		if mode=="classifier":
 			
-			reduce_lr = ReduceLROnPlateau(monitor='val_precision', factor=0.5, patience=30,
+			reduce_lr = ReduceLROnPlateau(monitor='val_iou', factor=0.5, patience=30,
 										  cooldown=10, min_lr=5e-10, min_delta=1.0E-10,
 										  verbose=1,mode="max")
 			self.cb.append(reduce_lr)
 			csv_logger = CSVLogger(os.sep.join([self.model_folder,'log_classifier.csv']), append=True, separator=';')
 			self.cb.append(csv_logger)
 			checkpoint_path = os.sep.join([self.model_folder,"classifier.h5"])
-			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_precision",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
+			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_iou",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
-			callback_stop = EarlyStopping(monitor='val_precision', patience=100)
+			callback_stop = EarlyStopping(monitor='val_iou', patience=100)
 			self.cb.append(callback_stop)
 			
 		elif mode=="regressor":
@@ -1276,7 +1290,7 @@ class SignalDetectionModel(object):
 		
 		
 	
-	def generate_sets(self):
+	def prepare_sets(self):
 		
 		"""
 		Generates and preprocesses training, validation, and test sets from loaded annotations.
@@ -1295,8 +1309,30 @@ class SignalDetectionModel(object):
 		self.y_time_set = []
 		self.y_class_set = []
 		
-		for s in self.list_of_sets:
-			self.load_and_normalize(s)
+		if isinstance(self.list_of_sets[0],str):
+			# Case 1: a list of npy files to be loaded
+			for s in self.list_of_sets:
+				
+				signal_dataset = self.load_set(s)
+				selected_signals, max_length = self.find_best_signal_match(signal_dataset)
+				signals_recast, classes, times_of_interest = self.cast_signals_into_training_data(signal_dataset, selected_signals, max_length)
+				signals_recast, times_of_interest = self.normalize_signals(signals_recast, times_of_interest)
+
+				self.x_set.extend(signals_recast)
+				self.y_time_set.extend(times_of_interest)
+				self.y_class_set.extend(classes)
+
+		elif isinstance(self.list_of_sets[0],list):
+			# Case 2: a list of sets (already loaded)
+			for signal_dataset in self.list_of_sets:
+				
+				selected_signals, max_length = self.find_best_signal_match(signal_dataset)
+				signals_recast, classes, times_of_interest = self.cast_signals_into_training_data(signal_dataset, selected_signals, max_length)
+				signals_recast, times_of_interest = self.normalize_signals(signals_recast, times_of_interest)
+
+				self.x_set.extend(signals_recast)
+				self.y_time_set.extend(times_of_interest)
+				self.y_class_set.extend(classes)
 
 		self.x_set = np.array(self.x_set).astype(np.float32)
 		self.x_set = self.interpolate_signals(self.x_set)
@@ -1323,7 +1359,6 @@ class SignalDetectionModel(object):
 		self.x_train = ds["x_train"]
 		self.x_val = ds["x_val"]
 		self.y_time_train = ds["y1_train"].astype(np.float32)
-		print(np.amax(self.y_time_train),np.amin(self.y_time_train))
 		self.y_time_val = ds["y1_val"].astype(np.float32)
 		self.y_class_train = ds["y2_train"]
 		self.y_class_val = ds["y2_val"]
@@ -1355,13 +1390,24 @@ class SignalDetectionModel(object):
 		
 		nbr_augment = self.augmentation_factor*len(self.x_train)
 		randomize = np.arange(len(self.x_train))
-		indices = random.choices(randomize,k=nbr_augment)
+		
+		unique, counts = np.unique(self.y_class_train.argmax(axis=1),return_counts=True)
+		frac = counts/sum(counts)
+		weights = [frac[0]/f for f in frac]
+		weights[0] = weights[0]*3
+
+		self.pre_augment_weights = weights/sum(weights)
+		weights_array = [self.pre_augment_weights[a.argmax()] for a in self.y_class_train]
+
+		indices = random.choices(randomize,k=nbr_augment, weights=weights_array)
 
 		x_train_aug = []
 		y_time_train_aug = []
 		y_class_train_aug = []
 
+		counts = [0.,0.,0.]
 		for k in indices:
+			counts[self.y_class_train[k].argmax()] += 1
 			aug = augmenter(self.x_train[k], 
 							self.y_time_train[k], 
 							self.y_class_train[k], 
@@ -1370,36 +1416,23 @@ class SignalDetectionModel(object):
 			x_train_aug.append(aug[0])
 			y_time_train_aug.append(aug[1])
 			y_class_train_aug.append(aug[2])
+		print('per class counts ',counts)
 
 		# Save augmented training set
 		self.x_train = np.array(x_train_aug)
 		self.y_time_train = np.array(y_time_train_aug)
 		self.y_class_train = np.array(y_class_train_aug)
+
+		self.class_weights = compute_weights(self.y_class_train.argmax(axis=1))
+		print(f"New class weights: {self.class_weights}...")
 		
+	def load_set(self, signal_dataset):
+		return np.load(signal_dataset,allow_pickle=True)
 
-
-	def load_and_normalize(self, subset):
+	def find_best_signal_match(self, signal_dataset):
 		
-		"""
-		Loads a subset of signal data from an annotation file and applies normalization.
-
-		Parameters
-		----------
-		subset : str
-			The file path to the .npy annotation file containing signal data for a subset of observations.
-
-		Notes
-		-----
-		- The method extracts required signal channels from the annotation file and applies specified normalization
-		  and interpolation steps.
-		- Preprocessed signals are added to the global dataset for model training.
-		"""
-			
-		set_k = np.load(subset,allow_pickle=True)
-		### here do a mapping between channel option and existing signals
-
 		required_signals = self.channel_option
-		available_signals = list(set_k[0].keys())
+		available_signals = list(signal_dataset[0].keys())
 
 		selected_signals = []
 		for s in required_signals:
@@ -1419,47 +1452,134 @@ class SignalDetectionModel(object):
 			else:
 				return None	
 		
-
 		key_to_check = selected_signals[0] #self.channel_option[0]
-		signal_lengths = [len(l[key_to_check]) for l in set_k]
-		max_length = np.amax(signal_lengths)
+		signal_lengths = [len(l[key_to_check]) for l in signal_dataset]
+		max_length = np.amax(signal_lengths)	
 
-		fluo = np.zeros((len(set_k),max_length,self.n_channels))
-		classes = np.zeros(len(set_k))
-		times_of_interest = np.zeros(len(set_k))
+		return selected_signals, max_length	
+
+	def cast_signals_into_training_data(self, signal_dataset, selected_signals, max_length):
 		
-		for k in range(len(set_k)):
+		signals_recast = np.zeros((len(signal_dataset),max_length,self.n_channels))
+		classes = np.zeros(len(signal_dataset))
+		times_of_interest = np.zeros(len(signal_dataset))
+		
+		for k in range(len(signal_dataset)):
 			
 			for i in range(self.n_channels):
 				try:
 					# take into account timeline for accurate time regression
-					timeline = set_k[k]['FRAME'].astype(int)
-					fluo[k,timeline,i] = set_k[k][selected_signals[i]]
+					timeline = signal_dataset[k]['FRAME'].astype(int)
+					signals_recast[k,timeline,i] = signal_dataset[k][selected_signals[i]]
 				except:
 					print(f"Attribute {selected_signals[i]} matched to {self.channel_option[i]} not found in annotation...")
 					pass
 
-			classes[k] = set_k[k]["class"]
-			times_of_interest[k] = set_k[k]["time_of_interest"]
+			classes[k] = signal_dataset[k]["class"]
+			times_of_interest[k] = signal_dataset[k]["time_of_interest"]
 
 		# Correct absurd times of interest
 		times_of_interest[np.nonzero(classes)] = -1
 		times_of_interest[(times_of_interest<=0.0)] = -1
 
-		# Attempt per-set normalization
-		fluo = pad_to_model_length(fluo, self.model_signal_length)
+		return signals_recast, classes, times_of_interest
+
+	def normalize_signals(self, signals_recast, times_of_interest):
+		
+		signals_recast = pad_to_model_length(signals_recast, self.model_signal_length)
 		if self.normalize:
-			fluo = normalize_signal_set(fluo, self.channel_option, normalization_percentile=self.normalization_percentile, 
+			signals_recast = normalize_signal_set(signals_recast, self.channel_option, normalization_percentile=self.normalization_percentile, 
 										normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
 										)
 			
 		# Trivial normalization for time of interest
 		times_of_interest /= self.model_signal_length
+
+		return signals_recast, times_of_interest
+
+
+	# def load_and_normalize(self, subset):
 		
-		# Add to global dataset
-		self.x_set.extend(fluo)
-		self.y_time_set.extend(times_of_interest)
-		self.y_class_set.extend(classes)
+	# 	"""
+	# 	Loads a subset of signal data from an annotation file and applies normalization.
+
+	# 	Parameters
+	# 	----------
+	# 	subset : str
+	# 		The file path to the .npy annotation file containing signal data for a subset of observations.
+
+	# 	Notes
+	# 	-----
+	# 	- The method extracts required signal channels from the annotation file and applies specified normalization
+	# 	  and interpolation steps.
+	# 	- Preprocessed signals are added to the global dataset for model training.
+	# 	"""
+			
+	# 	set_k = np.load(subset,allow_pickle=True)
+	# 	### here do a mapping between channel option and existing signals
+
+	# 	required_signals = self.channel_option
+	# 	available_signals = list(set_k[0].keys())
+
+	# 	selected_signals = []
+	# 	for s in required_signals:
+	# 		pattern_test = [s in a for a in available_signals]
+	# 		if np.any(pattern_test):
+	# 			valid_columns = np.array(available_signals)[np.array(pattern_test)]
+	# 			if len(valid_columns)==1:
+	# 				selected_signals.append(valid_columns[0])
+	# 			else:
+	# 				print(f'Found several candidate signals: {valid_columns}')
+	# 				for vc in natsorted(valid_columns):
+	# 					if 'circle' in vc:
+	# 						selected_signals.append(vc)
+	# 						break
+	# 				else:
+	# 					selected_signals.append(valid_columns[0])
+	# 		else:
+	# 			return None	
+		
+
+	# 	key_to_check = selected_signals[0] #self.channel_option[0]
+	# 	signal_lengths = [len(l[key_to_check]) for l in set_k]
+	# 	max_length = np.amax(signal_lengths)
+
+	# 	fluo = np.zeros((len(set_k),max_length,self.n_channels))
+	# 	classes = np.zeros(len(set_k))
+	# 	times_of_interest = np.zeros(len(set_k))
+		
+	# 	for k in range(len(set_k)):
+			
+	# 		for i in range(self.n_channels):
+	# 			try:
+	# 				# take into account timeline for accurate time regression
+	# 				timeline = set_k[k]['FRAME'].astype(int)
+	# 				fluo[k,timeline,i] = set_k[k][selected_signals[i]]
+	# 			except:
+	# 				print(f"Attribute {selected_signals[i]} matched to {self.channel_option[i]} not found in annotation...")
+	# 				pass
+
+	# 		classes[k] = set_k[k]["class"]
+	# 		times_of_interest[k] = set_k[k]["time_of_interest"]
+
+	# 	# Correct absurd times of interest
+	# 	times_of_interest[np.nonzero(classes)] = -1
+	# 	times_of_interest[(times_of_interest<=0.0)] = -1
+
+	# 	# Attempt per-set normalization
+	# 	fluo = pad_to_model_length(fluo, self.model_signal_length)
+	# 	if self.normalize:
+	# 		fluo = normalize_signal_set(fluo, self.channel_option, normalization_percentile=self.normalization_percentile, 
+	# 									normalization_values=self.normalization_values, normalization_clip=self.normalization_clip,
+	# 									)
+			
+	# 	# Trivial normalization for time of interest
+	# 	times_of_interest /= self.model_signal_length
+		
+	# 	# Add to global dataset
+	# 	self.x_set.extend(fluo)
+	# 	self.y_time_set.extend(times_of_interest)
+	# 	self.y_class_set.extend(classes)
 
 def _interpret_normalization_parameters(n_channels, normalization_percentile, normalization_values, normalization_clip):
 	
@@ -1653,7 +1773,7 @@ def pad_to_model_length(signal_set, model_signal_length):
 	
 	"""
 
-	padded = np.pad(signal_set, [(0,0),(0,model_signal_length - signal_set.shape[1]),(0,0)]) 
+	padded = np.pad(signal_set, [(0,0),(0,model_signal_length - signal_set.shape[1]),(0,0)],mode="edge") 
 	
 	return padded
 
@@ -1765,13 +1885,16 @@ def random_time_shift(signal, time_of_interest, cclass, model_signal_length):
 
 	"""
 
+	min_time = 3
 	max_time = model_signal_length
+
 	return_target = False
 	if time_of_interest != -1:
 		return_target = True
-		max_time = model_signal_length - 3 # to prevent approaching too much to the edge
+		max_time = model_signal_length + 1/3*model_signal_length # bias to have a third of event class becoming no event
+		min_time = -model_signal_length*1/3
 
-	times = np.linspace(-max_time,max_time,2000) # symmetrize to create left-censored events
+	times = np.linspace(min_time,max_time,2000) # symmetrize to create left-censored events
 	target_time = np.random.choice(times)
 
 	delta_t = target_time - time_of_interest
@@ -1780,13 +1903,16 @@ def random_time_shift(signal, time_of_interest, cclass, model_signal_length):
 	if target_time<=0 and np.argmax(cclass)==0:
 		target_time = -1
 		cclass = np.array([0.,0.,1.]).astype(np.float32)
+	if target_time>=model_signal_length and np.argmax(cclass)==0:
+		target_time = -1
+		cclass = np.array([0.,1.,0.]).astype(np.float32)	
 
 	if return_target:
 		return signal,target_time, cclass
 	else:
 		return signal, time_of_interest, cclass
 
-def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=True, probability=0.8):
+def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=True, probability=0.95):
 
 	"""
 	Randomly augments single-cell signals to simulate variations in noise, intensity ratios, and event times.
@@ -1837,9 +1963,8 @@ def augmenter(signal, time_of_interest, cclass, model_signal_length, time_shift=
 
 		if time_shift:
 			# do not time shift miscellaneous cells
-			if cclass.argmax()!=2.:
-				assert time_of_interest is not None, f"Please provide valid lysis times"
-				signal,time_of_interest,cclass = random_time_shift(signal, time_of_interest, cclass, model_signal_length)
+			assert time_of_interest is not None, f"Please provide valid lysis times"
+			signal,time_of_interest,cclass = random_time_shift(signal, time_of_interest, cclass, model_signal_length)
 
 		#signal = random_intensity_change(signal) #maybe bad idea for non percentile-normalized signals
 		signal = gauss_noise(signal)

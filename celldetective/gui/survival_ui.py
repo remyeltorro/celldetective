@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea,
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon, QDoubleValidator
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
-from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
+from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider, QColormapComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location, _extract_labels_from_config
@@ -26,40 +26,38 @@ from tqdm import tqdm
 from lifelines import KaplanMeierFitter
 import matplotlib.cm as mcm
 import math
-from celldetective.events import switch_to_events_v2
+from celldetective.events import switch_to_events
+from celldetective.gui import Styles
 
-class ConfigSurvival(QWidget):
+class ConfigSurvival(QWidget, Styles):
 	
 	"""
 	UI to set survival instructions.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Configure survival")
 		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 
-		self.exp_dir = self.parent.exp_dir
+		self.exp_dir = self.parent_window.exp_dir
 		self.soft_path = get_software_location()		
 		self.exp_config = self.exp_dir +"config.ini"
-		self.wells = np.array(self.parent.parent.wells,dtype=str)
+		self.wells = np.array(self.parent_window.parent_window.wells,dtype=str)
 		self.well_labels = _extract_labels_from_config(self.exp_config,len(self.wells))
-		self.FrameToMin = self.parent.parent.FrameToMin
+		self.FrameToMin = self.parent_window.parent_window.FrameToMin
 		self.float_validator = QDoubleValidator()
 		self.auto_close = False
 
-		print('Parent wells: ', self.wells)
-
-
-		self.well_option = self.parent.parent.well_list.currentIndex()
-		self.position_option = self.parent.parent.position_list.currentIndex()
+		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
+		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
 		self.interpret_pos_location()
 		#self.config_path = self.exp_dir + self.config_name
 
-		self.screen_height = self.parent.parent.parent.screen_height
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		center_window(self)
 
 		self.setMinimumWidth(350)
@@ -109,9 +107,10 @@ class ConfigSurvival(QWidget):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 
-		labels = [QLabel('population: '), QLabel('time of\ninterest: '), QLabel('time of\nreference: '), QLabel('cmap: ')] #QLabel('class: '), 
-		self.cb_options = [['targets','effectors'],['t0','first detection'], ['0','first detection', 't0'], list(plt.colormaps())] #['class'], 
+		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('cmap: ')] #QLabel('class: '), 
+		self.cb_options = [['targets','effectors'], ['0','t0'], ['t0'], list(plt.colormaps())] #['class'], 
 		self.cbs = [QComboBox() for i in range(len(labels))]
+		self.cbs[-1] = QColormapComboBox()
 		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 
 		choice_layout = QVBoxLayout()
@@ -120,11 +119,13 @@ class ConfigSurvival(QWidget):
 			hbox = QHBoxLayout()
 			hbox.addWidget(labels[i], 33)
 			hbox.addWidget(self.cbs[i],66)
-			self.cbs[i].addItems(self.cb_options[i])
+			if i < len(labels)-1:
+				self.cbs[i].addItems(self.cb_options[i])
 			choice_layout.addLayout(hbox)
+
+		self.cbs[-1].addColormaps(self.cb_options[-1])
 		main_layout.addLayout(choice_layout)
 
-		self.cbs[0].setCurrentIndex(1)
 		self.cbs[0].setCurrentIndex(0)
 
 		time_calib_layout = QHBoxLayout()
@@ -137,7 +138,7 @@ class ConfigSurvival(QWidget):
 		main_layout.addLayout(time_calib_layout)
 
 		self.submit_btn = QPushButton('Submit')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.process_survival)
 		main_layout.addWidget(self.submit_btn)
 
@@ -170,11 +171,11 @@ class ConfigSurvival(QWidget):
 			self.auto_close = True
 			return None
 
-		self.cbs[1].clear()
-		self.cbs[1].addItems(np.unique(self.cb_options[1]+time_columns))
-
 		self.cbs[2].clear()
 		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
+
+		self.cbs[1].clear()
+		self.cbs[1].addItems(np.unique(self.cb_options[1]+time_columns))
 
 		# self.cbs[3].clear()
 		# self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
@@ -186,7 +187,7 @@ class ConfigSurvival(QWidget):
 		self.FrameToMin = float(self.time_calibration_le.text().replace(',','.'))
 		print(self.FrameToMin, 'set')
 
-		self.time_of_interest = self.cbs[1].currentText()
+		self.time_of_interest = self.cbs[2].currentText()
 		if self.time_of_interest=="t0":
 			self.class_of_interest = "class"
 		else:
@@ -216,7 +217,7 @@ class ConfigSurvival(QWidget):
 
 			self.legend_btn = QPushButton('')
 			self.legend_btn.setIcon(icon(MDI6.text_box,color="black"))
-			self.legend_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.legend_btn.setStyleSheet(self.button_select_all)
 			self.legend_btn.setToolTip('Show or hide the legend')
 			self.legend_visible = True
 			self.legend_btn.clicked.connect(self.show_hide_legend)
@@ -225,7 +226,7 @@ class ConfigSurvival(QWidget):
 
 			self.log_btn = QPushButton('')
 			self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-			self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.log_btn.setStyleSheet(self.button_select_all)
 			self.log_btn.clicked.connect(self.switch_to_log)
 			self.log_btn.setToolTip('Enable or disable log scale')
 			plot_buttons_hbox.addWidget(self.log_btn, 5, alignment=Qt.AlignRight)
@@ -369,12 +370,12 @@ class ConfigSurvival(QWidget):
 
 		"""
 
-		self.well_option = self.parent.parent.well_list.currentIndex()
+		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
 		if self.well_option==len(self.wells):
 			wo = '*'
 		else:
 			wo = self.well_option
-		self.position_option = self.parent.parent.position_list.currentIndex()
+		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
 		if self.position_option==0:
 			po = '*'
 		else:
@@ -403,14 +404,14 @@ class ConfigSurvival(QWidget):
 		for block,movie_group in self.df.groupby(['well','position']):
 			try:
 				classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
-				times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
+				times = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].min().values
 			except Exception as e:
 				print(e)
 				continue
 			max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 			first_detections = None
 			
-			if self.cbs[2].currentText()=='first detection':
+			if self.cbs[1].currentText()=='first detection':
 				left_censored = True
 
 				first_detections = []
@@ -427,17 +428,17 @@ class ConfigSurvival(QWidget):
 					else:
 						continue
 
-			elif self.cbs[2].currentText().startswith('t'):
+			elif self.cbs[1].currentText().startswith('t'):
 				left_censored = True
-				first_detections = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].max().values
+				first_detections = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].max().values
 				print(first_detections)
 
 
-			if self.cbs[2].currentText()=='first detection' or self.cbs[2].currentText().startswith('t'):
+			if self.cbs[1].currentText()=='first detection' or self.cbs[1].currentText().startswith('t'):
 				left_censored = True
 			else:
 				left_censored = False
-			events, survival_times = switch_to_events_v2(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
+			events, survival_times = switch_to_events(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
 			ks = KaplanMeierFitter()
 			if len(events)>0:
 				ks.fit(survival_times, event_observed=events)
@@ -455,14 +456,14 @@ class ConfigSurvival(QWidget):
 			for block,movie_group in well_group.groupby('position'):
 				try:
 					classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
-					times = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].min().values
+					times = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].min().values
 				except Exception as e:
 					print(e)
 					continue
 				max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
 				first_detections = None
 
-				if self.cbs[2].currentText()=='first detection':
+				if self.cbs[1].currentText()=='first detection':
 					
 					left_censored = True
 					first_detections = []
@@ -477,9 +478,9 @@ class ConfigSurvival(QWidget):
 								# think about assymmetry with class and times
 								continue
 
-				elif self.cbs[2].currentText().startswith('t'):
+				elif self.cbs[1].currentText().startswith('t'):
 					left_censored = True
-					first_detections = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].max().values
+					first_detections = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].max().values
 
 				else:
 					pass
@@ -494,7 +495,7 @@ class ConfigSurvival(QWidget):
 				well_first_detections = None
 			
 			print(f"{well_classes=}; {well_times=}")
-			events, survival_times = switch_to_events_v2(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
+			events, survival_times = switch_to_events(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
 			print(f"{events=}; {survival_times=}")
 			ks = KaplanMeierFitter()
 			if len(survival_times)>0:

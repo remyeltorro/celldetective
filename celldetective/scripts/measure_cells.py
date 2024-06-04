@@ -20,6 +20,7 @@ from natsort import natsorted
 from art import tprint
 from tifffile import imread
 import threading
+import datetime
 
 tprint("Measure")
 
@@ -195,6 +196,17 @@ if trajectories is None:
 	print('Use features as a substitute for the trajectory table.')
 	if 'label' not in features:
 		features.append('label')
+features_log=f'features: {features}'
+border_distances_log=f'border_distances: {border_distances}'
+haralick_options_log=f'haralick_options: {haralick_options}'
+background_correction_log=f'background_correction: {background_correction}'
+spot_detection_log=f'spot_detection: {spot_detection}'
+intensity_measurement_radii_log=f'intensity_measurement_radii: {intensity_measurement_radii}'
+isotropic_options_log=f'isotropic_operations: {isotropic_operations} \n'
+log='\n'.join([features_log,border_distances_log,haralick_options_log,background_correction_log,spot_detection_log,intensity_measurement_radii_log,isotropic_options_log])
+with open(pos + f'log_{mode}.json', 'a') as f:
+	f.write(f'{datetime.datetime.now()} MEASURE \n')
+	f.write(log+'\n')
 
 
 def measure_index(indices):
@@ -230,7 +242,8 @@ def measure_index(indices):
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
 		if do_iso_intensities and do_features:
-			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id')
+			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
+			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
 		elif do_iso_intensities * (not do_features):
 			measurements_at_t = iso_table
 		elif do_features:

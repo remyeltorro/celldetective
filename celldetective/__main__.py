@@ -15,10 +15,10 @@ class AppInitWindow(QMainWindow):
 	Initial window to set the experiment folder or create a new one.
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		super().__init__()
 
-		self.parent = parent
+		self.parent_window = parent_window
 		self.Styles = Styles()
 		self.init_styles()
 		self.setWindowTitle("celldetective")

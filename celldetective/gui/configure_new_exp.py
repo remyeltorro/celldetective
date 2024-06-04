@@ -12,23 +12,20 @@ from shutil import copyfile
 import time
 from functools import partial
 import numpy as np
+from celldetective.gui import Styles
 
-class ConfigNewExperiment(QMainWindow):
+class ConfigNewExperiment(QMainWindow, Styles):
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("New experiment")
 		center_window(self)
 		self.setFixedWidth(500)
-		self.setMaximumHeight(int(0.8*self.parent.screen_height))
+		self.setMaximumHeight(int(0.8*self.parent_window.screen_height))
 		self.onlyFloat = QDoubleValidator()
 		
-		self.Styles = Styles()
-		self.button_style = self.Styles.button_add
-		self.button_style_sheet = self.Styles.button_style_sheet
-
 		self.newExpFolder = str(QFileDialog.getExistingDirectory(self, 'Select directory'))
 		self.populate_widget()
 
@@ -37,25 +34,25 @@ class ConfigNewExperiment(QMainWindow):
 		# Create button widget and layout
 		self.scroll_area = QScrollArea(self)
 		button_widget = QWidget()
-		grid = QGridLayout()
-		button_widget.setLayout(grid)
+		self.grid = QGridLayout()
+		button_widget.setLayout(self.grid)
 
-		grid.setContentsMargins(30,30,30,30)
-		grid.addWidget(QLabel("Folder:"), 0, 0, 1, 3)
+		self.grid.setContentsMargins(30,30,30,30)
+		self.grid.addWidget(QLabel("Folder:"), 0, 0, 1, 3)
 		self.supFolder = QLineEdit()
 		self.supFolder.setAlignment(Qt.AlignLeft)	
 		self.supFolder.setEnabled(True)
 		self.supFolder.setText(self.newExpFolder)
-		grid.addWidget(self.supFolder, 1, 0, 1, 1)
+		self.grid.addWidget(self.supFolder, 1, 0, 1, 1)
 
 		self.browse_button = QPushButton("Browse...")
 		self.browse_button.clicked.connect(self.browse_experiment_folder)
 		self.browse_button.setIcon(icon(MDI6.folder, color="white"))
-		self.browse_button.setStyleSheet(self.parent.button_style_sheet)
+		self.browse_button.setStyleSheet(self.button_style_sheet)
 		#self.browse_button.setIcon(QIcon_from_svg(abs_path+f"/icons/browse.svg", color='white'))
-		grid.addWidget(self.browse_button, 1, 1, 1, 1)
+		self.grid.addWidget(self.browse_button, 1, 1, 1, 1)
 
-		grid.addWidget(QLabel("Experiment name:"), 2, 0, 1, 3)
+		self.grid.addWidget(QLabel("Experiment name:"), 2, 0, 1, 3)
 		
 		self.expName = QLineEdit()
 		self.expName.setPlaceholderText('folder_name_for_the_experiment')
@@ -63,20 +60,20 @@ class ConfigNewExperiment(QMainWindow):
 		self.expName.setEnabled(True)
 		self.expName.setFixedWidth(400)
 		self.expName.setText("Untitled_Experiment")
-		grid.addWidget(self.expName, 3, 0, 1, 3)
+		self.grid.addWidget(self.expName, 3, 0, 1, 3)
 
 		self.generate_movie_settings()
-		grid.addLayout(self.ms_grid,29,0,1,3)
+		self.grid.addLayout(self.ms_grid,29,0,1,3)
 
 		self.generate_channel_params_box()
-		grid.addLayout(self.channel_grid,30,0,1,3)
+		self.grid.addLayout(self.channel_grid,30,0,1,3)
 
 		self.validate_button = QPushButton("Submit")
 		self.validate_button.clicked.connect(self.create_config)
-		self.validate_button.setStyleSheet(self.parent.button_style_sheet)
+		self.validate_button.setStyleSheet(self.button_style_sheet)
 		#self.validate_button.setIcon(QIcon_from_svg(abs_path+f"/icons/process.svg", color='white'))
 
-		grid.addWidget(self.validate_button, 31, 0, 1, 3, alignment = Qt.AlignBottom)		
+		self.grid.addWidget(self.validate_button, 31, 0, 1, 3, alignment = Qt.AlignBottom)		
 		button_widget.adjustSize()
 
 		self.scroll_area.setAlignment(Qt.AlignCenter)
@@ -233,9 +230,9 @@ class ConfigNewExperiment(QMainWindow):
 
 		# Add channel button
 		self.addChannelBtn = QPushButton('Add channel')
-		self.addChannelBtn.setIcon(icon(MDI6.plus,color="#000000"))
+		self.addChannelBtn.setIcon(icon(MDI6.plus,color="white"))
 		self.addChannelBtn.setIconSize(QSize(25, 25))
-		self.addChannelBtn.setStyleSheet(self.button_style)
+		self.addChannelBtn.setStyleSheet(self.button_style_sheet)
 		self.addChannelBtn.clicked.connect(self.add_custom_channel)
 		self.channel_grid.addWidget(self.addChannelBtn, 1000, 0, 1, 1)
 
@@ -427,14 +424,14 @@ class ConfigNewExperiment(QMainWindow):
 		with open('config.ini', 'w') as configfile:
 			config.write(configfile)
 
-		self.parent.set_experiment_path(self.directory)
+		self.parent_window.set_experiment_path(self.directory)
 		print(f'New experiment successfully configured in folder {self.directory}...')
 		self.close()
 
-class SetupConditionLabels(QWidget):
-	def __init__(self, parent, n_wells):
+class SetupConditionLabels(QWidget, Styles):
+	def __init__(self, parent_window, n_wells):
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.n_wells = n_wells
 		self.setWindowTitle("Well conditions")
 		self.layout = QVBoxLayout()
@@ -477,12 +474,12 @@ class SetupConditionLabels(QWidget):
 		btn_hbox = QHBoxLayout()
 		btn_hbox.setContentsMargins(0,20,0,0)
 		self.skip_btn = QPushButton('Skip')
-		self.skip_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.skip_btn.setStyleSheet(self.button_style_sheet_2)
 		self.skip_btn.clicked.connect(self.set_default_values)
 		btn_hbox.addWidget(self.skip_btn)
 
 		self.submit_btn = QPushButton('Submit')
-		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.set_user_values)
 		btn_hbox.addWidget(self.submit_btn)
 		self.layout.addLayout(btn_hbox)
@@ -495,7 +492,7 @@ class SetupConditionLabels(QWidget):
 			self.concentrations_cbs[i].setText(str(i))
 			self.pharmaceutical_agents_cbs[i].setText(str(i))
 		self.set_attributes()
-		self.parent.create_config_file()
+		self.parent_window.create_config_file()
 		self.close()
 
 	def set_user_values(self):
@@ -509,22 +506,22 @@ class SetupConditionLabels(QWidget):
 			if self.pharmaceutical_agents_cbs[i].text()=='':
 				self.pharmaceutical_agents_cbs[i].setText(str(i))
 		self.set_attributes()
-		self.parent.create_config_file()
+		self.parent_window.create_config_file()
 		self.close()
 
 	def set_attributes(self):
 
 		cell_type_text = [c.text() for c in self.cell_type_cbs]
-		self.parent.cell_types = ','.join(cell_type_text)
+		self.parent_window.cell_types = ','.join(cell_type_text)
 
 		antibodies_text = [c.text() for c in self.antibodies_cbs]
-		self.parent.antibodies = ','.join(antibodies_text)
+		self.parent_window.antibodies = ','.join(antibodies_text)
 
 		concentrations_text = [c.text() for c in self.concentrations_cbs]
-		self.parent.concentrations = ','.join(concentrations_text)
+		self.parent_window.concentrations = ','.join(concentrations_text)
 
 		pharamaceutical_text = [c.text() for c in self.pharmaceutical_agents_cbs]
-		self.parent.pharmaceutical_agents = ','.join(pharamaceutical_text)
+		self.parent_window.pharmaceutical_agents = ','.join(pharamaceutical_text)
 
 
 

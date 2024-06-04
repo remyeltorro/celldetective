@@ -10,18 +10,19 @@ from glob import glob
 import os
 import json
 import shutil
+from celldetective.gui import Styles
 
-class SegmentationModelLoader(QWidget):
+class SegmentationModelLoader(QWidget, Styles):
 	
 	"""
 	Upload a segmentation model or define a Threshold pipeline.
 	"""
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 		
 		super().__init__()
-		self.parent = parent
-		self.mode = self.parent.mode
+		self.parent_window = parent_window
+		self.mode = self.parent_window.mode
 		if self.mode=="targets":
 			self.target_folder = "segmentation_targets"
 		elif self.mode=="effectors":
@@ -83,7 +84,7 @@ class SegmentationModelLoader(QWidget):
 		self.upload_button.clicked.connect(self.upload_model)
 		self.upload_button.setIcon(icon(MDI6.upload,color="white"))
 		self.upload_button.setIconSize(QSize(25, 25))
-		self.upload_button.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.upload_button.setStyleSheet(self.button_style_sheet)
 		self.upload_button.setEnabled(False)
 		self.layout.addWidget(self.upload_button, 10, 0, 1, 1)
 		
@@ -121,31 +122,37 @@ class SegmentationModelLoader(QWidget):
 		
 		self.base_block = QGridLayout()
 		
+		pixel_calib_layout = QHBoxLayout()
 		self.calibration_label = QLabel("pixel calibration: ")
-		self.base_block.addWidget(self.calibration_label,0,0,1,1, alignment=Qt.AlignLeft)
 		self.spatial_calib_le = QLineEdit("0,1")
-		self.qdv = QDoubleValidator(0.0, np.amax([self.parent.parent.shape_x, self.parent.parent.shape_y]), 8, notation=QDoubleValidator.StandardNotation)
+		self.qdv = QDoubleValidator(0.0, np.amax([self.parent_window.parent_window.shape_x, self.parent_window.parent_window.shape_y]), 8, notation=QDoubleValidator.StandardNotation)
 		self.spatial_calib_le.setValidator(self.qdv)
-		self.base_block.addWidget(self.spatial_calib_le, 0,1,1,2,alignment=Qt.AlignRight)
+		pixel_calib_layout.addWidget(self.calibration_label, 30)
+		pixel_calib_layout.addWidget(self.spatial_calib_le, 70)
+		self.base_block.addLayout(pixel_calib_layout, 0,0,1,3)
 
 		self.channel_options = ["--","live_nuclei_channel", "dead_nuclei_channel", "effector_fluo_channel", "brightfield_channel", "adhesion_channel", "fluo_channel_1", "fluo_channel_2"]
-		exp_channels = self.parent.parent.exp_channels
+		exp_channels = self.parent_window.parent_window.exp_channels
 		for ec in exp_channels:
 			if ec not in self.channel_options:
 				self.channel_options.append(ec)
 		self.channel_options += ['None']
 
+		channel_1_layout = QHBoxLayout()
 		self.ch_1_label = QLabel("channel 1: ")
-		self.base_block.addWidget(self.ch_1_label, 1, 0, 1, 1, alignment=Qt.AlignLeft)
 		self.combo_ch1 = QComboBox()
 		self.combo_ch1.addItems(self.channel_options)
-		self.base_block.addWidget(self.combo_ch1, 1, 1, 1, 2, alignment=Qt.AlignRight)
+		channel_1_layout.addWidget(self.ch_1_label,30)
+		channel_1_layout.addWidget(self.combo_ch1, 70)
+		self.base_block.addLayout(channel_1_layout, 1, 0, 1, 3, alignment=Qt.AlignRight)
 
+		channel_2_layout = QHBoxLayout()
 		self.ch_2_label = QLabel("channel 2: ")
-		self.base_block.addWidget(self.ch_2_label, 2, 0, 1, 1, alignment=Qt.AlignLeft)
 		self.combo_ch2 = QComboBox()
 		self.combo_ch2.addItems(self.channel_options)
-		self.base_block.addWidget(self.combo_ch2, 2, 1, 1, 2, alignment=Qt.AlignRight)
+		channel_2_layout.addWidget(self.ch_2_label, 30)
+		channel_2_layout.addWidget(self.combo_ch2, 70)
+		self.base_block.addLayout(channel_2_layout, 2, 0, 1, 3, alignment=Qt.AlignRight)
 
 	def generate_stardist_specific_block(self):
 
@@ -209,7 +216,7 @@ class SegmentationModelLoader(QWidget):
 		self.threshold_config_button.setIcon(icon(MDI6.auto_fix,color="#1565c0"))
 		self.threshold_config_button.setIconSize(QSize(20, 20))
 		self.threshold_config_button.setVisible(False)
-		self.threshold_config_button.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+		self.threshold_config_button.setStyleSheet(self.button_style_sheet_2)
 		self.threshold_config_button.clicked.connect(self.open_threshold_config_wizard)
 		self.layout.addWidget(self.threshold_config_button,3,0,1,2)
 		self.threshold_config_button.hide()
@@ -341,15 +348,17 @@ class SegmentationModelLoader(QWidget):
 						return None
 
 			self.generate_input_config()
-			self.parent.init_seg_model_list()
+			self.parent_window.init_seg_model_list()
 			self.close()
 		else:
 			if self.mode=="targets":	
-				self.parent.threshold_config_targets = self.filename
+				self.parent_window.threshold_config_targets = self.filename
+				self.parent_window.seg_model_list.setCurrentText('Threshold')
 				print('Path to threshold configuration successfully set in the software')
 				self.close()
 			elif self.mode=="effectors":
-				self.parent.threshold_config_effectors = self.filename
+				self.parent_window.threshold_config_effectors = self.filename
+				self.parent_window.seg_model_list.setCurrentText('Threshold')
 				print('Path to threshold configuration successfully set in the software')
 				self.close()	
 
@@ -446,7 +455,7 @@ class SegmentationModelLoader(QWidget):
 
 	def open_threshold_config_wizard(self):
 
-		if isinstance(self.parent.parent.pos, str):
+		if isinstance(self.parent_window.parent_window.pos, str):
 			self.ThreshWizard = ThresholdConfigWizard(self)
 			self.ThreshWizard.show()
 		else:

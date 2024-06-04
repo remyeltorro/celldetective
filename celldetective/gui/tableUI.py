@@ -36,10 +36,10 @@ class PandasModel(QAbstractTableModel):
 
 class QueryWidget(QWidget):
 
-	def __init__(self, parent):
+	def __init__(self, parent_window):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Filter table")
 		# Create the QComboBox and add some items
 		center_window(self)
@@ -57,7 +57,7 @@ class QueryWidget(QWidget):
 	def filter_table(self):
 		try:
 			query_text = self.query_le.text().replace('class', '`class`')
-			tab = self.parent.data.query(query_text)
+			tab = self.parent_window.data.query(query_text)
 			self.subtable = TableUI(tab, query_text, plot_mode="scatter")
 			self.subtable.show()
 			self.close()
@@ -67,10 +67,10 @@ class QueryWidget(QWidget):
 
 class RenameColWidget(QWidget):
 
-	def __init__(self, parent, column=None):
+	def __init__(self, parent_window, column=None):
 
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.column = column
 		if self.column is None:
 			self.column = ''
@@ -93,11 +93,11 @@ class RenameColWidget(QWidget):
 		
 		old_name = self.column
 		new_name = self.new_col_name.text()
-		self.parent.data = self.parent.data.rename(columns={old_name: new_name})
+		self.parent_window.data = self.parent_window.data.rename(columns={old_name: new_name})
 		print(self.parent.data.columns)
 
-		self.parent.model = PandasModel(self.parent.data)
-		self.parent.table_view.setModel(self.parent.model)
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
 
 
@@ -301,8 +301,8 @@ class TableUI(QMainWindow):
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
 		self.strip_check = QCheckBox('strip')
-		self.box_check = QCheckBox('Boxplot') #BOXPLOT NOT WORKING
-		self.boxenplot_check = QCheckBox('Boxenplot') #NOT WORKING EITHER
+		self.box_check = QCheckBox('Boxplot')
+		self.boxenplot_check = QCheckBox('Boxenplot')
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
@@ -444,11 +444,11 @@ class TableUI(QMainWindow):
 				file_name += ".csv"
 			self.data.to_csv(file_name, index=False)
 
-	# def test_bool(self, array):
-	# 	if array.dtype=="bool":
-	# 		return np.array(array, dtype=int)
-	# 	else:
-	# 		return array
+	def test_bool(self, array):
+		if array.dtype=="bool":
+			return np.array(array, dtype=int)
+		else:
+			return array
 
 	def plot(self):
 		if self.plot_mode == "static":
@@ -510,7 +510,7 @@ class TableUI(QMainWindow):
 				self.fig.set_facecolor('none')  # or 'None'
 				self.fig.canvas.setStyleSheet("background-color: transparent;")
 				self.scatter_wdw.canvas.draw()
-				self.scatter_wdw.show(block=False)
+				self.scatter_wdw.show()
 
 			else:
 				print("please select less columns")
@@ -523,18 +523,22 @@ class TableUI(QMainWindow):
 			column_names = self.data.columns
 			unique_cols = np.unique(col_idx)
 
-			fig, ax = plt.subplots(1, 1, figsize=(7, 5.5))
+			self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
+			self.plot_wdw = FigureCanvas(self.fig, title="scatter")
+			self.ax.clear()
 			for k in range(len(unique_cols)):
-
 				row_idx_i = row_idx[np.where(col_idx == unique_cols[k])[0]]
 				y = self.data.iloc[row_idx_i, unique_cols[k]]
-				ax.plot(self.data["timeline"][row_idx_i], y, label=column_names[unique_cols[k]])
+				self.ax.plot(self.data["timeline"][row_idx_i], y, label=column_names[unique_cols[k]])
 
-			ax.legend()
-			ax.set_xlabel("time [frame]")
-			ax.set_ylabel(self.title)
+			self.ax.legend()
+			self.ax.set_xlabel("time [frame]")
+			self.ax.set_ylabel(self.title)
 			plt.tight_layout()
-			plt.show(block=False)
+			self.fig.set_facecolor('none')  # or 'None'
+			self.fig.canvas.setStyleSheet("background-color: transparent;")
+			self.plot_wdw.canvas.draw()
+			plt.show()
 
 		elif self.plot_mode == "plot_track_signals":
 

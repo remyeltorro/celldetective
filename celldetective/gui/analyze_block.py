@@ -78,7 +78,7 @@ class AnalysisPanel(QFrame, Styles):
 		self.plot_measurements_btn = QPushButton("plot measurements")
 		self.plot_measurements_btn.setIcon(icon(MDI6.chart_waterfall, color='black'))
 		#self.plot_measurements_btn.setIcon(QIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','signals_icon.png']))))
-		self.plot_measurements_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.plot_measurements_btn.setStyleSheet(self.button_style_sheet_2)
 		self.plot_measurements_btn.setIconSize(QSize(35, 35))
 		self.plot_measurements_btn.clicked.connect(self.configure_plot_measurements)
 		self.grid.addWidget(self.plot_measurements_btn)

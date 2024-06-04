@@ -8,7 +8,8 @@ from tifffile import imread
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice, color_from_state
 from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QLabeledSlider
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
-from celldetective.io import auto_load_number_of_frames, load_frames, locate_stack,locate_labels
+from celldetective.io import auto_load_number_of_frames, load_frames, locate_stack, locate_labels, relabel_segmentation, \
+    load_napari_data
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
 import json
 import numpy as np
@@ -1325,7 +1326,8 @@ class MeasureAnnotator(SignalAnnotator):
         center_window(self)
 
         self.locate_stack()
-        self.labels=locate_labels(self.pos,population=self.mode)
+        data, properties, graph, labels, _ = load_napari_data(self.pos, prefix=None, population=self.mode,return_stack=False)
+        self.labels = relabel_segmentation(labels,data,properties)
         self.current_channel = 0
 
         self.locate_tracks()
@@ -1363,7 +1365,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.status_scatter = self.ax.scatter(self.positions[0][:, 0], self.positions[0][:, 1], marker="o",
                                               facecolors='none', edgecolors=self.colors[0][:, 0], s=200, picker=True)
         self.im_mask = self.ax.imshow(np.ma.masked_where(self.current_label == 0, self.current_label),
-                                              cmap='viridis', interpolation='none',alpha=self.current_alpha)
+                                              cmap='viridis', interpolation='none',alpha=self.current_alpha,vmin=0,vmax=np.nanmax(self.labels.flatten()))
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_aspect('equal')
@@ -1982,7 +1984,7 @@ class MeasureAnnotator(SignalAnnotator):
         self.current_label = self.labels[self.current_frame]
         self.im_mask.remove()
         self.im_mask = self.ax.imshow(np.ma.masked_where(self.current_label == 0, self.current_label),
-                                               cmap='viridis', interpolation='none',alpha=self.current_alpha)
+                                               cmap='viridis', interpolation='none',alpha=self.current_alpha,vmin=0,vmax=np.nanmax(self.labels.flatten()))
 
         return (self.im, self.status_scatter,self.im_mask,)
 

@@ -118,7 +118,7 @@ class ConfigSignalPlot(QWidget, Styles):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: ')]
-		self.cb_options = [['targets','effectors'],['class'], ['t0','first detection']]
+		self.cb_options = [['targets','effectors'],['class'], ['t0']]
 		self.cbs = [QComboBox() for i in range(len(labels))]
 		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 

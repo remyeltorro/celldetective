@@ -107,8 +107,8 @@ class ConfigSurvival(QWidget, Styles):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 
-		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('cmap: ')] #QLabel('class: '), 
-		self.cb_options = [['targets','effectors'], ['0','t0'], ['t0'], list(plt.colormaps())] #['class'], 
+		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('exclude\nclass: '), QLabel('cmap: ')] #QLabel('class: '), 
+		self.cb_options = [['targets','effectors'], ['0','t_firstdetection'], ['t0'], ['--'], list(plt.colormaps())] #['class'], 
 		self.cbs = [QComboBox() for i in range(len(labels))]
 		self.cbs[-1] = QColormapComboBox()
 		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
@@ -127,6 +127,7 @@ class ConfigSurvival(QWidget, Styles):
 		main_layout.addLayout(choice_layout)
 
 		self.cbs[0].setCurrentIndex(0)
+		self.cbs[1].setCurrentText('t_firstdetection')
 
 		time_calib_layout = QHBoxLayout()
 		time_calib_layout.setContentsMargins(20,20,20,20)
@@ -159,6 +160,8 @@ class ConfigSurvival(QWidget, Styles):
 		self.all_columns = np.unique(self.all_columns)
 		#class_idx = np.array([s.startswith('class_') for s in self.all_columns])
 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
+		class_idx = np.array([s.startswith('class') for s in self.all_columns])
+
 		# class_columns = list(self.all_columns[class_idx])
 		# for c in ['class_id', 'class_color']:
 		# 	if c in class_columns:
@@ -171,11 +174,21 @@ class ConfigSurvival(QWidget, Styles):
 			self.auto_close = True
 			return None
 
+		try:
+			class_columns = list(self.all_columns[class_idx])
+			self.cbs[3].clear()
+			self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
+		except:
+			print('no column starts with class')
+			self.auto_close = True
+			return None
+
 		self.cbs[2].clear()
 		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
 
 		self.cbs[1].clear()
 		self.cbs[1].addItems(np.unique(self.cb_options[1]+time_columns))
+		self.cbs[1].setCurrentText('t_firstdetection')
 
 		# self.cbs[3].clear()
 		# self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
@@ -195,7 +208,14 @@ class ConfigSurvival(QWidget, Styles):
 
 		# read instructions from combobox options
 		self.load_available_tables_local()
+
 		if self.df is not None:
+			
+			excluded_class = self.cbs[3].currentText()
+			if excluded_class!='--':
+				print(f"Excluding {excluded_class}...")
+				self.df = self.df.loc[self.df[excluded_class]!=0,:]
+
 			self.compute_survival_functions()
 			# prepare survival
 

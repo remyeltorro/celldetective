@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QComboBox, \
-	QCheckBox
+	QCheckBox, QRadioButton, QButtonGroup
 from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ import os
 from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit
 from celldetective.gui import Styles
+from math import ceil
 
 def step_function(t, t_shift, dt):
 	return 1/(1+np.exp(-(t-t_shift)/dt))
@@ -125,18 +126,46 @@ class ClassifierWidget(QWidget, Styles):
 		hbox_classify.addWidget(self.submit_query_btn, 20)
 		layout.addLayout(hbox_classify)
 
-		self.time_corr = QCheckBox('Time correlated event')
+		self.time_corr = QCheckBox('Time correlated')
+		self.time_corr.toggled.connect(self.activate_time_corr_options)
 		if "TRACK_ID" in self.df.columns:
 			self.time_corr.setEnabled(True)
 		else:
 			self.time_corr.setEnabled(False)
 		layout.addWidget(self.time_corr,alignment=Qt.AlignCenter)
+
+		self.irreversible_event_btn = QRadioButton('irreversible event')
+		self.unique_state_btn = QRadioButton('unique state')
+		self.time_corr_options = [self.irreversible_event_btn, self.unique_state_btn]
+		time_corr_btn_group = QButtonGroup()
+		self.unique_state_btn.click()
+		for btn in self.time_corr_options:
+			time_corr_btn_group.addButton(btn)
+			btn.setEnabled(False)
+
+		time_corr_layout = QHBoxLayout()
+		time_corr_layout.addWidget(self.unique_state_btn, 50, alignment=Qt.AlignCenter)
+		time_corr_layout.addWidget(self.irreversible_event_btn, 50,alignment=Qt.AlignCenter)
+		layout.addLayout(time_corr_layout)
+
+		layout.addWidget(QLabel())
+
 		self.submit_btn = QPushButton('apply')
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.submit_classification)
 		layout.addWidget(self.submit_btn, 30)
 
 		self.frame_slider.valueChanged.connect(self.set_frame)
 		self.alpha_slider.valueChanged.connect(self.set_transparency)
+
+	def activate_time_corr_options(self):
+
+		if self.time_corr.isChecked():
+			for btn in self.time_corr_options:
+				btn.setEnabled(True)
+		else:
+			for btn in self.time_corr_options:
+				btn.setEnabled(False)
 
 	def init_class(self):
 
@@ -278,14 +307,27 @@ class ClassifierWidget(QWidget, Styles):
 				for tid,track in self.df.groupby(['position','TRACK_ID']):
 					indices = track[self.class_name_user].index
 					status_values = track[stat_col].to_numpy()
-					if np.all([s==0 for s in status_values]):
-						self.df.loc[indices, self.class_name_user] = 1
-					elif np.all([s==1 for s in status_values]):
-						self.df.loc[indices, self.class_name_user] = 2
-						self.df.loc[indices, self.class_name_user.replace('class','status')] = 2
-					else:
-						self.df.loc[indices, self.class_name_user] = 2
-				self.estimate_time()
+					if self.irreversible_event_btn.isChecked():
+						if np.all([s==0 for s in status_values]):
+							self.df.loc[indices, self.class_name_user] = 1
+						elif np.all([s==1 for s in status_values]):
+							self.df.loc[indices, self.class_name_user] = 2
+							self.df.loc[indices, self.class_name_user.replace('class','status')] = 2
+						else:
+							self.df.loc[indices, self.class_name_user] = 2
+					elif self.unique_state_btn.isChecked():
+						frames = track['FRAME'].to_numpy()
+						t_first = track['t_firstdetection'].to_numpy()[0]
+						median_status = np.nanmedian(status_values[frames>=t_first])
+						c = ceil(median_status)
+						if c==0:
+							self.df.loc[indices, self.class_name_user] = 1
+							self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+						elif c==1:
+							self.df.loc[indices, self.class_name_user] = 0
+							self.df.loc[indices, self.class_name_user.replace('class','t')] = 0.01
+				if self.irreversible_event_btn.isChecked():
+					self.estimate_time()
 		else:
 			self.group_name_user = 'group_' + self.name_le.text()
 			print(f'User defined characteristic group name: {self.group_name_user}.')

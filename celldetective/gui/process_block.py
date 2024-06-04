@@ -954,7 +954,7 @@ class NeighPanel(QFrame, Styles):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent_window.scroll.setMinimumHeight(int(500))
+			self.parent_window.scroll.setMinimumHeight(int(550))
 			#self.parent.w.adjustSize()
 			self.parent_window.adjustSize()
 		else:
@@ -963,7 +963,7 @@ class NeighPanel(QFrame, Styles):
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
 			self.parent_window.scroll.setMinimumHeight(min(int(750), int(0.8*self.parent_window.screen_height)))
-			self.parent_window.scroll.setMinimumWidth(410)
+			self.parent_window.scroll.setMinimumWidth(425)
 
 
 	def populate_contents(self):
@@ -1203,7 +1203,7 @@ class PreprocessingPanel(QFrame, Styles):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent_window.scroll.setMinimumHeight(int(500))
+			self.parent_window.scroll.setMinimumHeight(int(550))
 			#self.parent.w.adjustSize()
 			self.parent_window.adjustSize()
 		else:
@@ -1212,7 +1212,7 @@ class PreprocessingPanel(QFrame, Styles):
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
 			self.parent_window.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent_window.screen_height)))
-			self.parent_window.scroll.setMinimumWidth(410)
+			self.parent_window.scroll.setMinimumWidth(425)
 
 	def populate_contents(self):
 

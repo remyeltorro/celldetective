@@ -14,27 +14,28 @@ import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
+from celldetective.gui import Styles
 
-class ConfigTracking(QMainWindow):
+class ConfigTracking(QMainWindow, Styles):
 	
 	"""
 	UI to set tracking parameters for bTrack.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Configure tracking")
-		self.mode = self.parent.mode
-		self.exp_dir = self.parent.exp_dir
+		self.mode = self.parent_window.mode
+		self.exp_dir = self.parent_window.exp_dir
 		if self.mode=="targets":
 			self.config_name = os.sep.join(["configs", "btrack_config_targets.json"])
-			self.track_instructions_write_path = self.parent.exp_dir + os.sep.join(["configs","tracking_instructions_targets.json"])
+			self.track_instructions_write_path = self.parent_window.exp_dir + os.sep.join(["configs","tracking_instructions_targets.json"])
 		elif self.mode=="effectors":
 			self.config_name = os.sep.join(["configs","btrack_config_effectors.json"])
-			self.track_instructions_write_path = self.parent.exp_dir + os.sep.join(["configs", "tracking_instructions_effectors.json"])
+			self.track_instructions_write_path = self.parent_window.exp_dir + os.sep.join(["configs", "tracking_instructions_effectors.json"])
 		self.soft_path = get_software_location()
 		
 		exp_config = self.exp_dir +"config.ini"
@@ -42,7 +43,7 @@ class ConfigTracking(QMainWindow):
 		self.channel_names, self.channels = extract_experiment_channels(exp_config)
 		self.channel_names = np.array(self.channel_names)
 		self.channels = np.array(self.channels)
-		self.screen_height = self.parent.parent.parent.screen_height
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 
 		center_window(self)
 		self.setMinimumWidth(540)
@@ -84,7 +85,7 @@ class ConfigTracking(QMainWindow):
 		main_layout.addWidget(self.post_proc_frame)
 
 		self.submit_btn = QPushButton('Save')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.parent_window.parent_window.parent_window.button_style_sheet)
 		self.submit_btn.clicked.connect(self.write_instructions)
 		main_layout.addWidget(self.submit_btn)
 
@@ -114,7 +115,7 @@ class ConfigTracking(QMainWindow):
 
 		self.select_post_proc_btn = QPushButton()
 		self.select_post_proc_btn.clicked.connect(self.activate_post_proc_options)
-		self.select_post_proc_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.select_post_proc_btn.setStyleSheet(self.button_select_all)
 		grid.addWidget(self.select_post_proc_btn, 0,0,1,4,alignment=Qt.AlignLeft)
 
 		self.post_proc_lbl = QLabel("POST-PROCESSING")
@@ -127,7 +128,7 @@ class ConfigTracking(QMainWindow):
 		self.collapse_post_proc_btn = QPushButton()
 		self.collapse_post_proc_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_post_proc_btn.setIconSize(QSize(20, 20))
-		self.collapse_post_proc_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.collapse_post_proc_btn.setStyleSheet(self.button_select_all)
 		grid.addWidget(self.collapse_post_proc_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.generate_post_proc_panel_contents()
@@ -148,7 +149,7 @@ class ConfigTracking(QMainWindow):
 
 		self.select_features_btn = QPushButton()
 		self.select_features_btn.clicked.connect(self.activate_feature_options)
-		self.select_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.select_features_btn.setStyleSheet(self.button_select_all)
 		grid.addWidget(self.select_features_btn, 0,0,1,4,alignment=Qt.AlignLeft)
 
 
@@ -162,7 +163,7 @@ class ConfigTracking(QMainWindow):
 		self.collapse_features_btn = QPushButton()
 		self.collapse_features_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_features_btn.setIconSize(QSize(20, 20))
-		self.collapse_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.collapse_features_btn.setStyleSheet(self.button_select_all)
 		grid.addWidget(self.collapse_features_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.generate_feature_panel_contents()
@@ -209,7 +210,7 @@ class ConfigTracking(QMainWindow):
 		self.min_tracklength_slider.setTickInterval(1)
 		self.min_tracklength_slider.setSingleStep(1)
 		self.min_tracklength_slider.setOrientation(1)
-		self.min_tracklength_slider.setRange(0,self.parent.parent.len_movie)
+		self.min_tracklength_slider.setRange(0,self.parent_window.parent_window.len_movie)
 		self.min_tracklength_slider.setValue(0)
 		tracklength_layout.addWidget(QLabel('Min. tracklength: '),40)
 		tracklength_layout.addWidget(self.min_tracklength_slider, 60)
@@ -261,13 +262,13 @@ class ConfigTracking(QMainWindow):
 
 		self.feature_lbl = QLabel("Add features:")
 		self.del_feature_btn = QPushButton("")
-		self.del_feature_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.del_feature_btn.setStyleSheet(self.button_select_all)
 		self.del_feature_btn.setIcon(icon(MDI6.trash_can,color="black"))
 		self.del_feature_btn.setToolTip("Remove feature")
 		self.del_feature_btn.setIconSize(QSize(20, 20))
 
 		self.add_feature_btn = QPushButton("")
-		self.add_feature_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.add_feature_btn.setStyleSheet(self.button_select_all)
 		self.add_feature_btn.setIcon(icon(MDI6.filter_plus,color="black"))
 		self.add_feature_btn.setToolTip("Add feature")
 		self.add_feature_btn.setIconSize(QSize(20, 20))		
@@ -324,7 +325,7 @@ class ConfigTracking(QMainWindow):
 		self.haralick_percentile_min_le = QLineEdit('0.01')
 		self.haralick_percentile_max_le = QLineEdit('99.9')
 		self.haralick_normalization_mode_btn = QPushButton()
-		self.haralick_normalization_mode_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.haralick_normalization_mode_btn.setStyleSheet(self.button_select_all)
 		self.haralick_normalization_mode_btn.setIcon(icon(MDI6.percent_circle,color="black"))
 		self.haralick_normalization_mode_btn.setIconSize(QSize(20, 20))		
 		self.haralick_normalization_mode_btn.setToolTip("Switch to absolute normalization values.")
@@ -336,12 +337,12 @@ class ConfigTracking(QMainWindow):
 		self.haralick_hist_btn = QPushButton()
 		self.haralick_hist_btn.clicked.connect(self.control_haralick_intensity_histogram)
 		self.haralick_hist_btn.setIcon(icon(MDI6.poll,color="k"))
-		self.haralick_hist_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.haralick_hist_btn.setStyleSheet(self.button_select_all)
 
 		self.haralick_digit_btn = QPushButton()
 		self.haralick_digit_btn.clicked.connect(self.control_haralick_digitalization)
 		self.haralick_digit_btn.setIcon(icon(MDI6.image_check,color="k"))
-		self.haralick_digit_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.haralick_digit_btn.setStyleSheet(self.button_select_all)
 
 		self.haralick_layout = QVBoxLayout()
 		self.haralick_layout.setContentsMargins(20,20,20,20)
@@ -431,7 +432,7 @@ class ConfigTracking(QMainWindow):
 		self.collapse_config_btn = QPushButton()
 		self.collapse_config_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_config_btn.setIconSize(QSize(20, 20))
-		self.collapse_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.collapse_config_btn.setStyleSheet(self.button_select_all)
 		grid.addWidget(self.collapse_config_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.generate_config_panel_contents()
@@ -471,7 +472,7 @@ class ConfigTracking(QMainWindow):
 		self.upload_btrack_config_btn.setIcon(icon(MDI6.plus,color="black"))
 		self.upload_btrack_config_btn.setIconSize(QSize(20, 20))
 		self.upload_btrack_config_btn.setToolTip("Upload a new bTrack configuration.")
-		self.upload_btrack_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.upload_btrack_config_btn.setStyleSheet(self.button_select_all)
 		self.upload_btrack_config_btn.clicked.connect(self.upload_btrack_config)
 		btrack_config_layout.addWidget(self.upload_btrack_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
 
@@ -479,7 +480,7 @@ class ConfigTracking(QMainWindow):
 		self.reset_config_btn.setIcon(icon(MDI6.arrow_u_right_top,color="black"))
 		self.reset_config_btn.setIconSize(QSize(20, 20))
 		self.reset_config_btn.setToolTip("Reset the configuration to the default bTrack config.")
-		self.reset_config_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.reset_config_btn.setStyleSheet(self.button_select_all)
 		self.reset_config_btn.clicked.connect(self.reset_btrack_config)
 		btrack_config_layout.addWidget(self.reset_config_btn, 5)  #4,3,1,1, alignment=Qt.AlignLeft
 
@@ -817,7 +818,7 @@ class ConfigTracking(QMainWindow):
 		Load the first frame of the first movie found in the experiment folder as a sample.
 		"""
 
-		movies = glob(self.parent.parent.exp_dir + os.sep.join(["*","*","movie",self.parent.parent.movie_prefix+"*.tif"]))
+		movies = glob(self.parent_window.parent_window.exp_dir + os.sep.join(["*","*","movie",self.parent_window.parent_window.movie_prefix+"*.tif"]))
 		if len(movies)==0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)

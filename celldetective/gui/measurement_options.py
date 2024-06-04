@@ -37,28 +37,33 @@ from pathlib import Path, PurePath
 import gc
 from stardist import fill_label_holes
 
+from celldetective.gui.viewers import CellEdgeVisualizer
+from celldetective.gui.layouts import ProtocolDesignerLayout, BackgroundFitCorrectionLayout, LocalCorrectionLayout, OperationLayout
+from celldetective.gui.gui_utils import ThresholdLineEdit
+from celldetective.gui import Styles
 
-class ConfigMeasurements(QMainWindow):
+class ConfigMeasurements(QMainWindow, Styles):
     """
     UI to set measurement instructions.
 
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent_window=None):
 
         super().__init__()
-        self.parent = parent
+
+        self.parent_window = parent_window
         self.setWindowTitle("Configure measurements")
         self.setWindowIcon(QIcon(os.sep.join(['celldetective', 'icons', 'mexican-hat.png'])))
-        self.mode = self.parent.mode
-        self.exp_dir = self.parent.exp_dir
+        self.mode = self.parent_window.mode
+        self.exp_dir = self.parent_window.exp_dir
         self.background_correction = []
         if self.mode == "targets":
             self.config_name = "btrack_config_targets.json"
-            self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_targets.json"
+            self.measure_instructions_path = self.parent_window.exp_dir + "configs/measurement_instructions_targets.json"
         elif self.mode == "effectors":
             self.config_name = "btrack_config_effectors.json"
-            self.measure_instructions_path = self.parent.exp_dir + "configs/measurement_instructions_effectors.json"
+            self.measure_instructions_path = self.parent_window.exp_dir + "configs/measurement_instructions_effectors.json"
         self.soft_path = get_software_location()
         self.clear_previous = False
 
@@ -68,7 +73,7 @@ class ConfigMeasurements(QMainWindow):
         self.channel_names = np.array(self.channel_names)
         self.channels = np.array(self.channels)
 
-        self.screen_height = self.parent.parent.parent.screen_height
+        self.screen_height = self.parent_window.parent_window.parent_window.screen_height
         center_window(self)
 
         self.onlyFloat = QDoubleValidator()
@@ -96,7 +101,20 @@ class ConfigMeasurements(QMainWindow):
 
         self.normalisation_frame = QFrame()
         self.normalisation_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        self.populate_normalisation_tabs()
+        
+        self.local_correction_layout = LocalCorrectionLayout(self)
+        self.fit_correction_layout = BackgroundFitCorrectionLayout(self)
+        
+        self.protocol_layout = ProtocolDesignerLayout(parent_window=self,
+                                                      tab_layouts=[ self.local_correction_layout, self.fit_correction_layout],
+                                                      tab_names=['Local', 'Fit'],
+                                                      title='BACKGROUND CORRECTION',
+                                                      list_title='Corrections to apply:'
+                                                      )
+        
+        self.normalisation_frame.setLayout(self.protocol_layout)
+
+        #self.populate_normalisation_tabs()
         main_layout.addWidget(self.normalisation_frame)
 
         # first frame for FEATURES
@@ -120,7 +138,7 @@ class ConfigMeasurements(QMainWindow):
         main_layout.addWidget(self.clear_previous_btn)
 
         self.submit_btn = QPushButton('Save')
-        self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+        self.submit_btn.setStyleSheet(self.button_style_sheet)
         self.submit_btn.clicked.connect(self.write_instructions)
         main_layout.addWidget(self.submit_btn)
 
@@ -186,14 +204,14 @@ class ConfigMeasurements(QMainWindow):
         radii_layout.addWidget(self.radii_lbl, 90)
 
         self.del_radius_btn = QPushButton("")
-        self.del_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.del_radius_btn.setStyleSheet(self.button_select_all)
         self.del_radius_btn.setIcon(icon(MDI6.trash_can, color="black"))
         self.del_radius_btn.setToolTip("Remove radius")
         self.del_radius_btn.setIconSize(QSize(20, 20))
         radii_layout.addWidget(self.del_radius_btn, 5)
 
         self.add_radius_btn = QPushButton("")
-        self.add_radius_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.add_radius_btn.setStyleSheet(self.button_select_all)
         self.add_radius_btn.setIcon(icon(MDI6.plus, color="black"))
         self.add_radius_btn.setToolTip("Add radius")
         self.add_radius_btn.setIconSize(QSize(20, 20))
@@ -213,14 +231,14 @@ class ConfigMeasurements(QMainWindow):
         operation_layout.addWidget(self.op_lbl, 90)
 
         self.del_op_btn = QPushButton("")
-        self.del_op_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.del_op_btn.setStyleSheet(self.button_select_all)
         self.del_op_btn.setIcon(icon(MDI6.trash_can, color="black"))
         self.del_op_btn.setToolTip("Remove operation")
         self.del_op_btn.setIconSize(QSize(20, 20))
         operation_layout.addWidget(self.del_op_btn, 5)
 
         self.add_op_btn = QPushButton("")
-        self.add_op_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.add_op_btn.setStyleSheet(self.button_select_all)
         self.add_op_btn.setIcon(icon(MDI6.plus, color="black"))
         self.add_op_btn.setToolTip("Add operation")
         self.add_op_btn.setIconSize(QSize(20, 20))
@@ -244,13 +262,13 @@ class ConfigMeasurements(QMainWindow):
 
         self.feature_lbl = QLabel("Add features:")
         self.del_feature_btn = QPushButton("")
-        self.del_feature_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.del_feature_btn.setStyleSheet(self.button_select_all)
         self.del_feature_btn.setIcon(icon(MDI6.trash_can, color="black"))
         self.del_feature_btn.setToolTip("Remove feature")
         self.del_feature_btn.setIconSize(QSize(20, 20))
 
         self.add_feature_btn = QPushButton("")
-        self.add_feature_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.add_feature_btn.setStyleSheet(self.button_select_all)
         self.add_feature_btn.setIcon(icon(MDI6.filter_plus, color="black"))
         self.add_feature_btn.setToolTip("Add feature")
         self.add_feature_btn.setIconSize(QSize(20, 20))
@@ -276,22 +294,22 @@ class ConfigMeasurements(QMainWindow):
         contour_layout.addWidget(self.border_dist_lbl, 90)
 
         self.del_contour_btn = QPushButton("")
-        self.del_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.del_contour_btn.setStyleSheet(self.button_select_all)
         self.del_contour_btn.setIcon(icon(MDI6.trash_can, color="black"))
         self.del_contour_btn.setToolTip("Remove distance")
         self.del_contour_btn.setIconSize(QSize(20, 20))
         contour_layout.addWidget(self.del_contour_btn, 5)
 
         self.add_contour_btn = QPushButton("")
-        self.add_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.add_contour_btn.setStyleSheet(self.button_select_all)
         self.add_contour_btn.setIcon(icon(MDI6.plus, color="black"))
         self.add_contour_btn.setToolTip("Add distance")
         self.add_contour_btn.setIconSize(QSize(20, 20))
         contour_layout.addWidget(self.add_contour_btn, 5)
 
         self.view_contour_btn = QPushButton("")
-        self.view_contour_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.view_contour_btn.setIcon(icon(MDI6.eye_outline, color="black"))
+        self.view_contour_btn.setStyleSheet(self.button_select_all)
+        self.view_contour_btn.setIcon(icon(MDI6.eye_plus_outline, color="black"))
         self.view_contour_btn.setToolTip("View contour")
         self.view_contour_btn.setIconSize(QSize(20, 20))
         contour_layout.addWidget(self.view_contour_btn, 5)
@@ -354,7 +372,7 @@ class ConfigMeasurements(QMainWindow):
         self.haralick_percentile_min_le = QLineEdit('0.01')
         self.haralick_percentile_max_le = QLineEdit('99.9')
         self.haralick_normalization_mode_btn = QPushButton()
-        self.haralick_normalization_mode_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.haralick_normalization_mode_btn.setStyleSheet(self.button_select_all)
         self.haralick_normalization_mode_btn.setIcon(icon(MDI6.percent_circle, color="black"))
         self.haralick_normalization_mode_btn.setIconSize(QSize(20, 20))
         self.haralick_normalization_mode_btn.setToolTip("Switch to absolute normalization values.")
@@ -371,12 +389,12 @@ class ConfigMeasurements(QMainWindow):
         self.haralick_hist_btn = QPushButton()
         self.haralick_hist_btn.clicked.connect(self.control_haralick_intensity_histogram)
         self.haralick_hist_btn.setIcon(icon(MDI6.poll, color="k"))
-        self.haralick_hist_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.haralick_hist_btn.setStyleSheet(self.button_select_all)
 
         self.haralick_digit_btn = QPushButton()
         self.haralick_digit_btn.clicked.connect(self.control_haralick_digitalization)
         self.haralick_digit_btn.setIcon(icon(MDI6.image_check, color="k"))
-        self.haralick_digit_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.haralick_digit_btn.setStyleSheet(self.button_select_all)
 
         self.haralick_layout = QVBoxLayout()
         self.haralick_layout.setContentsMargins(20, 20, 20, 20)
@@ -492,7 +510,7 @@ class ConfigMeasurements(QMainWindow):
 
         print('Writing instructions...')
         measurement_options = {}
-        background_correction = self.background_correction
+        background_correction = self.protocol_layout.protocols
         if not background_correction:
             background_correction = None
         measurement_options.update({'background_correction': background_correction})
@@ -581,18 +599,20 @@ class ConfigMeasurements(QMainWindow):
                 measurement_instructions = json.load(f)
                 print(measurement_instructions)
                 if 'background_correction' in measurement_instructions:
-                    self.background_correction = measurement_instructions['background_correction']
-                    if (self.background_correction is not None) and len(self.background_correction) > 0:
-                        self.normalisation_list.clear()
-                        for norm_params in self.background_correction:
+                    self.protocol_layout.protocols = measurement_instructions['background_correction']
+                    if self.protocol_layout.protocols is None:
+                        self.protocol_layout.protocols = []
+                    if (self.protocol_layout.protocols is not None) and len(self.protocol_layout.protocols) > 0:
+                        self.protocol_layout.protocol_list.clear()
+                        for norm_params in self.protocol_layout.protocols:
                             normalisation_description = ""
                             for index, (key, value) in enumerate(norm_params.items()):
                                 if index > 0:
                                     normalisation_description += ", "
                                 normalisation_description += str(key) + " : " + str(value)
-                            self.normalisation_list.addItem(normalisation_description)
+                            self.protocol_layout.protocol_list.addItem(normalisation_description)
                     else:
-                        self.normalisation_list.clear()
+                        self.protocol_layout.protocol_list.clear()
                 if 'features' in measurement_instructions:
                     features = measurement_instructions['features']
                     if (features is not None) and len(features) > 0:
@@ -702,30 +722,21 @@ class ConfigMeasurements(QMainWindow):
         Load the first frame of the first movie found in the experiment folder as a sample.
         """
 
-        movies = glob(self.parent.parent.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
-        print(movies)
+        movies = glob(self.parent_window.parent_window.pos + os.sep.join(['movie', f"{self.parent_window.movie_prefix}*.tif"]))
+
         if len(movies) == 0:
             msgBox = QMessageBox()
             msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("No movies are detected in the experiment folder. Cannot load an image...")
+            msgBox.setText("Please select a position containing a movie...")
             msgBox.setWindowTitle("Warning")
             msgBox.setStandardButtons(QMessageBox.Ok)
             returnValue = msgBox.exec()
             if returnValue == QMessageBox.Ok:
-                self.test_frame = None
+                self.current_stack = None
                 return None
         else:
-            self.stack0 = movies[0]
-            n_channels = len(self.channels)
-            len_movie_auto = auto_load_number_of_frames(self.stack0)
-            if len_movie_auto is None:
-                stack = imread(self.stack0)
-                len_movie_auto = len(stack)
-                del stack
-                gc.collect()
-            self.mid_time = len_movie_auto // 2
-            self.test_frame = load_frames(n_channels * self.mid_time + np.arange(n_channels), self.stack0, scale=None,
-                                          normalize_input=False)
+            self.current_stack = movies[0]
+
 
     def control_haralick_digitalization(self):
 
@@ -791,119 +802,21 @@ class ConfigMeasurements(QMainWindow):
         Show the ROI for the selected contour measurement on experimental data.
 
         """
-
-        if self.parent.parent.position_list.currentText() == '*':
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("Please select a single position to visualize the border selection.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Ok:
-                return None
-            else:
-                return None
-
         self.locate_image()
 
-        self.locate_mask()
-        if self.test_mask is None:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("The segmentation results could not be found for this position.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Yes:
-                return None
-            else:
-                return None
-        # plt.imshow(self.test_frame[:,:,0])
-        # plt.pause(2)
-        # plt.close()
+        if self.current_stack is not None:
 
-        # plt.imshow(self.test_mask)
-        # plt.pause(2)
-        # plt.close()
-
-        if (self.test_frame is not None) and (self.test_mask is not None):
-
-            values = self.contours_list.list_widget.selectedItems()
-            if len(values) > 0:
-                distance = values[0].text()
-                if '-' in distance:
-                    if distance[0] != '-':
-                        border_dist = distance.split('-')
-                        border_dist = [float(d) for d in border_dist]
-                    else:
-                        border_dist = float(distance)
-                elif distance.isnumeric():
-                    border_dist = float(distance)
-
-                print(border_dist)
-                border_label = contour_of_instance_segmentation(self.test_mask, border_dist)
-
-                self.fig_contour, self.ax_contour = plt.subplots(figsize=(5, 5))
-                self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
-                self.ax_contour.clear()
-                self.im_contour = self.ax_contour.imshow(self.test_frame[:, :, 0], cmap='gray')
-                self.im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label == 0, border_label),
-                                                      cmap='viridis', interpolation='none')
-                self.ax_contour.set_xticks([])
-                self.ax_contour.set_yticks([])
-                self.ax_contour.set_title(border_dist)
-                self.fig_contour.set_facecolor('none')  # or 'None'
-                self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
-                self.imshow_contour.canvas.draw()
-
-                self.imshow_contour.layout.setContentsMargins(30, 30, 30, 30)
-                self.channel_hbox_contour = QHBoxLayout()
-                self.channel_hbox_contour.addWidget(QLabel('channel: '), 10)
-                self.channel_cb_contour = QComboBox()
-                self.channel_cb_contour.addItems(self.channel_names)
-                self.channel_cb_contour.currentIndexChanged.connect(self.switch_channel_contour)
-                self.channel_hbox_contour.addWidget(self.channel_cb_contour, 90)
-                self.imshow_contour.layout.addLayout(self.channel_hbox_contour)
-
-                self.contrast_hbox_contour = QHBoxLayout()
-                self.contrast_hbox_contour.addWidget(QLabel('contrast: '), 10)
-                self.contrast_slider_contour = QLabeledDoubleRangeSlider()
-                self.contrast_slider_contour.setSingleStep(0.00001)
-                self.contrast_slider_contour.setTickInterval(0.00001)
-                self.contrast_slider_contour.setOrientation(1)
-                self.contrast_slider_contour.setRange(np.amin(self.test_frame[:, :, 0]),
-                                                      np.amax(self.test_frame[:, :, 0]))
-                self.contrast_slider_contour.setValue([np.percentile(self.test_frame[:, :, 0].flatten(), 1),
-                                                       np.percentile(self.test_frame[:, :, 0].flatten(), 99.99)])
-                self.im_contour.set_clim(vmin=np.percentile(self.test_frame[:, :, 0].flatten(), 1),
-                                         vmax=np.percentile(self.test_frame[:, :, 0].flatten(), 99.99))
-                self.contrast_slider_contour.valueChanged.connect(self.contrast_im_contour)
-                self.contrast_hbox_contour.addWidget(self.contrast_slider_contour, 90)
-                self.imshow_contour.layout.addLayout(self.contrast_hbox_contour)
-
-                self.alpha_mask_hbox_contour = QHBoxLayout()
-                self.alpha_mask_hbox_contour.addWidget(QLabel('mask transparency: '), 10)
-                self.transparency_slider = QLabeledDoubleSlider()
-                self.transparency_slider.setSingleStep(0.001)
-                self.transparency_slider.setTickInterval(0.001)
-                self.transparency_slider.setOrientation(1)
-                self.transparency_slider.setRange(0, 1)
-                self.transparency_slider.setValue(0.5)
-                self.transparency_slider.valueChanged.connect(self.make_contour_transparent)
-                self.alpha_mask_hbox_contour.addWidget(self.transparency_slider, 90)
-                self.imshow_contour.layout.addLayout(self.alpha_mask_hbox_contour)
-
-                self.imshow_contour.show()
-
-        else:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("No contour was selected. Please first add a contour to the list.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Yes:
-                return None
+            self.viewer = CellEdgeVisualizer(cell_type=self.mode,
+                                             stack_path=self.current_stack,
+                                             parent_list_widget=self.contours_list.list_widget,
+                                             n_channels=len(self.channel_names),
+                                             target_channel=0,
+                                             window_title='Set an edge measurement',
+                                             channel_cb=True,
+                                             channel_names = self.channel_names,
+                                             PxToUm = 1,
+                                             )
+            self.viewer.show()
 
     def locate_mask(self):
 
@@ -911,7 +824,7 @@ class ConfigMeasurements(QMainWindow):
         Load the first mask of the detected movie.
         """
 
-        labels_path = str(Path(self.stack0).parent.parent) + f'/labels_{self.mode}/'
+        labels_path = str(Path(self.stack0).parent_window.parent_window) + f'/labels_{self.mode}/'
         masks = natsorted(glob(labels_path + '*.tif'))
         if len(masks) == 0:
             print('no mask found')
@@ -946,207 +859,46 @@ class ConfigMeasurements(QMainWindow):
         self.im_mask.set_alpha(value)
         self.fig_contour.canvas.draw_idle()
 
-    def populate_normalisation_tabs(self):
-        layout = QVBoxLayout(self.normalisation_frame)
-        self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
-        self.normalisation_lbl.setStyleSheet("""
-            font-weight: bold;
-            padding: 0px;
-            """)
-        layout.addWidget(self.normalisation_lbl, alignment=Qt.AlignCenter)
-        self.tabs = QTabWidget()
-        self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.tab1 = QWidget()
-        self.tab2 = QWidget()
-        self.normalisation_list = QListWidget()
-        self.tabs.addTab(self.tab1, 'Local')
-        self.tabs.addTab(self.tab2, 'Field')
-        self.tab1.setLayout(self.populate_local_norm_tab())
-        self.tab2.setLayout(self.populate_field_norm_tab())
-        layout.addWidget(self.tabs)
-        self.norm_list_lbl = QLabel('Background correction to perform:')
-        hbox = QHBoxLayout()
-        hbox.addWidget(self.norm_list_lbl)
-        self.del_norm_btn = QPushButton("")
-        self.del_norm_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.del_norm_btn.setIcon(icon(MDI6.trash_can, color="black"))
-        self.del_norm_btn.setToolTip("Remove background correction")
-        self.del_norm_btn.setIconSize(QSize(20, 20))
-        hbox.addWidget(self.del_norm_btn, alignment=Qt.AlignRight)
-        layout.addLayout(hbox)
-        self.del_norm_btn.clicked.connect(self.remove_item_from_list)
-        layout.addWidget(self.normalisation_list)
+    # def populate_normalisation_tabs(self):
 
-    def populate_local_norm_tab(self):
-        tab1_layout = QGridLayout(self.tab1)
+    #     """
+    #     Multi-tab options to perform background correction before measurements.
+    #     """
 
-        channel_lbl = QLabel()
-        channel_lbl.setText("Channel: ")
-        tab1_layout.addWidget(channel_lbl, 0, 0)
+    #     layout = QVBoxLayout(self.normalisation_frame)
 
-        self.tab1_channel_dropdown = QComboBox()
-        self.tab1_channel_dropdown.addItems(self.channel_names)
-        tab1_layout.addWidget(self.tab1_channel_dropdown, 0, 1)
+    #     self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
+    #     self.normalisation_lbl.setStyleSheet("""
+    #         font-weight: bold;
+    #         padding: 0px;
+    #         """)
+    #     layout.addWidget(self.normalisation_lbl, alignment=Qt.AlignCenter)
 
-        tab1_lbl = QLabel()
-        tab1_lbl.setText("Outer distance (in px): ")
-        tab1_layout.addWidget(tab1_lbl, 1, 0)
 
-        self.tab1_txt_distance = QLineEdit()
-        tab1_layout.addWidget(self.tab1_txt_distance, 1, 1)
+    #     self.tabs = QTabWidget()
+    #     self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self.tab1_vis_brdr = QPushButton()
-        self.tab1_vis_brdr.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.tab1_vis_brdr.setIcon(icon(MDI6.eye_outline, color="black"))
-        self.tab1_vis_brdr.setToolTip("View contour")
-        self.tab1_vis_brdr.setIconSize(QSize(20, 20))
-        self.tab1_vis_brdr.clicked.connect(self.view_normalisation_contour)
-        tab1_layout.addWidget(self.tab1_vis_brdr, 1, 2)
+    #     self.tab1, self.tab2 = QWidget(), QWidget()
+    #     self.normalisation_list = QListWidget()
+    #     self.tabs.addTab(self.tab1, 'Local')
+    #     self.tabs.addTab(self.tab2, 'Field')
+    #     self.local_correction_layout = LocalCorrectionLayout(self, self.tab1)
+    #     self.fit_correction_layout = BackgroundFitCorrectionLayout(self, self.tab2)
+    #     layout.addWidget(self.tabs)
 
-        tab1_lbl_type = QLabel()
-        tab1_lbl_type.setText("Type: ")
-        tab1_layout.addWidget(tab1_lbl_type, 2, 0)
+    #     self.norm_list_lbl = QLabel('Background correction to perform:')
+    #     hbox = QHBoxLayout()
+    #     hbox.addWidget(self.norm_list_lbl)
+    #     self.del_norm_btn = QPushButton("")
+    #     self.del_norm_btn.setStyleSheet(self.button_select_all)
+    #     self.del_norm_btn.setIcon(icon(MDI6.trash_can, color="black"))
+    #     self.del_norm_btn.setToolTip("Remove background correction")
+    #     self.del_norm_btn.setIconSize(QSize(20, 20))
+    #     hbox.addWidget(self.del_norm_btn, alignment=Qt.AlignRight)
+    #     layout.addLayout(hbox)
+    #     self.del_norm_btn.clicked.connect(self.remove_item_from_list)
+    #     layout.addWidget(self.normalisation_list)
 
-        self.tab1_dropdown = QComboBox()
-        self.tab1_dropdown.addItem("Mean")
-        self.tab1_dropdown.addItem("Median")
-        tab1_layout.addWidget(self.tab1_dropdown, 2, 1)
-
-        self.tab1_subtract = QRadioButton('Subtract')
-        self.tab1_divide = QRadioButton('Divide')
-        tab1_layout.addWidget(self.tab1_subtract, 3, 0, alignment=Qt.AlignRight)
-        tab1_layout.addWidget(self.tab1_divide, 3, 1, alignment=Qt.AlignRight)
-
-        tab1_submit = QPushButton()
-        tab1_submit.setText('Add channel')
-        tab1_submit.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-        tab1_layout.addWidget(tab1_submit, 4, 0, 1, 3)
-        tab1_submit.clicked.connect(self.add_item_to_list)
-
-        return tab1_layout
-
-    def populate_field_norm_tab(self):
-
-        tab2_layout = QGridLayout(self.tab2)
-
-        channel_lbl = QLabel()
-        channel_lbl.setText("Channel: ")
-        tab2_layout.addWidget(channel_lbl, 0, 0)
-
-        self.tab2_channel_dropdown = QComboBox()
-        self.tab2_channel_dropdown.addItems(self.channel_names)
-        tab2_layout.addWidget(self.tab2_channel_dropdown, 0, 1)
-
-        tab2_lbl = QLabel()
-        tab2_lbl.setText("std threshold: ")
-        tab2_layout.addWidget(tab2_lbl, 1, 0)
-
-        self.tab2_txt_threshold = QLineEdit()
-        tab2_layout.addWidget(self.tab2_txt_threshold, 1, 1)
-
-        self.norm_digit_btn = QPushButton()
-        self.norm_digit_btn.setIcon(icon(MDI6.image_check, color="k"))
-        self.norm_digit_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-
-        self.norm_digit_btn.clicked.connect(self.show_threshold_visual)
-        tab2_layout.addWidget(self.norm_digit_btn, 1, 2)
-
-        tab2_lbl_type = QLabel()
-        tab2_lbl_type.setText("Type: ")
-        tab2_layout.addWidget(tab2_lbl_type, 2, 0)
-
-        self.tab2_dropdown = QComboBox()
-        self.tab2_dropdown.addItems(["Paraboloid", "Plane"])
-        tab2_layout.addWidget(self.tab2_dropdown, 2, 1)
-
-        self.tab2_subtract = QRadioButton('Subtract')
-        self.tab2_divide = QRadioButton('Divide')
-        self.tab2_sd_btn_group = QButtonGroup(self)
-        self.tab2_sd_btn_group.addButton(self.tab2_subtract)
-        self.tab2_sd_btn_group.addButton(self.tab2_divide)
-        tab2_layout.addWidget(self.tab2_subtract, 3, 0, alignment=Qt.AlignRight)
-        tab2_layout.addWidget(self.tab2_divide, 3, 1, alignment=Qt.AlignRight)
-
-        self.tab2_clip = QRadioButton('Clip')
-        self.tab2_no_clip = QRadioButton("Don't clip")
-        self.tab2_clip_group = QButtonGroup(self)
-        self.tab2_clip_group.addButton(self.tab2_clip)
-        self.tab2_clip_group.addButton(self.tab2_no_clip)
-        self.tab2_clip.setEnabled(False)
-        self.tab2_no_clip.setEnabled(False)
-        tab2_layout.addWidget(self.tab2_clip, 4, 0, alignment=Qt.AlignLeft)
-        tab2_layout.addWidget(self.tab2_no_clip, 4, 1, alignment=Qt.AlignLeft)
-        self.tab2_subtract.toggled.connect(self.show_clipping_options)
-        self.tab2_divide.toggled.connect(self.show_clipping_options)
-
-        self.view_norm_btn = QPushButton("")
-        self.view_norm_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.view_norm_btn.setIcon(icon(MDI6.eye_outline, color="black"))
-        self.view_norm_btn.setToolTip("View corrected image")
-        self.view_norm_btn.setIconSize(QSize(20, 20))
-        self.view_norm_btn.clicked.connect(self.preview_normalisation)
-        tab2_layout.addWidget(self.view_norm_btn, 4, 2)
-
-        tab2_submit = QPushButton()
-        tab2_submit.setText('Add channel')
-        tab2_submit.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
-        tab2_layout.addWidget(tab2_submit, 5, 0, 1, 3)
-        tab2_submit.clicked.connect(self.add_item_to_list)
-
-        return tab2_layout
-
-    def show_threshold_visual(self):
-        min_threshold = self.tab2_txt_threshold.text()
-        if min_threshold == "":
-            min_threshold = 0
-        current_channel = self.tab2_channel_dropdown.currentIndex()
-        self.threshold_visual = ThresholdNormalisation(min_threshold=float(min_threshold),
-                                                       current_channel=current_channel, parent=self)
-
-    def show_clipping_options(self):
-        if self.tab2_subtract.isChecked():
-            for button in self.tab2_clip_group.buttons():
-                button.setEnabled(True)
-        if self.tab2_divide.isChecked():
-            self.tab2_clip_group.setExclusive(False)
-            for button in self.tab2_clip_group.buttons():
-                button.setChecked(False)
-                button.setEnabled(False)
-            self.tab2_clip_group.setExclusive(True)
-
-    def add_item_to_list(self):
-        check = self.check_the_information()
-        if check is True:
-
-            if self.tabs.currentIndex() == 0:
-
-                norm_params = {"target channel": self.tab1_channel_dropdown.currentText(), "mode": "local",
-                               "distance": self.tab1_txt_distance.text(),
-                               "type": self.tab1_dropdown.currentText()}
-                if self.tab1_subtract.isChecked():
-                    norm_params["operation"] = "Subtract"
-                else:
-                    norm_params["operation"] = "Divide"
-            elif self.tabs.currentIndex() == 1:
-                norm_params = {"target channel": self.tab2_channel_dropdown.currentText(), "mode": "field",
-                               "threshold": self.tab2_txt_threshold.text(),
-                               "type": self.tab2_dropdown.currentText()}
-                if self.tab2_subtract.isChecked():
-                    norm_params["operation"] = "Subtract"
-                    if self.tab2_clip.isChecked():
-                        norm_params["clip"] = True
-                    else:
-                        norm_params["clip"] = False
-                elif self.tab2_divide.isChecked():
-                    norm_params["operation"] = "Divide"
-
-            self.background_correction.append(norm_params)
-            normalisation_description = ""
-            for index, (key, value) in enumerate(norm_params.items()):
-                if index > 0:
-                    normalisation_description += ", "
-                normalisation_description += str(key) + " : " + str(value)
-            self.normalisation_list.addItem(normalisation_description)
 
     def remove_item_from_list(self):
         current_item = self.normalisation_list.currentRow()
@@ -1155,6 +907,7 @@ class ConfigMeasurements(QMainWindow):
             self.normalisation_list.takeItem(current_item)
 
     def check_the_information(self):
+        
         if self.tabs.currentIndex() == 0:
             if self.background_correction  is None:
                 self.background_correction  = []
@@ -1167,38 +920,6 @@ class ConfigMeasurements(QMainWindow):
                         self.background_correction .remove(normalisation_opt)
                         self.normalisation_list.takeItem(index)
                         return True
-            if self.tab1_txt_distance.text() == "":
-                self.display_message_box('provide the outer distance')
-                return False
-            if not self.tab1_subtract.isChecked() and not self.tab1_divide.isChecked():
-                self.display_message_box('choose the operation')
-                return False
-            else:
-                return True
-
-        elif self.tabs.currentIndex() == 1:
-            if self.background_correction is None:
-                self.background_correction = []
-            for index, normalisation_opt in enumerate(self.background_correction ):
-                if self.tab2_channel_dropdown.currentText() in normalisation_opt['target channel']:
-                    result = self.channel_already_in_list()
-                    if result != QMessageBox.Yes:
-                        return False
-                    else:
-                        self.background_correction .remove(normalisation_opt)
-                        self.normalisation_list.takeItem(index)
-                        return True
-            if self.tab2_txt_threshold.text() == "":
-                self.display_message_box('provide the threshold')
-                return False
-            elif not self.tab2_divide.isChecked() and not self.tab2_subtract.isChecked():
-                self.display_message_box('choose subtraction or division')
-                return False
-            elif self.tab2_subtract.isChecked():
-                if not self.tab2_clip.isChecked() and not self.tab2_no_clip.isChecked():
-                    self.display_message_box('provide the clipping mode')
-                    return False
-            return True
 
     def display_message_box(self, missing_info):
         QMessageBox.about(self, "Message Box Title", "Please " + missing_info + " for background correction")
@@ -1214,46 +935,46 @@ class ConfigMeasurements(QMainWindow):
     def fun(self, x, y):
         return x ** 2 + y
 
-    def preview_normalisation(self):
-        plt.close('all')
-        plt.figure("Intensity Profiles",figsize=(10, 5))
-        self.locate_image()
-        diagonal_length = min(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[0], self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[1])
-        if self.tab2_subtract.isChecked():
-            norm_operation='Subtract'
-        else:
-            norm_operation='Divide'
-        normalised, bg_fit = field_normalisation(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()],
-                                                 threshold=self.tab2_txt_threshold.text(),
-                                                 normalisation_operation=norm_operation,
-                                                 clip=self.tab2_clip.isChecked(),
-                                                 mode=self.tab2_dropdown.currentText())
-        diagonal_original = [self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()][i, i] for i in
-                             range(diagonal_length)]
-        diagonal_corrected = [normalised[i, i] for i in range(diagonal_length)]
-        diagonal_indices = np.arange(diagonal_length)
+    # def preview_normalisation(self):
+    #     plt.close('all')
+    #     plt.figure("Intensity Profiles",figsize=(10, 5))
+    #     self.locate_image()
+    #     diagonal_length = min(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[0], self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[1])
+    #     if self.tab2_subtract.isChecked():
+    #         norm_operation='Subtract'
+    #     else:
+    #         norm_operation='Divide'
+    #     normalised, bg_fit = field_normalisation(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()],
+    #                                              threshold=self.tab2_txt_threshold.text(),
+    #                                              normalisation_operation=norm_operation,
+    #                                              clip=self.tab2_clip.isChecked(),
+    #                                              mode=self.tab2_dropdown.currentText())
+    #     diagonal_original = [self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()][i, i] for i in
+    #                          range(diagonal_length)]
+    #     diagonal_corrected = [normalised[i, i] for i in range(diagonal_length)]
+    #     diagonal_indices = np.arange(diagonal_length)
 
-        plt.subplot(1, 2, 1)
-        plt.plot(diagonal_indices, diagonal_original, color='black', linewidth=0.2)  # Adjust linewidth here
-        plt.title('Original Image')
-        plt.xlabel('Pixel Index along Diagonal')
-        plt.ylabel('Intensity')
+    #     plt.subplot(1, 2, 1)
+    #     plt.plot(diagonal_indices, diagonal_original, color='black', linewidth=0.2)  # Adjust linewidth here
+    #     plt.title('Original Image')
+    #     plt.xlabel('Pixel Index along Diagonal')
+    #     plt.ylabel('Intensity')
 
-        plt.subplot(1, 2, 2)
-        plt.plot(diagonal_indices, diagonal_corrected, color='black', linewidth=0.2)  # Adjust linewidth here
-        plt.title('Corrected Image')
-        plt.xlabel('Pixel Index along Diagonal')
-        plt.ylabel('Intensity')
+    #     plt.subplot(1, 2, 2)
+    #     plt.plot(diagonal_indices, diagonal_corrected, color='black', linewidth=0.2)  # Adjust linewidth here
+    #     plt.title('Corrected Image')
+    #     plt.xlabel('Pixel Index along Diagonal')
+    #     plt.ylabel('Intensity')
 
-        plt.tight_layout()
-        plt.show()
+    #     plt.tight_layout()
+    #     plt.show()
 
-        self.fig, self.ax = plt.subplots()
-        self.normalised_img = FigureCanvas(self.fig, "Corrected background image preview")
-        self.ax.clear()
-        self.ax.imshow(normalised, cmap='gray')
-        self.normalised_img.canvas.draw()
-        self.normalised_img.show()
+    #     self.fig, self.ax = plt.subplots()
+    #     self.normalised_img = FigureCanvas(self.fig, "Corrected background image preview")
+    #     self.ax.clear()
+    #     self.ax.imshow(normalised, cmap='gray')
+    #     self.normalised_img.canvas.draw()
+    #     self.normalised_img.show()
 
     def view_normalisation_contour(self):
 
@@ -1262,67 +983,27 @@ class ConfigMeasurements(QMainWindow):
 
         """
 
-        if self.parent.parent.position_list.currentText() == '*':
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("Please select a single position to visualize the border selection.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Ok:
-                return None
-            else:
-                return None
-
         self.locate_image()
 
-        self.locate_mask()
-        if self.test_mask is None:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Warning)
-            msgBox.setText("The segmentation results could not be found for this position.")
-            msgBox.setWindowTitle("Warning")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            returnValue = msgBox.exec()
-            if returnValue == QMessageBox.Yes:
-                return None
-            else:
-                return None
+        if self.current_stack is not None:
 
-        if (self.test_frame is not None) and (self.test_mask is not None):
-            contour = float(self.tab1_txt_distance.text())
-            contour = contour * (-1)
-            border_label = contour_of_instance_segmentation(self.test_mask, contour)
+            self.viewer = CellEdgeVisualizer(cell_type=self.mode,
+                                             stack_path=self.current_stack,
+                                             parent_le = self.tab1_txt_distance,
+                                             n_channels=len(self.channel_names),
+                                             target_channel=self.tab1_channel_dropdown.currentIndex(),
+                                             edge_range = (0,30),
+                                             initial_edge= self.tab1_txt_distance.get_threshold(),
+                                             invert=True,
+                                             window_title='Set an edge distance to estimate local intensity',
+                                             channel_cb=False,
+                                             PxToUm = 1,
+                                             )
+            self.viewer.show()
 
-            self.fig_contour, self.ax_contour = plt.subplots(figsize=(5, 5))
-            self.imshow_contour = FigureCanvas(self.fig_contour, title="Contour measurement", interactive=True)
-            self.ax_contour.clear()
-            self.im_contour = self.ax_contour.imshow(self.test_frame[:, :, self.tab1_channel_dropdown.currentIndex()],
-                                                     cmap='gray')
-            self.im_mask = self.ax_contour.imshow(np.ma.masked_where(border_label == 0, border_label),
-                                                  cmap='viridis', interpolation='none')
-            self.ax_contour.set_xticks([])
-            self.ax_contour.set_yticks([])
-            self.ax_contour.set_title(contour * (-1))
-            self.fig_contour.set_facecolor('none')  # or 'None'
-            self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
-            self.imshow_contour.canvas.draw()
-
-            self.imshow_contour.show()
-
-    # def enable_step_size(self):
-    #     if self.radial_intensity_btn.isChecked():
-    #         self.step_lbl.setEnabled(True)
-    #         self.step_size.setEnabled(True)
-    #         for checkbox in self.channel_chechkboxes:
-    #             checkbox.setEnabled(True)
-    #     else:
-    #         self.step_lbl.setEnabled(False)
-    #         self.step_size.setEnabled(False)
-    #         for checkbox in self.channel_chechkboxes:
-    #             checkbox.setEnabled(False)
 
     def populate_spot_detection(self):
+
         layout = QGridLayout(self.spot_detection_frame)
         self.spot_detection_lbl = QLabel("SPOT DETECTION")
         self.spot_detection_lbl.setStyleSheet("""font-weight: bold;padding: 0px;""")
@@ -1353,7 +1034,7 @@ class ConfigMeasurements(QMainWindow):
         layout.addWidget(self.threshold_value, 4, 1)
         self.preview_spot = QPushButton('Preview')
         self.preview_spot.clicked.connect(self.spot_preview)
-        self.preview_spot.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.preview_spot.setStyleSheet(self.button_style_sheet_2)
         layout.addWidget(self.preview_spot, 5, 0, 1, 2)
         self.spot_channel.setEnabled(False)
         self.spot_channel_lbl.setEnabled(False)
@@ -1379,7 +1060,7 @@ class ConfigMeasurements(QMainWindow):
             self.locate_mask()
             if self.test_mask is not None:
                 self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
-                                                 mask=self.test_mask, parent=self)
+                                                 mask=self.test_mask, parent_window=self)
         # for dictionary in self.background_correction:
         #     if self.spot_channel.currentText() in dictionary['target channel']:
         #         if dictionary['mode'] == 'field':

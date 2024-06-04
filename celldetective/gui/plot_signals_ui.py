@@ -31,28 +31,29 @@ from tqdm import tqdm
 from lifelines import KaplanMeierFitter
 from matplotlib.cm import viridis, tab10
 import math
+from celldetective.gui import Styles
 
 
 
-class ConfigSignalPlot(QWidget):
+class ConfigSignalPlot(QWidget, Styles):
 	
 	"""
 	UI to set survival instructions.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Configure signal plot")
 		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
-		self.exp_dir = self.parent.exp_dir
+		self.exp_dir = self.parent_window.exp_dir
 		self.soft_path = get_software_location()		
 		self.exp_config = self.exp_dir +"config.ini"
-		self.wells = np.array(self.parent.parent.wells,dtype=str)
+		self.wells = np.array(self.parent_window.parent_window.wells,dtype=str)
 		self.well_labels = _extract_labels_from_config(self.exp_config,len(self.wells))
-		self.FrameToMin = self.parent.parent.FrameToMin
+		self.FrameToMin = self.parent_window.parent_window.FrameToMin
 		self.float_validator = QDoubleValidator()
 		self.target_class = [0,1]
 		self.show_ci = True
@@ -64,13 +65,13 @@ class ConfigSignalPlot(QWidget):
 		print('Parent wells: ', self.wells)
 
 
-		self.well_option = self.parent.parent.well_list.currentIndex()
-		self.position_option = self.parent.parent.position_list.currentIndex()
+		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
+		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
 		self.interpret_pos_location()
 		#self.load_available_tables()
 		#self.config_path = self.exp_dir + self.config_name
 
-		self.screen_height = self.parent.parent.parent.screen_height
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		center_window(self)
 		#self.setMinimumHeight(int(0.8*self.screen_height))
 		#self.setMaximumHeight(int(0.8*self.screen_height))
@@ -117,7 +118,7 @@ class ConfigSignalPlot(QWidget):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: ')]
-		self.cb_options = [['targets','effectors'],['class'], ['t0','first detection']]
+		self.cb_options = [['targets','effectors'],['class'], ['t0']]
 		self.cbs = [QComboBox() for i in range(len(labels))]
 		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 
@@ -138,7 +139,7 @@ class ConfigSignalPlot(QWidget):
 		self.frame_slider = QLabeledSlider()
 		self.frame_slider.setSingleStep(1)
 		self.frame_slider.setOrientation(1)
-		self.frame_slider.setRange(0,self.parent.parent.len_movie)
+		self.frame_slider.setRange(0,self.parent_window.parent_window.len_movie)
 		self.frame_slider.setValue(0)
 		self.frame_slider.setEnabled(False)
 		slider_hbox = QHBoxLayout()
@@ -160,7 +161,7 @@ class ConfigSignalPlot(QWidget):
 		main_layout.addLayout(time_calib_layout)
 
 		self.submit_btn = QPushButton('Submit')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.process_signal)
 		main_layout.addWidget(self.submit_btn)
 
@@ -295,7 +296,7 @@ class ConfigSignalPlot(QWidget):
 
 			self.legend_btn = QPushButton('')
 			self.legend_btn.setIcon(icon(MDI6.text_box,color="black"))
-			self.legend_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.legend_btn.setStyleSheet(self.button_select_all)
 			self.legend_btn.setToolTip('Show or hide the legend')
 			self.legend_visible = True
 			self.legend_btn.clicked.connect(self.show_hide_legend)
@@ -304,7 +305,7 @@ class ConfigSignalPlot(QWidget):
 
 			self.log_btn = QPushButton('')
 			self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-			self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.log_btn.setStyleSheet(self.button_select_all)
 			self.log_btn.clicked.connect(self.switch_to_log)
 			self.log_btn.setToolTip('Enable or disable log scale')
 			plot_buttons_hbox.addWidget(self.log_btn, 5, alignment=Qt.AlignRight)
@@ -312,14 +313,14 @@ class ConfigSignalPlot(QWidget):
 
 			self.ci_btn = QPushButton('')
 			self.ci_btn.setIcon(icon(MDI6.arrow_expand_horizontal,color="blue"))
-			self.ci_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.ci_btn.setStyleSheet(self.button_select_all)
 			self.ci_btn.clicked.connect(self.switch_ci)
 			self.ci_btn.setToolTip('Show or hide confidence intervals.')
 			plot_buttons_hbox.addWidget(self.ci_btn, 5, alignment=Qt.AlignRight)
 
 			self.cell_lines_btn = QPushButton('')
 			self.cell_lines_btn.setIcon(icon(MDI6.view_headline,color="black"))
-			self.cell_lines_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+			self.cell_lines_btn.setStyleSheet(self.button_select_all)
 			self.cell_lines_btn.clicked.connect(self.switch_cell_lines)
 			self.cell_lines_btn.setToolTip('Show or hide individual cell signals.')
 			plot_buttons_hbox.addWidget(self.cell_lines_btn, 5, alignment=Qt.AlignRight)
@@ -513,12 +514,12 @@ class ConfigSignalPlot(QWidget):
 
 		"""
 
-		self.well_option = self.parent.parent.well_list.currentIndex()
+		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
 		if self.well_option==len(self.wells):
 			wo = '*'
 		else:
 			wo = self.well_option
-		self.position_option = self.parent.parent.position_list.currentIndex()
+		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
 		if self.position_option==0:
 			po = '*'
 		else:

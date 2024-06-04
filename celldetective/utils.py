@@ -1806,3 +1806,18 @@ def download_zenodo_file(file, output_dir):
 		os.rename(os.sep.join([output_dir,'db1-NucCondensation']), os.sep.join([output_dir,file]))
 
 	os.remove(path_to_zip_file)
+
+def interpolate_nan(array_like):
+
+	array = array_like.copy()
+	
+	isnan_array = ~np.isnan(array)
+	
+	xp = isnan_array.ravel().nonzero()[0]
+	
+	fp = array[~np.isnan(array)]
+	x = np.isnan(array).ravel().nonzero()[0]
+	
+	array[np.isnan(array)] = np.interp(x, xp, fp)
+	
+	return array

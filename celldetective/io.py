@@ -19,7 +19,12 @@ from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _
 import json
 import threading
 from skimage.measure import regionprops_table
-
+from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
+import matplotlib.pyplot as plt
+from celldetective.filters import std_filter, median_filter, gauss_filter
+from stardist import fill_label_holes
+from celldetective.utils import interpolate_nan
+from scipy.interpolate import griddata
 
 def get_experiment_wells(experiment):
 	
@@ -131,15 +136,58 @@ def get_experiment_pharmaceutical_agents(experiment, dtype=str):
 	return np.array([dtype(c) for c in pharmaceutical_agents])
 
 
-def _interpret_wells_and_positions(experiment, well_option, position_option):
+def interpret_wells_and_positions(experiment, well_option, position_option):
+	
+	"""
+	Interpret well and position options for a given experiment.
+
+	This function takes an experiment and well/position options to return the selected
+	wells and positions. It supports selection of all wells or specific wells/positions
+	as specified. The well numbering starts from 0 (i.e., Well 0 is W1 and so on).
+
+	Parameters
+	----------
+	experiment : object
+		The experiment object containing well information.
+	well_option : str, int, or list of int
+		The well selection option:
+		- '*' : Select all wells.
+		- int : Select a specific well by its index.
+		- list of int : Select multiple wells by their indices.
+	position_option : str, int, or list of int
+		The position selection option:
+		- '*' : Select all positions (returns None).
+		- int : Select a specific position by its index.
+		- list of int : Select multiple positions by their indices.
+
+	Returns
+	-------
+	well_indices : numpy.ndarray or list of int
+		The indices of the selected wells.
+	position_indices : numpy.ndarray or list of int or None
+		The indices of the selected positions. Returns None if all positions are selected.
+
+	Examples
+	--------
+	>>> experiment = ...  # Some experiment object
+	>>> interpret_wells_and_positions(experiment, '*', '*')
+	(array([0, 1, 2, ..., n-1]), None)
+	
+	>>> interpret_wells_and_positions(experiment, 2, '*')
+	([2], None)
+	
+	>>> interpret_wells_and_positions(experiment, [1, 3, 5], 2)
+	([1, 3, 5], array([2]))
+
+	"""
 	
 	wells = get_experiment_wells(experiment)
-	nbr_of_wells = len(wells)    
-	
+	nbr_of_wells = len(wells)
+
 	if well_option=='*':
-		well_indices = np.arange(len(wells))
-	elif isinstance(well_option, int):
-		well_indices = np.array([well_option], dtype=int)
+		well_indices = np.arange(nbr_of_wells)
+	elif isinstance(well_option, int) or isinstance(well_option, np.int_):
+		well_indices = [int(well_option)]
 	elif isinstance(well_option, list):
 		well_indices = well_option
 		
@@ -149,11 +197,43 @@ def _interpret_wells_and_positions(experiment, well_option, position_option):
 		position_indices = np.array([position_option], dtype=int)
 	elif isinstance(position_option, list):
 		position_indices = position_option
-	
+
 	return well_indices, position_indices
 		
 def extract_well_name_and_number(well):
 	
+	"""
+	Extract the well name and number from a given well path.
+
+	This function takes a well path string, splits it by the OS-specific path separator,
+	and extracts the well name and number. The well name is the last component of the path,
+	and the well number is derived by removing the 'W' prefix and converting the remaining
+	part to an integer.
+
+	Parameters
+	----------
+	well : str
+		The well path string, where the well name is the last component.
+
+	Returns
+	-------
+	well_name : str
+		The name of the well, extracted from the last component of the path.
+	well_number : int
+		The well number, obtained by stripping the 'W' prefix from the well name
+		and converting the remainder to an integer.
+
+	Examples
+	--------
+	>>> well_path = "path/to/W23"
+	>>> extract_well_name_and_number(well_path)
+	('W23', 23)
+
+	>>> well_path = "another/path/W1"
+	>>> extract_well_name_and_number(well_path)
+	('W1', 1)
+	"""
+
 	split_well_path = well.split(os.sep)
 	split_well_path = list(filter(None, split_well_path))
 	well_name = split_well_path[-1]
@@ -163,6 +243,34 @@ def extract_well_name_and_number(well):
 
 def extract_position_name(pos):
 	
+	"""
+	Extract the position name from a given position path.
+
+	This function takes a position path string, splits it by the OS-specific path separator,
+	filters out any empty components, and extracts the position name, which is the last
+	component of the path.
+
+	Parameters
+	----------
+	pos : str
+		The position path string, where the position name is the last component.
+
+	Returns
+	-------
+	pos_name : str
+		The name of the position, extracted from the last component of the path.
+
+	Examples
+	--------
+	>>> pos_path = "path/to/position1"
+	>>> extract_position_name(pos_path)
+	'position1'
+
+	>>> pos_path = "another/path/positionA"
+	>>> extract_position_name(pos_path)
+	'positionA'
+	"""
+
 	split_pos_path = pos.split(os.sep)
 	split_pos_path = list(filter(None, split_pos_path))
 	pos_name = split_pos_path[-1]
@@ -224,16 +332,53 @@ def get_position_table(pos, population, return_path=False):
 
 def get_position_movie_path(pos, prefix=''):
 
+	"""
+	Get the path of the movie file for a given position.
+
+	This function constructs the path to a movie file within a given position directory.
+	It searches for TIFF files that match the specified prefix. If multiple matching files
+	are found, the first one is returned.
+
+	Parameters
+	----------
+	pos : str
+		The directory path for the position.
+	prefix : str, optional
+		The prefix to filter movie files. Defaults to an empty string.
+
+	Returns
+	-------
+	stack_path : str or None
+		The path to the first matching movie file, or None if no matching file is found.
+
+	Examples
+	--------
+	>>> pos_path = "path/to/position1"
+	>>> get_position_movie_path(pos_path, prefix='experiment_')
+	'path/to/position1/movie/experiment_001.tif'
+
+	>>> pos_path = "another/path/positionA"
+	>>> get_position_movie_path(pos_path)
+	'another/path/positionA/movie/001.tif'
+
+	>>> pos_path = "nonexistent/path"
+	>>> get_position_movie_path(pos_path)
+	None
+	"""
+	
+
 	if not pos.endswith(os.sep):
 		pos+=os.sep
 	movies = glob(pos+os.sep.join(['movie',prefix+'*.tif']))
 	if len(movies)>0:
 		stack_path = movies[0]
 	else:
-		stack_path = np.nan
+		stack_path = None
 	
 	return stack_path
-					
+
+
+
 def load_experiment_tables(experiment, population='targets', well_option='*',position_option='*', return_pos_info=False):
 	
 
@@ -303,18 +448,19 @@ def load_experiment_tables(experiment, population='targets', well_option='*',pos
 	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
 	well_labels = _extract_labels_from_config(config,len(wells))
 	
-	well_indices, position_indices = _interpret_wells_and_positions(experiment, well_option, position_option)
+	well_indices, position_indices = interpret_wells_and_positions(experiment, well_option, position_option)
 
 	df = []
 	df_pos_info = []
 	real_well_index = 0
 	
-	for widx, well_path in enumerate(tqdm(wells[well_indices])):
+	for k, well_path in enumerate(tqdm(wells[well_indices])):
 		
 		any_table = False # assume no table
 		
-		well_index = widx
 		well_name, well_number = extract_well_name_and_number(well_path)
+		widx = well_indices[k]
+
 		well_alias = well_labels[widx]
 		
 		well_concentration = concentrations[widx]
@@ -322,7 +468,7 @@ def load_experiment_tables(experiment, population='targets', well_option='*',pos
 		well_cell_type = cell_types[widx]
 		well_pharmaceutical_agent = pharmaceutical_agents[widx]
 		
-		positions = np.array(natsorted(glob(well_path+'*'+os.sep)),dtype=str)
+		positions = get_positions_in_well(well_path)
 		if position_indices is not None:
 			try:
 				positions = positions[position_indices]
@@ -413,6 +559,9 @@ def locate_stack(position, prefix='Aligned'):
 
 	"""
 
+	if not position.endswith(os.sep):
+		position+=os.sep
+
 	stack_path = glob(position+os.sep.join(['movie', f'{prefix}*.tif']))
 	assert len(stack_path)>0,f"No movie with prefix {prefix} found..."
 	stack = imread(stack_path[0].replace('\\','/'))
@@ -457,7 +606,9 @@ def locate_labels(position, population='target'):
 
 	"""
 
-
+	if not position.endswith(os.sep):
+		position+=os.sep
+	
 	if population.lower()=="target" or population.lower()=="targets":
 		label_path = natsorted(glob(position+os.sep.join(["labels_targets", "*.tif"])))
 	elif population.lower()=="effector" or population.lower()=="effectors":
@@ -1834,11 +1985,11 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 		channel_axis = np.argmin(frames.shape)
 		frames = np.moveaxis(frames, channel_axis, -1)
 	if frames.ndim==2:
-		frames = frames[:,:,np.newaxis]
+		frames = frames[:,:,np.newaxis].astype(float)
 	if normalize_input:
 		frames = normalize_multichannel(frames, **normalize_kwargs)
 	if scale is not None:
-		frames = zoom(frames, [scale,scale,1], order=3)
+		frames = zoom(frames, [scale,scale,1], order=3, prefilter=False)
 	
 	# add a fake pixel to prevent auto normalization errors on images that are uniform
 	# to revisit
@@ -1961,7 +2112,7 @@ def get_positions_in_well(well):
 		well = well[:-1]
 
 	w_numeric = os.path.split(well)[-1].replace('W','')
-	positions = glob(os.sep.join([well,f'{w_numeric}*{os.sep}']))		
+	positions = natsorted(glob(os.sep.join([well,f'{w_numeric}*{os.sep}'])))
 
 	return np.array(positions,dtype=str)
 

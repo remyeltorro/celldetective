@@ -12,27 +12,28 @@ import numpy as np
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import os
+from celldetective.gui import Styles
 
-class ConfigSignalAnnotator(QMainWindow):
+class ConfigSignalAnnotator(QMainWindow, Styles):
 	
 	"""
 	UI to set normalization and animation parameters for the annotator tool. 
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 		
 		super().__init__()
-		self.parent = parent
+		self.parent_window = parent_window
 		self.setWindowTitle("Configure signal annotator")
-		self.mode = self.parent.mode
-		self.exp_dir = self.parent.exp_dir
+		self.mode = self.parent_window.mode
+		self.exp_dir = self.parent_window.exp_dir
 		self.soft_path = get_software_location()
 		
 		if self.mode=="targets":
-			self.instructions_path = self.parent.exp_dir + "configs/signal_annotator_config_targets.json"
+			self.instructions_path = self.parent_window.exp_dir + "configs/signal_annotator_config_targets.json"
 		elif self.mode=="effectors":
-			self.instructions_path = self.parent.exp_dir + "configs/signal_annotator_config_effectors.json"
+			self.instructions_path = self.parent_window.exp_dir + "configs/signal_annotator_config_effectors.json"
 				
 		exp_config = self.exp_dir +"config.ini"
 		#self.config_path = self.exp_dir + self.config_name
@@ -41,13 +42,14 @@ class ConfigSignalAnnotator(QMainWindow):
 		self.channels = np.array(self.channels)
 		self.log_option = False
 
-		self.screen_height = self.parent.parent.parent.screen_height
+		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		center_window(self)
 
 		self.setMinimumHeight(int(0.4*self.screen_height))
 		self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
 		#self.load_previous_measurement_instructions()
+
 
 	def populate_widget(self):
 		
@@ -59,13 +61,13 @@ class ConfigSignalAnnotator(QMainWindow):
 		self.scroll_area = QScrollArea(self)
 		self.button_widget = QWidget()
 
-		main_layout = QVBoxLayout()
-		main_layout.setContentsMargins(30,30,30,30)
+		self.main_layout = QVBoxLayout()
+		self.main_layout.setContentsMargins(30,30,30,30)
 
 		sub_layout = QVBoxLayout()
 		sub_layout.setContentsMargins(10,10,10,20)
 
-		self.button_widget.setLayout(main_layout)
+		self.button_widget.setLayout(self.main_layout)
 		sub_layout.setContentsMargins(30,30,30,30)
 
 		sub_layout.addWidget(QLabel('Modality: '))
@@ -85,13 +87,13 @@ class ConfigSignalAnnotator(QMainWindow):
 		self.percentile_btn = QPushButton()
 		self.percentile_btn.setIcon(icon(MDI6.percent_circle_outline,color="black"))
 		self.percentile_btn.setIconSize(QSize(20, 20))	
-		self.percentile_btn.setStyleSheet(self.parent.parent.parent.button_select_all)	
+		self.percentile_btn.setStyleSheet(self.button_select_all)	
 		self.percentile_btn.setToolTip("Switch to percentile normalization values.")
 		self.percentile_btn.clicked.connect(self.switch_to_absolute_normalization_mode)
 
 		self.log_btn = QPushButton()
 		self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-		self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+		self.log_btn.setStyleSheet(self.button_select_all)
 		self.log_btn.clicked.connect(self.switch_to_log)
 		self.log_btn.setToolTip("Log-transform the intensities.")
 		self.log_btn.setIconSize(QSize(20, 20))	
@@ -168,12 +170,12 @@ class ConfigSignalAnnotator(QMainWindow):
 		hbox_interval.addWidget(self.interval_slider, 80)
 		sub_layout.addLayout(hbox_interval)
 
-		main_layout.addLayout(sub_layout)
+		self.main_layout.addLayout(sub_layout)
 
 		self.submit_btn = QPushButton('Save')
-		self.submit_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.write_instructions)
-		main_layout.addWidget(self.submit_btn)
+		self.main_layout.addWidget(self.submit_btn)
 
 
 		self.button_widget.adjustSize()

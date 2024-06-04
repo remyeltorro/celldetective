@@ -1,23 +1,25 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
-	QMessageBox, QWidget, QLineEdit, QScrollArea
+from PyQt5.QtWidgets import QFrame, QGridLayout, QRadioButton, QButtonGroup, QGroupBox, QComboBox,QTabWidget,QSizePolicy,QListWidget, QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+	QMessageBox, QWidget, QLineEdit, QScrollArea, QSpacerItem, QLayout, QSizePolicy
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
+from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
-from celldetective.io import locate_segmentation_model
+from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
 from celldetective.measure import measure_at_position
 from celldetective.signals import analyze_signals_at_position
+from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
 from natsort import natsorted
-from superqt import QLabeledDoubleSlider
+from superqt import QLabeledDoubleSlider, QLabeledSlider, QLabeledRangeSlider, QLabeledSlider, QLabeledDoubleRangeSlider
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -25,26 +27,37 @@ from celldetective.gui.gui_utils import center_window
 from tifffile import imwrite
 import json
 import psutil
-from celldetective.neighborhood import compute_neighborhood_at_position
+from celldetective.neighborhood import compute_neighborhood_at_position, compute_contact_neighborhood_at_position
+from celldetective.gui.gui_utils import FigureCanvas
+import matplotlib.pyplot as plt
+from celldetective.filters import std_filter, median_filter, gauss_filter
+from stardist import fill_label_holes
+from celldetective.preprocessing import correct_background_model_free, estimate_background_per_condition, correct_background_model
+from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
+from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
+from celldetective.gui.viewers import StackVisualizer, CellSizeViewer, ThresholdedStackVisualizer
+from celldetective.gui.layouts import BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout, OperationLayout
+from celldetective.gui import Styles
 
-class ProcessPanel(QFrame):
-	def __init__(self, parent, mode):
+class ProcessPanel(QFrame, Styles):
+	def __init__(self, parent_window, mode):
 
 		super().__init__()		
-		self.parent = parent
+		self.parent_window = parent_window
 		self.mode = mode
-		self.exp_channels = self.parent.exp_channels
-		self.exp_dir = self.parent.exp_dir
+		self.exp_channels = self.parent_window.exp_channels
+		self.exp_dir = self.parent_window.exp_dir
+		self.exp_config = self.parent_window.exp_config
+		self.movie_prefix = self.parent_window.movie_prefix
 		self.threshold_config_targets = None
 		self.threshold_config_effectors = None
-		self.wells = np.array(self.parent.wells,dtype=str)
+		self.wells = np.array(self.parent_window.wells,dtype=str)
 		self.cellpose_calibrated = False
 		self.stardist_calibrated = False
 
-
-
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
+		self.grid.setContentsMargins(5,5,5,5)
 		self.generate_header()
 	
 	def generate_header(self):
@@ -67,14 +80,14 @@ class ProcessPanel(QFrame):
 		self.select_all_btn.setIconSize(QSize(20, 20))
 		self.all_ticked = False
 		self.select_all_btn.clicked.connect(self.tick_all_actions)
-		self.select_all_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.select_all_btn.setStyleSheet(self.button_select_all)
 		self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
 		#self.to_disable.append(self.all_tc_actions)
 		
 		self.collapse_btn = QPushButton()
 		self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_btn.setIconSize(QSize(25, 25))
-		self.collapse_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.collapse_btn.setStyleSheet(self.button_select_all)
 		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.populate_contents()
@@ -88,22 +101,23 @@ class ProcessPanel(QFrame):
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.scroll.setMinimumHeight(int(500))
+			self.parent_window.scroll.setMinimumHeight(int(550))
 			#self.parent.w.adjustSize()
-			self.parent.adjustSize()
+			self.parent_window.adjustSize()
 			#self.parent.scroll.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
-			self.parent.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent.screen_height)))
-			self.parent.scroll.setMinimumWidth(410)
+			self.parent_window.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent_window.screen_height)))
+			self.parent_window.scroll.setMinimumWidth(425)
 
 			#self.parent.scroll.adjustSize()
 
 	def populate_contents(self):
 		self.ContentsFrame = QFrame()
+		self.ContentsFrame.setContentsMargins(5,5,5,5)
 		self.grid_contents = QGridLayout(self.ContentsFrame)
 		self.grid_contents.setContentsMargins(0,0,0,0)
 		self.generate_segmentation_options()
@@ -113,7 +127,7 @@ class ProcessPanel(QFrame):
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
 		self.view_tab_btn = QPushButton("View table")
-		self.view_tab_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.view_tab_btn.setStyleSheet(self.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
 		self.view_tab_btn.setToolTip('View table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
@@ -123,7 +137,7 @@ class ProcessPanel(QFrame):
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
 		self.submit_btn = QPushButton("Submit")
-		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
+		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
 		self.submit_btn.clicked.connect(self.process_population)
 		self.grid_contents.addWidget(self.submit_btn, 11, 0, 1, 4)
 
@@ -147,7 +161,7 @@ class ProcessPanel(QFrame):
 		self.classify_btn.setIcon(icon(MDI6.scatter_plot, color="black"))
 		self.classify_btn.setIconSize(QSize(20, 20))
 		self.classify_btn.setToolTip("Classify data.")
-		self.classify_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.classify_btn.setStyleSheet(self.button_select_all)
 		self.classify_btn.clicked.connect(self.open_classifier_ui)
 		measure_layout.addWidget(self.classify_btn, 5) #4,2,1,1, alignment=Qt.AlignRight
 
@@ -155,7 +169,7 @@ class ProcessPanel(QFrame):
 		self.check_measurements_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
 		self.check_measurements_btn.setIconSize(QSize(20, 20))
 		self.check_measurements_btn.setToolTip("Explore measurements in-situ.")
-		self.check_measurements_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.check_measurements_btn.setStyleSheet(self.button_select_all)
 		self.check_measurements_btn.clicked.connect(self.check_measurements)
 		measure_layout.addWidget(self.check_measurements_btn, 5)
 
@@ -164,7 +178,7 @@ class ProcessPanel(QFrame):
 		self.measurements_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.measurements_config_btn.setIconSize(QSize(20, 20))
 		self.measurements_config_btn.setToolTip("Configure measurements.")
-		self.measurements_config_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.measurements_config_btn.setStyleSheet(self.button_select_all)
 		self.measurements_config_btn.clicked.connect(self.open_measurement_configuration_ui)
 		measure_layout.addWidget(self.measurements_config_btn, 5) #4,2,1,1, alignment=Qt.AlignRight
 
@@ -191,14 +205,14 @@ class ProcessPanel(QFrame):
 		self.check_signals_btn.setIconSize(QSize(20, 20))
 		self.check_signals_btn.clicked.connect(self.check_signals)
 		self.check_signals_btn.setToolTip("Explore signals in-situ.")
-		self.check_signals_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.check_signals_btn.setStyleSheet(self.button_select_all)
 		signal_hlayout.addWidget(self.check_signals_btn, 6)
 
 		self.config_signal_annotator_btn = QPushButton()
 		self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
 		self.config_signal_annotator_btn.setToolTip("Configure the dynamic visualizer.")
-		self.config_signal_annotator_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.config_signal_annotator_btn.setStyleSheet(self.button_select_all)
 		self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
 		signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
 
@@ -220,7 +234,7 @@ class ProcessPanel(QFrame):
 		self.train_signal_model_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
 		self.train_signal_model_btn.setIcon(icon(MDI6.redo_variant,color='black'))
 		self.train_signal_model_btn.setIconSize(QSize(20, 20)) 
-		self.train_signal_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
+		self.train_signal_model_btn.setStyleSheet(self.button_style_sheet_3)
 		model_zoo_layout.addWidget(self.train_signal_model_btn, 5)
 		self.train_signal_model_btn.clicked.connect(self.open_signal_model_config_ui)
 		
@@ -255,7 +269,7 @@ class ProcessPanel(QFrame):
 		# self.show_track_table_btn.setIcon(icon(MDI6.table,color="black"))
 		# self.show_track_table_btn.setIconSize(QSize(20, 20))
 		# self.show_track_table_btn.setToolTip("Show trajectories table.")
-		# self.show_track_table_btn.setStyleSheet(self.parent.parent.button_select_all)
+		# self.show_track_table_btn.setStyleSheet(self.button_select_all)
 		# #self.show_track_table_btn.clicked.connect(self.display_trajectory_table)
 		# self.show_track_table_btn.setEnabled(False)
 		# grid_track.addWidget(self.show_track_table_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
@@ -264,7 +278,7 @@ class ProcessPanel(QFrame):
 		self.check_tracking_result_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
 		self.check_tracking_result_btn.setIconSize(QSize(20, 20))
 		self.check_tracking_result_btn.setToolTip("View raw bTrack output in napari.")
-		self.check_tracking_result_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.check_tracking_result_btn.setStyleSheet(self.button_select_all)
 		self.check_tracking_result_btn.clicked.connect(self.open_napari_tracking)
 		self.check_tracking_result_btn.setEnabled(False)
 		grid_track.addWidget(self.check_tracking_result_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
@@ -273,7 +287,7 @@ class ProcessPanel(QFrame):
 		self.track_config_btn.setIcon(icon(MDI6.cog_outline,color="black"))
 		self.track_config_btn.setIconSize(QSize(20, 20))
 		self.track_config_btn.setToolTip("Configure tracking.")
-		self.track_config_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.track_config_btn.setStyleSheet(self.button_select_all)
 		self.track_config_btn.clicked.connect(self.open_tracking_configuration_ui)
 		grid_track.addWidget(self.track_config_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
 
@@ -301,7 +315,7 @@ class ProcessPanel(QFrame):
 		self.check_seg_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
 		self.check_seg_btn.setIconSize(QSize(20, 20))
 		self.check_seg_btn.clicked.connect(self.check_segmentation)
-		self.check_seg_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.check_seg_btn.setStyleSheet(self.button_select_all)
 		self.check_seg_btn.setToolTip("View segmentation output in napari.")
 		#self.check_seg_btn.setEnabled(False)
 		#self.to_disable.append(self.control_target_seg)
@@ -321,7 +335,7 @@ class ProcessPanel(QFrame):
 		self.upload_model_btn = QPushButton("UPLOAD")
 		self.upload_model_btn.setIcon(icon(MDI6.upload,color="black"))
 		self.upload_model_btn.setIconSize(QSize(20, 20))
-		self.upload_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
+		self.upload_model_btn.setStyleSheet(self.button_style_sheet_3)
 		self.upload_model_btn.setToolTip("Upload a new segmentation model\n(Deep learning or threshold-based).")
 		model_zoo_layout.addWidget(self.upload_model_btn, 5)
 		self.upload_model_btn.clicked.connect(self.upload_segmentation_model)
@@ -331,7 +345,7 @@ class ProcessPanel(QFrame):
 		self.train_btn.setToolTip("Train or retrain a segmentation model\non newly annotated data.")
 		self.train_btn.setIcon(icon(MDI6.redo_variant,color='black'))
 		self.train_btn.setIconSize(QSize(20, 20))
-		self.train_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
+		self.train_btn.setStyleSheet(self.button_style_sheet_3)
 		self.train_btn.clicked.connect(self.open_segmentation_model_config_ui)
 		model_zoo_layout.addWidget(self.train_btn, 5)
 		# self.train_button_tc.clicked.connect(self.train_stardist_model_tc)
@@ -344,7 +358,7 @@ class ProcessPanel(QFrame):
 
 	def check_segmentation(self):
 
-		if not os.path.exists(os.sep.join([self.parent.pos,f'labels_{self.mode}', os.sep])):
+		if not os.path.exists(os.sep.join([self.parent_window.pos,f'labels_{self.mode}', os.sep])):
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
 			msgBox.setText("No labels can be found for this position. Do you want to annotate from scratch?")
@@ -354,18 +368,18 @@ class ProcessPanel(QFrame):
 			if returnValue == QMessageBox.No:
 				return None
 			else:
-				os.mkdir(os.sep.join([self.parent.pos,f'labels_{self.mode}']))
-				lbl = np.zeros((self.parent.shape_x, self.parent.shape_y), dtype=int)
-				for i in range(self.parent.len_movie):
-					imwrite(os.sep.join([self.parent.pos,f'labels_{self.mode}', str(i).zfill(4)+'.tif']), lbl)
+				os.mkdir(os.sep.join([self.parent_window.pos,f'labels_{self.mode}']))
+				lbl = np.zeros((self.parent_window.shape_x, self.parent_window.shape_y), dtype=int)
+				for i in range(self.parent_window.len_movie):
+					imwrite(os.sep.join([self.parent_window.pos,f'labels_{self.mode}', str(i).zfill(4)+'.tif']), lbl)
 
 		#self.freeze()
 		#QApplication.setOverrideCursor(Qt.WaitCursor)
-		test = self.parent.locate_selected_position()
+		test = self.parent_window.locate_selected_position()
 		if test:
 			print('Memory use: ', dict(psutil.virtual_memory()._asdict()))
 			try:
-				control_segmentation_napari(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode,flush_memory=True)
+				control_segmentation_napari(self.parent_window.pos, prefix=self.parent_window.movie_prefix, population=self.mode,flush_memory=True)
 			except Exception as e:
 				msgBox = QMessageBox()
 				msgBox.setIcon(QMessageBox.Warning)
@@ -377,14 +391,14 @@ class ProcessPanel(QFrame):
 
 	def check_signals(self):
 
-		test = self.parent.locate_selected_position()
+		test = self.parent_window.locate_selected_position()
 		if test:
 			self.SignalAnnotator = SignalAnnotator(self)
 			self.SignalAnnotator.show()		
 
 	def check_measurements(self):
 
-		test = self.parent.locate_selected_position()
+		test = self.parent_window.locate_selected_position()
 		if test:
 			self.MeasureAnnotator = MeasureAnnotator(self)
 			self.MeasureAnnotator.show()
@@ -507,11 +521,11 @@ class ProcessPanel(QFrame):
 
 	def process_population(self):
 		
-		if self.parent.well_list.currentText()=="*":
+		if self.parent_window.well_list.currentText()=="*":
 			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
 		else:
-			self.well_index = [self.parent.well_list.currentIndex()]
-			print(f"Processing well {self.parent.well_list.currentText()}...")
+			self.well_index = [self.parent_window.well_list.currentIndex()]
+			print(f"Processing well {self.parent_window.well_list.currentText()}...")
 
 		# self.freeze()
 		# QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -523,7 +537,7 @@ class ProcessPanel(QFrame):
 		
 		loop_iter=0
 
-		if self.parent.position_list.currentText()=="*":
+		if self.parent_window.position_list.currentText()=="*":
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
 			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
@@ -546,7 +560,15 @@ class ProcessPanel(QFrame):
 			
 			layout = QVBoxLayout()
 			self.diamWidget.setLayout(layout)
-			self.diameter_le = QLineEdit('40')
+
+			self.view_diameter_btn = QPushButton()
+			self.view_diameter_btn.setStyleSheet(self.button_select_all)
+			self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
+			self.view_diameter_btn.setToolTip("View stack.")
+			self.view_diameter_btn.setIconSize(QSize(20, 20))
+			self.view_diameter_btn.clicked.connect(self.view_current_stack_with_scale_bar)
+
+			self.diameter_le = ThresholdLineEdit(init_value=40, connected_buttons=[self.view_diameter_btn],placeholder='cell diameter in pixels', value_type='float')
 
 			self.cellpose_channel_cb = [QComboBox() for i in range(2)]
 			self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
@@ -563,12 +585,21 @@ class ProcessPanel(QFrame):
 				else:
 					self.cellpose_channel_cb[k].addItems(list(self.exp_channels))					
 				idx = self.cellpose_channel_cb[k].findText(self.cellpose_channel_template[k])
-				self.cellpose_channel_cb[k].setCurrentIndex(idx)
+				if idx>0:
+					self.cellpose_channel_cb[k].setCurrentIndex(idx)
+				else:
+					self.cellpose_channel_cb[k].setCurrentIndex(0)			
+
+				if k==1:
+					idx = self.cellpose_channel_cb[k].findText('None')
+					self.cellpose_channel_cb[k].setCurrentIndex(idx)
+
 				layout.addLayout(hbox_channel)
 
 			hbox = QHBoxLayout()
 			hbox.addWidget(QLabel('diameter [px]: '), 33)
-			hbox.addWidget(self.diameter_le, 66)
+			hbox.addWidget(self.diameter_le, 61)
+			hbox.addWidget(self.view_diameter_btn)
 			layout.addLayout(hbox)
 
 			self.flow_slider = QLabeledDoubleSlider()
@@ -625,7 +656,11 @@ class ProcessPanel(QFrame):
 				else:
 					self.stardist_channel_cb[k].addItems(list(self.exp_channels))					
 				idx = self.stardist_channel_cb[k].findText(self.stardist_channel_template[k])
-				self.stardist_channel_cb[k].setCurrentIndex(idx)
+				if idx>0:
+					self.stardist_channel_cb[k].setCurrentIndex(idx)
+				else:
+					self.stardist_channel_cb[k].setCurrentIndex(0)
+
 				layout.addLayout(hbox_channel)
 
 			self.set_stardist_scale_btn = QPushButton('set')
@@ -639,15 +674,15 @@ class ProcessPanel(QFrame):
 
 		for w_idx in self.well_index:
 
-			pos = self.parent.positions[w_idx]
-			if self.parent.position_list.currentText()=="*":
+			pos = self.parent_window.positions[w_idx]
+			if self.parent_window.position_list.currentText()=="*":
 				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
 				print("Processing all positions...")
 			else:
-				pos_indices = natsorted([pos.index(self.parent.position_list.currentText())])
-				print(f"Processing position {self.parent.position_list.currentText()}...")
+				pos_indices = natsorted([pos.index(self.parent_window.position_list.currentText())])
+				print(f"Processing position {self.parent_window.position_list.currentText()}...")
 
-			well = self.parent.wells[w_idx]
+			well = self.parent_window.wells[w_idx]
 
 			for pos_idx in pos_indices:
 				
@@ -661,7 +696,7 @@ class ProcessPanel(QFrame):
 
 				if self.segment_action.isChecked():
 					
-					if len(glob(os.sep.join([self.pos, f'labels_{self.mode}','*.tif'])))>0 and self.parent.position_list.currentText()!="*":
+					if len(glob(os.sep.join([self.pos, f'labels_{self.mode}','*.tif'])))>0 and self.parent_window.position_list.currentText()!="*":
 						msgBox = QMessageBox()
 						msgBox.setIcon(QMessageBox.Question)
 						msgBox.setText("Labels have already been produced for this position. Do you want to segment again?")
@@ -683,12 +718,12 @@ class ProcessPanel(QFrame):
 								return None					
 						else:
 							print(f"Segmentation from threshold config: {self.threshold_config}")
-							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent.parent.n_threads)
+							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
 					else:
-						segment_at_position(self.pos, self.mode, self.model_name, stack_prefix=self.parent.movie_prefix, use_gpu=self.parent.parent.use_gpu, threads=self.parent.parent.n_threads)
+						segment_at_position(self.pos, self.mode, self.model_name, stack_prefix=self.parent_window.movie_prefix, use_gpu=self.parent_window.parent_window.use_gpu, threads=self.parent_window.parent_window.n_threads)
 
 				if self.track_action.isChecked():
-					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent.position_list.currentText()!="*":
+					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent_window.position_list.currentText()!="*":
 						msgBox = QMessageBox()
 						msgBox.setIcon(QMessageBox.Question)
 						msgBox.setText("A trajectory set already exists. Previously annotated data for\nthis position will be lost. Do you want to proceed?")
@@ -697,10 +732,10 @@ class ProcessPanel(QFrame):
 						returnValue = msgBox.exec()
 						if returnValue == QMessageBox.No:
 							return None
-					track_at_position(self.pos, self.mode, threads=self.parent.parent.n_threads)
+					track_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
 
 				if self.measure_action.isChecked():
-					measure_at_position(self.pos, self.mode, threads=self.parent.parent.n_threads)
+					measure_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
 
 				table = os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])
 				if self.signal_analysis_action.isChecked() and os.path.exists(table):
@@ -712,7 +747,7 @@ class ProcessPanel(QFrame):
 						print(cols, 'class_color in cols')
 						colors = list(table['class_color'].to_numpy())
 						if 'tab:orange' in colors or 'tab:cyan' in colors:
-							if self.parent.position_list.currentText()!="*":
+							if self.parent_window.position_list.currentText()!="*":
 								msgBox = QMessageBox()
 								msgBox.setIcon(QMessageBox.Question)
 								msgBox.setText("The signals of the cells in the position appear to have been annotated... Do you want to proceed?")
@@ -725,15 +760,35 @@ class ProcessPanel(QFrame):
 
 
 			# self.stack = None
-		self.parent.update_position_options()
+		self.parent_window.update_position_options()
 		if self.segment_action.isChecked():
 			self.segment_action.setChecked(False)
 
 		# QApplication.restoreOverrideCursor()
 		# self.unfreeze()
 
+	def view_current_stack_with_scale_bar(self):
+		
+		self.parent_window.locate_image()
+		if self.parent_window.current_stack is not None:
+			self.viewer = CellSizeViewer(
+										  initial_diameter = float(self.diameter_le.text().replace(',','.')),
+										  parent_le = self.diameter_le,
+										  stack_path=self.parent_window.current_stack,
+										  window_title=f'Position {self.parent_window.position_list.currentText()}',
+										  frame_slider = True,
+										  contrast_slider = True,
+										  channel_cb = True,
+										  channel_names = self.parent_window.exp_channels,
+										  n_channels = self.parent_window.nbr_channels,
+										  PxToUm = 1,
+										 )
+			self.viewer.show()
+
+
+
 	def open_napari_tracking(self):
-		control_tracking_btrack(self.parent.pos, prefix=self.parent.movie_prefix, population=self.mode, threads=self.parent.parent.n_threads)
+		control_tracking_btrack(self.parent_window.pos, prefix=self.parent_window.movie_prefix, population=self.mode, threads=self.parent_window.parent_window.n_threads)
 
 	def view_table_ui(self):
 		
@@ -744,7 +799,7 @@ class ProcessPanel(QFrame):
 			plot_mode = 'plot_track_signals'
 			if 'TRACK_ID' not in list(self.df.columns):
 				plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent.well_list.currentText()}; Position {self.parent.position_list.currentText()}", population=self.mode, plot_mode=plot_mode)
+			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population=self.mode, plot_mode=plot_mode)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')
@@ -782,12 +837,12 @@ class ProcessPanel(QFrame):
 
 		"""
 
-		self.well_option = self.parent.well_list.currentIndex()
+		self.well_option = self.parent_window.well_list.currentIndex()
 		if self.well_option==len(self.wells):
 			wo = '*'
 		else:
 			wo = self.well_option
-		self.position_option = self.parent.position_list.currentIndex()
+		self.position_option = self.parent_window.position_list.currentIndex()
 		if self.position_option==0:
 			po = '*'
 		else:
@@ -799,9 +854,9 @@ class ProcessPanel(QFrame):
 
 	def set_cellpose_scale(self):
 
-		scale = self.parent.PxToUm * float(self.diameter_le.text()) / 30.0
+		scale = self.parent_window.PxToUm * float(self.diameter_le.get_threshold()) / 30.0
 		if self.model_name=="CP_nuclei":
-			scale = self.parent.PxToUm * float(self.diameter_le.text()) / 17.0
+			scale = self.parent_window.PxToUm * float(self.diameter_le.get_threshold()) / 17.0
 		flow_thresh = self.flow_slider.value()
 		cellprob_thresh = self.cellprob_slider.value()
 		model_complete_path = locate_segmentation_model(self.model_name)
@@ -848,14 +903,15 @@ class ProcessPanel(QFrame):
 		self.process_population()
 
 
-class NeighPanel(QFrame):
-	def __init__(self, parent):
+class NeighPanel(QFrame, Styles):
+	def __init__(self, parent_window):
 
 		super().__init__()		
-		self.parent = parent
-		self.exp_channels = self.parent.exp_channels
-		self.exp_dir = self.parent.exp_dir
-		self.wells = np.array(self.parent.wells,dtype=str)
+		self.parent_window = parent_window
+		self.exp_channels = self.parent_window.exp_channels
+		self.exp_dir = self.parent_window.exp_dir
+		self.wells = np.array(self.parent_window.wells,dtype=str)
+		self.protocols = []
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -869,6 +925,250 @@ class NeighPanel(QFrame):
 		"""
 
 		panel_title = QLabel(f"NEIGHBORHOOD")
+		panel_title.setStyleSheet(self.block_title)
+
+		self.grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
+
+		# self.select_all_btn = QPushButton()
+		# self.select_all_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
+		# self.select_all_btn.setIconSize(QSize(20, 20))
+		# self.all_ticked = False
+		# self.select_all_btn.setStyleSheet(self.button_select_all)
+		# self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
+		
+		self.collapse_btn = QPushButton()
+		self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
+		self.collapse_btn.setIconSize(QSize(25, 25))
+		self.collapse_btn.setStyleSheet(self.button_select_all)
+		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
+
+		self.populate_contents()
+		
+		self.grid.addWidget(self.ContentsFrame, 1, 0, 1, 4, alignment=Qt.AlignTop)
+		self.collapse_btn.clicked.connect(lambda: self.ContentsFrame.setHidden(not self.ContentsFrame.isHidden()))
+		self.collapse_btn.clicked.connect(self.collapse_advanced)
+		self.ContentsFrame.hide()
+
+	def collapse_advanced(self):
+
+		if self.ContentsFrame.isHidden():
+			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
+			self.collapse_btn.setIconSize(QSize(20, 20))
+			self.parent_window.scroll.setMinimumHeight(int(500))
+			#self.parent.w.adjustSize()
+			self.parent_window.adjustSize()
+		else:
+			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
+			self.collapse_btn.setIconSize(QSize(20, 20))
+			#self.parent.w.adjustSize()
+			#self.parent.adjustSize()
+			self.parent_window.scroll.setMinimumHeight(min(int(750), int(0.8*self.parent_window.screen_height)))
+			self.parent_window.scroll.setMinimumWidth(410)
+
+
+	def populate_contents(self):
+
+		self.ContentsFrame = QFrame()
+		self.grid_contents = QGridLayout(self.ContentsFrame)
+		self.grid_contents.setContentsMargins(0,0,0,0)
+		self.grid_contents.setSpacing(0)
+
+
+		# DISTANCE NEIGHBORHOOD
+		dist_neigh_hbox = QHBoxLayout()
+		dist_neigh_hbox.setContentsMargins(0,0,0,0)
+		dist_neigh_hbox.setSpacing(0)
+
+		self.dist_neigh_action = QLabel("ISOTROPIC DISTANCE THRESHOLD")
+		self.dist_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
+		#self.dist_neigh_action.setIcon(icon(MDI6.circle_expand, color='black'))
+		self.dist_neigh_action.setToolTip("")
+		#self.segment_action.toggled.connect(self.enable_segmentation_model_list)
+		#self.to_disable.append(self.segment_action)
+		
+		self.config_distance_neigh_btn = QPushButton()
+		self.config_distance_neigh_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.config_distance_neigh_btn.setIconSize(QSize(20, 20))
+		self.config_distance_neigh_btn.setToolTip("")
+		self.config_distance_neigh_btn.setStyleSheet(self.button_select_all)
+		self.config_distance_neigh_btn.clicked.connect(self.open_config_distance_threshold_neighborhood)
+		dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
+		dist_neigh_hbox.addWidget(self.dist_neigh_action, 95)
+
+		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
+
+		# DISTANCE NEIGHBORHOOD
+		contact_neighborhood_layout = QHBoxLayout()
+		contact_neighborhood_layout.setContentsMargins(0,0,0,0)
+		contact_neighborhood_layout.setSpacing(0)
+
+		self.contact_neigh_action = QLabel("MASK CONTACT")
+		self.contact_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
+		#self.contact_neigh_action.setIcon(icon(MDI6.transition_masked, color='black'))
+		self.contact_neigh_action.setToolTip("")
+		
+		self.config_contact_neigh_btn = QPushButton()
+		self.config_contact_neigh_btn.setIcon(icon(MDI6.plus,color="black"))
+		self.config_contact_neigh_btn.setIconSize(QSize(20, 20))
+		self.config_contact_neigh_btn.setToolTip("")
+		self.config_contact_neigh_btn.setStyleSheet(self.button_select_all)
+		self.config_contact_neigh_btn.clicked.connect(self.open_config_contact_neighborhood)
+		contact_neighborhood_layout.addWidget(self.config_contact_neigh_btn,5)
+		contact_neighborhood_layout.addWidget(self.contact_neigh_action, 95)
+
+		self.grid_contents.addLayout(contact_neighborhood_layout, 1,0,1,4)
+
+		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
+
+		self.delete_protocol_btn = QPushButton('')
+		self.delete_protocol_btn.setStyleSheet(self.button_select_all)
+		self.delete_protocol_btn.setIcon(icon(MDI6.trash_can, color="black"))
+		self.delete_protocol_btn.setToolTip("Remove.")
+		self.delete_protocol_btn.setIconSize(QSize(20, 20))
+		self.delete_protocol_btn.clicked.connect(self.remove_protocol_from_list)
+
+		self.protocol_list_lbl = QLabel('Neighborhoods to compute: ')
+		self.protocol_list = QListWidget()
+
+		list_header_layout = QHBoxLayout()
+		list_header_layout.addWidget(self.protocol_list_lbl)
+		list_header_layout.addWidget(self.delete_protocol_btn, alignment=Qt.AlignRight)
+		self.grid_contents.addLayout(list_header_layout, 3, 0, 1, 4)
+		self.grid_contents.addWidget(self.protocol_list, 4, 0, 1, 4)
+
+		self.submit_btn = QPushButton("Submit")
+		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_btn.clicked.connect(self.process_neighborhood)
+		self.grid_contents.addWidget(self.submit_btn, 5, 0, 1, 4)
+
+	def remove_protocol_from_list(self):
+
+		current_item = self.protocol_list.currentRow()
+		if current_item > -1:
+			del self.protocols[current_item]
+			self.protocol_list.takeItem(current_item)
+
+	def open_config_distance_threshold_neighborhood(self):
+
+		self.ConfigNeigh = ConfigNeighborhoods(parent_window=self,
+											   neighborhood_type='distance_threshold',
+											   neighborhood_parameter_name='threshold distance',
+											   )
+		self.ConfigNeigh.show()
+
+	def open_config_contact_neighborhood(self):
+
+		self.ConfigNeigh = ConfigNeighborhoods(parent_window=self,
+											   neighborhood_type='mask_contact',
+											   neighborhood_parameter_name='tolerance contact distance',
+											   )
+		self.ConfigNeigh.show()
+
+
+	def process_neighborhood(self):
+		
+		if self.parent_window.well_list.currentText()=="*":
+			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
+		else:
+			self.well_index = [self.parent_window.well_list.currentIndex()]
+			print(f"Processing well {self.parent_window.well_list.currentText()}...")
+
+		# self.freeze()
+		# QApplication.setOverrideCursor(Qt.WaitCursor)
+
+		loop_iter=0
+
+		if self.parent_window.position_list.currentText()=="*":
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Question)
+			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				return None
+		
+		for w_idx in self.well_index:
+
+			pos = self.parent_window.positions[w_idx]
+			if self.parent_window.position_list.currentText()=="*":
+				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
+				print("Processing all positions...")
+			else:
+				pos_indices = natsorted([pos.index(self.parent_window.position_list.currentText())])
+				print(f"Processing position {self.parent_window.position_list.currentText()}...")
+
+			well = self.parent_window.wells[w_idx]
+
+			for pos_idx in pos_indices:
+				
+				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*{os.sep}"))[pos_idx]
+				print(f"Position {self.pos}...\nLoading stack movie...")
+
+				if not os.path.exists(self.pos + 'output' + os.sep):
+					os.mkdir(self.pos + 'output' + os.sep)
+				if not os.path.exists(self.pos + os.sep.join(['output','tables'])+os.sep):
+					os.mkdir(self.pos + os.sep.join(['output','tables'])+os.sep)
+
+				for protocol in self.protocols:
+
+					if protocol['neighborhood_type']=='distance_threshold':
+						
+						compute_neighborhood_at_position(self.pos, 
+														protocol['distance'], 
+														population=protocol['population'], 
+														theta_dist=None, 
+														img_shape=(self.parent_window.shape_x,self.parent_window.shape_y), 
+														return_tables=False,
+														clear_neigh=protocol['clear_neigh'],
+														event_time_col=protocol['event_time_col'],
+														neighborhood_kwargs=protocol['neighborhood_kwargs'],
+														)
+
+					elif protocol['neighborhood_type']=='mask_contact':
+
+						compute_contact_neighborhood_at_position(self.pos, 
+														protocol['distance'], 
+														population=protocol['population'], 
+														theta_dist=None, 
+														img_shape=(self.parent_window.shape_x,self.parent_window.shape_y), 
+														return_tables=False,
+														clear_neigh=protocol['clear_neigh'],
+														event_time_col=protocol['event_time_col'],
+														neighborhood_kwargs=protocol['neighborhood_kwargs'],
+														)
+		print('Done.')
+
+
+class PreprocessingPanel(QFrame, Styles):
+	
+	def __init__(self, parent_window):
+
+		super().__init__()		
+		self.parent_window = parent_window
+		self.exp_channels = self.parent_window.exp_channels
+		self.exp_dir = self.parent_window.exp_dir
+		self.wells = np.array(self.parent_window.wells,dtype=str)
+		exp_config = self.exp_dir + "config.ini"
+		self.channel_names, self.channels = extract_experiment_channels(exp_config)
+		self.channel_names = np.array(self.channel_names)
+		self.background_correction = []
+		self.onlyFloat = QDoubleValidator()
+		self.onlyInt = QIntValidator()
+		
+		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+		self.grid = QGridLayout(self)
+
+		self.generate_header()
+	
+	def generate_header(self):
+
+		"""
+		Read the mode and prepare a collapsable block to process a specific cell population.
+
+		"""
+
+		panel_title = QLabel(f"PREPROCESSING")
 		panel_title.setStyleSheet("""
 			font-weight: bold;
 			padding: 0px;
@@ -881,14 +1181,14 @@ class NeighPanel(QFrame):
 		self.select_all_btn.setIconSize(QSize(20, 20))
 		self.all_ticked = False
 		#self.select_all_btn.clicked.connect(self.tick_all_actions)
-		self.select_all_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.select_all_btn.setStyleSheet(self.button_select_all)
 		self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
 		#self.to_disable.append(self.all_tc_actions)
 		
 		self.collapse_btn = QPushButton()
 		self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_btn.setIconSize(QSize(25, 25))
-		self.collapse_btn.setStyleSheet(self.parent.parent.button_select_all)
+		self.collapse_btn.setStyleSheet(self.button_select_all)
 		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
 		self.populate_contents()
@@ -899,157 +1199,135 @@ class NeighPanel(QFrame):
 		self.ContentsFrame.hide()
 
 	def collapse_advanced(self):
+
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.w.adjustSize()
-			self.parent.adjustSize()
+			self.parent_window.scroll.setMinimumHeight(int(500))
+			#self.parent.w.adjustSize()
+			self.parent_window.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent.w.adjustSize()
-			self.parent.adjustSize()
+			#self.parent.w.adjustSize()
+			#self.parent.adjustSize()
+			self.parent_window.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent_window.screen_height)))
+			self.parent_window.scroll.setMinimumWidth(410)
 
 	def populate_contents(self):
 
 		self.ContentsFrame = QFrame()
 		self.grid_contents = QGridLayout(self.ContentsFrame)
-		self.grid_contents.setContentsMargins(0,0,0,0)
+
+		self.model_free_correction_layout = BackgroundModelFreeCorrectionLayout(self)
+		self.fit_correction_layout = BackgroundFitCorrectionLayout(self)
+
+		self.protocol_layout = ProtocolDesignerLayout(parent_window=self,
+											  tab_layouts=[self.fit_correction_layout, self.model_free_correction_layout],
+											  tab_names=['Fit', 'Model-free'],
+											  title='BACKGROUND CORRECTION',
+											  list_title='Corrections to apply:')
+		self.grid_contents.addLayout(self.protocol_layout,0,0,1,4)
+		self.submit_preprocessing_btn = QPushButton("Submit")
+		self.submit_preprocessing_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_preprocessing_btn.clicked.connect(self.launch_preprocessing)
+		self.grid_contents.addWidget(self.submit_preprocessing_btn, 1,0,1,4)
 
 
-		# DISTANCE NEIGHBORHOOD
-		dist_neigh_hbox = QHBoxLayout()
-		dist_neigh_hbox.setContentsMargins(0,0,0,0)
-		dist_neigh_hbox.setSpacing(0)
-
-		self.dist_neigh_action = QCheckBox("DISTANCE CUT")
-		self.dist_neigh_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			""")
-		self.dist_neigh_action.setIcon(icon(MDI6.circle_expand, color='black'))
-		self.dist_neigh_action.setToolTip("Match cells for which the center of mass is within a threshold distance of each other.")
-		#self.segment_action.toggled.connect(self.enable_segmentation_model_list)
-		#self.to_disable.append(self.segment_action)
-		dist_neigh_hbox.addWidget(self.dist_neigh_action, 95)
+	def launch_preprocessing(self):
 		
-		self.config_distance_neigh_btn = QPushButton()
-		self.config_distance_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
-		self.config_distance_neigh_btn.setIconSize(QSize(20, 20))
-		self.config_distance_neigh_btn.setToolTip("Configure distance cut neighbourhood computation.")
-		self.config_distance_neigh_btn.setStyleSheet(self.parent.parent.button_select_all)
-		self.config_distance_neigh_btn.clicked.connect(self.open_config_neighborhood)
-		dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
-
-		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
-
-		# MASK INTERSECTION NEIGHBORHOOD
-		# mask_neigh_hbox = QHBoxLayout()
-		# mask_neigh_hbox.setContentsMargins(0,0,0,0)
-		# mask_neigh_hbox.setSpacing(0)
-
-		# self.mask_neigh_action = QCheckBox("MASK INTERSECTION")
-		# self.mask_neigh_action.setStyleSheet("""
-		# 	font-size: 10px;
-		# 	padding-left: 10px;
-		# 	""")
-		# self.mask_neigh_action.setIcon(icon(MDI6.domino_mask, color='black'))
-		# self.mask_neigh_action.setToolTip("Match cells that are co-localizing.")
-		# #self.segment_action.toggled.connect(self.enable_segmentation_model_list)
-		# #self.to_disable.append(self.segment_action)
-		# mask_neigh_hbox.addWidget(self.mask_neigh_action, 95)
-		
-		# self.config_mask_neigh_btn = QPushButton()
-		# self.config_mask_neigh_btn.setIcon(icon(MDI6.cog_outline,color="black"))
-		# self.config_mask_neigh_btn.setIconSize(QSize(20, 20))
-		# self.config_mask_neigh_btn.setToolTip("Configure mask intersection computation.")
-		# self.config_mask_neigh_btn.setStyleSheet(self.parent.parent.button_select_all)
-		# #self.config_distance_neigh_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-		# mask_neigh_hbox.addWidget(self.config_mask_neigh_btn,5)
-
-		# self.grid_contents.addLayout(mask_neigh_hbox, 1,0,1,4)
-
-		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
-		self.submit_btn = QPushButton("Submit")
-		self.submit_btn.setStyleSheet(self.parent.parent.button_style_sheet_2)
-		self.submit_btn.clicked.connect(self.process_neighborhood)
-		self.grid_contents.addWidget(self.submit_btn, 3, 0, 1, 4)
-
-	def open_config_neighborhood(self):
-
-		self.ConfigNeigh = ConfigNeighborhoods(self)
-		self.ConfigNeigh.show()
-
-	def process_neighborhood(self):
-		
-		if self.parent.well_list.currentText()=="*":
-			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
-		else:
-			self.well_index = [self.parent.well_list.currentIndex()]
-			print(f"Processing well {self.parent.well_list.currentText()}...")
-
-		# self.freeze()
-		# QApplication.setOverrideCursor(Qt.WaitCursor)
-
-		loop_iter=0
-
-		if self.parent.position_list.currentText()=="*":
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Question)
-			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
-			msgBox.setWindowTitle("Info")
-			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-			returnValue = msgBox.exec()
+		msgBox1 = QMessageBox()
+		msgBox1.setIcon(QMessageBox.Question)
+		msgBox1.setText("Do you want to apply the preprocessing\nto all wells and positions?")
+		msgBox1.setWindowTitle("Selection")
+		msgBox1.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+		returnValue = msgBox1.exec()
+		if returnValue == QMessageBox.Cancel:
+			return None
+		elif returnValue == QMessageBox.Yes:
+			self.parent_window.well_list.setCurrentIndex(self.parent_window.well_list.count()-1)
+			self.parent_window.position_list.setCurrentIndex(0)
+		elif returnValue == QMessageBox.No:
+			msgBox2 = QMessageBox()
+			msgBox2.setIcon(QMessageBox.Question)
+			msgBox2.setText("Do you want to apply the preprocessing\nto the positions selected at the top only?")
+			msgBox2.setWindowTitle("Selection")
+			msgBox2.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+			returnValue = msgBox2.exec()
+			if returnValue == QMessageBox.Cancel:
+				return None
 			if returnValue == QMessageBox.No:
 				return None
 		
-		for w_idx in self.well_index:
+		print('Proceed with correction...')
 
-			pos = self.parent.positions[w_idx]
-			if self.parent.position_list.currentText()=="*":
-				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
-				print("Processing all positions...")
-			else:
-				pos_indices = natsorted([pos.index(self.parent.position_list.currentText())])
-				print(f"Processing position {self.parent.position_list.currentText()}...")
+		if self.parent_window.well_list.currentText()=='*':
+			well_option = "*"
+		else:
+			well_option = self.parent_window.well_list.currentIndex()
 
-			well = self.parent.wells[w_idx]
+		if self.parent_window.position_list.currentText()=='*':
+			pos_option = "*"
+		else:
+			pos_option = self.parent_window.position_list.currentIndex()-1
 
-			for pos_idx in pos_indices:
-				
-				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*{os.sep}"))[pos_idx]
-				print(f"Position {self.pos}...\nLoading stack movie...")
 
-				if not os.path.exists(self.pos + 'output' + os.sep):
-					os.mkdir(self.pos + 'output' + os.sep)
-				if not os.path.exists(self.pos + os.sep.join(['output','tables'])+os.sep):
-					os.mkdir(self.pos + os.sep.join(['output','tables'])+os.sep)
+		for k,correction_protocol in enumerate(self.protocol_layout.protocols):
+			
+			movie_prefix = None
+			export_prefix = 'Corrected'
+			if k>0:
+				# switch source stack to cumulate multi-channel preprocessing
+				movie_prefix = 'Corrected'
+				export_prefix = None
 
-				if self.dist_neigh_action.isChecked():
-				
-					config = self.exp_dir + os.sep.join(["configs","neighborhood_instructions.json"])
-					
-					if not os.path.exists(config):
-						print('config could not be found', config)
-						msgBox = QMessageBox()
-						msgBox.setIcon(QMessageBox.Warning)
-						msgBox.setText("Please define a neighborhood first.")
-						msgBox.setWindowTitle("Info")
-						msgBox.setStandardButtons(QMessageBox.Ok)
-						returnValue = msgBox.exec()
-						return None
+			if correction_protocol['correction_type']=='model-free':
 
-					with open(config, 'r') as f:
-						config = json.load(f)
+				correct_background_model_free(self.exp_dir, 
+								   well_option=well_option,
+								   position_option=pos_option,
+								   export= True,
+								   return_stacks=False,
+								   show_progress_per_well = True,
+								   show_progress_per_pos = True,
+								   movie_prefix = movie_prefix,
+								   export_prefix = export_prefix,
+								   **correction_protocol,
+								)
+			
+			elif correction_protocol['correction_type']=='fit':
 
-					compute_neighborhood_at_position(self.pos, 
-													config['distance'], 
-													population=config['population'], 
-													theta_dist=None, 
-													img_shape=(self.parent.shape_x,self.parent.shape_y), 
-													return_tables=False,
-													clear_neigh=config['clear_neigh'],
-													event_time_col=config['event_time_col'],
-													neighborhood_kwargs=config['neighborhood_kwargs'],
-													)
+				correct_background_model(self.exp_dir, 
+								   well_option=well_option,
+								   position_option=pos_option,
+								   export= True,
+								   return_stacks=False,
+								   show_progress_per_well = True,
+								   show_progress_per_pos = True,
+								   movie_prefix = movie_prefix,
+								   export_prefix = export_prefix,
+								   **correction_protocol,
+								)
 		print('Done.')
+
+
+	def locate_image(self):
+
+		"""
+		Load the first frame of the first movie found in the experiment folder as a sample.
+		"""
+
+		movies = glob(self.parent_window.pos + os.sep.join(['movie', f"{self.parent_window.movie_prefix}*.tif"]))
+
+		if len(movies) == 0:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select a position containing a movie...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.current_stack = None
+				return None
+		else:
+			self.current_stack = movies[0]

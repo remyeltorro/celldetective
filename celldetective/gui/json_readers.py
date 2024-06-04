@@ -4,10 +4,11 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QHBoxLayo
 from PyQt5.QtCore import Qt
 import sys
 import configparser
+from celldetective.gui import Styles
 
-class ConfigEditor(QWidget):
+class ConfigEditor(QWidget, Styles):
     
-    def __init__(self, parent):
+    def __init__(self, parent_window):
 
         """
         Load and edit the experiment config.
@@ -15,8 +16,8 @@ class ConfigEditor(QWidget):
 
         super().__init__()
 
-        self.parent = parent
-        self.config_path = self.parent.exp_config
+        self.parent_window = parent_window
+        self.config_path = self.parent_window.exp_config
 
         self.setGeometry(500,200,400,700)
 
@@ -78,7 +79,7 @@ class ConfigEditor(QWidget):
         # Add a save button
         save_layout = QHBoxLayout()
         save_button = QPushButton('Save')
-        save_button.setStyleSheet(self.parent.parent.button_style_sheet)
+        save_button.setStyleSheet(self.button_style_sheet)
         save_button.clicked.connect(self.save_config)
         save_button.setShortcut("Return")
         #save_button.setIcon(QIcon_from_svg(self.parent.abs_path+f"/icons/save.svg", color='white'))
@@ -109,5 +110,5 @@ class ConfigEditor(QWidget):
         with open(file_name, 'w') as f:
             config.write(f)
 
-        self.parent.load_configuration()
+        self.parent_window.load_configuration()
         self.close()

@@ -390,26 +390,20 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
                                                       columns=['count', 'spot_mean_intensity']).reset_index()
             # Rename columns
             df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
+        
         if normalisation_list:
             for norm in normalisation_list:
                 for index, channel in enumerate(channels):
-                    if channel == norm['target channel']:
+                    if channel == norm['target_channel']:
                         ind = index
-                if norm['mode'] == 'local':
+                if norm['correction_type'] == 'local':
                     normalised_image = normalise_by_cell(img[:, :, ind].copy(), label,
-                                                         distance=int(norm['distance']), mode=norm['type'],
-                                                         operation=norm['operation'])
+                                                         distance=int(norm['distance']), model=norm['model'],
+                                                         operation=norm['operation'], clip=norm['clip'])
                     img[:, :, ind] = normalised_image
                 else:
-                    if norm['operation'] == 'Divide':
-                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
-                                                                   normalisation_operation=norm['operation'],
-                                                                   clip=False, mode=norm['type'])
-                    else:
-                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
-                                                                   normalisation_operation=norm['operation'],
-                                                                   clip=norm['clip'], mode=norm['type'])
-                    img[:, :, ind] = normalised_image
+                    corrected_image = field_correction(img[:,:,ind].copy(), threshold_on_std=norm['threshold_on_std'], operation=norm['operation'], model=norm['model'], clip=norm['clip'])
+                    img[:, :, ind] = corrected_image
 
     extra_props = getmembers(extra_properties, isfunction)
     extra_props = [extra_props[i][0] for i in range(len(extra_props))]
@@ -813,7 +807,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
             for op in operations:
                 func = eval('np.'+op)
-                intensity_values = func(projection, axis=(0,1), where=projection!=0.)
+                intensity_values = func(projection, axis=(0,1), where=projection==projection)
                 for k in range(crop.shape[-1]):
                     positions.loc[group.index, f'{channels[k]}_custom_kernel_{op}'] = intensity_values[k]
 
@@ -867,7 +861,7 @@ def measure_at_position(pos, mode, return_measurements=False, threads=1):
         return None
 
 
-def local_normalisation(image, labels, background_intensity, mode, operation):
+def local_normalisation(image, labels, background_intensity, model='median', operation='subtract', clip=False):
     """
      Perform local normalization on an image based on labels.
 
@@ -907,19 +901,23 @@ def local_normalisation(image, labels, background_intensity, mode, operation):
        based on the mode specified.
      - The background intensity values should be provided in the same order as the labels.
      """
+    
     for index, cell in enumerate(np.unique(labels)):
         if cell == 0:
             continue
-        if operation == 'Subtract':
+        if operation == 'subtract':
             image[np.where(labels == cell)] = image[np.where(labels == cell)].astype(float) - \
-                                              background_intensity[f'intensity_{mode.lower()}'][index-1].astype(float)
-        elif operation == 'Divide':
+                                              background_intensity[f'intensity_{model.lower()}'][index-1].astype(float)
+        elif operation == 'divide':
             image[np.where(labels == cell)] = image[np.where(labels == cell)].astype(float) / \
-                                              background_intensity[f'intensity_{mode.lower()}'][index-1].astype(float)
+                                              background_intensity[f'intensity_{model.lower()}'][index-1].astype(float)
+    if clip:
+        image[image<=0.] = 0.
+
     return image.astype(float)
 
 
-def normalise_by_cell(image, labels, distance, mode, operation):
+def normalise_by_cell(image, labels, distance=5, model='median', operation='subtract', clip=False):
     """
     Normalize an image based on cell regions.
 
@@ -957,17 +955,17 @@ def normalise_by_cell(image, labels, distance, mode, operation):
     - The operation determines whether to subtract or divide the background intensity from the image.
     """
     border = contour_of_instance_segmentation(label=labels, distance=distance * (-1))
-    if mode == 'Mean':
+    if model == 'mean':
         background_intensity = regionprops_table(intensity_image=image, label_image=border,
                                                  properties=['intensity_mean'])
-    elif mode == 'Median':
+    elif model == 'median':
         median = []
         median.append(getattr(extra_properties, 'intensity_median'))
         background_intensity = regionprops_table(intensity_image=image, label_image=border,
                                                  extra_properties=median)
     normalised_frame = local_normalisation(image=image.astype(float).copy(),
-                                           labels=labels, background_intensity=background_intensity, mode=mode,
-                                           operation=operation)
+                                           labels=labels, background_intensity=background_intensity, model=model,
+                                           operation=operation, clip=clip)
 
     return normalised_frame
 

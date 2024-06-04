@@ -1006,7 +1006,7 @@ def view_on_napari_btrack(data,properties,graph,stack=None,labels=None,relabel=T
 		del labels
 		gc.collect()
 
-def load_napari_data(position, prefix="Aligned", population="target"):
+def load_napari_data(position, prefix="Aligned", population="target", return_stack=True):
 
 	"""
 	Load the necessary data for visualization in napari.
@@ -1039,9 +1039,11 @@ def load_napari_data(position, prefix="Aligned", population="target"):
 	data = napari_data.item()['data']
 	properties = napari_data.item()['properties']
 	graph = napari_data.item()['graph']
-
-	stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
-
+	if return_stack:
+		stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
+	else:
+		labels=locate_labels(position,population=population)
+		stack = None
 	return data,properties,graph,labels,stack
 
 from skimage.measure import label

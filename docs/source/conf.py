@@ -15,15 +15,10 @@ project = 'celldetective'
 copyright = '2024, Rémy Torro'
 author = 'Rémy Torro'
 
-release = '1.0'
-version = '1.0.3'
+release = '1.1'
+version = '1.1.0'
 
 # -- General configuration
-
-#import adccfactory.core.utils as u
-#print(dir(u))
-
-
 
 extensions = [
     'nbsphinx',
@@ -35,7 +30,6 @@ extensions = [
     'sphinx.ext.autosummary',
     'nbsphinx_link',
 ]
-
 
 autoapi_dirs = ['celldetective']
 
@@ -54,7 +48,6 @@ html_static_path = ['_static']
 html_logo = "_static/logo.png"
 
 html_theme_options = {'style_nav_header_background': '#b9c3cb'}
-
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'

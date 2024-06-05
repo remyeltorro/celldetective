@@ -1,6 +1,7 @@
 from setuptools import setup
 import setuptools
 import pip
+import os
 
 from pip._internal.req import parse_requirements
 
@@ -25,7 +26,7 @@ except:
 # 				requires.append(str(item.req))
 
 setup(name='celldetective',
-			version='1.0.3',
+			version='1.1.0',
 			description='description',
 			long_description=open('README.rst',encoding="utf8").read(),
 			long_description_content_type='text/markdown',
@@ -35,7 +36,7 @@ setup(name='celldetective',
 			license='GPL-3.0',
 			packages=setuptools.find_packages(),
 			zip_safe=False,
-			package_data={'celldetective': ['*','scripts/*','gui/*','models/*/*/*','models/*','models/*/*','icons/*','links/*','datasets/*', 'datasets/*/*']},
+			package_data={'celldetective': ['*',os.sep.join(['scripts','*']),os.sep.join(['gui','*']),os.sep.join(['models','*','*','*']),os.sep.join(['models','*']),os.sep.join(['models','*','*']),os.sep.join(['icons','*']),os.sep.join(['links','*']),os.sep.join(['datasets','*']), os.sep.join(['datasets','*','*'])]},
 			entry_points = {
 				'console_scripts': [
 					'celldetective = celldetective.__main__:main'],

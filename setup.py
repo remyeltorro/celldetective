@@ -4,6 +4,8 @@ import pip
 import os
 
 from pip._internal.req import parse_requirements
+from pathlib import Path
+this_directory = Path(__file__).parent
 
 links = []
 requires = []
@@ -15,20 +17,11 @@ try:
 except:
     requirements = [str(ir.requirement) for ir in requirements]
 
-
-# for item in requirements:
-# 		# we want to handle package names and also repo urls
-# 		if getattr(item, 'url', None):  # older pip has url
-# 				links.append(str(item.url))
-# 		if getattr(item, 'link', None): # newer pip has link
-# 				links.append(str(item.link))
-# 		if item.req:
-# 				requires.append(str(item.req))
-
 setup(name='celldetective',
 			version='1.1.0',
 			description='description',
-			long_description=open('README.rst',encoding="utf8").read(),
+			long_description=(this_directory / "README.md").read_text(),
+			#long_description=open('README.rst',encoding="utf8").read(),
 			long_description_content_type='text/markdown',
 			url='http://github.com/remyeltorro/celldetective',
 			author='Rémy Torro',

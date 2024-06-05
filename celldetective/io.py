@@ -330,6 +330,60 @@ def get_position_table(pos, population, return_path=False):
 	else:
 		return df_pos
 
+def get_position_pickle(pos, population, return_path=False):
+	
+	"""
+	Retrieves the data table for a specified population at a given position, optionally returning the table's file path.
+
+	This function locates and loads a CSV data table associated with a specific population (e.g., 'targets', 'cells') 
+	from a specified position directory. The position directory should contain an 'output/tables' subdirectory where 
+	the CSV file named 'trajectories_{population}.csv' is expected to be found. If the file exists, it is loaded into 
+	a pandas DataFrame; otherwise, None is returned.
+
+	Parameters
+	----------
+	pos : str
+		The path to the position directory from which to load the data table.
+	population : str
+		The name of the population for which the data table is to be retrieved. This name is used to construct the 
+		file name of the CSV file to be loaded.
+	return_path : bool, optional
+		If True, returns a tuple containing the loaded data table (or None) and the path to the CSV file. If False, 
+		only the loaded data table (or None) is returned (default is False).
+
+	Returns
+	-------
+	pandas.DataFrame or None, or (pandas.DataFrame or None, str)
+		If return_path is False, returns the loaded data table as a pandas DataFrame, or None if the table file does 
+		not exist. If return_path is True, returns a tuple where the first element is the data table (or None) and the 
+		second element is the path to the CSV file.
+
+	Examples
+	--------
+	>>> df_pos = get_position_table('/path/to/position', 'targets')
+	# This will load the 'trajectories_targets.csv' table from the specified position directory into a pandas DataFrame.
+
+	>>> df_pos, table_path = get_position_table('/path/to/position', 'targets', return_path=True)
+	# This will load the 'trajectories_targets.csv' table and also return the path to the CSV file.
+	
+	"""
+	
+	if not pos.endswith(os.sep):
+		table = os.sep.join([pos,'output','tables',f'trajectories_{population}.pkl'])
+	else:
+		table = pos + os.sep.join(['output','tables',f'trajectories_{population}.pkl'])		
+
+	if os.path.exists(table):
+		df_pos = np.load(table, allow_pickle=True)
+	else:
+		df_pos = None
+	
+	if return_path:
+		return df_pos, table
+	else:
+		return df_pos
+
+
 def get_position_movie_path(pos, prefix=''):
 
 	"""

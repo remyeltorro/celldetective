@@ -9,10 +9,9 @@ from scipy.ndimage import zoom
 import os
 import subprocess
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features
-from celldetective.io import get_position_table
 from scipy.spatial.distance import cdist
 from celldetective.measure import contour_of_instance_segmentation
-from celldetective.io import locate_labels
+from celldetective.io import locate_labels, get_position_pickle, get_position_table
 import re
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
@@ -374,6 +373,23 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 
 	df_A, path_A = get_position_table(pos, population=population[0], return_path=True)
 	df_B, path_B = get_position_table(pos, population=population[1], return_path=True)
+
+	df_A_pkl = get_position_pickle(pos, population=population[0], return_path=False)
+	df_B_pkl = get_position_pickle(pos, population=population[1], return_path=False)
+
+	if df_A_pkl is not None:
+		pkl_columns = np.array(df_A_pkl.columns)
+		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
+		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		print(f'Recover {cols} from the pickle file...')
+		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
+		print(df_A.columns)
+	if df_B_pkl is not None and df_B is not None:
+		pkl_columns = np.array(df_B_pkl.columns)
+		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
+		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		print(f'Recover {cols} from the pickle file...')
+		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
 
 	if clear_neigh:
 		unwanted = df_A.columns[df_A.columns.str.contains('neighborhood')]
@@ -1078,6 +1094,23 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 	df_A, path_A = get_position_table(pos, population=population[0], return_path=True)
 	df_B, path_B = get_position_table(pos, population=population[1], return_path=True)
 
+	df_A_pkl = get_position_pickle(pos, population=population[0], return_path=False)
+	df_B_pkl = get_position_pickle(pos, population=population[1], return_path=False)
+
+	if df_A_pkl is not None:
+		pkl_columns = np.array(df_A_pkl.columns)
+		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
+		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		print(f'Recover {cols} from the pickle file...')
+		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
+		print(df_A.columns)
+	if df_B_pkl is not None and df_B is not None:
+		pkl_columns = np.array(df_B_pkl.columns)
+		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
+		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		print(f'Recover {cols} from the pickle file...')
+		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
+
 	labelsA = locate_labels(pos, population=population[0])
 	if population[1]==population[0]:
 		labelsB = None
@@ -1101,6 +1134,8 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 			neigh_col = f'neighborhood_2_contact_{d}_px'
 		elif neighborhood_kwargs['mode']=='self':
 			neigh_col = f'neighborhood_self_contact_{d}_px'
+
+		df_A.loc[df_A['class_id'].isnull(),neigh_col] = np.nan
 
 		# edge_filter_A = (df_A['POSITION_X'] > td)&(df_A['POSITION_Y'] > td)&(df_A['POSITION_Y'] < (img_shape[0] - td))&(df_A['POSITION_X'] < (img_shape[1] - td))
 		# edge_filter_B = (df_B['POSITION_X'] > td)&(df_B['POSITION_Y'] > td)&(df_B['POSITION_Y'] < (img_shape[0] - td))&(df_B['POSITION_X'] < (img_shape[1] - td))

@@ -88,6 +88,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		main_layout.addWidget(self.measurement_frame)
 
 		self.clear_previous_btn = QCheckBox('clear previous neighborhoods')
+		self.clear_previous_btn.setToolTip('Clear all previous neighborhood measurements.')
 		main_layout.addWidget(self.clear_previous_btn, alignment=Qt.AlignRight)
 
 		main_layout.addWidget(QLabel(''))
@@ -124,21 +125,21 @@ class ConfigNeighborhoods(QWidget, Styles):
 		self.delete_measurement_btn = QPushButton("")
 		self.delete_measurement_btn.setStyleSheet(self.button_select_all)
 		self.delete_measurement_btn.setIcon(icon(MDI6.trash_can,color="black"))
-		self.delete_measurement_btn.setToolTip("Remove radius")
+		self.delete_measurement_btn.setToolTip("Remove measurement.")
 		self.delete_measurement_btn.setIconSize(QSize(20, 20))
 		list_header_layout.addWidget(self.delete_measurement_btn, 5)
 
 		self.add_measurement_btn = QPushButton("")
 		self.add_measurement_btn.setStyleSheet(self.button_select_all)
 		self.add_measurement_btn.setIcon(icon(MDI6.plus,color="black"))
-		self.add_measurement_btn.setToolTip("Add a neighborhood measurement")
+		self.add_measurement_btn.setToolTip("Add a neighborhood measurement.")
 		self.add_measurement_btn.setIconSize(QSize(20, 20))	
 		list_header_layout.addWidget(self.add_measurement_btn, 5)
 
 		self.viewer_btn = QPushButton()
 		self.viewer_btn.setStyleSheet(self.button_select_all)
 		self.viewer_btn.setIcon(icon(MDI6.image_check, color="black"))
-		self.viewer_btn.setToolTip("View stack.")
+		self.viewer_btn.setToolTip("View stack and set measurement.")
 		self.viewer_btn.setIconSize(QSize(20, 20))
 		if self.neighborhood_type=='distance_threshold':
 			self.viewer_btn.clicked.connect(self.view_current_stack_with_circle)
@@ -149,6 +150,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		layout.addLayout(list_header_layout)
 
 		self.measurements_list = ListWidget(self, DistanceChoice, initial_features=["60"], dtype=int)
+		self.measurements_list.setToolTip('Neighborhoods to compute.')
 		layout.addWidget(self.measurements_list)
 
 		self.delete_measurement_btn.clicked.connect(self.measurements_list.removeSel)
@@ -208,6 +210,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		grid.setSpacing(15)
 		self.ref_lbl = QLabel("REFERENCE")
 		self.ref_lbl.setStyleSheet(self.block_title)
+		self.ref_lbl.setToolTip('Reference population settings.')
 		grid.addWidget(self.ref_lbl, 30, alignment=Qt.AlignCenter)
 
 		self.ContentsReference = QFrame()
@@ -218,6 +221,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		population_layout.addWidget(QLabel('population: '),30)
 		self.reference_population_cb = QComboBox()
 		self.reference_population_cb.addItems(['targets','effectors'])
+		self.reference_population_cb.setToolTip('Select a reference population.')
 		population_layout.addWidget(self.reference_population_cb,70)
 		layout.addLayout(population_layout)
 
@@ -227,14 +231,16 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 		status_sublayout = QHBoxLayout()
 		self.reference_population_status_cb = QComboBox()
+		self.reference_population_status_cb.setToolTip('Status of the reference population.')
 		status_sublayout.addWidget(self.reference_population_status_cb,95)
 
 		self.reference_switch_status_btn = QPushButton("")
 		self.reference_switch_status_btn.setStyleSheet(self.button_select_all)
 		self.reference_switch_status_btn.setIcon(icon(MDI6.invert_colors,color="black"))
-		self.reference_switch_status_btn.setToolTip("NOT (flip zeros and ones)")
 		self.reference_switch_status_btn.setIconSize(QSize(20, 20))
 		self.reference_switch_status_btn.clicked.connect(self.switch_not_reference)
+		self.reference_switch_status_btn.setToolTip('Invert status values.')
+
 		status_sublayout.addWidget(self.reference_switch_status_btn, 5)
 
 		status_layout.addLayout(status_sublayout, 70)
@@ -243,6 +249,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		event_layout = QHBoxLayout()
 		event_layout.addWidget(QLabel('event time: '),30)
 		self.event_time_cb = QComboBox()
+		self.event_time_cb.setToolTip('Compute average neighborhood metrics before and after this event time.')
 		event_layout.addWidget(self.event_time_cb,70)
 		layout.addLayout(event_layout)
 		
@@ -261,6 +268,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		grid.setSpacing(15)
 		self.ref_lbl = QLabel("NEIGHBOR")
 		self.ref_lbl.setStyleSheet(self.block_title)
+		self.ref_lbl.setToolTip('Neighbor population settings.')
 		grid.addWidget(self.ref_lbl, 30, alignment=Qt.AlignCenter)
 
 		self.ContentsNeigh = QFrame()
@@ -271,6 +279,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		population_layout.addWidget(QLabel('population: '),30)
 		self.neighbor_population_cb = QComboBox()
 		self.neighbor_population_cb.addItems(['targets','effectors'])
+		self.neighbor_population_cb.setToolTip('Select a neighbor population.')
 		population_layout.addWidget(self.neighbor_population_cb,70)
 		layout.addLayout(population_layout)
 
@@ -280,12 +289,13 @@ class ConfigNeighborhoods(QWidget, Styles):
 		status_sublayout = QHBoxLayout()
 
 		self.neighbor_population_status_cb = QComboBox()
+		self.neighbor_population_status_cb.setToolTip('Status of the neighbor population.')
 		status_sublayout.addWidget(self.neighbor_population_status_cb,95)
 
 		self.neighbor_switch_status_btn = QPushButton("")
 		self.neighbor_switch_status_btn.setStyleSheet(self.button_select_all)
 		self.neighbor_switch_status_btn.setIcon(icon(MDI6.invert_colors,color="black"))
-		self.neighbor_switch_status_btn.setToolTip("NOT (flip zeros and ones)")
+		self.neighbor_switch_status_btn.setToolTip("Invert status values.")
 		self.neighbor_switch_status_btn.setIconSize(QSize(20, 20))
 		self.neighbor_switch_status_btn.clicked.connect(self.switch_not_neigh)
 		status_sublayout.addWidget(self.neighbor_switch_status_btn, 5)
@@ -293,9 +303,11 @@ class ConfigNeighborhoods(QWidget, Styles):
 		layout.addLayout(status_layout)
 
 		self.cumulated_presence_btn = QCheckBox('cumulated presence')
+		self.cumulated_presence_btn.setToolTip("Compute the cumulated presence time of each neighbor around a reference cell.")
 		layout.addWidget(self.cumulated_presence_btn)
 
 		self.symmetrize_btn = QCheckBox('symmetrize')
+		self.symmetrize_btn.setToolTip("Write the neighborhood of the neighbor cells with respect to the reference cells.")
 		layout.addWidget(self.symmetrize_btn)
 		
 		self.fill_cbs_of_neighbor_population()

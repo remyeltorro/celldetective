@@ -982,14 +982,14 @@ class NeighPanel(QFrame, Styles):
 		self.dist_neigh_action = QLabel("ISOTROPIC DISTANCE THRESHOLD")
 		self.dist_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
 		#self.dist_neigh_action.setIcon(icon(MDI6.circle_expand, color='black'))
-		self.dist_neigh_action.setToolTip("")
+		self.dist_neigh_action.setToolTip("Define an isotropic neighborhood between the center of mass\nof the cells, within a threshold distance.")
 		#self.segment_action.toggled.connect(self.enable_segmentation_model_list)
 		#self.to_disable.append(self.segment_action)
 		
 		self.config_distance_neigh_btn = QPushButton()
 		self.config_distance_neigh_btn.setIcon(icon(MDI6.plus,color="black"))
 		self.config_distance_neigh_btn.setIconSize(QSize(20, 20))
-		self.config_distance_neigh_btn.setToolTip("")
+		self.config_distance_neigh_btn.setToolTip("Configure.")
 		self.config_distance_neigh_btn.setStyleSheet(self.button_select_all)
 		self.config_distance_neigh_btn.clicked.connect(self.open_config_distance_threshold_neighborhood)
 		dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
@@ -1003,14 +1003,14 @@ class NeighPanel(QFrame, Styles):
 		contact_neighborhood_layout.setSpacing(0)
 
 		self.contact_neigh_action = QLabel("MASK CONTACT")
+		self.contact_neigh_action.setToolTip("Identify touching cell masks, within a threshold edge distance.")
 		self.contact_neigh_action.setStyleSheet(self.action_lbl_style_sheet)
 		#self.contact_neigh_action.setIcon(icon(MDI6.transition_masked, color='black'))
-		self.contact_neigh_action.setToolTip("")
 		
 		self.config_contact_neigh_btn = QPushButton()
 		self.config_contact_neigh_btn.setIcon(icon(MDI6.plus,color="black"))
 		self.config_contact_neigh_btn.setIconSize(QSize(20, 20))
-		self.config_contact_neigh_btn.setToolTip("")
+		self.config_contact_neigh_btn.setToolTip("Configure.")
 		self.config_contact_neigh_btn.setStyleSheet(self.button_select_all)
 		self.config_contact_neigh_btn.clicked.connect(self.open_config_contact_neighborhood)
 		contact_neighborhood_layout.addWidget(self.config_contact_neigh_btn,5)
@@ -1023,12 +1023,13 @@ class NeighPanel(QFrame, Styles):
 		self.delete_protocol_btn = QPushButton('')
 		self.delete_protocol_btn.setStyleSheet(self.button_select_all)
 		self.delete_protocol_btn.setIcon(icon(MDI6.trash_can, color="black"))
-		self.delete_protocol_btn.setToolTip("Remove.")
+		self.delete_protocol_btn.setToolTip("Remove a neighborhood computation.")
 		self.delete_protocol_btn.setIconSize(QSize(20, 20))
 		self.delete_protocol_btn.clicked.connect(self.remove_protocol_from_list)
 
 		self.protocol_list_lbl = QLabel('Neighborhoods to compute: ')
 		self.protocol_list = QListWidget()
+		self.protocol_list.setToolTip("Neighborhoods to compute sequentially.")
 
 		list_header_layout = QHBoxLayout()
 		list_header_layout.addWidget(self.protocol_list_lbl)
@@ -1038,6 +1039,7 @@ class NeighPanel(QFrame, Styles):
 
 		self.submit_btn = QPushButton("Submit")
 		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_btn.setToolTip("Compute the neighborhoods of the selected positions.")
 		self.submit_btn.clicked.connect(self.process_neighborhood)
 		self.grid_contents.addWidget(self.submit_btn, 5, 0, 1, 4)
 

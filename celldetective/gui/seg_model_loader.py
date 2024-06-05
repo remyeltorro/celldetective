@@ -455,15 +455,9 @@ class SegmentationModelLoader(QWidget, Styles):
 
 	def open_threshold_config_wizard(self):
 
-		if isinstance(self.parent_window.parent_window.pos, str):
+		self.parent_window.parent_window.locate_image()
+		if self.parent_window.parent_window.current_stack is None:
+			return None
+		else:
 			self.ThreshWizard = ThresholdConfigWizard(self)
 			self.ThreshWizard.show()
-		else:
-			msgBox = QMessageBox()
-			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("Please select a unique position before launching the wizard...")
-			msgBox.setWindowTitle("Warning")
-			msgBox.setStandardButtons(QMessageBox.Ok)
-			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				return None			

@@ -7,9 +7,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/celldetective
     permissions:
       id-token: write
     steps:

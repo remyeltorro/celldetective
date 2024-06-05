@@ -293,69 +293,36 @@ class ControlPanel(QMainWindow, Styles):
 		Close child windows if closed.
 		"""
 		
+		for process_block in [self.ProcessTargets, self.ProcessEffectors]:
+			try:
+				if process_block.SegModelLoader:
+					process_block.SegModelLoader.close()
+			except:
+				pass
+			try:
+				if process_block.ConfigTracking:
+					process_block.ConfigTracking.close()
+			except:
+				pass
+			try:
+				if process_block.ConfigSignalTrain:
+					process_block.ConfigSignalTrain.close()
+			except:
+				pass
+			try:
+				if process_block.ConfigMeasurements:
+					process_block.ConfigMeasurements.close()
+			except:
+				pass
+			try:
+				if process_block.ConfigSignalAnnotator:
+					process_block.ConfigSignalAnnotator.close()
+			except:
+				pass
+
 		try:
 			if self.cfg_editor:
 				self.cfg_editor.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessTargets.SegModelLoader:
-				self.ProcessTargets.SegModelLoader.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessEffectors.SegModelLoader:
-				self.ProcessEffectors.SegModelLoader.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessTargets.ConfigTracking:
-				self.ProcessTargets.ConfigTracking.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessEffectors.ConfigTracking:
-				self.ProcessEffectors.ConfigTracking.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessTargets.ConfigSignalTrain:
-				self.ProcessTargets.ConfigSignalTrain.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessEffectors.ConfigSignalTrain:
-				self.ProcessEffectors.ConfigSignalTrain.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessTargets.ConfigMeasurements:
-				self.ProcessTargets.ConfigMeasurements.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessEffectors.ConfigMeasurements:
-				self.ProcessEffectors.ConfigMeasurements.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessTargets.ConfigSignalAnnotator:
-				self.ProcessTargets.ConfigSignalAnnotator.close()
-		except:
-			pass
-
-		try:
-			if self.ProcessEffectors.ConfigSignalAnnotator:
-				self.ProcessEffectors.ConfigSignalAnnotator.close()
 		except:
 			pass
 

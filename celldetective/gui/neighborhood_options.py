@@ -36,6 +36,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		super().__init__(*args, **kwargs)
 		self.parent_window = parent_window
 		self.attr_parent = self.parent_window.parent_window
+		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','logo.png'])))
 
 		self.neighborhood_type = neighborhood_type
 		self.neighborhood_parameter_name = neighborhood_parameter_name

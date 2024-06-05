@@ -41,7 +41,7 @@ class ConfigSurvival(QWidget, Styles):
 		super().__init__()
 		self.parent_window = parent_window
 		self.setWindowTitle("Configure survival")
-		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
+		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','logo.png'])))
 
 		self.exp_dir = self.parent_window.exp_dir
 		self.soft_path = get_software_location()		
@@ -67,6 +67,7 @@ class ConfigSurvival(QWidget, Styles):
 		#self.load_previous_measurement_instructions()
 		if self.auto_close:
 			self.close()
+		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def interpret_pos_location(self):
 		

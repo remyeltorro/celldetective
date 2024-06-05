@@ -46,11 +46,15 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 		self.threshold_viewer_btn.setIcon(icon(MDI6.image_check, color="k"))
 		self.threshold_viewer_btn.setStyleSheet(self.button_select_all)
 		self.threshold_viewer_btn.clicked.connect(self.set_threshold_graphically)
+		self.threshold_viewer_btn.setToolTip('Set the threshold graphically.')
+
 
 		self.model_lbl = QLabel('Model: ')
+		self.model_lbl.setToolTip('2D model to fit the background with.')
 		self.models_cb = QComboBox()
 		self.models_cb.addItems(['paraboloid', 'plane'])
-		
+		self.models_cb.setToolTip('2D model to fit the background with.')
+
 		self.corrected_stack_viewer = QPushButton("")
 		self.corrected_stack_viewer.setStyleSheet(self.button_select_all)
 		self.corrected_stack_viewer.setIcon(icon(MDI6.eye_outline, color="black"))

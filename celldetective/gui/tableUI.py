@@ -9,6 +9,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
 import os
+from celldetective.gui import Styles
+from superqt import QColormapComboBox
 
 class PandasModel(QAbstractTableModel):
 
@@ -101,7 +103,7 @@ class RenameColWidget(QWidget):
 		self.close()
 
 
-class TableUI(QMainWindow):
+class TableUI(QMainWindow, Styles):
 	def __init__(self, data, title, population='targets',plot_mode="plot_track_signals", *args, **kwargs):
 
 		QMainWindow.__init__(self, *args, **kwargs)
@@ -280,6 +282,7 @@ class TableUI(QMainWindow):
 		layout.addLayout(hbox)
 
 		self.set_projection_btn = QPushButton('set')
+		self.set_projection_btn.setStyleSheet(self.button_style_sheet)
 		self.set_projection_btn.clicked.connect(self.set_proj_mode)
 		layout.addWidget(self.set_projection_btn)
 
@@ -313,24 +316,33 @@ class TableUI(QMainWindow):
 		layout.addWidget(self.box_check)
 		layout.addWidget(self.boxenplot_check)
 
+		self.x_cb = QComboBox()
+		self.x_cb.addItems(['--']+list(self.data.columns))
+
 		self.hue_cb = QComboBox()
 		self.hue_cb.addItems(list(self.data.columns))
 		idx = self.hue_cb.findText('well_index')
-		self.hue_cb.setCurrentIndex(idx)
+
+		self.x_cb.setCurrentIndex(idx)
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('x: '), 33)
+		hbox.addWidget(self.x_cb, 66)
+		layout.addLayout(hbox)
+
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('hue: '), 33)
 		hbox.addWidget(self.hue_cb, 66)
 		layout.addLayout(hbox)
 
-
-		self.cmap_cb = QComboBox()
-		self.cmap_cb.addItems(list(plt.colormaps()))
+		self.cmap_cb = QColormapComboBox()
+		self.cmap_cb.addColormaps(list(plt.colormaps()))
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('colormap: '), 33)
 		hbox.addWidget(self.cmap_cb, 66)
 		layout.addLayout(hbox)
 
 		self.plot1d_btn = QPushButton('set')
+		self.plot1d_btn.setStyleSheet(self.button_style_sheet)
 		self.plot1d_btn.clicked.connect(self.plot1d)
 		layout.addWidget(self.plot1d_btn)
 
@@ -339,6 +351,11 @@ class TableUI(QMainWindow):
 
 
 	def plot1d(self):
+
+		self.x_option = False
+		if self.x_cb.currentText()!='--':
+			self.x_option = True
+			self.x = self.x_cb.currentText()
 
 		x = self.table_view.selectedIndexes()
 		col_idx = np.array([l.column() for l in x])
@@ -371,24 +388,44 @@ class TableUI(QMainWindow):
 			legend = False
 
 		if self.swarm_check.isChecked():
-			sns.swarmplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
-			legend = False
+			if self.x_option:
+				sns.swarmplot(data=self.data, x=self.x,y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				legend = False
+			else:
+				sns.swarmplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				legend = False
 
 		if self.violin_check.isChecked():
-			sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
-			legend = False
+			if self.x_option:
+				sns.stripplot(data=self.data,x=self.x, y=column_names[unique_cols],dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				legend = False
+			else:
+				sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
+				legend = False
 
 		if self.box_check.isChecked():
-			sns.boxplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
-			legend = False
+			if self.x_option:
+				sns.boxplot(data=self.data, x=self.x, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				legend = False
+			else:
+				sns.boxplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				legend = False
 
 		if self.boxenplot_check.isChecked():
-			sns.boxenplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
-			legend = False
+			if self.x_option:
+				sns.boxenplot(data=self.data, x = self.x, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				legend = False
+			else:
+				sns.boxenplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				legend = False
 
 		if self.strip_check.isChecked():
-			sns.stripplot(data=self.data, y=column_names[unique_cols],dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
-			legend = False
+			if self.x_option:
+				sns.stripplot(data=self.data, x = self.x, y=column_names[unique_cols],dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				legend = False
+			else:
+				sns.stripplot(data=self.data, y=column_names[unique_cols],dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				legend = False
 
 		plt.tight_layout()
 		self.fig.set_facecolor('none')  # or 'None'

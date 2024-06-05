@@ -394,10 +394,9 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 			msgBox.setWindowTitle("Warning")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Ok:
-				self.img = None
-				self.close()
-				return None
+			self.img = None
+			self.close()
+			return None
 
 		if len(movies) == 0:
 			msgBox = QMessageBox()
@@ -406,8 +405,8 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 			msgBox.setWindowTitle("Warning")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Yes:
-				self.close()
+			self.img = None
+			self.close()
 		else:
 			self.stack_path = movies[0]
 			self.len_movie = self.parent_window.parent_window.parent_window.len_movie

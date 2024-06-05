@@ -30,6 +30,7 @@ class SegmentationModelLoader(QWidget, Styles):
 		self.setWindowTitle('Upload model')
 		self.generate_content()
 		center_window(self)
+		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def generate_content(self):
 

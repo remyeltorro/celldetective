@@ -170,6 +170,7 @@ git clone git://github.com/remyeltorro/celldetective.git
 cd celldetective
 
 # install the celldetective package in editable/development mode
+pip install -r requirements.txt
 pip install -e .
 ```
 

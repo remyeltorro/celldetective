@@ -7,6 +7,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    environment:
+      name: tests
     permissions:
       id-token: write
     steps:

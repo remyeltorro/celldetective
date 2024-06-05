@@ -98,7 +98,6 @@ class ConfigSignalPlot(QWidget, Styles):
 		else:
 			self.position_indices = np.array([self.position_option],dtype=int)
 
-
 	def populate_widget(self):
 
 		"""
@@ -174,7 +173,7 @@ class ConfigSignalPlot(QWidget, Styles):
 	def set_classes_and_times(self):
 
 		# Look for all classes and times
-		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*']))
+		tables = natsorted(glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*.csv'])))
 		self.all_columns = []
 		for tab in tables:
 			cols = pd.read_csv(tab, nrows=1).columns.tolist()

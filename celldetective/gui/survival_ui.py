@@ -214,7 +214,7 @@ class ConfigSurvival(QWidget, Styles):
 			excluded_class = self.cbs[3].currentText()
 			if excluded_class!='--':
 				print(f"Excluding {excluded_class}...")
-				self.df = self.df.loc[self.df[excluded_class]!=0,:]
+				self.df = self.df.loc[~(self.df[excluded_class].isin([0,2])),:]
 
 			self.compute_survival_functions()
 			# prepare survival

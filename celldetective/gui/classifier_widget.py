@@ -324,8 +324,8 @@ class ClassifierWidget(QWidget, Styles):
 							self.df.loc[indices, self.class_name_user] = 1
 							self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
 						elif c==1:
-							self.df.loc[indices, self.class_name_user] = 0
-							self.df.loc[indices, self.class_name_user.replace('class','t')] = 0.01
+							self.df.loc[indices, self.class_name_user] = 2
+							self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
 				if self.irreversible_event_btn.isChecked():
 					self.estimate_time()
 		else:

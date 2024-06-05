@@ -152,7 +152,7 @@ class ConfigSurvival(QWidget, Styles):
 	def set_classes_and_times(self):
 
 		# Look for all classes and times
-		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*']))
+		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*.csv']))
 		self.all_columns = []
 		for tab in tables:
 			cols = pd.read_csv(tab, nrows=1,encoding_errors='ignore').columns.tolist()

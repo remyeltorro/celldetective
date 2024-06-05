@@ -323,7 +323,7 @@ class TableUI(QMainWindow, Styles):
 		self.hue_cb.addItems(list(self.data.columns))
 		idx = self.hue_cb.findText('well_index')
 
-		self.x_cb.setCurrentIndex(idx)
+		self.x_cb.findText('--')
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('x: '), 33)
 		hbox.addWidget(self.x_cb, 66)

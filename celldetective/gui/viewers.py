@@ -26,8 +26,41 @@ from celldetective.utils import mask_edges
 class StackVisualizer(QWidget, Styles):
 
 	"""
-	A widget around an imshow and accompanying sliders.
+	A widget for visualizing image stacks with interactive sliders and channel selection.
+
+	Parameters:
+	- stack (numpy.ndarray or None): The stack of images.
+	- stack_path (str or None): The path to the stack of images if provided as a file.
+	- frame_slider (bool): Enable frame navigation slider.
+	- contrast_slider (bool): Enable contrast adjustment slider.
+	- channel_cb (bool): Enable channel selection dropdown.
+	- channel_names (list or None): Names of the channels if `channel_cb` is True.
+	- n_channels (int): Number of channels.
+	- target_channel (int): Index of the target channel.
+	- window_title (str): Title of the window.
+	- PxToUm (float or None): Pixel to micrometer conversion factor.
+	- background_color (str): Background color of the widget.
+	- imshow_kwargs (dict): Additional keyword arguments for imshow function.
+
+	Methods:
+	- show(): Display the widget.
+	- load_stack(): Load the stack of images.
+	- locate_image_virtual(): Locate the stack of images if provided as a file.
+	- generate_figure_canvas(): Generate the figure canvas for displaying images.
+	- generate_channel_cb(): Generate the channel dropdown if enabled.
+	- generate_contrast_slider(): Generate the contrast slider if enabled.
+	- generate_frame_slider(): Generate the frame slider if enabled.
+	- set_target_channel(value): Set the target channel.
+	- change_contrast(value): Change contrast based on slider value.
+	- set_channel_index(value): Set the channel index based on dropdown value.
+	- change_frame(value): Change the displayed frame based on slider value.
+	- closeEvent(event): Event handler for closing the widget.
+
+	Notes:
+	- This class provides a convenient interface for visualizing image stacks with frame navigation,
+	  contrast adjustment, and channel selection functionalities.
 	"""
+	
 	def __init__(self, stack=None, stack_path=None, frame_slider=True, contrast_slider=True, channel_cb=False, channel_names=None, n_channels=1, target_channel=0, window_title='View', PxToUm=None, background_color='transparent',imshow_kwargs={}):
 		super().__init__()
 
@@ -61,10 +94,11 @@ class StackVisualizer(QWidget, Styles):
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def show(self):
+		# Display the widget
 		self.canvas.show()
 
 	def load_stack(self):
-
+		# Load the stack of images
 		if self.stack is not None:
 
 			if isinstance(self.stack, list):
@@ -87,7 +121,7 @@ class StackVisualizer(QWidget, Styles):
 			self.locate_image_virtual()
 
 	def locate_image_virtual(self):
-
+		# Locate the stack of images if provided as a file
 		self.stack_length = auto_load_number_of_frames(self.stack_path)
 		if self.stack_length is None:
 			stack = imread(self.stack_path)
@@ -106,6 +140,7 @@ class StackVisualizer(QWidget, Styles):
 									  normalize_input=False).astype(float)[:,:,0]
 
 	def generate_figure_canvas(self):
+		# Generate the figure canvas for displaying images
 
 		self.fig, self.ax = plt.subplots(tight_layout=True) #figsize=(5, 5)
 		self.canvas = FigureCanvas(self.fig, title=self.window_title, interactive=True)
@@ -140,6 +175,7 @@ class StackVisualizer(QWidget, Styles):
 		self.canvas.canvas.draw()
 
 	def generate_channel_cb(self):
+		# Generate the channel dropdown if enabled
 
 		assert self.channel_names is not None
 		assert len(self.channel_names)==self.n_channels
@@ -155,6 +191,7 @@ class StackVisualizer(QWidget, Styles):
 		self.canvas.layout.addLayout(channel_layout)
 
 	def generate_contrast_slider(self):
+		# Generate the contrast slider if enabled
 		
 		self.contrast_slider = QLabeledDoubleRangeSlider()
 		contrast_layout = QuickSliderLayout(
@@ -173,6 +210,7 @@ class StackVisualizer(QWidget, Styles):
 
 
 	def generate_frame_slider(self):
+		# Generate the frame slider if enabled
 	
 		self.frame_slider = QLabeledSlider()
 		frame_layout = QuickSliderLayout(
@@ -187,11 +225,13 @@ class StackVisualizer(QWidget, Styles):
 		self.canvas.layout.addLayout(frame_layout)
 
 	def set_target_channel(self, value):
+		# Set the target channel
 		
 		self.target_channel = value
 		self.change_frame(self.frame_slider.value())
 
 	def change_contrast(self, value):
+		# Change contrast based on slider value
 
 		vmin = value[0]
 		vmax = value[1]
@@ -199,6 +239,7 @@ class StackVisualizer(QWidget, Styles):
 		self.fig.canvas.draw_idle()
 
 	def set_channel_index(self, value):
+		# Set the channel index based on dropdown value
 
 		self.target_channel = value
 		self.init_contrast = True
@@ -212,6 +253,7 @@ class StackVisualizer(QWidget, Styles):
 		self.init_contrast = False
 
 	def change_frame(self, value):
+		# Change the displayed frame based on slider value
 		
 		if self.mode=='virtual':
 
@@ -235,16 +277,41 @@ class StackVisualizer(QWidget, Styles):
 
 	
 	def closeEvent(self, event):
+		# Event handler for closing the widget
 		self.canvas.close()
 
 
 class ThresholdedStackVisualizer(StackVisualizer):
+	
+	"""
+	A widget for visualizing thresholded image stacks with interactive sliders and channel selection.
 
+	Parameters:
+	- preprocessing (list or None): A list of preprocessing filters to apply to the image before thresholding.
+	- parent_le: The parent QLineEdit instance to set the threshold value.
+	- initial_threshold (float): Initial threshold value.
+	- initial_mask_alpha (float): Initial mask opacity value.
+	- args, kwargs: Additional arguments to pass to the parent class constructor.
+
+	Methods:
+	- generate_apply_btn(): Generate the apply button to set the threshold in the parent QLineEdit.
+	- set_threshold_in_parent_le(): Set the threshold value in the parent QLineEdit.
+	- generate_mask_imshow(): Generate the mask imshow.
+	- generate_threshold_slider(): Generate the threshold slider.
+	- generate_opacity_slider(): Generate the opacity slider for the mask.
+	- change_mask_opacity(value): Change the opacity of the mask.
+	- change_threshold(value): Change the threshold value.
+	- change_frame(value): Change the displayed frame and update the threshold.
+	- compute_mask(threshold_value): Compute the mask based on the threshold value.
+	- preprocess_image(): Preprocess the image before thresholding.
+
+	Notes:
+	- This class extends the functionality of StackVisualizer to visualize thresholded image stacks
+	  with interactive sliders for threshold and mask opacity adjustment.
 	"""
-	A widget around an imshow and accompanying sliders.
-	"""
+
 	def __init__(self, preprocessing=None, parent_le=None, initial_threshold=5, initial_mask_alpha=0.5, *args, **kwargs):
-		
+		# Initialize the widget and its attributes		
 		super().__init__(*args, **kwargs)
 		self.preprocessing = preprocessing
 		self.thresh = initial_threshold
@@ -258,7 +325,7 @@ class ThresholdedStackVisualizer(StackVisualizer):
 			self.generate_apply_btn()
 
 	def generate_apply_btn(self):
-		
+		# Generate the apply button to set the threshold in the parent QLineEdit		
 		apply_hbox = QHBoxLayout()
 		self.apply_threshold_btn = QPushButton('Apply')
 		self.apply_threshold_btn.clicked.connect(self.set_threshold_in_parent_le)
@@ -269,16 +336,17 @@ class ThresholdedStackVisualizer(StackVisualizer):
 		self.canvas.layout.addLayout(apply_hbox)
 
 	def set_threshold_in_parent_le(self):
+		# Set the threshold value in the parent QLineEdit
 		self.parent_le.set_threshold(self.threshold_slider.value())
 		self.close()
 
 	def generate_mask_imshow(self):
-		
+		# Generate the mask imshow		
 		self.im_mask = self.ax.imshow(np.ma.masked_where(self.mask==0, self.mask), alpha=self.mask_alpha, interpolation='none')
 		self.canvas.canvas.draw()
 
 	def generate_threshold_slider(self):
-
+		# Generate the threshold slider
 		self.threshold_slider = QLabeledDoubleSlider()
 		thresh_layout = QuickSliderLayout(label='Threshold: ',
 										slider=self.threshold_slider,
@@ -292,7 +360,7 @@ class ThresholdedStackVisualizer(StackVisualizer):
 		self.canvas.layout.addLayout(thresh_layout)
 
 	def generate_opacity_slider(self):
-
+		# Generate the opacity slider for the mask
 		self.opacity_slider = QLabeledDoubleSlider()
 		opacity_layout = QuickSliderLayout(label='Opacity: ',
 										slider=self.opacity_slider,
@@ -306,13 +374,13 @@ class ThresholdedStackVisualizer(StackVisualizer):
 		self.canvas.layout.addLayout(opacity_layout)
 
 	def change_mask_opacity(self, value):
-
+		# Change the opacity of the mask
 		self.mask_alpha = value
 		self.im_mask.set_alpha(self.mask_alpha)
 		self.canvas.canvas.draw_idle()
 
 	def change_threshold(self, value):
-		
+		# Change the threshold value		
 		self.thresh = value
 		self.compute_mask(self.thresh)
 		mask = np.ma.masked_where(self.mask == 0, self.mask)
@@ -320,18 +388,18 @@ class ThresholdedStackVisualizer(StackVisualizer):
 		self.canvas.canvas.draw_idle()
 
 	def change_frame(self, value):
-		
+		# Change the displayed frame and update the threshold		
 		super().change_frame(value)
 		self.change_threshold(self.threshold_slider.value())
 
 	def compute_mask(self, threshold_value):
-
+		# Compute the mask based on the threshold value
 		self.preprocess_image()
 		edge = estimate_unreliable_edge(self.preprocessing)
 		self.mask = threshold_image(self.processed_image, threshold_value, 1.0E06, foreground_value=1, edge_exclusion=edge).astype(int)
 
 	def preprocess_image(self):
-		
+		# Preprocess the image before thresholding		
 		if self.preprocessing is not None:
 
 			assert isinstance(self.preprocessing, list)
@@ -341,10 +409,42 @@ class ThresholdedStackVisualizer(StackVisualizer):
 class CellEdgeVisualizer(StackVisualizer):
 
 	"""
-	A widget around an imshow and accompanying sliders.
+	A widget for visualizing cell edges with interactive sliders and channel selection.
+
+	Parameters:
+	- cell_type (str): Type of cells ('effectors' by default).
+	- edge_range (tuple): Range of edge sizes (-30, 30) by default.
+	- invert (bool): Flag to invert the edge size (False by default).
+	- parent_list_widget: The parent QListWidget instance to add edge measurements.
+	- parent_le: The parent QLineEdit instance to set the edge size.
+	- labels (array or None): Array of labels for cell segmentation.
+	- initial_edge (int): Initial edge size (5 by default).
+	- initial_mask_alpha (float): Initial mask opacity value (0.5 by default).
+	- args, kwargs: Additional arguments to pass to the parent class constructor.
+
+	Methods:
+	- load_labels(): Load the cell labels.
+	- locate_labels_virtual(): Locate virtual labels.
+	- generate_add_to_list_btn(): Generate the add to list button.
+	- generate_add_to_le_btn(): Generate the set measurement button for QLineEdit.
+	- set_measurement_in_parent_le(): Set the edge size in the parent QLineEdit.
+	- set_measurement_in_parent_list(): Add the edge size to the parent QListWidget.
+	- generate_label_imshow(): Generate the label imshow.
+	- generate_edge_slider(): Generate the edge size slider.
+	- generate_opacity_slider(): Generate the opacity slider for the mask.
+	- change_mask_opacity(value): Change the opacity of the mask.
+	- change_edge_size(value): Change the edge size.
+	- change_frame(value): Change the displayed frame and update the edge labels.
+	- compute_edge_labels(): Compute the edge labels.
+
+	Notes:
+	- This class extends the functionality of StackVisualizer to visualize cell edges
+	  with interactive sliders for edge size adjustment and mask opacity control.
 	"""
+
 	def __init__(self, cell_type="effectors", edge_range=(-30,30), invert=False, parent_list_widget=None, parent_le=None, labels=None, initial_edge=5, initial_mask_alpha=0.5, *args, **kwargs):
 		
+		# Initialize the widget and its attributes
 		super().__init__(*args, **kwargs)
 		self.edge_size = initial_edge
 		self.mask_alpha = initial_mask_alpha
@@ -365,6 +465,7 @@ class CellEdgeVisualizer(StackVisualizer):
 			self.generate_add_to_le_btn()
 
 	def load_labels(self):
+		# Load the cell labels
 
 		if self.labels is not None:
 
@@ -385,6 +486,7 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.compute_edge_labels()
 
 	def locate_labels_virtual(self):
+		# Locate virtual labels
 
 		labels_path = str(Path(self.stack_path).parent.parent) + os.sep + f'labels_{self.cell_type}' + os.sep
 		self.mask_paths = natsorted(glob(labels_path + '*.tif'))
@@ -402,6 +504,7 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.init_label = imread(self.mask_paths[self.frame_slider.value()])
 
 	def generate_add_to_list_btn(self):
+		# Generate the add to list button
 		
 		add_hbox = QHBoxLayout()
 		self.add_measurement_btn = QPushButton('Add measurement')
@@ -415,6 +518,7 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.canvas.layout.addLayout(add_hbox)
 
 	def generate_add_to_le_btn(self):
+		# Generate the set measurement button for QLineEdit
 		
 		add_hbox = QHBoxLayout()
 		self.set_measurement_btn = QPushButton('Set')
@@ -426,21 +530,25 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.canvas.layout.addLayout(add_hbox)
 
 	def set_measurement_in_parent_le(self):
+		# Set the edge size in the parent QLineEdit
 		
 		self.parent_le.setText(str(int(self.edge_slider.value())))
 		self.close()
 
 	def set_measurement_in_parent_list(self):
+		# Add the edge size to the parent QListWidget
 		
 		self.parent_list_widget.addItems([str(self.edge_slider.value())])
 		self.close()
 
 	def generate_label_imshow(self):
+		# Generate the label imshow
 		
 		self.im_mask = self.ax.imshow(np.ma.masked_where(self.edge_labels==0, self.edge_labels), alpha=self.mask_alpha, interpolation='none', cmap="viridis")
 		self.canvas.canvas.draw()
 
 	def generate_edge_slider(self):
+		# Generate the edge size slider
 
 		self.edge_slider = QLabeledSlider()
 		edge_layout = QuickSliderLayout(label='Edge: ',
@@ -454,6 +562,7 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.canvas.layout.addLayout(edge_layout)
 
 	def generate_opacity_slider(self):
+		# Generate the opacity slider for the mask
 
 		self.opacity_slider = QLabeledDoubleSlider()
 		opacity_layout = QuickSliderLayout(label='Opacity: ',
@@ -468,12 +577,14 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.canvas.layout.addLayout(opacity_layout)
 
 	def change_mask_opacity(self, value):
+		# Change the opacity of the mask
 
 		self.mask_alpha = value
 		self.im_mask.set_alpha(self.mask_alpha)
 		self.canvas.canvas.draw_idle()
 
 	def change_edge_size(self, value):
+		# Change the edge size
 		
 		self.edge_size = value
 		self.compute_edge_labels()
@@ -482,6 +593,7 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.canvas.canvas.draw_idle()
 
 	def change_frame(self, value):
+		# Change the displayed frame and update the edge labels
 		
 		super().change_frame(value)
 
@@ -495,6 +607,7 @@ class CellEdgeVisualizer(StackVisualizer):
 		self.im_mask.set_data(mask)
 
 	def compute_edge_labels(self):
+		# Compute the edge labels
 		
 		if self.invert:
 			edge_size = - self.edge_size
@@ -506,9 +619,33 @@ class CellEdgeVisualizer(StackVisualizer):
 class CellSizeViewer(StackVisualizer):
 
 	"""
-	A widget around an imshow and accompanying sliders.
+	A widget for visualizing cell size with interactive sliders and circle display.
+
+	Parameters:
+	- initial_diameter (int): Initial diameter of the circle (40 by default).
+	- set_radius_in_list (bool): Flag to set radius instead of diameter in the list (False by default).
+	- diameter_slider_range (tuple): Range of the diameter slider (0, 200) by default.
+	- parent_le: The parent QLineEdit instance to set the diameter.
+	- parent_list_widget: The parent QListWidget instance to add diameter measurements.
+	- args, kwargs: Additional arguments to pass to the parent class constructor.
+
+	Methods:
+	- generate_circle(): Generate the circle for visualization.
+	- generate_add_to_list_btn(): Generate the add to list button.
+	- set_measurement_in_parent_list(): Add the diameter to the parent QListWidget.
+	- on_xlims_or_ylims_change(event_ax): Update the circle position on axis limits change.
+	- generate_set_btn(): Generate the set button for QLineEdit.
+	- set_threshold_in_parent_le(): Set the diameter in the parent QLineEdit.
+	- generate_diameter_slider(): Generate the diameter slider.
+	- change_diameter(value): Change the diameter of the circle.
+
+	Notes:
+	- This class extends the functionality of StackVisualizer to visualize cell size
+	  with interactive sliders for diameter adjustment and circle display.
 	"""
+
 	def __init__(self, initial_diameter=40, set_radius_in_list=False, diameter_slider_range=(0,200), parent_le=None, parent_list_widget=None, *args, **kwargs):
+		# Initialize the widget and its attributes
 		
 		super().__init__(*args, **kwargs)
 		self.diameter = initial_diameter
@@ -525,6 +662,7 @@ class CellSizeViewer(StackVisualizer):
 			self.generate_add_to_list_btn()
 
 	def generate_circle(self):
+		# Generate the circle for visualization
 
 		self.circ = plt.Circle((self.init_frame.shape[0]//2,self.init_frame.shape[1]//2), self.diameter//2, ec="tab:red",fill=False)
 		self.ax.add_patch(self.circ)
@@ -533,6 +671,7 @@ class CellSizeViewer(StackVisualizer):
 		self.ax.callbacks.connect('ylim_changed', self.on_xlims_or_ylims_change)
 
 	def generate_add_to_list_btn(self):
+		# Generate the add to list button
 		
 		add_hbox = QHBoxLayout()
 		self.add_measurement_btn = QPushButton('Add measurement')
@@ -546,6 +685,8 @@ class CellSizeViewer(StackVisualizer):
 		self.canvas.layout.addLayout(add_hbox)
 
 	def set_measurement_in_parent_list(self):
+		# Add the diameter to the parent QListWidget
+
 		if self.set_radius_in_list:
 			val = int(self.diameter_slider.value()//2)
 		else:
@@ -555,12 +696,14 @@ class CellSizeViewer(StackVisualizer):
 		self.close()
 
 	def on_xlims_or_ylims_change(self, event_ax):
+		# Update the circle position on axis limits change
 
 		xmin,xmax = event_ax.get_xlim()
 		ymin,ymax = event_ax.get_ylim()
 		self.circ.center = np.mean([xmin,xmax]), np.mean([ymin,ymax])
 
 	def generate_set_btn(self):
+		# Generate the set button for QLineEdit
 		
 		apply_hbox = QHBoxLayout()
 		self.apply_threshold_btn = QPushButton('Set')
@@ -572,10 +715,13 @@ class CellSizeViewer(StackVisualizer):
 		self.canvas.layout.addLayout(apply_hbox)
 
 	def set_threshold_in_parent_le(self):
+		# Set the diameter in the parent QLineEdit
+
 		self.parent_le.set_threshold(self.diameter_slider.value())
 		self.close()
 
 	def generate_diameter_slider(self):
+		# Generate the diameter slider
 
 		self.diameter_slider = QLabeledDoubleSlider()
 		diameter_layout = QuickSliderLayout(label='Diameter: ',
@@ -590,6 +736,7 @@ class CellSizeViewer(StackVisualizer):
 		self.canvas.layout.addLayout(diameter_layout)
 
 	def change_diameter(self, value):
+		# Change the diameter of the circle
 		
 		self.diameter = value
 		self.circ.set_radius(self.diameter//2)

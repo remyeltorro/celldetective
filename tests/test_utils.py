@@ -2,7 +2,7 @@ import unittest
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from celldetective.utils import create_patch_mask, remove_redundant_features, _extract_channel_indices, _get_img_num_per_channel,split_by_ratio,extract_experiment_channels
+from celldetective.utils import create_patch_mask, remove_redundant_features, _extract_channel_indices, _get_img_num_per_channel, split_by_ratio,extract_experiment_channels, estimate_unreliable_edge, unpad, mask_edges
 
 class TestPatchMask(unittest.TestCase):
 
@@ -65,6 +65,53 @@ class TestSplitArrayByRatio(unittest.TestCase):
 	def test_ratio_split_is_correct(self):
 		split_array = split_by_ratio(self.array,0.5,0.25,0.1)
 		self.assertTrue(np.all([len(split_array[0])==50, len(split_array[1])==25, len(split_array[2])==10]))
+
+class TestUnpad(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.array = np.array([[0,0,0],
+							  [0,1,0],
+							  [0,0,0]])
+
+	def test_unpad(self):
+		expected_unpad_array = np.array([[1]])
+		test_array = unpad(self.array, 1)
+		self.assertTrue(np.array_equal(test_array, expected_unpad_array))
+
+class TestMaskEdge(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.binary_mask = np.array([[1, 1, 1, 1, 1],
+									 [1, 1, 1, 1, 1],
+									 [1, 1, 1, 1, 1],
+									 [1, 1, 1, 1, 1],
+									 [1, 1, 1, 1, 1]])
+
+	def test_mask_edge_properly(self):
+		expected_output = np.array([[False, False, False, False, False],
+									[False, True, True, True, False],
+									[False, True, True, True, False],
+									[False, True, True, True, False],
+									[False, False, False, False, False]])
+		actual_output = mask_edges(self.binary_mask, 1)
+		self.assertTrue(np.array_equal(actual_output, expected_output))
+
+class TestEstimateFilterEdge(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(self):
+		self.protocol1 = [['gauss',2],['std',4]]
+		self.expected1 = 6
+		self.protocol2 = [['gauss',4],['variance','string_arg']]
+		self.expected2 = 4
+
+	def test_edge_is_estimated_properly_with_only_number_arguments(self):
+		self.assertEqual(self.expected1, estimate_unreliable_edge(self.protocol1))
+	
+	def test_edge_is_estimated_properly_with_mixed_arguments(self):
+		self.assertEqual(self.expected2, estimate_unreliable_edge(self.protocol2))
 
 
 if __name__=="__main__":

@@ -774,8 +774,8 @@ class ProcessPanel(QFrame, Styles):
         self.parent_window.locate_image()
         if self.parent_window.current_stack is not None:
             self.viewer = CellSizeViewer(
-                                          initial_diameter = float(self.diameter_le.text().replace(',','.')),
-                                          parent_le = self.diameter_le,
+                                          initial_diameter = float(self.diameter_le.text().replace(',', '.')),
+                parent_le = self.diameter_le,
                                           stack_path=self.parent_window.current_stack,
                                           window_title=f'Position {self.parent_window.position_list.currentText()}',
                                           frame_slider = True,
@@ -997,7 +997,17 @@ class NeighPanel(QFrame, Styles):
         self.config_distance_neigh_btn.clicked.connect(self.open_config_distance_threshold_neighborhood)
         dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
         dist_neigh_hbox.addWidget(self.dist_neigh_action, 95)
-
+        self.dist_neigh_btn = QCheckBox()
+        self.dist_neigh_btn.setStyleSheet("""
+                    font-size: 10px;
+                    padding-left: 10px;
+                    padding-top: 5px;
+                    """)
+        self.dist_neigh_btn.setIcon(icon(MDI6.eyedropper, color="black"))
+        self.dist_neigh_btn.setIconSize(QSize(20, 20))
+        self.dist_neigh_btn.setToolTip(
+            "Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
+        dist_neigh_hbox.addWidget(self.dist_neigh_btn,95)
         self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
         rel_layout = QHBoxLayout()
         self.measure_rel = QCheckBox("MEASURE")
@@ -1017,7 +1027,7 @@ class NeighPanel(QFrame, Styles):
         self.visu_btn.setIconSize(QSize(20, 20))
         self.visu_btn.clicked.connect(self.check_measurements2)
         self.visu_btn.setToolTip("Open measurement annotator for two populations.")
-        self.visu_btn.setStyleSheet(self.parent.parent.button_select_all)
+        self.visu_btn.setStyleSheet(self.button_select_all)
         #self.grid_contents.addWidget(self.visu_btn, 1,1,1,1,alignment=Qt.AlignRight)
         rel_layout.addWidget(self.visu_btn, 6)
 
@@ -1025,11 +1035,11 @@ class NeighPanel(QFrame, Styles):
         self.config_rel_annotator_btn.setIcon(icon(MDI6.cog_outline,color="black"))
         self.config_rel_annotator_btn.setIconSize(QSize(20, 20))
         self.config_rel_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
-        self.config_rel_annotator_btn.setStyleSheet(self.parent.parent.button_select_all)
+        self.config_rel_annotator_btn.setStyleSheet(self.button_select_all)
         self.config_rel_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
         #self.grid_contents.addWidget(self.config_rel_annotator_btn, 1,2,1,1, alignment=Qt.AlignRight)
         rel_layout.addWidget(self.config_rel_annotator_btn, 6)
-        self.grid_contents.addLayout(rel_layout, 1,0,1,4)
+        self.grid_contents.addLayout(rel_layout, 5,0,1,4)
 
         signal_hlayout = QHBoxLayout()
         self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
@@ -1049,18 +1059,18 @@ class NeighPanel(QFrame, Styles):
         self.check_signals_btn.setIconSize(QSize(20, 20))
         self.check_signals_btn.clicked.connect(self.check_signals2)
         self.check_signals_btn.setToolTip("Open signal annotator for two populations.")
-        self.check_signals_btn.setStyleSheet(self.parent.parent.button_select_all)
+        self.check_signals_btn.setStyleSheet(self.button_select_all)
         signal_hlayout.addWidget(self.check_signals_btn, 6)
 
         self.config_signal_annotator_btn = QPushButton()
         self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
         self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
         self.config_signal_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
-        self.config_signal_annotator_btn.setStyleSheet(self.parent.parent.button_select_all)
+        self.config_signal_annotator_btn.setStyleSheet(self.button_select_all)
         self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
         signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
 
-        self.grid_contents.addLayout(signal_hlayout, 2,0,1,4)
+        self.grid_contents.addLayout(signal_hlayout, 6,0,1,4)
         # def generate_signal_analysis_options(self):
         # 	signal_layout = QVBoxLayout()
         # 	signal_hlayout = QHBoxLayout()
@@ -1165,7 +1175,7 @@ class NeighPanel(QFrame, Styles):
         self.submit_btn.setStyleSheet(self.button_style_sheet_2)
         self.submit_btn.clicked.connect(self.process_neighborhood)
 
-        self.grid_contents.addWidget(self.submit_btn, 5, 0, 1, 4)
+        self.grid_contents.addWidget(self.submit_btn, 7, 0, 1, 4)
 
     def open_signal_annotator_configuration_ui(self):
         self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
@@ -1240,11 +1250,54 @@ class NeighPanel(QFrame, Styles):
                 if not os.path.exists(self.pos + os.sep.join(['output','tables'])+os.sep):
                     os.mkdir(self.pos + os.sep.join(['output','tables'])+os.sep)
 
-                for protocol in self.protocols:
+                # if self.dist_neigh_action.isChecked():
+                #
+                #     config = self.exp_dir + os.sep.join(["configs", "neighborhood_instructions.json"])
+                #
+                #     if not os.path.exists(config):
+                #         print('config could not be found', config)
+                #         msgBox = QMessageBox()
+                #         msgBox.setIcon(QMessageBox.Warning)
+                #         msgBox.setText("Please define a neighborhood first.")
+                #         msgBox.setWindowTitle("Info")
+                #         msgBox.setStandardButtons(QMessageBox.Ok)
+                #         returnValue = msgBox.exec()
+                #         return None
+                #
+                #     with open(config, 'r') as f:
+                #         config = json.load(f)
+                #
+                #     compute_neighborhood_at_position(self.pos,
+                #                                      config['distance'],
+                #                                      population=config['population'],
+                #                                      theta_dist=None,
+                #                                      img_shape=(self.parent.shape_x, self.parent.shape_y),
+                #                                      return_tables=False,
+                #                                      clear_neigh=config['clear_neigh'],
+                #                                      event_time_col=config['event_time_col'],
+                #                                      neighborhood_kwargs=config['neighborhood_kwargs'],
+                #                                     )
+                if self.measure_rel.isChecked():
+                    rel_measure_at_position(self.pos)
+                if self.dist_neigh_btn.isChecked():
+                    for protocol in self.protocols:
 
-                    if protocol['neighborhood_type']=='distance_threshold':
+                        if protocol['neighborhood_type']=='distance_threshold':
 
-                        compute_neighborhood_at_position(self.pos,
+                            compute_neighborhood_at_position(self.pos,
+                                                            protocol['distance'],
+                                                            population=protocol['population'],
+                                                            theta_dist=None,
+                                                            img_shape=(self.parent_window.shape_x,self.parent_window.shape_y),
+                                                            return_tables=False,
+                                                            clear_neigh=protocol['clear_neigh'],
+                                                            event_time_col=protocol['event_time_col'],
+                                                            neighborhood_kwargs=protocol['neighborhood_kwargs'],
+                                                            )
+
+                        elif protocol['neighborhood_type']=='mask_contact':
+
+                            compute_contact_neighborhood_at_position(self.pos,
                                                         protocol['distance'],
                                                         population=protocol['population'],
                                                         theta_dist=None,
@@ -1255,18 +1308,23 @@ class NeighPanel(QFrame, Styles):
                                                         neighborhood_kwargs=protocol['neighborhood_kwargs'],
                                                         )
 
-                    elif protocol['neighborhood_type']=='mask_contact':
 
-                        compute_contact_neighborhood_at_position(self.pos,
-                                                        protocol['distance'],
-                                                        population=protocol['population'],
-                                                        theta_dist=None,
-                                                        img_shape=(self.parent_window.shape_x,self.parent_window.shape_y),
-                                                        return_tables=False,
-                                                        clear_neigh=protocol['clear_neigh'],
-                                                        event_time_col=protocol['event_time_col'],
-                                                        neighborhood_kwargs=protocol['neighborhood_kwargs'],
-                                                        )
+                        #table = os.sep.join([self.pos, 'output', 'tables', 'relative.csv'])
+                print('Done.')
+            #
+            # def check_signals2(self):
+            #
+            #     test = self.parent.locate_selected_position()
+            #     if test:
+            #         self.SignalAnnotator2 = SignalAnnotator2(self)
+            #         self.SignalAnnotator2.show()
+            #
+            # def check_measurements2(self):
+            #
+            #     test = self.parent.locate_selected_position()
+            #     if test:
+            #         self.MeasurementAnnotator2 = MeasureAnnotator2(self)
+            #         self.MeasurementAnnotator2.show()
 
         print('Done.')
     def check_signals2(self):
@@ -1283,52 +1341,8 @@ class NeighPanel(QFrame, Styles):
             self.MeasurementAnnotator2 = MeasureAnnotator2(self)
             self.MeasurementAnnotator2.show()
 
-#             if self.dist_neigh_action.isChecked():
-#
-#                 config = self.exp_dir + os.sep.join(["configs","neighborhood_instructions.json"])
-#
-#                 if not os.path.exists(config):
-#                     print('config could not be found', config)
-#                     msgBox = QMessageBox()
-#                     msgBox.setIcon(QMessageBox.Warning)
-#                     msgBox.setText("Please define a neighborhood first.")
-#                     msgBox.setWindowTitle("Info")
-#                     msgBox.setStandardButtons(QMessageBox.Ok)
-#                     returnValue = msgBox.exec()
-#                     return None
-#
-#                 with open(config, 'r') as f:
-#                     config = json.load(f)
-#
-#                 compute_neighborhood_at_position(self.pos,
-#                                                  config['distance'],
-#                                                  population=config['population'],
-#                                                  theta_dist=None,
-#                                                  img_shape=(self.parent.shape_x,self.parent.shape_y),
-#                                                  return_tables=False,
-#                                                  clear_neigh=config['clear_neigh'],
-#                                                  event_time_col=config['event_time_col'],
-#                                                  neighborhood_kwargs=config['neighborhood_kwargs'],
-#                                                  )
-#             if self.measure_rel.isChecked():
-#                 rel_measure_at_position(self.pos)
-#
-#             #table = os.sep.join([self.pos, 'output', 'tables', 'relative.csv'])
-#     print('Done.')
-#
-# def check_signals2(self):
-#
-#     test = self.parent.locate_selected_position()
-#     if test:
-#         self.SignalAnnotator2 = SignalAnnotator2(self)
-#         self.SignalAnnotator2.show()
-#
-# def check_measurements2(self):
-#
-#     test = self.parent.locate_selected_position()
-#     if test:
-#         self.MeasurementAnnotator2 = MeasureAnnotator2(self)
-#         self.MeasurementAnnotator2.show()
+
+
 class PreprocessingPanel(QFrame, Styles):
 
     def __init__(self, parent_window):

@@ -40,6 +40,8 @@ def intensity_std(regionmask, intensity_image):
 def intensity_median(regionmask, intensity_image):
     return np.nanmedian(intensity_image[regionmask])
 
+def intensity_nanmean(regionmask, intensity_image):
+    return np.nanmean(intensity_image[regionmask])
 
 def intensity_centre_of_mass_displacement(regionmask, intensity_image):
     y, x = np.mgrid[:regionmask.shape[0], :regionmask.shape[1]]

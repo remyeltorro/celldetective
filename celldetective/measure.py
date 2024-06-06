@@ -861,7 +861,7 @@ def measure_at_position(pos, mode, return_measurements=False, threads=1):
         return None
 
 
-def local_normalisation(image, labels, background_intensity, model='median', operation='subtract', clip=False):
+def local_normalisation(image, labels, background_intensity, measurement='intensity_median', operation='subtract', clip=False):
     """
      Perform local normalization on an image based on labels.
 
@@ -907,10 +907,10 @@ def local_normalisation(image, labels, background_intensity, model='median', ope
             continue
         if operation == 'subtract':
             image[np.where(labels == cell)] = image[np.where(labels == cell)].astype(float) - \
-                                              background_intensity[f'intensity_{model.lower()}'][index-1].astype(float)
+                                              background_intensity[measurement][index-1].astype(float)
         elif operation == 'divide':
             image[np.where(labels == cell)] = image[np.where(labels == cell)].astype(float) / \
-                                              background_intensity[f'intensity_{model.lower()}'][index-1].astype(float)
+                                              background_intensity[measurement][index-1].astype(float)
     if clip:
         image[image<=0.] = 0.
 
@@ -956,15 +956,18 @@ def normalise_by_cell(image, labels, distance=5, model='median', operation='subt
     """
     border = contour_of_instance_segmentation(label=labels, distance=distance * (-1))
     if model == 'mean':
+        measurement = 'intensity_nanmean'
+        extra_props = [getattr(extra_properties, measurement)]
         background_intensity = regionprops_table(intensity_image=image, label_image=border,
-                                                 properties=['intensity_mean'])
+                                                 extra_properties=extra_props)
     elif model == 'median':
-        median = []
-        median.append(getattr(extra_properties, 'intensity_median'))
+        measurement = 'intensity_median'
+        extra_props = [getattr(extra_properties, measurement)]
         background_intensity = regionprops_table(intensity_image=image, label_image=border,
-                                                 extra_properties=median)
+                                                 extra_properties=extra_props)
+
     normalised_frame = local_normalisation(image=image.astype(float).copy(),
-                                           labels=labels, background_intensity=background_intensity, model=model,
+                                           labels=labels, background_intensity=background_intensity, measurement=measurement,
                                            operation=operation, clip=clip)
 
     return normalised_frame

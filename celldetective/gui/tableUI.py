@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox, QMessageBox
+from PyQt5.QtWidgets import QRadioButton, QButtonGroup, QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox, QMessageBox
 from PyQt5.QtCore import Qt, QAbstractTableModel
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ import matplotlib.cm as mcm
 import os
 from celldetective.gui import Styles
 from superqt import QColormapComboBox
+from math import floor
 
 class PandasModel(QAbstractTableModel):
 
@@ -274,12 +275,36 @@ class TableUI(QMainWindow, Styles):
 		
 		layout = QVBoxLayout()
 		self.projectionWidget.setLayout(layout)
+
+		self.projection_option = QRadioButton('operation: ')
+		self.projection_option.toggled.connect(self.enable_projection_options)
 		self.projection_op_cb = QComboBox()
 		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum'])
-		hbox = QHBoxLayout()
-		hbox.addWidget(QLabel('operation: '), 33)
-		hbox.addWidget(self.projection_op_cb, 66)
-		layout.addLayout(hbox)
+
+		projection_layout = QHBoxLayout()
+		projection_layout.addWidget(self.projection_option, 33)
+		projection_layout.addWidget(self.projection_op_cb, 66)
+		layout.addLayout(projection_layout)
+
+		self.event_time_option = QRadioButton('event time: ')
+		self.event_time_option.toggled.connect(self.enable_projection_options)
+		self.event_times_cb = QComboBox()
+		cols = np.array(self.data.columns)
+		time_cols = np.array([c.startswith('t_') for c in cols])
+		time_cols = list(cols[time_cols])
+		if 't0' in list(self.data.columns):
+			time_cols.append('t0')
+		self.event_times_cb.addItems(time_cols)
+		self.event_times_cb.setEnabled(False)
+
+		event_time_layout = QHBoxLayout()
+		event_time_layout.addWidget(self.event_time_option, 33)
+		event_time_layout.addWidget(self.event_times_cb, 66)
+		layout.addLayout(event_time_layout)
+
+		self.btn_projection_group = QButtonGroup()
+		self.btn_projection_group.addButton(self.projection_option)
+		self.btn_projection_group.addButton(self.event_time_option)
 
 		self.set_projection_btn = QPushButton('set')
 		self.set_projection_btn.setStyleSheet(self.button_style_sheet)
@@ -288,6 +313,14 @@ class TableUI(QMainWindow, Styles):
 
 		self.projectionWidget.show()
 		center_window(self.projectionWidget)
+
+	def enable_projection_options(self):
+		if self.projection_option.isChecked():
+			self.projection_op_cb.setEnabled(True)
+			self.event_times_cb.setEnabled(False)
+		elif self.event_time_option.isChecked():
+			self.projection_op_cb.setEnabled(False)
+			self.event_times_cb.setEnabled(True)
 
 	def set_1D_plot_params(self):
 
@@ -320,8 +353,8 @@ class TableUI(QMainWindow, Styles):
 		self.x_cb.addItems(['--']+list(self.data.columns))
 
 		self.hue_cb = QComboBox()
-		self.hue_cb.addItems(list(self.data.columns))
-		idx = self.hue_cb.findText('well_index')
+		self.hue_cb.addItems(['--']+list(self.data.columns))
+		idx = self.hue_cb.findText('--')
 
 		self.x_cb.findText('--')
 		hbox = QHBoxLayout()
@@ -370,9 +403,16 @@ class TableUI(QMainWindow, Styles):
 		y = self.data.iloc[row_idx_i, unique_cols]
 		
 		cmap = getattr(mcm, self.cmap_cb.currentText())
-		hue_variable = self.hue_cb.currentText()
 
-		colors = [cmap(i / len(self.data[hue_variable].unique())) for i in range(len(self.data[hue_variable].unique()))]
+		try:
+			hue_variable = self.hue_cb.currentText()
+			colors = [cmap(i / len(self.data[hue_variable].unique())) for i in range(len(self.data[hue_variable].unique()))]
+		except:
+			colors = None
+
+		if self.hue_cb.currentText()=='--':
+			hue_variable = None
+
 		#for w,well_group in self.data.groupby('well_index'):
 
 		legend=True
@@ -435,18 +475,37 @@ class TableUI(QMainWindow, Styles):
 
 
 	def set_proj_mode(self):
-		self.projection_mode = self.projection_op_cb.currentText()
-		#eval(self.projection_mode)
-		op = getattr(self.data.groupby(['position', 'TRACK_ID']), self.projection_mode)
-		group_table = op(self.data.groupby(['position', 'TRACK_ID']))
+		if self.projection_option.isChecked():
 
-		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent']
-		for c in self.static_columns:
-			try:
-				group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
-			except Exception as e:
-				print(e)
-				pass
+			self.projection_mode = self.projection_op_cb.currentText()
+			op = getattr(self.data.groupby(['position', 'TRACK_ID']), self.projection_mode)
+			group_table = op(self.data.groupby(['position', 'TRACK_ID']))
+
+			self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent']
+			for c in self.static_columns:
+				try:
+					group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+				except Exception as e:
+					print(e)
+					pass
+		elif self.event_time_option.isChecked():
+			time_of_interest = self.event_times_cb.currentText()
+			self.projection_mode = f"measurements at {time_of_interest}"
+			new_table = []
+			for tid,group in self.data.groupby(['position','TRACK_ID']):
+				time = group[time_of_interest].values[0]
+				if time==time:
+					time = floor(time) # floor for onset
+				else:
+					continue
+				frames = group['FRAME'].values
+				values = group.loc[group['FRAME']==time,:].to_numpy()
+				if len(values)>0:
+					values = dict(zip(list(self.data.columns), values[0]))
+					new_table.append(values)
+			group_table = pd.DataFrame(new_table)
+
+
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
 		self.subtable.show()
 

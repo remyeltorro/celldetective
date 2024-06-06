@@ -18,53 +18,56 @@ import matplotlib.pyplot as plt
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):
 	
 	"""
-	Estimate the background per condition in an experiment.
+	Estimate the background for each condition in an experiment.
 
-	This function calculates the background of each well in the given experiment
-	by analyzing frames from the specified range. It supports two modes: "timeseries"
-	and "tiles". The function applies Gaussian and standard deviation filters to
-	identify and mask out high-variance areas, and computes the median background
-	across positions within each well.
+	This function calculates the background for each well within
+	a given experiment by processing image frames using a specified activation
+	protocol. It supports time-series and tile-based modes for background 
+	estimation.
 
 	Parameters
 	----------
-	experiment : object
-		The experiment object containing well and position information.
+	experiment : str
+		The path to the experiment directory.
 	threshold_on_std : float, optional
-		The threshold for the standard deviation filter to identify high-variance areas. Defaults to 1.
-	well_option : str, int, or list of int, optional
-		The well selection option:
-		- '*' : Select all wells.
-		- int : Select a specific well by its index.
-		- list of int : Select multiple wells by their indices. Defaults to '*'.
-	target_channel : str
-		The specific channel to be analyzed.
+		The threshold value on the standard deviation for masking (default is 1).
+	well_option : str, optional
+		The option to select specific wells (default is '*').
+	target_channel : str, optional
+		The name of the target channel for background estimation (default is "channel_name").
 	frame_range : list of int, optional
-		The range of frames to be analyzed, specified as [start, end]. Defaults to [0, 5].
-	mode : {'timeseries', 'tiles'}, optional
-		The mode of analysis. "timeseries" averages frames before filtering, while "tiles" filters each frame individually. Defaults to "timeseries".
+		The range of frames to consider for background estimation (default is [0, 5]).
+	mode : str, optional
+		The mode of background estimation, either "timeseries" or "tiles" (default is "timeseries").
+	activation_protocol : list of list, optional
+		The activation protocol consisting of filters and their respective parameters (default is [['gauss', 2], ['std', 4]]).
 	show_progress_per_pos : bool, optional
-		If True, display a progress bar for position processing. Defaults to False.
+		Whether to show progress for each position (default is False).
 	show_progress_per_well : bool, optional
-		If True, display a progress bar for well processing. Defaults to True.
+		Whether to show progress for each well (default is True).
 
 	Returns
 	-------
-	backgrounds : list of dict
-		A list of dictionaries, each containing:
-		- 'bg' : numpy.ndarray
-			The computed background for the well.
-		- 'well' : str
-			The path to the well.
+	list of dict
+		A list of dictionaries, each containing the background image (`bg`) and the corresponding well path (`well`).
+
+	See Also
+	--------
+	estimate_unreliable_edge : Estimates the unreliable edge value from the activation protocol.
+	threshold_image : Thresholds an image based on the specified criteria.
+
+	Notes
+	-----
+	This function assumes that the experiment directory structure and the configuration 
+	files follow a specific format expected by the helper functions used within.
 
 	Examples
 	--------
-	>>> experiment = ...  # Some experiment object
-	>>> backgrounds = estimate_background_per_condition(experiment, threshold_on_std=1.5, well_option=[0, 1, 2], target_channel='DAPI', frame_range=[0, 10], mode="tiles")
-	>>> print(backgrounds[0]['bg'])  # The background array for the first well
-	>>> print(backgrounds[0]['well'])  # The path to the first well
+	>>> experiment_path = "path/to/experiment"
+	>>> backgrounds = estimate_background_per_condition(experiment_path, threshold_on_std=1.5, target_channel="GFP", frame_range=[0, 10], mode="tiles")
+	>>> for bg in backgrounds:
+	...     print(bg["well"], bg["bg"].shape)
 	"""
-
 
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
@@ -412,40 +415,134 @@ def apply_background_to_stack(stack_path, background, target_channel_index=0, nb
 	return corrected_stack
 
 def paraboloid(x, y, a, b, c, d, e, g):
+
+	"""
+	Compute the value of a 2D paraboloid function.
+
+	This function evaluates a paraboloid defined by the equation:
+	`a * x ** 2 + b * y ** 2 + c * x * y + d * x + e * y + g`.
+
+	Parameters
+	----------
+	x : float or ndarray
+		The x-coordinate(s) at which to evaluate the paraboloid.
+	y : float or ndarray
+		The y-coordinate(s) at which to evaluate the paraboloid.
+	a : float
+		The coefficient of the x^2 term.
+	b : float
+		The coefficient of the y^2 term.
+	c : float
+		The coefficient of the x*y term.
+	d : float
+		The coefficient of the x term.
+	e : float
+		The coefficient of the y term.
+	g : float
+		The constant term.
+
+	Returns
+	-------
+	float or ndarray
+		The value of the paraboloid at the given (x, y) coordinates. If `x` and 
+		`y` are arrays, the result is an array of the same shape.
+
+	Examples
+	--------
+	>>> paraboloid(1, 2, 1, 1, 0, 0, 0, 0)
+	5
+	>>> paraboloid(np.array([1, 2]), np.array([3, 4]), 1, 1, 0, 0, 0, 0)
+	array([10, 20])
+
+	Notes
+	-----
+	The paraboloid function is a quadratic function in two variables, commonly used 
+	to model surfaces in three-dimensional space.
+	"""
+
 	return a * x ** 2 + b * y ** 2 + c * x * y + d * x + e * y + g
 
 
 def plane(x, y, a, b, c):
+
+	"""
+	Compute the value of a plane function.
+
+	This function evaluates a plane defined by the equation:
+	`a * x + b * y + c`.
+
+	Parameters
+	----------
+	x : float or ndarray
+		The x-coordinate(s) at which to evaluate the plane.
+	y : float or ndarray
+		The y-coordinate(s) at which to evaluate the plane.
+	a : float
+		The coefficient of the x term.
+	b : float
+		The coefficient of the y term.
+	c : float
+		The constant term.
+
+	Returns
+	-------
+	float or ndarray
+		The value of the plane at the given (x, y) coordinates. If `x` and 
+		`y` are arrays, the result is an array of the same shape.
+
+	Examples
+	--------
+	>>> plane(1, 2, 3, 4, 5)
+	16
+	>>> plane(np.array([1, 2]), np.array([3, 4]), 3, 4, 5)
+	array([20, 27])
+
+	Notes
+	-----
+	The plane function is a linear function in two variables, commonly used 
+	to model flat surfaces in three-dimensional space.
+	"""
+
 	return a * x + b * y + c
 
 
 def fit_plane(image, cell_masks=None, edge_exclusion=None):
+	
 	"""
 	Fit a plane to the given image data.
 
-	Parameters:
-	- image (numpy.ndarray): The input image data.
-	- cell_masks (numpy.ndarray, optional): An array specifying cell masks. If provided, areas covered by
-											cell masks will be excluded from the fitting process.
+	This function fits a plane to the provided image data using least squares 
+	regression. It constructs a mesh grid based on the dimensions of the image 
+	and fits a plane model to the data points. If cell masks are provided, 
+	areas covered by cell masks will be excluded from the fitting process.
 
-	Returns:
-	- numpy.ndarray: The fitted plane.
+	Parameters
+	----------
+	image : numpy.ndarray
+		The input image data.
+	cell_masks : numpy.ndarray, optional
+		An array specifying cell masks. If provided, areas covered by cell masks 
+		will be excluded from the fitting process (default is None).
+	edge_exclusion : int, optional
+		The size of the edge to exclude from the fitting process (default is None).
 
-	This function fits a plane to the given image data using least squares regression. It constructs a mesh
-	grid based on the dimensions of the image and fits a plane model to the data points. If cell masks are
-	provided, areas covered by cell masks will be excluded from the fitting process.
+	Returns
+	-------
+	numpy.ndarray
+		The fitted plane.
 
-	Example:
-	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-	>>> result = fit_plane(image)
-	>>> print(result)
-	[[1. 2. 3.]
-	 [4. 5. 6.]
-	 [7. 8. 9.]]
+	Notes
+	-----
+	- The `cell_masks` parameter allows excluding areas covered by cell masks from 
+	  the fitting process.
+	- The `edge_exclusion` parameter allows excluding edges of the specified size 
+	  from the fitting process to avoid boundary effects.
 
-	Note:
-	- The 'cell_masks' parameter allows excluding areas covered by cell masks from the fitting process.
+	See Also
+	--------
+	plane : The plane function used for fitting.
 	"""
+
 	data = np.empty(image.shape)
 	x = np.arange(0, image.shape[1])
 	y = np.arange(0, image.shape[0])
@@ -459,7 +556,8 @@ def fit_plane(image, cell_masks=None, edge_exclusion=None):
 	model = Model(plane, independent_vars=['x', 'y'])
 
 	weights = np.ones_like(xx, dtype=float)
-	weights[np.where(cell_masks > 0)] = 0.
+	if cell_masks is not None:
+		weights[np.where(cell_masks > 0)] = 0.
 	
 	if edge_exclusion is not None:
 		xx = unpad(xx, edge_exclusion)
@@ -481,32 +579,42 @@ def fit_plane(image, cell_masks=None, edge_exclusion=None):
 
 
 def fit_paraboloid(image, cell_masks=None, edge_exclusion=None):
+
 	"""
 	Fit a paraboloid to the given image data.
 
-	Parameters:
-	- image (numpy.ndarray): The input image data.
-	- cell_masks (numpy.ndarray, optional): An array specifying cell masks. If provided, areas covered by
-											cell masks will be excluded from the fitting process.
+	This function fits a paraboloid to the provided image data using least squares 
+	regression. It constructs a mesh grid based on the dimensions of the image 
+	and fits a paraboloid model to the data points. If cell masks are provided, 
+	areas covered by cell masks will be excluded from the fitting process.
 
-	Returns:
-	- numpy.ndarray: The fitted paraboloid.
+	Parameters
+	----------
+	image : numpy.ndarray
+		The input image data.
+	cell_masks : numpy.ndarray, optional
+		An array specifying cell masks. If provided, areas covered by cell masks 
+		will be excluded from the fitting process (default is None).
+	edge_exclusion : int, optional
+		The size of the edge to exclude from the fitting process (default is None).
 
-	This function fits a paraboloid to the given image data using least squares regression. It constructs
-	a mesh grid based on the dimensions of the image and fits a paraboloid model to the data points. If cell
-	masks are provided, areas covered by cell masks will be excluded from the fitting process.
+	Returns
+	-------
+	numpy.ndarray
+		The fitted paraboloid.
 
-	Example:
-	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-	>>> result = fit_paraboloid(image)
-	>>> print(result)
-	[[1. 2. 3.]
-	 [4. 5. 6.]
-	 [7. 8. 9.]]
+	Notes
+	-----
+	- The `cell_masks` parameter allows excluding areas covered by cell masks from 
+	  the fitting process.
+	- The `edge_exclusion` parameter allows excluding edges of the specified size 
+	  from the fitting process to avoid boundary effects.
 
-	Note:
-	- The 'cell_masks' parameter allows excluding areas covered by cell masks from the fitting process.
+	See Also
+	--------
+	paraboloid : The paraboloid function used for fitting.
 	"""
+
 	data = np.empty(image.shape)
 	x = np.arange(0, image.shape[1])
 	y = np.arange(0, image.shape[0])
@@ -523,7 +631,8 @@ def fit_paraboloid(image, cell_masks=None, edge_exclusion=None):
 	model = Model(paraboloid, independent_vars=['x', 'y'])
 
 	weights = np.ones_like(xx, dtype=float)
-	weights[np.where(cell_masks > 0)] = 0.
+	if cell_masks is not None:
+		weights[np.where(cell_masks > 0)] = 0.
 
 	if edge_exclusion is not None:
 		xx = unpad(xx, edge_exclusion)
@@ -563,6 +672,65 @@ def correct_background_model(
 						   export_prefix='Corrected',
 						   **kwargs,
 						   ):
+
+	"""
+	Correct background in image stacks using a specified model.
+
+	This function corrects the background in image stacks obtained from an experiment
+	using a specified background correction model. It supports various options for 
+	specifying wells, positions, target channel, and background correction parameters.
+
+	Parameters
+	----------
+	experiment : str
+		The path to the experiment directory.
+	well_option : str, optional
+		The option to select specific wells (default is '*').
+	position_option : str, optional
+		The option to select specific positions (default is '*').
+	target_channel : str, optional
+		The name of the target channel for background correction (default is "channel_name").
+	threshold_on_std : float, optional
+		The threshold value on the standard deviation for masking (default is 1).
+	model : str, optional
+		The background correction model to use, either 'paraboloid' or 'plane' (default is 'paraboloid').
+	operation : str, optional
+		The operation to apply for background correction, either 'divide' or 'subtract' (default is 'divide').
+	clip : bool, optional
+		Whether to clip the corrected image to ensure non-negative values (default is False).
+	show_progress_per_well : bool, optional
+		Whether to show progress for each well (default is True).
+	show_progress_per_pos : bool, optional
+		Whether to show progress for each position (default is False).
+	export : bool, optional
+		Whether to export the corrected stacks (default is False).
+	return_stacks : bool, optional
+		Whether to return the corrected stacks (default is False).
+	movie_prefix : str, optional
+		The prefix for the movie files (default is None).
+	activation_protocol : list of list, optional
+		The activation protocol consisting of filters and their respective parameters (default is [['gauss',2],['std',4]]).
+	export_prefix : str, optional
+		The prefix for exported corrected stacks (default is 'Corrected').
+	**kwargs : dict
+		Additional keyword arguments to be passed to the underlying correction function.
+
+	Returns
+	-------
+	list of numpy.ndarray
+		A list of corrected image stacks if `return_stacks` is True, otherwise None.
+
+	Notes
+	-----
+	- This function assumes that the experiment directory structure and the configuration 
+	  files follow a specific format expected by the helper functions used within.
+	- Supported background correction models are 'paraboloid' and 'plane'.
+	- Supported background correction operations are 'divide' and 'subtract'.
+
+	See Also
+	--------
+	fit_and_apply_model_background_to_stack : Function to fit and apply background correction to an image stack.
+	"""
 
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
@@ -626,6 +794,56 @@ def fit_and_apply_model_background_to_stack(stack_path,
 											prefix="Corrected"
 											):
 
+	"""
+	Fit and apply a background correction model to an image stack.
+
+	This function fits a background correction model to each frame of the image stack
+	and applies the correction accordingly. It supports various options for specifying
+	the target channel, number of channels, stack length, threshold on standard deviation,
+	correction operation, correction model, clipping, and export.
+
+	Parameters
+	----------
+	stack_path : str
+		The path to the image stack.
+	target_channel_index : int, optional
+		The index of the target channel for background correction (default is 0).
+	nbr_channels : int, optional
+		The number of channels in the image stack (default is 1).
+	stack_length : int, optional
+		The length of the stack (default is 45).
+	threshold_on_std : float, optional
+		The threshold value on the standard deviation for masking (default is 1).
+	operation : str, optional
+		The operation to apply for background correction, either 'divide' or 'subtract' (default is 'divide').
+	model : str, optional
+		The background correction model to use, either 'paraboloid' or 'plane' (default is 'paraboloid').
+	clip : bool, optional
+		Whether to clip the corrected image to ensure non-negative values (default is False).
+	export : bool, optional
+		Whether to export the corrected image stack (default is False).
+	activation_protocol : list of list, optional
+		The activation protocol consisting of filters and their respective parameters (default is [['gauss',2],['std',4]]).
+	prefix : str, optional
+		The prefix for exported corrected stacks (default is 'Corrected').
+
+	Returns
+	-------
+	numpy.ndarray
+		The corrected image stack.
+
+	Notes
+	-----
+	- The function loads frames from the image stack, applies background correction to each frame,
+	  and stores the corrected frames in a new stack.
+	- Supported background correction models are 'paraboloid' and 'plane'.
+	- Supported background correction operations are 'divide' and 'subtract'.
+
+	See Also
+	--------
+	field_correction : Function to apply background correction to an image.
+	"""
+
 	stack_length_auto = auto_load_number_of_frames(stack_path)
 	if stack_length_auto is None and stack_length is None:
 		print('stack length not provided')
@@ -663,35 +881,113 @@ def fit_and_apply_model_background_to_stack(stack_path,
 	return corrected_stack
 
 def field_correction(img, threshold_on_std=1, operation='divide', model='paraboloid', clip=False, return_bg=False, activation_protocol=[['gauss',2],['std',4]]):
-		
-		target_copy = img.copy().astype(float)
+	
+	"""
+	Apply field correction to an image.
 
-		std_frame = filter_image(target_copy,filters=activation_protocol)
-		edge = estimate_unreliable_edge(activation_protocol)
-		mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge).astype(int)
-		background = fit_background_model(img, cell_masks=mask, model=model, edge_exclusion=edge)
+	This function applies field correction to the given image based on the specified parameters
+	including the threshold on standard deviation, operation, background correction model, clipping,
+	and activation protocol.
 
-		if operation=="divide":
-			correction = np.divide(img, background, where=background==background)
-			correction[background!=background] = np.nan
-			correction[img!=img] = np.nan
-			fill_val = 1.0
+	Parameters
+	----------
+	img : numpy.ndarray
+		The input image to be corrected.
+	threshold_on_std : float, optional
+		The threshold value on the standard deviation for masking (default is 1).
+	operation : str, optional
+		The operation to apply for background correction, either 'divide' or 'subtract' (default is 'divide').
+	model : str, optional
+		The background correction model to use, either 'paraboloid' or 'plane' (default is 'paraboloid').
+	clip : bool, optional
+		Whether to clip the corrected image to ensure non-negative values (default is False).
+	return_bg : bool, optional
+		Whether to return the background along with the corrected image (default is False).
+	activation_protocol : list of list, optional
+		The activation protocol consisting of filters and their respective parameters (default is [['gauss',2],['std',4]]).
 
-		elif operation=="subtract":
-			correction = np.subtract(img, background, where=background==background)
-			correction[background!=background] = np.nan
-			correction[img!=img] = np.nan
-			fill_val = 0.0
-			if clip:
-				correction[correction<=0.] = 0.
+	Returns
+	-------
+	numpy.ndarray or tuple
+		The corrected image or a tuple containing the corrected image and the background, depending on the value of `return_bg`.
 
-		if return_bg:
-			return correction.copy(), background
-		else:
-			return correction.copy()
+	Notes
+	-----
+	- This function first estimates the unreliable edge based on the activation protocol.
+	- It then applies thresholding to obtain a mask for the background.
+	- Next, it fits a background model to the image using the specified model.
+	- Depending on the operation specified, it either divides or subtracts the background from the image.
+	- If `clip` is True and operation is 'subtract', negative values in the corrected image are clipped to 0.
+	- If `return_bg` is True, the function returns a tuple containing the corrected image and the background.
+
+	See Also
+	--------
+	fit_background_model : Function to fit a background model to an image.
+	threshold_image : Function to apply thresholding to an image.
+	"""
+
+	target_copy = img.copy().astype(float)
+
+	std_frame = filter_image(target_copy,filters=activation_protocol)
+	edge = estimate_unreliable_edge(activation_protocol)
+	mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge).astype(int)
+	background = fit_background_model(img, cell_masks=mask, model=model, edge_exclusion=edge)
+
+	if operation=="divide":
+		correction = np.divide(img, background, where=background==background)
+		correction[background!=background] = np.nan
+		correction[img!=img] = np.nan
+		fill_val = 1.0
+
+	elif operation=="subtract":
+		correction = np.subtract(img, background, where=background==background)
+		correction[background!=background] = np.nan
+		correction[img!=img] = np.nan
+		fill_val = 0.0
+		if clip:
+			correction[correction<=0.] = 0.
+
+	if return_bg:
+		return correction.copy(), background
+	else:
+		return correction.copy()
 
 def fit_background_model(img, cell_masks=None, model='paraboloid', edge_exclusion=None):
 	
+	"""
+	Fit a background model to the given image.
+
+	This function fits a background model to the given image using either a paraboloid or plane model.
+	It supports optional cell masks and edge exclusion for fitting.
+
+	Parameters
+	----------
+	img : numpy.ndarray
+		The input image data.
+	cell_masks : numpy.ndarray, optional
+		An array specifying cell masks. If provided, areas covered by cell masks will be excluded from the fitting process.
+	model : str, optional
+		The background model to fit, either 'paraboloid' or 'plane' (default is 'paraboloid').
+	edge_exclusion : int or None, optional
+		The size of the border to exclude from fitting (default is None).
+
+	Returns
+	-------
+	numpy.ndarray or None
+		The fitted background model as a numpy array if successful, otherwise None.
+
+	Notes
+	-----
+	- This function fits a background model to the image using either a paraboloid or plane model based on the specified `model`.
+	- If `cell_masks` are provided, areas covered by cell masks will be excluded from the fitting process.
+	- If `edge_exclusion` is provided, a border of the specified size will be excluded from fitting.
+
+	See Also
+	--------
+	fit_paraboloid : Function to fit a paraboloid model to an image.
+	fit_plane : Function to fit a plane model to an image.
+	"""
+
 	if model == "paraboloid":
 		bg = fit_paraboloid(img.astype(float), cell_masks=cell_masks, edge_exclusion=edge_exclusion).astype(float)
 	elif model == "plane":

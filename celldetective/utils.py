@@ -24,6 +24,35 @@ import shutil
 import tempfile
 
 def estimate_unreliable_edge(activation_protocol=[['gauss',2],['std',4]]):
+
+	"""
+	Safely estimate the distance to the edge of an image in which the filtered image values can be artefactual.
+
+	Parameters
+	----------
+	activation_protocol : list of list, optional
+		A list of lists, where each sublist contains a string naming the filter function, followed by its arguments (usually a kernel size). 
+		Default is [['gauss', 2], ['std', 4]].
+
+	Returns
+	-------
+	int or None
+		The sum of the kernel sizes in the activation protocol if the protocol 
+		is not empty. Returns None if the activation protocol is empty.
+
+	Notes
+	-----
+	This function assumes that the second element of each sublist in the 
+	activation protocol is a kernel size.
+
+	Examples
+	--------
+	>>> estimate_unreliable_edge([['gauss', 2], ['std', 4]])
+	6
+	>>> estimate_unreliable_edge([])
+	None
+	"""
+
 	if activation_protocol==[]:
 		return None
 	else:
@@ -34,10 +63,101 @@ def estimate_unreliable_edge(activation_protocol=[['gauss',2],['std',4]]):
 		return edge
 
 def unpad(img, pad):
+	
+	"""
+	Remove padding from an image.
+
+	This function removes the specified amount of padding from the borders
+	of an image. The padding is assumed to be the same on all sides.
+
+	Parameters
+	----------
+	img : ndarray
+		The input image from which the padding will be removed.
+	pad : int
+		The amount of padding to remove from each side of the image.
+
+	Returns
+	-------
+	ndarray
+		The image with the padding removed.
+
+	Raises
+	------
+	ValueError
+		If `pad` is greater than or equal to half of the smallest dimension 
+		of `img`.
+
+	See Also
+	--------
+	numpy.pad : Pads an array.
+
+	Notes
+	-----
+	This function assumes that the input image is a 2D array.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> img = np.array([[0, 0, 0, 0, 0],
+	...                 [0, 1, 1, 1, 0],
+	...                 [0, 1, 1, 1, 0],
+	...                 [0, 1, 1, 1, 0],
+	...                 [0, 0, 0, 0, 0]])
+	>>> unpad(img, 1)
+	array([[1, 1, 1],
+		   [1, 1, 1],
+		   [1, 1, 1]])
+	"""
 
 	return img[pad:-pad, pad:-pad]
 
 def mask_edges(binary_mask, border_size):
+	
+	"""
+	Mask the edges of a binary mask.
+
+	This function sets the edges of a binary mask to False, effectively 
+	masking out a border of the specified size.
+
+	Parameters
+	----------
+	binary_mask : ndarray
+		A 2D binary mask array where the edges will be masked.
+	border_size : int
+		The size of the border to mask (set to False) on all sides.
+
+	Returns
+	-------
+	ndarray
+		The binary mask with the edges masked out.
+
+	Raises
+	------
+	ValueError
+		If `border_size` is greater than or equal to half of the smallest 
+		dimension of `binary_mask`.
+
+	Notes
+	-----
+	This function assumes that the input `binary_mask` is a 2D array. The 
+	input mask is converted to a boolean array before masking the edges.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> binary_mask = np.array([[1, 1, 1, 1, 1],
+	...                         [1, 1, 1, 1, 1],
+	...                         [1, 1, 1, 1, 1],
+	...                         [1, 1, 1, 1, 1],
+	...                         [1, 1, 1, 1, 1]])
+	>>> mask_edges(binary_mask, 1)
+	array([[False, False, False, False, False],
+		   [False,  True,  True,  True, False],
+		   [False,  True,  True,  True, False],
+		   [False,  True,  True,  True, False],
+		   [False, False, False, False, False]])
+	"""
 
 	binary_mask = binary_mask.astype(bool)
 	binary_mask[:border_size,:] = False
@@ -195,8 +315,6 @@ def rename_intensity_column(df, channels):
 						new_name = '_'.join(list(measure))
 						new_name = new_name.replace('radial_gradient', "radial_intercept")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
-
-
 		else:
 			to_rename = {}
 			for k in range(len(intensity_columns)):

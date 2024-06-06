@@ -1084,28 +1084,16 @@ class SignalAnnotator2(QMainWindow,Styles):
             print(e)
 
         try:
-            print('ebatj')
             for k,(t,idx) in enumerate(zip(self.target_loc_t,self.target_loc_idx)):
-                print('zdesj estj')
                 self.target_colors[t][idx, 0] = self.target_previous_color[k][0]
                 self.target_colors[t][idx, 1] = self.target_previous_color[k][1]
             for (t,idx) in (zip(self.target_loc_t_not_picked,self.target_loc_idx_not_picked)):
-                print('zdesj tozhe')
                 self.target_colors[t][idx, 0] = self.initial_target_colors[t][idx,0]
                 self.target_colors[t][idx, 1] = self.initial_target_colors[t][idx,1]
-            print('che tut')
             for t in range(len(self.target_colors)):
-                print('a tut norm?')
                 for ind in range(len(self.target_colors[t])):
-                    print(self.target_colors[t][ind])
-                    print(self.initial_target_colors[t][ind])
                     self.target_colors[t][ind] = self.initial_target_colors[t][ind]
-            # try:
-            #     for t in range(len(self.effector_colors)):
-            #         for ind in range(len(self.effector_colors[t])):
-            #             self.effector_colors[t][ind] = self.initial_effector_colors[t][ind]
-            # except:
-            #     print('eh ti suka')
+
             if self.neighbors != {}:
                 # print(self.neigh_pop)
                 # if self.neigh_pop=='effectors':
@@ -1113,8 +1101,7 @@ class SignalAnnotator2(QMainWindow,Styles):
                 #         for value in self.neighbors[key]:
                 #             self.effector_colors[key][value, 0] = self.initial_effector_colors[key][value, 0]
                 #             self.effector_colors[key][value, 1] = self.initial_effector_colors[key][value, 1]
-                # else:
-                #     print('privet')
+
                     for key in self.neighbors.keys():
                         for value in self.neighbors[key]:
                             self.target_colors[key][value, 0] = self.initial_target_colors[key][value, 0]
@@ -1131,8 +1118,6 @@ class SignalAnnotator2(QMainWindow,Styles):
             for t in range(len(self.effector_colors)):
                 print('a tut norm?')
                 for ind in range(len(self.effector_colors[t])):
-                    print(self.effector_colors[t][ind])
-                    print(self.initial_effector_colors[t][ind])
                     self.effector_colors[t][ind] = self.initial_effector_colors[t][ind]
 
         except Exception as e:
@@ -2633,6 +2618,10 @@ class SignalAnnotator2(QMainWindow,Styles):
                         for t, idx in zip(self.target_loc_t, self.target_loc_idx):
                             neigh_x = self.target_positions[t][idx, 0]
                             neigh_y = self.target_positions[t][idx, 1]
+                            print(ref_x[t])
+                            print(ref_y[t])
+                            print(neigh_x)
+                            print(neigh_y)
                             line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
                                                  linewidth=2)
 

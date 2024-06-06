@@ -1,9 +1,9 @@
 import numpy as np
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.filters import *
-from celldetective.segmentation import filter_image
+from celldetective.segmentation import filter_image, threshold_image
 from celldetective.measure import contour_of_instance_segmentation
-from celldetective.utils import _get_img_num_per_channel
+from celldetective.utils import _get_img_num_per_channel, estimate_unreliable_edge
 from tifffile import imread
 import matplotlib.pyplot as plt 
 from stardist import fill_label_holes
@@ -21,7 +21,7 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from matplotlib_scalebar.scalebar import ScaleBar
 import gc
-
+from celldetective.utils import mask_edges
 
 class StackVisualizer(QWidget, Styles):
 
@@ -327,8 +327,8 @@ class ThresholdedStackVisualizer(StackVisualizer):
 	def compute_mask(self, threshold_value):
 
 		self.preprocess_image()
-		self.mask = self.processed_image > threshold_value
-		self.mask = fill_label_holes(self.mask).astype(int)
+		edge = estimate_unreliable_edge(self.preprocessing)
+		self.mask = threshold_image(self.processed_image, threshold_value, 1.0E06, foreground_value=1, edge_exclusion=edge).astype(int)
 
 	def preprocess_image(self):
 		

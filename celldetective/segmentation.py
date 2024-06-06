@@ -13,7 +13,8 @@ from cellpose.models import CellposeModel
 from skimage.transform import resize
 from celldetective.io import _view_on_napari, locate_labels, locate_stack, _view_on_napari
 from celldetective.filters import * #rework this to give a name
-from celldetective.utils import rename_intensity_column
+from celldetective.utils import rename_intensity_column, mask_edges, estimate_unreliable_edge
+from stardist import fill_label_holes
 import scipy.ndimage as ndi
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
@@ -273,7 +274,8 @@ def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equa
 		img = match_histograms(img, equalize_reference)
 	img_mc = frame.copy()
 	img = filter_image(img, filters=filters)
-	binary_image = threshold_image(img, thresholds[0], thresholds[1])
+	edge = estimate_unreliable_edge(filters)
+	binary_image = threshold_image(img, thresholds[0], thresholds[1], fill_holes=True, edge_exclusion=edge)
 	coords,distance = identify_markers_from_binary(binary_image, marker_min_distance, footprint_size=marker_footprint_size, footprint=marker_footprint, return_edt=True)
 	instance_seg = apply_watershed(binary_image, coords, distance)
 	instance_seg = filter_on_property(instance_seg, intensity_image=img_mc, queries=feature_queries, channel_names=channel_names)
@@ -357,7 +359,7 @@ def filter_on_property(labels, intensity_image=None, queries=None, channel_names
 	return labels
 
 
-def apply_watershed(binary_image, coords, distance):
+def apply_watershed(binary_image, coords, distance, fill_holes=True):
 
 	"""
 	Applies the watershed algorithm to segment objects in a binary image using given markers and distance map.
@@ -404,7 +406,8 @@ def apply_watershed(binary_image, coords, distance):
 	mask[tuple(coords.T)] = True
 	markers, _ = ndi.label(mask)
 	labels = watershed(-distance, markers, mask=binary_image)
-
+	if fill_holes:
+		labels = fill_label_holes(labels)
 	return labels
 
 def identify_markers_from_binary(binary_image, min_distance, footprint_size=20, footprint=None, return_edt=False):
@@ -457,7 +460,7 @@ def identify_markers_from_binary(binary_image, min_distance, footprint_size=20, 
 		return coords
 
 
-def threshold_image(img, min_threshold, max_threshold, foreground_value=255., fill_holes=True):
+def threshold_image(img, min_threshold, max_threshold, foreground_value=255., fill_holes=True, edge_exclusion=None):
 
 	"""
 	
@@ -496,10 +499,12 @@ def threshold_image(img, min_threshold, max_threshold, foreground_value=255., fi
 
 	"""
 
-
-	binary = (img>=min_threshold)*(img<=max_threshold) * foreground_value
+	binary = np.zeros_like(img).astype(bool)
+	binary[img==img] = (img[img==img]>=min_threshold)*(img[img==img]<=max_threshold) * foreground_value
+	if isinstance(edge_exclusion, (int,np.int_)):
+		binary = mask_edges(binary, edge_exclusion)
 	if fill_holes:
-		binary = ndi.binary_fill_holes(binary)
+		binary = ndi.binary_fill_holes(binary.astype(int))
 	return binary
 
 def filter_image(img, filters=None):

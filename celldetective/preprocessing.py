@@ -6,15 +6,16 @@ from tqdm import tqdm
 import numpy as np
 import os
 from celldetective.io import get_config, get_experiment_wells, interpret_wells_and_positions, extract_well_name_and_number, get_positions_in_well, extract_position_name, get_position_movie_path, load_frames, auto_load_number_of_frames
-from celldetective.utils import ConfigSectionMap, _extract_channel_indices_from_config, _extract_nbr_channels_from_config, _get_img_num_per_channel
+from celldetective.utils import estimate_unreliable_edge, unpad, mask_edges, ConfigSectionMap, _extract_channel_indices_from_config, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from celldetective.filters import std_filter, gauss_filter
+from celldetective.segmentation import filter_image, threshold_image
 from stardist import fill_label_holes
 from csbdeep.io import save_tiff_imagej_compatible
 from gc import collect
 from lmfit import Parameters, Model, models
 import matplotlib.pyplot as plt
 
-def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", show_progress_per_pos=False, show_progress_per_well=True):
+def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):
 	
 	"""
 	Estimate the background per condition in an experiment.
@@ -104,12 +105,10 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 				frame_mean = np.nanmean(frames, axis=0)
 				
 				frame = frame_mean.copy().astype(float)
-				frame = gauss_filter(frame, 2)
-				std_frame = std_filter(frame, 4)
-				
-				mask = std_frame > threshold_on_std
-				mask = fill_label_holes(mask)
-				frame[np.where(mask==1)] = np.nan
+				std_frame = filter_image(frame.copy(),filters=activation_protocol)
+				edge = estimate_unreliable_edge(activation_protocol)
+				mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge)
+				frame[np.where(mask.astype(int)==1)] = np.nan
 
 			elif mode=="tiles":
 
@@ -123,12 +122,10 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 						continue
 
 					f = frames[i].copy()
-					f = gauss_filter(f, 2)
-					std_frame = std_filter(f, 4)
-
-					mask = std_frame > threshold_on_std
-					mask = fill_label_holes(mask)
-					f[np.where(mask==1)] = np.nan
+					std_frame = filter_image(f.copy(),filters=activation_protocol)
+					edge = estimate_unreliable_edge(activation_protocol)
+					mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge)
+					f[np.where(mask.astype(int)==1)] = np.nan
 
 					frames[i,:,:] = f
 				
@@ -161,6 +158,7 @@ def correct_background_model_free(
 					   export = False,
 					   return_stacks = False,
 					   movie_prefix=None,
+					   activation_protocol=[['gauss',2],['std',4]],
 					   export_prefix='Corrected',
 					   **kwargs,
 					   ):
@@ -244,7 +242,7 @@ def correct_background_model_free(
 		well_name, _ = extract_well_name_and_number(well_path)
 
 		try:
-			background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=int(well_indices[k]), target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False)
+			background = estimate_background_per_condition(experiment, threshold_on_std=threshold_on_std, well_option=int(well_indices[k]), target_channel=target_channel, frame_range=frame_range, mode=mode, show_progress_per_pos=True, show_progress_per_well=False, activation_protocol=activation_protocol)
 			background = background[0]
 			background = background['bg']
 		except Exception as e:
@@ -273,6 +271,7 @@ def correct_background_model_free(
 														operation=operation,
 														clip=clip,
 														export=export,
+														activation_protocol=activation_protocol,
 														prefix=export_prefix,
 													  )
 			print('Correction successful.')
@@ -287,7 +286,7 @@ def correct_background_model_free(
 
 
 
-def apply_background_to_stack(stack_path, background, target_channel_index=0, nbr_channels=1, stack_length=45, threshold_on_std=1, optimize_option=True, opt_coef_range=(0.95,1.05), opt_coef_nbr=100, operation='divide', clip=False, export=False, prefix="Corrected"):
+def apply_background_to_stack(stack_path, background, target_channel_index=0, nbr_channels=1, stack_length=45,activation_protocol=[['gauss',2],['std',4]], threshold_on_std=1, optimize_option=True, opt_coef_range=(0.95,1.05), opt_coef_nbr=100, operation='divide', clip=False, export=False, prefix="Corrected"):
 
 	"""
 	Apply background correction to an image stack.
@@ -366,16 +365,19 @@ def apply_background_to_stack(stack_path, background, target_channel_index=0, nb
 		if optimize_option:
 			
 			target_copy = target_img.copy()
-			f = gauss_filter(target_img.copy(), 2)
-			std_frame = std_filter(f, 4)
-			mask = std_frame > threshold_on_std
-			mask = fill_label_holes(mask)
-			target_copy[np.where(mask==1)] = np.nan
+
+			std_frame = filter_image(target_copy.copy(),filters=activation_protocol)
+			edge = estimate_unreliable_edge(activation_protocol)
+			mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge)
+			target_copy[np.where(mask.astype(int)==1)] = np.nan
+
 			loss = []
 			
 			# brute-force regression, could do gradient descent instead
 			for c in coefficients:
-				diff = np.subtract(target_copy, c*background, where=target_copy==target_copy)
+				target_crop = unpad(target_copy,edge)
+				bg_crop = unpad(background, edge)
+				diff = np.subtract(target_crop, c*bg_crop, where=target_crop==target_crop)
 				s = np.sum(np.abs(diff, where=diff==diff), where=diff==diff)
 				loss.append(s)
 			c = coefficients[np.argmin(loss)]
@@ -417,7 +419,7 @@ def plane(x, y, a, b, c):
 	return a * x + b * y + c
 
 
-def fit_plane(image, cell_masks=None):
+def fit_plane(image, cell_masks=None, edge_exclusion=None):
 	"""
 	Fit a plane to the given image data.
 
@@ -458,6 +460,12 @@ def fit_plane(image, cell_masks=None):
 
 	weights = np.ones_like(xx, dtype=float)
 	weights[np.where(cell_masks > 0)] = 0.
+	
+	if edge_exclusion is not None:
+		xx = unpad(xx, edge_exclusion)
+		yy = unpad(yy, edge_exclusion)
+		weights = unpad(weights, edge_exclusion)
+		image = unpad(image, edge_exclusion)
 
 	result = model.fit(image,
 					   x=xx,
@@ -467,10 +475,12 @@ def fit_plane(image, cell_masks=None):
 	del model
 	collect()
 
-	return result.best_fit
+	xx, yy = np.meshgrid(x, y)
+
+	return plane(xx, yy, **result.params)
 
 
-def fit_paraboloid(image, cell_masks=None):
+def fit_paraboloid(image, cell_masks=None, edge_exclusion=None):
 	"""
 	Fit a paraboloid to the given image data.
 
@@ -515,16 +525,24 @@ def fit_paraboloid(image, cell_masks=None):
 	weights = np.ones_like(xx, dtype=float)
 	weights[np.where(cell_masks > 0)] = 0.
 
+	if edge_exclusion is not None:
+		xx = unpad(xx, edge_exclusion)
+		yy = unpad(yy, edge_exclusion)
+		weights = unpad(weights, edge_exclusion)
+		image = unpad(image, edge_exclusion)
+
 	result = model.fit(image,
 					   x=xx,
 					   y=yy,
 					   weights=weights,
 					   params=params, max_nfev=3000)
 
-	#print(result.fit_report())
 	del model
 	collect()
-	return result.best_fit
+
+	xx, yy = np.meshgrid(x, y)
+
+	return paraboloid(xx, yy, **result.params)
 
 
 def correct_background_model(
@@ -541,6 +559,7 @@ def correct_background_model(
 						   export = False,
 						   return_stacks = False,
 						   movie_prefix=None,
+						   activation_protocol=[['gauss',2],['std',4]],
 						   export_prefix='Corrected',
 						   **kwargs,
 						   ):
@@ -582,6 +601,7 @@ def correct_background_model(
 														clip=clip,
 														export=export,
 														prefix=export_prefix,
+														activation_protocol=activation_protocol,
 													  )
 			print('Correction successful.')
 			if return_stacks:
@@ -602,6 +622,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 											model='paraboloid',
 											clip=False, 
 											export=False,
+											activation_protocol=[['gauss',2],['std',4]], 
 											prefix="Corrected"
 											):
 
@@ -625,7 +646,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 		
 		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 		target_img = frames[:,:,target_channel_index].copy()
-		correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip)
+		correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
 		frames[:,:,target_channel_index] = correction.copy()
 		corrected_stack.append(frames)
 
@@ -641,15 +662,14 @@ def fit_and_apply_model_background_to_stack(stack_path,
 
 	return corrected_stack
 
-def field_correction(img, threshold_on_std=1, operation='divide', model='paraboloid', clip=False, return_bg=False):
+def field_correction(img, threshold_on_std=1, operation='divide', model='paraboloid', clip=False, return_bg=False, activation_protocol=[['gauss',2],['std',4]]):
 		
 		target_copy = img.copy().astype(float)
-		f = gauss_filter(target_copy, 2)
-		std_frame = std_filter(f, 4)
-		masks = std_frame > threshold_on_std
-		masks = fill_label_holes(masks).astype(int)
 
-		background = fit_background_model(img, cell_masks=masks, model=model)
+		std_frame = filter_image(target_copy,filters=activation_protocol)
+		edge = estimate_unreliable_edge(activation_protocol)
+		mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge).astype(int)
+		background = fit_background_model(img, cell_masks=mask, model=model, edge_exclusion=edge)
 
 		if operation=="divide":
 			correction = np.divide(img, background, where=background==background)
@@ -670,12 +690,12 @@ def field_correction(img, threshold_on_std=1, operation='divide', model='parabol
 		else:
 			return correction.copy()
 
-def fit_background_model(img, cell_masks=None, model='paraboloid'):
+def fit_background_model(img, cell_masks=None, model='paraboloid', edge_exclusion=None):
 	
 	if model == "paraboloid":
-		bg = fit_paraboloid(img.astype(float), cell_masks=cell_masks).astype(float)
+		bg = fit_paraboloid(img.astype(float), cell_masks=cell_masks, edge_exclusion=edge_exclusion).astype(float)
 	elif model == "plane":
-		bg = fit_plane(img.astype(float), cell_masks=cell_masks).astype(float)
+		bg = fit_plane(img.astype(float), cell_masks=cell_masks, edge_exclusion=edge_exclusion).astype(float)
 
 	if bg is not None:
 		bg = np.array(bg)

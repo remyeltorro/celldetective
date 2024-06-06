@@ -192,6 +192,7 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 						   clip = clip,
 						   export= False,
 						   return_stacks=True,
+						   activation_protocol=[['gauss',2],['std',4]],
 						   show_progress_per_well = True,
 						   show_progress_per_pos = False,
 							)

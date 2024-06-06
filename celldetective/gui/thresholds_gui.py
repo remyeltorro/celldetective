@@ -12,7 +12,7 @@ from skimage.morphology import disk
 
 from celldetective.filters import std_filter, gauss_filter
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class
-from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column
+from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column, estimate_unreliable_edge
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.segmentation import threshold_image, identify_markers_from_binary, apply_watershed, \
 	segment_frame_from_thresholds
@@ -61,6 +61,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.onlyFloat = QDoubleValidator()
 		self.onlyInt = QIntValidator()
 		self.cell_properties = ['centroid', 'area', 'perimeter', 'eccentricity', 'intensity_mean', 'solidity']
+		self.edge = None
 
 		if self.mode == "targets":
 			self.config_out_name = "threshold_targets.json"
@@ -437,7 +438,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.im = self.ax.imshow(self.img, cmap='gray')
 
 		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1],
-									  foreground_value=255., fill_holes=False)
+									  foreground_value=1., fill_holes=True, edge_exclusion=None)
 		self.thresholded_image = np.ma.masked_where(self.binary == 0., self.binary)
 		self.image_thresholded = self.ax.imshow(self.thresholded_image, cmap="viridis", alpha=0.5, interpolation='none')
 
@@ -591,6 +592,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 
 		self.reload_frame()
 		filters = self.filters_qlist.items
+		self.edge = estimate_unreliable_edge(filters)
 		self.img = filter_image(self.img, filters)
 		self.refresh_imshow()
 		self.update_histogram()
@@ -637,7 +639,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		"""
 
 		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1],
-									  foreground_value=255., fill_holes=False)
+									  foreground_value=1., fill_holes=True, edge_exclusion=self.edge)
 		self.thresholded_image = np.ma.masked_where(self.binary == 0., self.binary)
 		self.image_thresholded.set_data(self.thresholded_image)
 		self.fcanvas.canvas.draw_idle()
@@ -658,7 +660,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 
 		if self.binary.ndim == 3:
 			self.binary = np.squeeze(self.binary)
-		self.binary = binary_fill_holes(self.binary)
+		#self.binary = binary_fill_holes(self.binary)
 		self.coords, self.edt_map = identify_markers_from_binary(self.binary, self.min_dist,
 																 footprint_size=self.footprint, footprint=None,
 																 return_edt=True)
@@ -785,7 +787,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.property_query_le.setText('')
 
 		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1],
-									  foreground_value=255., fill_holes=False)
+									  foreground_value=1., fill_holes=True, edge_exclusion=self.edge)
 		self.thresholded_image = np.ma.masked_where(self.binary == 0., self.binary)
 
 		self.scat_markers.set_color('tab:red')

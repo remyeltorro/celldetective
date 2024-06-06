@@ -23,6 +23,31 @@ from tqdm import tqdm
 import shutil
 import tempfile
 
+def estimate_unreliable_edge(activation_protocol=[['gauss',2],['std',4]]):
+	if activation_protocol==[]:
+		return None
+	else:
+		edge=0
+		for fct in activation_protocol:
+			if isinstance(fct[1],(int,np.int_)):
+				edge+=fct[1]
+		return edge
+
+def unpad(img, pad):
+
+	return img[pad:-pad, pad:-pad]
+
+def mask_edges(binary_mask, border_size):
+
+	binary_mask = binary_mask.astype(bool)
+	binary_mask[:border_size,:] = False
+	binary_mask[(binary_mask.shape[0]-border_size):,:] = False
+	binary_mask[:,:border_size] = False
+	binary_mask[:,(binary_mask.shape[1]-border_size):] = False
+
+	return binary_mask
+
+
 def create_patch_mask(h, w, center=None, radius=None):
 
 	"""

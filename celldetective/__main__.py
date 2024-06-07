@@ -54,6 +54,11 @@ class AppInitWindow(QMainWindow):
 		self.setCentralWidget(central_widget)
 		self.reload_previous_gpu_threads()
 		self.show()
+	
+	def closeEvent(self, event):
+		QApplication.closeAllWindows()
+		event.accept()
+		gc.collect()
 
 	def create_locate_exp_hbox(self):
 
@@ -365,25 +370,6 @@ class AppInitWindow(QMainWindow):
 			if returnValue == QMessageBox.Ok:
 				self.experiment_path_selection.setText('')
 				return None
-	
-	def closeEvent(self, event):
-
-		"""
-		Close child windows if closed.
-		"""
-		
-		try:
-			if self.control_panel:
-				self.control_panel.close()
-		except:
-			pass
-		try:
-			if self.new_exp_window:
-				self.new_exp_window.close()
-		except:
-			pass
-
-		gc.collect()
 
 if __name__ == "__main__":
 

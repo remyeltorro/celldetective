@@ -320,8 +320,8 @@ class ControlPanel(QMainWindow, Styles):
 			except:
 				pass
 			try:
-				if process_block.TableUI:
-					process_block.TableUI.close()
+				if process_block.tab_ui:
+					process_block.tab_ui.close()
 			except:
 				pass
 

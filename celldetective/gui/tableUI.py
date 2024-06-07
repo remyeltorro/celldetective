@@ -367,6 +367,7 @@ class TableUI(QMainWindow, Styles):
 		self.projectionWidget.setLayout(layout)
 
 		self.projection_option = QRadioButton('global operation: ')
+		self.projection_option.setToolTip('Collapse the cell track measurements with an operation over each track.')
 		self.projection_option.toggled.connect(self.enable_projection_options)
 		self.projection_op_cb = QComboBox()
 		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum'])
@@ -377,6 +378,7 @@ class TableUI(QMainWindow, Styles):
 		layout.addLayout(projection_layout)
 
 		self.event_time_option = QRadioButton('@event time: ')
+		self.event_time_option.setToolTip('Pick the measurements at a specific event time.')
 		self.event_time_option.toggled.connect(self.enable_projection_options)
 		self.event_times_cb = QComboBox()
 		cols = np.array(self.data.columns)
@@ -394,6 +396,7 @@ class TableUI(QMainWindow, Styles):
 
 
 		self.per_status_option = QRadioButton('per status: ')
+		self.per_status_option.setToolTip('Collapse the cell track measurements independently for each of the cell state.')
 		self.per_status_option.toggled.connect(self.enable_projection_options)
 		self.per_status_cb = QComboBox()
 		self.status_operation = QComboBox()

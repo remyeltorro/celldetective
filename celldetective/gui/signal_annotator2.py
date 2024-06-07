@@ -1074,12 +1074,12 @@ class SignalAnnotator2(QMainWindow,Styles):
         try:
             self.target_selection.pop(0)
             self.hide_target_cell_info()
-            self.hide_effector_cell_info()
+            #self.hide_effector_cell_info()
         except Exception as e:
             print(e)
         try:
             self.effector_selection.pop(0)
-            self.hide_effector_cell_info()
+            #self.hide_effector_cell_info()
         except Exception as e:
             print(e)
 
@@ -1094,20 +1094,20 @@ class SignalAnnotator2(QMainWindow,Styles):
                 for ind in range(len(self.target_colors[t])):
                     self.target_colors[t][ind] = self.initial_target_colors[t][ind]
 
-            if self.neighbors != {}:
-                # print(self.neigh_pop)
-                # if self.neigh_pop=='effectors':
-                #     for key in self.neighbors.keys():
-                #         for value in self.neighbors[key]:
-                #             self.effector_colors[key][value, 0] = self.initial_effector_colors[key][value, 0]
-                #             self.effector_colors[key][value, 1] = self.initial_effector_colors[key][value, 1]
-
-                    for key in self.neighbors.keys():
-                        for value in self.neighbors[key]:
-                            self.target_colors[key][value, 0] = self.initial_target_colors[key][value, 0]
-                            self.target_colors[key][value, 1] = self.initial_target_colors[key][value, 1]
-            else:
-                print('vsmisle')
+            # if self.neighbors != {}:
+            #     # print(self.neigh_pop)
+            #     # if self.neigh_pop=='effectors':
+            #     #     for key in self.neighbors.keys():
+            #     #         for value in self.neighbors[key]:
+            #     #             self.effector_colors[key][value, 0] = self.initial_effector_colors[key][value, 0]
+            #     #             self.effector_colors[key][value, 1] = self.initial_effector_colors[key][value, 1]
+            #
+            #         for key in self.neighbors.keys():
+            #             for value in self.neighbors[key]:
+            #                 self.target_colors[key][value, 0] = self.initial_target_colors[key][value, 0]
+            #                 self.target_colors[key][value, 1] = self.initial_target_colors[key][value, 1]
+            # else:
+            #     print('vsmisle')
         except Exception as e:
             print(f'{e=}')
 
@@ -1115,6 +1115,9 @@ class SignalAnnotator2(QMainWindow,Styles):
             for k,(t,idx) in enumerate(zip(self.effector_loc_t,self.effector_loc_idx)):
                 self.effector_colors[t][idx,0] = self.initial_effector_colors[t][idx,0]
                 self.effector_colors[t][idx,1] = self.initial_effector_colors[t][idx,1]
+            for (t,idx) in (zip(self.effector_loc_t_not_picked,self.effector_loc_idx_not_picked)):
+                self.effector_colors[t][idx, 0] = self.initial_effector_colors[t][idx,0]
+                self.effector_colors[t][idx, 1] = self.initial_effector_colors[t][idx,1]
             for t in range(len(self.effector_colors)):
                 print('a tut norm?')
                 for ind in range(len(self.effector_colors[t])):
@@ -1124,7 +1127,7 @@ class SignalAnnotator2(QMainWindow,Styles):
             print(f'{e=}')
 
         try:
-            self.lines_neigh={}
+            self.lines_data={}
             self.lines_list=[]
 
         except Exception as e:
@@ -2192,7 +2195,6 @@ class SignalAnnotator2(QMainWindow,Styles):
 
                     yvalues.extend(ydata)
                     t0 = self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest),'t0_arrival'].to_numpy()
-                    print(t0)
                     self.line_dt.set_xdata([t0, t0])
                     min_val=np.min(ydata)
                     max_val=np.max(ydata)
@@ -2370,7 +2372,7 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.fcanvas = FigureCanvas(self.fig, interactive=True)
         self.ax.clear()
         if not hasattr(self, 'lines'):
-            self.lines_neigh = {}
+            self.lines_data = {}
         # if not hasattr(self, 'lines_neigh'):
         #     self.lines_neigh = []
 
@@ -2438,19 +2440,30 @@ class SignalAnnotator2(QMainWindow,Styles):
     def on_scatter_pick(self, event):
 
         ind = event.ind
-
         label = event.artist.get_label()
         print(f'{label=}')
 
+        pop2='nothing'
         if label == '_child1':
-            pop = 'targets'
+            #print(f'{label=}')
+            self.pop = 'targets'
         elif label == '_child3':
-            pop = 'effectors'
+            #print(f'{label=}')
+            self.pop = 'effectors'
         else:
-            return None
+            number=int(label.split('_child')[1])
+            if number>4:
+                pop2 = 'pair'
+            else:
+                return None
+
+        # for line in self.lines_neigh:
+        #     line.remove()
+
+        #self.lines_data.clear()
 
 
-        if pop=='targets':
+        if self.pop=='targets':
             self.correction_tabs.setTabEnabled(0,True)
             if len(ind)>1:
                 # More than one point in vicinity
@@ -2490,7 +2503,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
                 print(f'You selected track {self.target_track_of_interest}.')
                 self.give_target_cell_information()
-
+                self.reference_track_of_interest=self.target_track_of_interest
                 self.plot_signals()
 
                 self.target_loc_t = []
@@ -2564,12 +2577,11 @@ class SignalAnnotator2(QMainWindow,Styles):
                     self.target_colors[t][idx] = 'black'
 
                 self.effector_previous_color = []
-                self.lines_neigh = {}
+                self.lines_data = {}
+                self.points_data = {}
+                self.connections={}
 
-                for line in self.lines_neigh:
-                    line.remove()
-                self.lines_neigh.clear()
-                self.reference_track_of_interest=self.target_track_of_interest
+
                 if self.ref_pop != self.neigh_pop:
                     for effector in neighbors:
                         self.effector_loc_t = []
@@ -2583,14 +2595,24 @@ class SignalAnnotator2(QMainWindow,Styles):
                         for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
                             neigh_x=self.effector_positions[t][idx, 0]
                             neigh_y=self.effector_positions[t][idx, 1]
-                            line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-',alpha=1, color='green',linewidth=2)
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-',alpha=1,linewidth=2)
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                                                # linewidth=2,picker=True)
+                            #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
 
-                            if t not in self.lines_neigh.keys():
-                                self.lines_neigh[t]=[line]
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
                             else:
-                                self.lines_neigh[t].append(line)
-                            self.ax.add_line(line)
-                            self.ax.draw_artist(line)
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
+
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            #self.ax.draw_artist(line)
 
                             if effector == self.neighbor_track_of_interest:
                                 self.effector_previous_color.append(self.effector_colors[t][idx].copy())
@@ -2618,26 +2640,40 @@ class SignalAnnotator2(QMainWindow,Styles):
                         for t, idx in zip(self.target_loc_t, self.target_loc_idx):
                             neigh_x = self.target_positions[t][idx, 0]
                             neigh_y = self.target_positions[t][idx, 1]
-                            print(ref_x[t])
-                            print(ref_y[t])
-                            print(neigh_x)
-                            print(neigh_y)
-                            line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
-                                                 linewidth=2)
-
-                            if t not in self.lines_neigh.keys():
-                                self.lines_neigh[t] = [line]
+                            # print(ref_x[t])
+                            # print(ref_y[t])
+                            # print(neigh_x)
+                            # print(neigh_y)
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            # line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                            #                      linewidth=2,picker=True)
+                            #
+                            # point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
                             else:
-                                self.lines_neigh[t].append(line)
-                            self.ax.add_line(line)
-                            self.ax.draw_artist(line)
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
+
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            #     self.point_neigh[t]=[point]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            #     self.point_neigh[t].append(point)
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            #self.ax.draw_artist(line)
 
                             if target == self.neighbor_track_of_interest:
                                 self.target_previous_color.append(self.target_colors[t][idx].copy())
                                 self.target_colors[t][idx] = 'magenta'
                             else:
                                 self.target_previous_color.append(self.target_colors[t][idx].copy())
-                                self.targetr_colors[t][idx] = 'salmon'
+                                self.target_colors[t][idx] = 'salmon'
 
                     for t in range(len(self.target_colors)):
                         for idx in range(len(self.target_colors[t])):
@@ -2646,13 +2682,13 @@ class SignalAnnotator2(QMainWindow,Styles):
                                     if self.target_colors[t][idx].any() != 'lime':
                                         self.target_colors[t][idx] = 'black'
 
-            elif len(ind)>0 and len(self.target_selection)==1:
+            elif len(ind)>0 and len(self.target_selection)==1 and pop2!='pair':
                 self.cancel_btn.click()
             else:
                 pass
 
-        elif pop=='effectors':
-            self.correction_tabs.setTabEnabled(1, True)
+        elif self.pop=='effectors':
+            self.correction_tabs.setTabEnabled(1,True)
             if len(ind)>1:
                 # More than one point in vicinity
                 datax,datay = [self.effector_positions[self.framedata][i,0] for i in ind],[self.effector_positions[self.framedata][i,1] for i in ind]
@@ -2668,63 +2704,163 @@ class SignalAnnotator2(QMainWindow,Styles):
                 self.cancel_btn.setEnabled(True)
                 self.del_shortcut.setEnabled(True)
                 self.no_event_shortcut.setEnabled(True)
+
+                self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
+                try:
+                    self.hide_effector_cell_info()
+                except:
+                    pass
+                try:
+                    neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.effector_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
+                    #best_neighbor=self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1)]
+                    #best_neighbor=best_neighbor
+                    neighbors = np.unique(neighbors)
+                    best_neighbor=np.min(neighbors)
+                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['NEIGHBOR_ID']==np.min(best_neighbor['NEIGHBOR_ID']),'NEIGHBOR_ID')])[0]
+                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'NEIGHBOR_ID')])[0]
+                    self.neighbor_track_of_interest=best_neighbor
+                    #self.give_effector_cell_information()
+                except:
+                    neighbors=[]
+                # print(best_neighbor)
+                # print(neighboors)
+
+                print(f'You selected track {self.effector_track_of_interest}.')
+                self.give_effector_cell_information()
+                self.reference_track_of_interest=self.effector_track_of_interest
+                self.plot_signals()
+
                 self.effector_loc_t = []
                 self.effector_loc_idx = []
                 self.effector_loc_t_not_picked = []
-                self.effector_loc_idx_not_picked = []
+                self.effector_loc_idx_not_picked=[]
+                self.target_loc_t_not_picked= []
+                self.target_loc_idx_not_picked = []
+                #self.effector_previous_color = []
                 for t in range(len(self.effector_tracks)):
-                    indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
-                    if len(indices) > 0:
+                    indices_picked = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
+                    indices_not_picked = np.where(self.effector_tracks[t]!=self.effector_track_of_interest)
+                    self.effector_loc_t_not_picked.append(t)
+                    self.effector_loc_idx_not_picked.append(indices_not_picked[0])
+                    if len(indices_picked)>0:
                         self.effector_loc_t.append(t)
-                        self.effector_loc_idx.append(indices[0])
-                ref_x = []
-                ref_y = []
+                        self.effector_loc_idx.append(indices_picked[0])
+
+
                 self.effector_previous_color = []
-                for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+                self.neighbors={}
+                self.effector_not_picked_initial_colors=[]
+                ref_x=[]
+                ref_y=[]
+                for t,idx in zip(self.effector_loc_t,self.effector_loc_idx):
                     ref_x.append(self.effector_positions[t][idx, 0])
                     ref_y.append(self.effector_positions[t][idx, 1])
-                    if self.effector_colors[t][idx].any() == 'magenta':
-                        self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                        self.effector_colors[t][idx] = 'salmon'
-                    for t, idx in zip(self.effector_loc_t_not_picked, self.effector_loc_idx_not_picked):
-                        #self.target_not_picked_initial_colors.append(self.target_colors[t][idx].copy())
-                        self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
-                        self.effector_colors[t][idx] = 'black'
-                self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
-                try:
-                    neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
-                    best_neighbor=self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)]
-                    #best_neighbor=best_neighbor
-                    best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['NEIGHBOR_ID']==np.min(best_neighbor['NEIGHBOR_ID']),'NEIGHBOR_ID')])[0]
-                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'NEIGHBOR_ID')])[0]
-                    self.neighbor_track_of_interest=best_neighbor
-                    self.give_effector_cell_information()
-                    neighbors = np.unique(neighbors)
-                except:
-                    neighbors=[]
-                print(f'You selected track {self.effector_track_of_interest}.')
+                    # ref_x[t] = self.target_positions[t][idx, 0]
+                    # ref_y[t] = self.target_positions[t][idx, 1]
+                    #neigh=pd.read_pickle(self.neigh_trajectories_path)
+                    #print(neigh)
+                    #columns_of_interest = neigh.filter(like='neighborhood_2_circle_200_px').columns
+                    #first_column = next((col for col in columns_of_interest if col.startswith('neighborhood_2_circle_200_px')),
+                    #                   None)
+                    #effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) &
+                    #                   (neigh['FRAME'] == t),
+                    #first_column]
+                    #print(effect.iloc[0])
+                    #print(len(effect.iloc[0]))
+                    #print(neigh.columns)
+                    #eff_dict1=[]
+                    #indices=[]
 
-                if hasattr(self, 'eff_cls'):
-                    self.hide_effector_cell_info()
-                self.give_effector_cell_information()
+                    #if effect.iloc[0]!=[]:
+                    #    if isinstance(effect.iloc[0],float):
+                    #        pass
+                    #    else:
+                    #        for i in range(0,len(effect.iloc[0])):
+                    #            eff_dict1.append(effect.iloc[0][i])
+                    #    for dictionn in eff_dict1:
+                            #print(dictionn)
+                    #        indices.append(np.where(self.effector_tracks[t] == dictionn['id'])[0])
+                        #print(eff_dict1)
+                        #eff_dict=effect.iloc[0][0]
+                        #indices = np.where(self.effector_tracks[t] == eff_dict['id'])[0]
+                        #print(eff_dict1)
+                        #print(eff_dict)
+                    #    if len(indices) > 0:
+                    #        indices2=[]
+                    #        for i in indices:
+                    #            indices2.append(i[0])
+                    #        self.effector_loc_t.append(t)
+                    #        self.neighbors[t]=indices2
+                    #        #print(self.effector_loc_t)
 
-                self.plot_signals()
-
-                for t in range(len(self.effector_tracks)):
-                    indices = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
-                    if len(indices)>0:
-                        self.effector_loc_t.append(t)
-                        self.effector_loc_idx.append(indices[0])
-
-
-                self.effector_previous_color = []
-                for t,idx in zip(self.effector_loc_t,self.effector_loc_idx):
                     self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                    self.effector_colors[t][idx] = 'magenta'
-                self.reference_track_of_interest=self.effector_track_of_interest
-                if self.ref_pop == self.neigh_pop:
-                    print(ref_x)
-                    print(ref_y)
+                    self.effector_colors[t][idx] = 'lime'
+                for t, idx in zip(self.effector_loc_t_not_picked, self.effector_loc_idx_not_picked):
+                    self.effector_not_picked_initial_colors.append(self.effector_colors[t][idx].copy())
+                    self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
+                    self.effector_colors[t][idx] = 'black'
+
+                self.target_previous_color = []
+                self.lines_data = {}
+                self.points_data={}
+                self.connections={}
+
+                if self.ref_pop != self.neigh_pop:
+                    for target in neighbors:
+                        self.target_loc_t = []
+                        self.target_loc_idx = []
+                        for t in range(len(self.target_tracks)):
+                            indices = np.where(self.target_tracks[t]==target)[0]
+                            if len(indices)>0:
+                                self.target_loc_t.append(t)
+                                self.target_loc_idx.append(indices[0])
+                        self.target_previous_color = []
+                        for t, idx in zip(self.target_loc_t, self.target_loc_idx):
+                            neigh_x=self.target_positions[t][idx, 0]
+                            neigh_y=self.target_positions[t][idx, 1]
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-',alpha=1,linewidth=2)
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                            #                     linewidth=2,markevery=x_m_point,marker='x',picker=True)
+                            #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
+                            else:
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            #     self.point_neigh[t]=[point]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            #     self.point_neigh[t].append(point)
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            # print('marker est?')
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            # self.ax.add_line(line)
+                            #self.ax.draw_artist(line)
+
+                            if target == self.neighbor_track_of_interest:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'magenta'
+                            else:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'salmon'
+
+                    for t in range(len(self.target_colors)):
+                        for idx in range(len(self.target_colors[t])):
+                            if self.target_colors[t][idx].any() != 'salmon':
+                                if self.target_colors[t][idx].any() != 'magenta':
+                                    self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
+                                    self.target_colors[t][idx] = 'black'
+                else:
                     for effector in neighbors:
                         self.effector_loc_t = []
                         self.effector_loc_idx = []
@@ -2737,19 +2873,32 @@ class SignalAnnotator2(QMainWindow,Styles):
                         for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
                             neigh_x = self.effector_positions[t][idx, 0]
                             neigh_y = self.effector_positions[t][idx, 1]
-                            line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
-                                                 linewidth=2)
-
-                            if t not in self.lines_neigh.keys():
-                                self.lines_neigh[t] = [line]
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                                                # linewidth=2,picker=True)
+                            #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
                             else:
-                                self.lines_neigh[t].append(line)
-                            self.ax.add_line(line)
-                            self.ax.draw_artist(line)
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
+
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            #     self.point_neigh[t]=[point]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            #     self.point_neigh[t].append(point)
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            #self.ax.draw_artist(line)
 
                             if effector == self.neighbor_track_of_interest:
                                 self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                                self.effector_colors[t][idx] = 'blue'
+                                self.effector_colors[t][idx] = 'magenta'
                             else:
                                 self.effector_previous_color.append(self.effector_colors[t][idx].copy())
                                 self.effector_colors[t][idx] = 'salmon'
@@ -2758,49 +2907,44 @@ class SignalAnnotator2(QMainWindow,Styles):
                         for idx in range(len(self.effector_colors[t])):
                             if self.effector_colors[t][idx].any() != 'salmon':
                                 if self.effector_colors[t][idx].any() != 'magenta':
-                                    self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
-                                    self.effector_colors[t][idx] = 'black'
-                else:
-                    for target in neighbors:
-                        self.target_loc_t = []
-                        self.target_loc_idx = []
-                        for t in range(len(self.target_tracks)):
-                            indices = np.where(self.target_tracks[t] == target)[0]
-                            if len(indices) > 0:
-                                self.target_loc_t.append(t)
-                                self.target_loc_idx.append(indices[0])
-                        self.target_previous_color = []
-                        for t, idx in zip(self.target_loc_t, self.target_loc_idx):
-                            neigh_x = self.target_positions[t][idx, 0]
-                            neigh_y = self.target_positions[t][idx, 1]
-                            line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1, color='green',
-                                                 linewidth=2)
-
-                            if t not in self.lines_neigh.keys():
-                                self.lines_neigh[t] = [line]
-                            else:
-                                self.lines_neigh[t].append(line)
-                            self.ax.add_line(line)
-                            self.ax.draw_artist(line)
-
-                            if target == self.neighbor_track_of_interest:
-                                self.target_previous_color.append(self.target_colors[t][idx].copy())
-                                self.target_colors[t][idx] = 'magenta'
-                            else:
-                                self.target_previous_color.append(self.target_colors[t][idx].copy())
-                                self.targetr_colors[t][idx] = 'salmon'
-
-                    for t in range(len(self.target_colors)):
-                        for idx in range(len(self.target_colors[t])):
-                            if self.target_colors[t][idx].any() != 'salmon':
-                                if self.target_colors[t][idx].any() != 'magenta':
-                                    self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
-                                    self.target_colors[t][idx] = 'black'
+                                    if self.effector_colors[t][idx].any() != 'lime':
+                                        self.effector_colors[t][idx] = 'black'
 
             elif len(ind)>0 and len(self.effector_selection)==1:
                 self.cancel_btn.click()
+
             else:
                 pass
+        if pop2=='pair':
+            ind2=event.ind
+            artist = event.artist
+            plz=artist.get_offsets()
+            print(plz[0][0], plz[0][1])
+            connect=self.connections[(plz[0][0],plz[0][1])]
+            print(connect[0])
+            self.reference_track_of_interest=connect[0][0]
+            self.neighb_track_of_interest=connect[0][1]
+            print(f'REFERENCE : {self.reference_track_of_interest}')
+            print(f'NEIGHBOR : {self.neighb_track_of_interest}')
+
+            # print(self.point_list[ind2])
+            # # x_data, y_data = [self.ax[i, 0] for i in ind2], [
+            # #     self.ax[i, 1] for i in ind2]
+            # print(self.reference_track_of_interest)
+            # print(self.neighbor_track_of_interest)
+            # Find the index of the picked scatter point
+            # artist=event.artist
+            # print(artist)
+            # inf=artist.get_paths()
+            # print(inf)
+            # x_data=event.xdata
+            # y_data=event.ydata
+            # print(x_data)
+            # print(y_data)
+            # print(self.connections)
+            # print(self.connections[(x_data[0],y_data[0])])
+
+
 
     def shortcut_suppr(self):
         self.correct_btn.click()
@@ -2886,17 +3030,21 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.frame_lbl.setText(f'frame: {self.framedata}')
         self.im.set_array(self.stack[self.framedata])
         if self.ref_pop=='targets':
-            self.target_status_scatter.set_alpha(1)
+            self.target_status_scatter.set_visible(True)
+            self.target_class_scatter.set_visible(True)
+            # self.target_status_scatter.set_alpha(1)
             self.target_status_scatter.set_picker(True)
-            self.target_class_scatter.set_alpha(1)
+            # self.target_class_scatter.set_alpha(1)
             self.target_status_scatter.set_offsets(self.target_positions[self.framedata])
             self.target_status_scatter.set_color(self.target_colors[self.framedata][:,1])
             self.target_class_scatter.set_offsets(self.target_positions[self.framedata])
             self.target_class_scatter.set_edgecolor(self.target_colors[self.framedata][:,0])
             if self.ref_pop!=self.neigh_pop:
-                self.effector_status_scatter.set_alpha(1)
+                self.effector_status_scatter.set_visible(True)
+                self.effector_class_scatter.set_visible(True)
+                # self.effector_status_scatter.set_alpha(1)
                 self.effector_status_scatter.set_picker(True)
-                self.effector_class_scatter.set_alpha(1)
+                # self.effector_class_scatter.set_alpha(1)
                 self.effector_status_scatter.set_offsets(self.effector_positions[self.framedata])
                 self.effector_status_scatter.set_color(self.effector_colors[self.framedata][:,1])
 
@@ -2904,22 +3052,24 @@ class SignalAnnotator2(QMainWindow,Styles):
                 self.effector_class_scatter.set_edgecolor(self.effector_colors[self.framedata][:,0])
 
             else:
-                self.effector_status_scatter.set_alpha(0)
-                self.effector_status_scatter.set_picker(False)
-                self.effector_class_scatter.set_alpha(0)
+                self.effector_status_scatter.set_visible(False)
+                self.effector_class_scatter.set_visible(False)
+                # self.effector_status_scatter.set_alpha(0)
+                self.effector_status_scatter.set_picker(None)
+                # self.effector_class_scatter.set_alpha(0)
         else:
-                self.effector_status_scatter.set_alpha(1)
+                self.effector_status_scatter.set_visible(True)
                 self.effector_status_scatter.set_picker(True)
-                self.effector_class_scatter.set_alpha(1)
+                self.effector_class_scatter.set_visible(True)
                 self.effector_status_scatter.set_offsets(self.effector_positions[self.framedata])
                 self.effector_status_scatter.set_color(self.effector_colors[self.framedata][:, 1])
 
                 self.effector_class_scatter.set_offsets(self.effector_positions[self.framedata])
                 self.effector_class_scatter.set_edgecolor(self.effector_colors[self.framedata][:, 0])
                 if self.ref_pop != self.neigh_pop:
-                    self.target_status_scatter.set_alpha(1)
+                    self.target_status_scatter.set_visible(True)
                     self.target_status_scatter.set_picker(True)
-                    self.target_class_scatter.set_alpha(1)
+                    self.target_class_scatter.set_visible(True)
                     self.target_status_scatter.set_offsets(self.target_positions[self.framedata])
                     self.target_status_scatter.set_color(self.target_colors[self.framedata][:, 1])
 
@@ -2927,20 +3077,44 @@ class SignalAnnotator2(QMainWindow,Styles):
                     self.target_class_scatter.set_edgecolor(self.target_colors[self.framedata][:, 0])
 
                 else:
-                    self.target_status_scatter.set_alpha(0)
-                    self.target_status_scatter.set_picker(False)
-                    self.target_class_scatter.set_alpha(0)
+                    self.target_status_scatter.set_visible(False)
+                    self.target_status_scatter.set_picker(None)
+                    self.target_class_scatter.set_visible(False)
         self.lines_list=[]
-        for key in self.lines_neigh:
+        self.point_list=[]
+
+        for key in self.lines_data:
             if key==self.framedata:
-                for line in self.lines_neigh[key]:
-                    line.set_alpha(1)
-                    self.ax.draw_artist(line)
-                    self.lines_list.append(line)
+                for line in self.lines_data[key]:
+                    x_coords, y_coords = line
+                    self.lines=self.ax.plot(x_coords, y_coords, 'b-', alpha=1, linewidth=2)
+                    #self.ax.draw_artist(self.lines)
+                    # for l in self.lines:
+                    #     self.ax.draw_artist(l)
+                    self.lines_list.append(self.lines[0])
 
 
+                # Plot points
+                for point in self.points_data[key]:
+                    x, y = point
+                    self.points=self.ax.scatter(x, y, marker="x", color='red',picker=True)
+                    self.ax.draw_artist(self.points)
+                    #self.ax.draw_artist(self.points)
+                    self.point_list.append(self.points)
+                # for coords_line in self.lines_data[key]:
+                #     line.set_alpha(1)
+                #     self.ax.draw_artist(line)
+                #     self.lines_list.append(line)
+                # for coords_point in self.points_data[key]:
+                #     point.set_alpha(1)
+                #     self.ax.draw_artist(point)
+                #     self.point_list.append(point)
 
-        return [self.im,self.target_status_scatter,self.target_class_scatter,self.effector_status_scatter,self.effector_class_scatter]+self.lines_list
+        if self.lines_list!=[]:
+            return [self.im,self.target_status_scatter,self.target_class_scatter,self.effector_status_scatter,self.effector_class_scatter] +self.lines_list +self.point_list
+        else:
+            return [self.im, self.target_status_scatter, self.target_class_scatter, self.effector_status_scatter,
+                    self.effector_class_scatter,]
 
     def stop(self):
         # # On stop we disconnect all of our events.
@@ -4598,7 +4772,6 @@ class MeasureAnnotator2(SignalAnnotator2,Styles):
             self.relative_class_name = 'class'
             self.relative_time_name = 't0'
             self.relative_status_name = 'status'
-        print(self.df_relative)
 
     def draw_frame(self, framedata):
 

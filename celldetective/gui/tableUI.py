@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import viridis
 plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window
-from celldetective.signals import differentiate_per_track
+from celldetective.utils import differentiate_per_track
 import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
 import os
 from celldetective.gui import Styles
-from superqt import QColormapComboBox, QLabeledSlider
+from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
 from math import floor
 
 class PandasModel(QAbstractTableModel):
@@ -57,6 +57,7 @@ class QueryWidget(QWidget):
 		self.submit_btn = QPushButton('submit')
 		self.submit_btn.clicked.connect(self.filter_table)
 		layout.addWidget(self.submit_btn, 30)
+		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def filter_table(self):
 		try:
@@ -126,6 +127,9 @@ class DifferentiateColWidget(QWidget, Styles):
 		self.submit_btn.clicked.connect(self.compute_derivative_and_add_new_column)
 		layout.addWidget(self.submit_btn, 30)
 
+		self.setAttribute(Qt.WA_DeleteOnClose)
+
+
 	def compute_derivative_and_add_new_column(self):
 		
 		if self.bi_btn.isChecked():
@@ -167,6 +171,7 @@ class RenameColWidget(QWidget):
 		self.submit_btn = QPushButton('rename')
 		self.submit_btn.clicked.connect(self.rename_col)
 		layout.addWidget(self.submit_btn, 30)
+		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def rename_col(self):
 		
@@ -205,6 +210,8 @@ class TableUI(QMainWindow, Styles):
 		self.model = PandasModel(data)
 		self.table_view.setModel(self.model)
 		self.table_view.resizeColumnsToContents()
+		self.setAttribute(Qt.WA_DeleteOnClose)
+
 
 	def _createActions(self):
 
@@ -317,12 +324,8 @@ class TableUI(QMainWindow, Styles):
 		else:
 			selected_col = None
 
-		print(selected_col)
 		self.diffWidget = DifferentiateColWidget(self, selected_col)
 		self.diffWidget.show()
-
-		print('you want to differentiate? cool but I"m too tired to code it now...')
-		pass
 
 
 	def groupby_time_table(self):
@@ -483,10 +486,10 @@ class TableUI(QMainWindow, Styles):
 		layout.addWidget(self.box_check)
 		layout.addWidget(self.boxenplot_check)
 
-		self.x_cb = QComboBox()
+		self.x_cb = QSearchableComboBox()
 		self.x_cb.addItems(['--']+list(self.data.columns))
 
-		self.hue_cb = QComboBox()
+		self.hue_cb = QSearchableComboBox()
 		self.hue_cb.addItems(['--']+list(self.data.columns))
 		idx = self.hue_cb.findText('--')
 
@@ -610,7 +613,7 @@ class TableUI(QMainWindow, Styles):
 
 	def set_proj_mode(self):
 		
-		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position']
+		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class','cell_type','concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position']
 
 		if self.projection_option.isChecked():
 

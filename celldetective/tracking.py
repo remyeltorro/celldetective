@@ -7,7 +7,7 @@ from btrack.io.utils import localizations_to_objects
 from btrack import BayesianTracker
 
 from celldetective.measure import measure_features
-from celldetective.utils import rename_intensity_column
+from celldetective.utils import rename_intensity_column, velocity_per_track
 from celldetective.io import view_on_napari_btrack, interpret_tracking_configuration
 
 from btrack.datasets import cell_config
@@ -150,6 +150,7 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 		df[columns] = df_temp
 
 	df = df.sort_values(by=[column_labels['track'],column_labels['time']])
+	df = velocity_per_track(df, window_size=3, mode='bi')
 
 	if channel_names is not None:
 		df = rename_intensity_column(df, channel_names)

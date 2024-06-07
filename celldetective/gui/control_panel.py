@@ -319,6 +319,11 @@ class ControlPanel(QMainWindow, Styles):
 					process_block.ConfigSignalAnnotator.close()
 			except:
 				pass
+			try:
+				if process_block.TableUI:
+					process_block.TableUI.close()
+			except:
+				pass
 
 		try:
 			if self.cfg_editor:

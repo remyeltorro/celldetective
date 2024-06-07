@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import viridis
 plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window
+from celldetective.signals import differentiate_per_track
 import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
 import os
 from celldetective.gui import Styles
-from superqt import QColormapComboBox
+from superqt import QColormapComboBox, QLabeledSlider
 from math import floor
 
 class PandasModel(QAbstractTableModel):
@@ -67,6 +68,81 @@ class QueryWidget(QWidget):
 		except Exception as e:
 			print(e)
 			return None
+
+class DifferentiateColWidget(QWidget, Styles):
+
+	def __init__(self, parent_window, column=None):
+
+		super().__init__()
+		self.parent_window = parent_window
+		self.column = column
+
+		self.setWindowTitle("d/dt")
+		# Create the QComboBox and add some items
+		center_window(self)
+		
+		layout = QVBoxLayout(self)
+		layout.setContentsMargins(30,30,30,30)
+
+		self.measurements_cb = QComboBox()
+		self.measurements_cb.addItems(list(self.parent_window.data.columns))
+		if self.column is not None:
+			idx = self.measurements_cb.findText(self.column)
+			self.measurements_cb.setCurrentIndex(idx)
+
+		measurement_layout = QHBoxLayout()
+		measurement_layout.addWidget(QLabel('measurements: '), 25)
+		measurement_layout.addWidget(self.measurements_cb, 75)
+		layout.addLayout(measurement_layout)
+
+		self.window_size_slider = QLabeledSlider()
+		self.window_size_slider.setRange(1,np.nanmax(self.parent_window.data.FRAME.to_numpy()))
+		self.window_size_slider.setValue(3)
+		window_layout = QHBoxLayout()
+		window_layout.addWidget(QLabel('window size: '), 25)
+		window_layout.addWidget(self.window_size_slider, 75)
+		layout.addLayout(window_layout)
+
+		self.backward_btn = QRadioButton('backward')
+		self.bi_btn = QRadioButton('bi')
+		self.bi_btn.click()
+		self.forward_btn = QRadioButton('forward')
+		self.mode_btn_group = QButtonGroup()
+		self.mode_btn_group.addButton(self.backward_btn)
+		self.mode_btn_group.addButton(self.bi_btn)
+		self.mode_btn_group.addButton(self.forward_btn)
+
+		mode_layout = QHBoxLayout()
+		mode_layout.addWidget(QLabel('mode: '),25)
+		mode_sublayout = QHBoxLayout()
+		mode_sublayout.addWidget(self.backward_btn, 33, alignment=Qt.AlignCenter)
+		mode_sublayout.addWidget(self.bi_btn, 33, alignment=Qt.AlignCenter)
+		mode_sublayout.addWidget(self.forward_btn, 33, alignment=Qt.AlignCenter)
+		mode_layout.addLayout(mode_sublayout, 75)
+		layout.addLayout(mode_layout)
+
+		self.submit_btn = QPushButton('Compute')
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
+		self.submit_btn.clicked.connect(self.compute_derivative_and_add_new_column)
+		layout.addWidget(self.submit_btn, 30)
+
+	def compute_derivative_and_add_new_column(self):
+		
+		if self.bi_btn.isChecked():
+			mode = 'bi'
+		elif self.forward_btn.isChecked():
+			mode = 'forward'
+		elif self.backward_btn.isChecked():
+			mode = 'backward'
+		self.parent_window.data = differentiate_per_track(self.parent_window.data,
+														  self.measurements_cb.currentText(),
+														  window_size=self.window_size_slider.value(),
+														  mode=mode)
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
+		self.close()
+
+
 
 class RenameColWidget(QWidget):
 
@@ -232,6 +308,19 @@ class TableUI(QMainWindow, Styles):
 		# check only one col selected and assert is numerical
 		# open widget to select window parameters, directionality
 		# create new col
+		
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		if col_idx!=0:
+			cols = np.array(list(self.data.columns))
+			selected_col = str(cols[col_idx][0])
+		else:
+			selected_col = None
+
+		print(selected_col)
+		self.diffWidget = DifferentiateColWidget(self, selected_col)
+		self.diffWidget.show()
+
 		print('you want to differentiate? cool but I"m too tired to code it now...')
 		pass
 
@@ -271,12 +360,13 @@ class TableUI(QMainWindow, Styles):
 	def set_projection_mode_tracks(self):
 
 		self.projectionWidget = QWidget()
+		self.projectionWidget.setMinimumWidth(500)
 		self.projectionWidget.setWindowTitle('Set projection mode')
 		
 		layout = QVBoxLayout()
 		self.projectionWidget.setLayout(layout)
 
-		self.projection_option = QRadioButton('operation: ')
+		self.projection_option = QRadioButton('global operation: ')
 		self.projection_option.toggled.connect(self.enable_projection_options)
 		self.projection_op_cb = QComboBox()
 		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum'])
@@ -286,7 +376,7 @@ class TableUI(QMainWindow, Styles):
 		projection_layout.addWidget(self.projection_op_cb, 66)
 		layout.addLayout(projection_layout)
 
-		self.event_time_option = QRadioButton('event time: ')
+		self.event_time_option = QRadioButton('@event time: ')
 		self.event_time_option.toggled.connect(self.enable_projection_options)
 		self.event_times_cb = QComboBox()
 		cols = np.array(self.data.columns)
@@ -302,25 +392,66 @@ class TableUI(QMainWindow, Styles):
 		event_time_layout.addWidget(self.event_times_cb, 66)
 		layout.addLayout(event_time_layout)
 
+
+		self.per_status_option = QRadioButton('per status: ')
+		self.per_status_option.toggled.connect(self.enable_projection_options)
+		self.per_status_cb = QComboBox()
+		self.status_operation = QComboBox()
+		self.status_operation.setEnabled(False)
+		self.status_operation.addItems(['mean','median','min','max', 'prod', 'sum'])
+
+		status_cols = np.array([c.startswith('status_') for c in cols])
+		status_cols = list(cols[status_cols])
+		if 'status' in list(self.data.columns):
+			status_cols.append('status')
+		self.per_status_cb.addItems(status_cols)
+		self.per_status_cb.setEnabled(False)
+
+		per_status_layout = QHBoxLayout()
+		per_status_layout.addWidget(self.per_status_option, 33)
+		per_status_layout.addWidget(self.per_status_cb, 66)
+		layout.addLayout(per_status_layout)
+
+		status_operation_layout = QHBoxLayout()
+		status_operation_layout.addWidget(QLabel('operation: '), 33, alignment=Qt.AlignRight)
+		status_operation_layout.addWidget(self.status_operation, 66)
+		layout.addLayout(status_operation_layout)
+
 		self.btn_projection_group = QButtonGroup()
 		self.btn_projection_group.addButton(self.projection_option)
 		self.btn_projection_group.addButton(self.event_time_option)
+		self.btn_projection_group.addButton(self.per_status_option)
 
-		self.set_projection_btn = QPushButton('set')
+		apply_layout = QHBoxLayout()
+
+		self.set_projection_btn = QPushButton('Apply')
 		self.set_projection_btn.setStyleSheet(self.button_style_sheet)
 		self.set_projection_btn.clicked.connect(self.set_proj_mode)
-		layout.addWidget(self.set_projection_btn)
+		apply_layout.addWidget(QLabel(''), 33)
+		apply_layout.addWidget(self.set_projection_btn,33)
+		apply_layout.addWidget(QLabel(''),33)
+		layout.addLayout(apply_layout)
 
 		self.projectionWidget.show()
 		center_window(self.projectionWidget)
 
 	def enable_projection_options(self):
+
 		if self.projection_option.isChecked():
 			self.projection_op_cb.setEnabled(True)
 			self.event_times_cb.setEnabled(False)
+			self.per_status_cb.setEnabled(False)
+			self.status_operation.setEnabled(False)
 		elif self.event_time_option.isChecked():
 			self.projection_op_cb.setEnabled(False)
 			self.event_times_cb.setEnabled(True)
+			self.per_status_cb.setEnabled(False)
+			self.status_operation.setEnabled(False)
+		elif self.per_status_option.isChecked():
+			self.projection_op_cb.setEnabled(False)
+			self.event_times_cb.setEnabled(False)
+			self.per_status_cb.setEnabled(True)
+			self.status_operation.setEnabled(True)
 
 	def set_1D_plot_params(self):
 
@@ -475,19 +606,27 @@ class TableUI(QMainWindow, Styles):
 
 
 	def set_proj_mode(self):
+		
+		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position']
+
 		if self.projection_option.isChecked():
 
 			self.projection_mode = self.projection_op_cb.currentText()
 			op = getattr(self.data.groupby(['position', 'TRACK_ID']), self.projection_mode)
 			group_table = op(self.data.groupby(['position', 'TRACK_ID']))
 
-			self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class', 'concentration', 'antibody', 'pharmaceutical_agent']
 			for c in self.static_columns:
 				try:
 					group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
 				except Exception as e:
 					print(e)
 					pass
+			
+			for col in ['TRACK_ID']:
+				first_column = group_table.pop(col) 
+				group_table.insert(0, col, first_column)
+			group_table.pop('FRAME')
+
 		elif self.event_time_option.isChecked():
 			time_of_interest = self.event_times_cb.currentText()
 			self.projection_mode = f"measurements at {time_of_interest}"
@@ -502,8 +641,44 @@ class TableUI(QMainWindow, Styles):
 				values = group.loc[group['FRAME']==time,:].to_numpy()
 				if len(values)>0:
 					values = dict(zip(list(self.data.columns), values[0]))
+					values.update({'TRACK_ID': tid[1]})
+					values.update({'position': tid[0]})
+
 					new_table.append(values)
+			
 			group_table = pd.DataFrame(new_table)
+			for col in ['TRACK_ID']:
+				first_column = group_table.pop(col) 
+				group_table.insert(0, col, first_column)
+
+		elif self.per_status_option.isChecked():
+
+			status_of_interest = self.per_status_cb.currentText()
+			self.projection_mode = f'{self.status_operation.currentText()} per {status_of_interest}'
+			self.data = self.data.dropna(subset=status_of_interest,ignore_index=True)
+			unique_statuses = np.unique(self.data[status_of_interest].to_numpy())
+
+			df_sections = []
+			for s in unique_statuses:
+				subtab = self.data.loc[self.data[status_of_interest]==s,:]
+				op = getattr(subtab.groupby(['position', 'TRACK_ID']), self.status_operation.currentText())
+				subtab_projected = op(subtab.groupby(['position', 'TRACK_ID']))
+				frame_duration = subtab.groupby(['position','TRACK_ID']).size().to_numpy()
+				for c in self.static_columns:
+					try:
+						subtab_projected[c] = subtab.groupby(['position', 'TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+					except Exception as e:
+						print(e)
+						pass
+				subtab_projected['duration_in_state'] = frame_duration
+				df_sections.append(subtab_projected)
+
+			group_table = pd.concat(df_sections,axis=0,ignore_index=True)
+			for col in ['duration_in_state',status_of_interest,'TRACK_ID']:
+				first_column = group_table.pop(col) 
+				group_table.insert(0, col, first_column)
+			group_table.pop('FRAME')
+			group_table = group_table.sort_values(by=['position','TRACK_ID',status_of_interest],ignore_index=True)
 
 
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")

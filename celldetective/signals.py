@@ -2333,6 +2333,23 @@ def derivative(x, timeline, window, mode='bi'):
 			dxdt[t] = (x[t] - x[t-window]) /  (timeline[t] - timeline[t-window])
 	return dxdt
 
+def differentiate_per_track(tracks, measurement, window_size=3, mode='bi'):
+	
+	groupby_cols = ['TRACK_ID']
+	if 'position' in list(tracks.columns):
+		groupby_cols = ['position']+groupby_cols
+
+	tracks = tracks.sort_values(by=['TRACK_ID','FRAME'],ignore_index=True)
+	for tid, group in tracks.groupby(groupby_cols):
+		indices = group.index
+		timeline = group['FRAME'].values
+		signal = group[measurement].values
+		dsignal = derivative(signal, timeline, window_size, mode=mode)
+		tracks.loc[indices, 'd/dt.'+measurement] = dsignal
+
+	return tracks
+
+
 def velocity(x,y,timeline,window,mode='bi'):
 
 	"""

@@ -65,7 +65,6 @@ def otsu_filter(img, *kwargs):
 	return binary.astype(float)
 
 def local_filter(img, *kwargs):
-	print(*kwargs)
 	thresh = threshold_local(img.astype(float), *kwargs)
 	binary = img >= thresh
 	return binary.astype(float)

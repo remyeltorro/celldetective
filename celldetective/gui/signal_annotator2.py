@@ -3,8 +3,8 @@ from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineE
     QButtonGroup, QGridLayout, QSlider, QCheckBox
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
-
-from celldetective.gui import SignalAnnotator
+from matplotlib.collections import LineCollection
+from celldetective.gui import SignalAnnotator, Styles
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
 from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QLabeledSlider
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
@@ -26,7 +26,7 @@ from matplotlib.cm import tab10
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
-class SignalAnnotator2(QMainWindow):
+class SignalAnnotator2(QMainWindow,Styles):
 
     """
     UI to set tracking parameters for bTrack.
@@ -36,11 +36,11 @@ class SignalAnnotator2(QMainWindow):
     def __init__(self, parent=None):
 
         super().__init__()
-        self.parent = parent
+        self.parent_window = parent
         self.setWindowTitle("Signal annotator")
 
-        self.pos = self.parent.parent.pos
-        self.exp_dir = self.parent.exp_dir
+        self.pos = self.parent_window.parent_window.pos
+        self.exp_dir = self.parent_window.exp_dir
         print(f'{self.pos=} {self.exp_dir=}')
 
         self.soft_path = get_software_location()
@@ -54,8 +54,8 @@ class SignalAnnotator2(QMainWindow):
         self.instructions_path = self.exp_dir + "configs/signal_annotator_config_neighborhood.json"
         #self.trajectories_path = self.pos+'output/tables/trajectories_targets.csv'
 
-        self.screen_height = self.parent.parent.parent.screen_height
-        self.screen_width = self.parent.parent.parent.screen_width
+        self.screen_height = self.parent_window.parent_window.parent_window.screen_height
+        self.screen_width = self.parent_window.parent_window.parent_window.screen_width
 
         # default params
         self.target_class_name = 'class'
@@ -66,9 +66,16 @@ class SignalAnnotator2(QMainWindow):
 
         self.locate_stack()
         self.load_annotator_config()
-
-        self.locate_target_tracks()
-        self.locate_effector_tracks()
+        self.ref_pop='targets'
+        self.neigh_pop='effectors'
+        try:
+            self.locate_target_tracks()
+        except:
+            print('no targets')
+        try:
+            self.locate_effector_tracks()
+        except:
+            print('no effectors')
         self.locate_relative_tracks()
 
         self.prepare_stack()
@@ -108,86 +115,114 @@ class SignalAnnotator2(QMainWindow):
 
 
         # TARGETS
-        class_hbox = QHBoxLayout()
-        class_hbox.addWidget(QLabel('target event: '), 25)
-        self.target_class_choice_cb = QComboBox()
+        # class_hbox = QHBoxLayout()
+        # class_hbox.addWidget(QLabel('target event: '), 25)
+        # self.target_class_choice_cb = QComboBox()
+        #
+        # cols = np.array(self.df_targets.columns)
+        # self.target_class_cols = np.array([c.startswith('class') for c in list(self.df_targets.columns)])
+        # self.target_class_cols = list(cols[self.target_class_cols])
+        # try:
+        #     self.target_class_cols.remove('class_id')
+        # except Exception:
+        #     pass
+        # try:
+        #     self.target_class_cols.remove('class_color')
+        # except Exception:
+        #     pass
+        #
+        # self.target_class_choice_cb.addItems(self.target_class_cols)
+        # self.target_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
+        # self.target_class_choice_cb.setCurrentIndex(0)
+        #
+        # class_hbox.addWidget(self.target_class_choice_cb, 70)
+        #
+        # self.target_add_class_btn = QPushButton('')
+        # self.target_add_class_btn.setStyleSheet(self.button_select_all)
+        # self.target_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
+        # self.target_add_class_btn.setToolTip("Add a new event class")
+        # self.target_add_class_btn.setIconSize(QSize(20, 20))
+        # self.target_add_class_btn.clicked.connect(self.create_new_target_event_class)
+        # class_hbox.addWidget(self.target_add_class_btn, 5)
+        #
+        # self.target_del_class_btn = QPushButton('')
+        # self.target_del_class_btn.setStyleSheet(self.button_select_all)
+        # self.target_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
+        # self.target_del_class_btn.setToolTip("Delete an event class")
+        # self.target_del_class_btn.setIconSize(QSize(20, 20))
+        # self.target_del_class_btn.clicked.connect(self.del_target_event_class)
+        # class_hbox.addWidget(self.target_del_class_btn, 5)
+        #
+        # self.left_panel.addLayout(class_hbox)
+        #
+        # # EFFECTORS
+        # class_hbox = QHBoxLayout()
+        # class_hbox.addWidget(QLabel('effector event: '), 25)
+        # self.effector_class_choice_cb = QComboBox()
+        #
+        # cols = np.array(self.df_effectors.columns)
+        # self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
+        # self.effector_class_cols = list(cols[self.effector_class_cols])
+        # try:
+        #     self.effector_class_cols.remove('class_id')
+        # except Exception:
+        #     pass
+        # try:
+        #     self.effector_class_cols.remove('class_color')
+        # except Exception:
+        #     pass
+        #
+        # self.effector_class_choice_cb.addItems(self.effector_class_cols)
+        # self.effector_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+        # self.effector_class_choice_cb.setCurrentIndex(0)
+        #
+        # class_hbox.addWidget(self.effector_class_choice_cb, 70)
+        #
+        # self.effector_add_class_btn = QPushButton('')
+        # self.effector_add_class_btn.setStyleSheet(self.button_select_all)
+        # self.effector_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
+        # self.effector_add_class_btn.setToolTip("Add a new event class")
+        # self.effector_add_class_btn.setIconSize(QSize(20, 20))
+        # self.effector_add_class_btn.clicked.connect(self.create_new_effector_event_class)
+        # class_hbox.addWidget(self.effector_add_class_btn, 5)
+        #
+        # self.effector_del_class_btn = QPushButton('')
+        # self.effector_del_class_btn.setStyleSheet(self.button_select_all)
+        # self.effector_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
+        # self.effector_del_class_btn.setToolTip("Delete an event class")
+        # self.effector_del_class_btn.setIconSize(QSize(20, 20))
+        # self.effector_del_class_btn.clicked.connect(self.del_effector_event_class)
+        # class_hbox.addWidget(self.effector_del_class_btn, 5)
+        # self.left_panel.addLayout(class_hbox)
 
-        cols = np.array(self.df_targets.columns)
-        self.target_class_cols = np.array([c.startswith('class') for c in list(self.df_targets.columns)])
-        self.target_class_cols = list(cols[self.target_class_cols])
-        try:
-            self.target_class_cols.remove('class_id')
-        except Exception:
-            pass
-        try:
-            self.target_class_cols.remove('class_color')
-        except Exception:
-            pass
+        #NEIGHBORHOOD
+        neigh_hbox = QHBoxLayout()
+        neigh_hbox.addWidget(QLabel('neighborhood: '), 25)
+        self.neighborhood_choice_cb = QComboBox()
+        self.neighborhood_choice_cb.addItems(self.neighborhood_cols)
+        # self.relative_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+        self.neighborhood_choice_cb.setCurrentIndex(0)
+        self.set_reference()
+        self.neighborhood_choice_cb.currentIndexChanged.connect(self.neighborhood_changed)
 
-        self.target_class_choice_cb.addItems(self.target_class_cols)
-        self.target_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
-        self.target_class_choice_cb.setCurrentIndex(0)
+        neigh_hbox.addWidget(self.neighborhood_choice_cb, 70)
+        self.left_panel.addLayout(neigh_hbox)
 
-        class_hbox.addWidget(self.target_class_choice_cb, 70)
+        # self.relative_add_class_btn = QPushButton('')
+        # self.relative_add_class_btn.setStyleSheet(self.button_select_all)
+        # self.relative_add_class_btn.setIcon(icon(MDI6.plus, color="black"))
+        # self.relative_add_class_btn.setToolTip("Add a new event class")
+        # self.relative_add_class_btn.setIconSize(QSize(20, 20))
+        # self.relative_add_class_btn.clicked.connect(self.create_new_relative_event_class)
+        # class_hbox.addWidget(self.relative_add_class_btn, 5)
 
-        self.target_add_class_btn = QPushButton('')
-        self.target_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.target_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
-        self.target_add_class_btn.setToolTip("Add a new event class")
-        self.target_add_class_btn.setIconSize(QSize(20, 20))
-        self.target_add_class_btn.clicked.connect(self.create_new_target_event_class)
-        class_hbox.addWidget(self.target_add_class_btn, 5)
-
-        self.target_del_class_btn = QPushButton('')
-        self.target_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.target_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
-        self.target_del_class_btn.setToolTip("Delete an event class")
-        self.target_del_class_btn.setIconSize(QSize(20, 20))
-        self.target_del_class_btn.clicked.connect(self.del_target_event_class)
-        class_hbox.addWidget(self.target_del_class_btn, 5)
-
-        self.left_panel.addLayout(class_hbox)
-
-        # EFFECTORS
-        class_hbox = QHBoxLayout()
-        class_hbox.addWidget(QLabel('effector event: '), 25)
-        self.effector_class_choice_cb = QComboBox()
-
-        cols = np.array(self.df_effectors.columns)
-        self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
-        self.effector_class_cols = list(cols[self.effector_class_cols])
-        try:
-            self.effector_class_cols.remove('class_id')
-        except Exception:
-            pass
-        try:
-            self.effector_class_cols.remove('class_color')
-        except Exception:
-            pass
-
-        self.effector_class_choice_cb.addItems(self.effector_class_cols)
-        self.effector_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
-        self.effector_class_choice_cb.setCurrentIndex(0)
-
-        class_hbox.addWidget(self.effector_class_choice_cb, 70)
-
-        self.effector_add_class_btn = QPushButton('')
-        self.effector_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.effector_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
-        self.effector_add_class_btn.setToolTip("Add a new event class")
-        self.effector_add_class_btn.setIconSize(QSize(20, 20))
-        self.effector_add_class_btn.clicked.connect(self.create_new_effector_event_class)
-        class_hbox.addWidget(self.effector_add_class_btn, 5)
-
-        self.effector_del_class_btn = QPushButton('')
-        self.effector_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
-        self.effector_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
-        self.effector_del_class_btn.setToolTip("Delete an event class")
-        self.effector_del_class_btn.setIconSize(QSize(20, 20))
-        self.effector_del_class_btn.clicked.connect(self.del_effector_event_class)
-        class_hbox.addWidget(self.effector_del_class_btn, 5)
-        self.left_panel.addLayout(class_hbox)
-
+        # self.relative_del_class_btn = QPushButton('')
+        # self.relative_del_class_btn.setStyleSheet(self.button_select_all)
+        # self.relative_del_class_btn.setIcon(icon(MDI6.delete, color="black"))
+        # self.relative_del_class_btn.setToolTip("Delete an event class")
+        # self.relative_del_class_btn.setIconSize(QSize(20, 20))
+        # self.relative_del_class_btn.clicked.connect(self.del_relative_event_class)
+        # class_hbox.addWidget(self.relative_del_class_btn, 5)
         #RELATIVE
         class_hbox = QHBoxLayout()
         class_hbox.addWidget(QLabel('relative event: '), 25)
@@ -199,7 +234,7 @@ class SignalAnnotator2(QMainWindow):
         class_hbox.addWidget(self.relative_class_choice_cb, 70)
 
         self.relative_add_class_btn = QPushButton('')
-        self.relative_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.relative_add_class_btn.setStyleSheet(self.button_select_all)
         self.relative_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
         self.relative_add_class_btn.setToolTip("Add a new event class")
         self.relative_add_class_btn.setIconSize(QSize(20, 20))
@@ -207,7 +242,7 @@ class SignalAnnotator2(QMainWindow):
         class_hbox.addWidget(self.relative_add_class_btn, 5)
 
         self.relative_del_class_btn = QPushButton('')
-        self.relative_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.relative_del_class_btn.setStyleSheet(self.button_select_all)
         self.relative_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
         self.relative_del_class_btn.setToolTip("Delete an event class")
         self.relative_del_class_btn.setIconSize(QSize(20, 20))
@@ -268,25 +303,25 @@ class SignalAnnotator2(QMainWindow):
         self.target_tab=QWidget()
         self.effector_tab=QWidget()
         self.relative_tab=QWidget()
-        self.correction_tabs.addTab(self.target_tab, 'target')
-        self.correction_tabs.addTab(self.effector_tab, 'effector')
+        #self.correction_tabs.addTab(self.target_tab, 'target')
+        #self.correction_tabs.addTab(self.effector_tab, 'effector')
         self.correction_tabs.addTab(self.relative_tab, 'relative')
         self.left_panel.addWidget(self.correction_tabs)
         target_tab_layout=QVBoxLayout()
         target_options_hbox = QHBoxLayout()
         self.target_event_btn = QRadioButton('event')
-        self.target_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.target_no_event_btn = QRadioButton('no event')
-        self.target_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_no_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_no_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.target_else_btn = QRadioButton('else')
-        self.target_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_else_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_else_btn.toggled.connect(self.enable_time_of_interest)
         self.target_suppr_btn = QRadioButton('mark for\nsuppression')
-        self.target_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_suppr_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_suppr_btn.toggled.connect(self.enable_time_of_interest)
         target_options_hbox.addWidget(self.target_event_btn)
         target_options_hbox.addWidget(self.target_no_event_btn)
@@ -304,18 +339,18 @@ class SignalAnnotator2(QMainWindow):
         effector_tab_layout = QVBoxLayout()
         effector_options_hbox = QHBoxLayout()
         self.effector_event_btn = QRadioButton('event')
-        self.effector_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.effector_no_event_btn = QRadioButton('no event')
-        self.effector_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_no_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_no_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.effector_else_btn = QRadioButton('else')
-        self.effector_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_else_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_else_btn.toggled.connect(self.enable_time_of_interest)
         self.effector_suppr_btn = QRadioButton('mark for\nsuppression')
-        self.effector_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_suppr_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_suppr_btn.toggled.connect(self.enable_time_of_interest)
         effector_options_hbox.addWidget(self.effector_event_btn)
         effector_options_hbox.addWidget(self.effector_no_event_btn)
@@ -333,18 +368,18 @@ class SignalAnnotator2(QMainWindow):
         relative_tab_layout = QVBoxLayout()
         relative_options_hbox = QHBoxLayout()
         self.relative_event_btn = QRadioButton('event')
-        self.relative_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.relative_no_event_btn = QRadioButton('no event')
-        self.relative_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_no_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_no_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.relative_else_btn = QRadioButton('else')
-        self.relative_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_else_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_else_btn.toggled.connect(self.enable_time_of_interest)
         self.relative_suppr_btn = QRadioButton('mark for\nsuppression')
-        self.relative_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_suppr_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_suppr_btn.toggled.connect(self.enable_time_of_interest)
         relative_options_hbox.addWidget(self.relative_event_btn)
         relative_options_hbox.addWidget(self.relative_no_event_btn)
@@ -402,13 +437,13 @@ class SignalAnnotator2(QMainWindow):
         self.correct_btn = QPushButton('correct')
         self.correct_btn.setIcon(icon(MDI6.redo_variant,color="white"))
         self.correct_btn.setIconSize(QSize(20, 20))
-        self.correct_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+        self.correct_btn.setStyleSheet(self.button_style_sheet)
         self.correct_btn.clicked.connect(self.show_annotation_buttons)
         self.correct_btn.setEnabled(False)
         main_action_hbox.addWidget(self.correct_btn)
 
         self.cancel_btn = QPushButton('cancel')
-        self.cancel_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.cancel_btn.setStyleSheet(self.button_style_sheet_2)
         self.cancel_btn.setShortcut(QKeySequence("Esc"))
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_selection)
@@ -439,7 +474,7 @@ class SignalAnnotator2(QMainWindow):
         plot_buttons_hbox = QHBoxLayout()
         plot_buttons_hbox.setContentsMargins(0,0,0,0)
         self.normalize_features_btn = QPushButton('')
-        self.normalize_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.normalize_features_btn.setStyleSheet(self.button_select_all)
         self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
         self.normalize_features_btn.setIconSize(QSize(25, 25))
         self.normalize_features_btn.setFixedSize(QSize(30, 30))
@@ -452,7 +487,7 @@ class SignalAnnotator2(QMainWindow):
 
         self.log_btn = QPushButton()
         self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-        self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.log_btn.setStyleSheet(self.button_select_all)
         self.log_btn.clicked.connect(self.switch_to_log)
         plot_buttons_hbox.addWidget(self.log_btn, 5)
 
@@ -510,12 +545,12 @@ class SignalAnnotator2(QMainWindow):
 
         btn_hbox = QHBoxLayout()
         self.save_btn = QPushButton('Save')
-        self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+        self.save_btn.setStyleSheet(self.button_style_sheet)
         self.save_btn.clicked.connect(self.save_trajectories)
         btn_hbox.addWidget(self.save_btn, 90)
 
         self.export_btn = QPushButton('')
-        self.export_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.export_btn.setStyleSheet(self.button_select_all)
         self.export_btn.clicked.connect(self.export_signals)
         self.export_btn.setIcon(icon(MDI6.export,color="black"))
         self.export_btn.setIconSize(QSize(25, 25))
@@ -532,7 +567,7 @@ class SignalAnnotator2(QMainWindow):
         self.first_frame_btn.clicked.connect(self.set_first_frame)
         self.first_frame_btn.setShortcut(QKeySequence('f'))
         self.first_frame_btn.setIcon(icon(MDI6.page_first,color="black"))
-        self.first_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.first_frame_btn.setStyleSheet(self.button_select_all)
         self.first_frame_btn.setFixedSize(QSize(60, 60))
         self.first_frame_btn.setIconSize(QSize(30, 30))
 
@@ -542,14 +577,14 @@ class SignalAnnotator2(QMainWindow):
         self.last_frame_btn.clicked.connect(self.set_last_frame)
         self.last_frame_btn.setShortcut(QKeySequence('l'))
         self.last_frame_btn.setIcon(icon(MDI6.page_last,color="black"))
-        self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.last_frame_btn.setStyleSheet(self.button_select_all)
         self.last_frame_btn.setFixedSize(QSize(60, 60))
         self.last_frame_btn.setIconSize(QSize(30, 30))
 
         self.stop_btn = QPushButton()
         self.stop_btn.clicked.connect(self.stop)
         self.stop_btn.setIcon(icon(MDI6.stop,color="black"))
-        self.stop_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.stop_btn.setStyleSheet(self.button_select_all)
         self.stop_btn.setFixedSize(QSize(60, 60))
         self.stop_btn.setIconSize(QSize(30, 30))
 
@@ -558,7 +593,7 @@ class SignalAnnotator2(QMainWindow):
         self.start_btn.clicked.connect(self.start)
         self.start_btn.setIcon(icon(MDI6.play,color="black"))
         self.start_btn.setFixedSize(QSize(60, 60))
-        self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.start_btn.setStyleSheet(self.button_select_all)
         self.start_btn.setIconSize(QSize(30, 30))
         self.start_btn.hide()
 
@@ -922,6 +957,8 @@ class SignalAnnotator2(QMainWindow):
         cols = np.array(self.df_relative.columns)
         self.relative_class_cols = np.array([c.startswith('class') for c in list(self.df_relative.columns)])
         self.relative_class_cols = list(cols[self.relative_class_cols])
+
+
         try:
             self.relative_class_cols.remove('class_id')
             self.relative_class_cols.remove('class_color')
@@ -1037,12 +1074,12 @@ class SignalAnnotator2(QMainWindow):
         try:
             self.target_selection.pop(0)
             self.hide_target_cell_info()
-            self.hide_effector_cell_info()
+            #self.hide_effector_cell_info()
         except Exception as e:
             print(e)
         try:
             self.effector_selection.pop(0)
-            self.hide_effector_cell_info()
+            #self.hide_effector_cell_info()
         except Exception as e:
             print(e)
 
@@ -1053,14 +1090,24 @@ class SignalAnnotator2(QMainWindow):
             for (t,idx) in (zip(self.target_loc_t_not_picked,self.target_loc_idx_not_picked)):
                 self.target_colors[t][idx, 0] = self.initial_target_colors[t][idx,0]
                 self.target_colors[t][idx, 1] = self.initial_target_colors[t][idx,1]
-            for t in range(len(self.effector_colors)):
-                for ind in range(len(self.effector_colors[t])):
-                    self.effector_colors[t][ind] = self.initial_effector_colors[t][ind]
-            if self.neighbors != {}:
-                for key in self.neighbors.keys():
-                    for value in self.neighbors[key]:
-                        self.effector_colors[key][value, 0] = self.initial_effector_colors[key][value, 0]
-                        self.effector_colors[key][value, 1] = self.initial_effector_colors[key][value, 1]
+            for t in range(len(self.target_colors)):
+                for ind in range(len(self.target_colors[t])):
+                    self.target_colors[t][ind] = self.initial_target_colors[t][ind]
+
+            # if self.neighbors != {}:
+            #     # print(self.neigh_pop)
+            #     # if self.neigh_pop=='effectors':
+            #     #     for key in self.neighbors.keys():
+            #     #         for value in self.neighbors[key]:
+            #     #             self.effector_colors[key][value, 0] = self.initial_effector_colors[key][value, 0]
+            #     #             self.effector_colors[key][value, 1] = self.initial_effector_colors[key][value, 1]
+            #
+            #         for key in self.neighbors.keys():
+            #             for value in self.neighbors[key]:
+            #                 self.target_colors[key][value, 0] = self.initial_target_colors[key][value, 0]
+            #                 self.target_colors[key][value, 1] = self.initial_target_colors[key][value, 1]
+            # else:
+            #     print('vsmisle')
         except Exception as e:
             print(f'{e=}')
 
@@ -1068,8 +1115,20 @@ class SignalAnnotator2(QMainWindow):
             for k,(t,idx) in enumerate(zip(self.effector_loc_t,self.effector_loc_idx)):
                 self.effector_colors[t][idx,0] = self.initial_effector_colors[t][idx,0]
                 self.effector_colors[t][idx,1] = self.initial_effector_colors[t][idx,1]
+            for (t,idx) in (zip(self.effector_loc_t_not_picked,self.effector_loc_idx_not_picked)):
+                self.effector_colors[t][idx, 0] = self.initial_effector_colors[t][idx,0]
+                self.effector_colors[t][idx, 1] = self.initial_effector_colors[t][idx,1]
+            for t in range(len(self.effector_colors)):
+                print('a tut norm?')
+                for ind in range(len(self.effector_colors[t])):
+                    self.effector_colors[t][ind] = self.initial_effector_colors[t][ind]
 
+        except Exception as e:
+            print(f'{e=}')
 
+        try:
+            self.lines_data={}
+            self.lines_list=[]
 
         except Exception as e:
             print(f'{e=}')
@@ -1138,14 +1197,20 @@ class SignalAnnotator2(QMainWindow):
         if self.effector_track_of_interest is not None:
             #print(self.df_effectors['TRACK_ID']==self.effector_track_of_interest)
             #print
-            cclass_effectors = self.df_effectors.loc[
-                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest,
-                self.effector_class_name
-            ].to_numpy()[0]
+            try:
+                cclass_effectors = self.df_effectors.loc[
+                    self.df_effectors['TRACK_ID'] == self.effector_track_of_interest,
+                    self.effector_class_name].to_numpy()[0]
 
-            t0_effectors = self.df_effectors.loc[
-                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+                t0_effectors = self.df_effectors.loc[
+                    self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+            except:
+                cclass_effectors = self.df_effectors.loc[
+                    self.df_effectors['ID'] == self.effector_track_of_interest,
+                    self.effector_class_name].to_numpy()[0]
 
+                t0_effectors = self.df_effectors.loc[
+                    self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
             if cclass_effectors==0:
                 self.effector_event_btn.setChecked(True)
                 self.effector_time_of_interest_le.setText(str(t0_effectors))
@@ -1158,11 +1223,11 @@ class SignalAnnotator2(QMainWindow):
         if self.effector_track_of_interest is not None and self.target_track_of_interest is not None:
             try:
                 cclass_relative = self.df_relative.loc[
-                    (self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                    (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative['NEIGHBOR_ID'] == self.effector_track_of_interest),
                     self.relative_class_name].to_numpy()[0]
 
                 t0_relative = self.df_relative.loc[
-                    (self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), self.relative_time_name].to_numpy()[0]
+                    (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative['NEIGHBOR_ID'] == self.effector_track_of_interest), self.relative_time_name].to_numpy()[0]
             except:
                 cclass_relative=2
                 t0_relative=0
@@ -1304,11 +1369,18 @@ class SignalAnnotator2(QMainWindow):
                 cclass_effector = 2
             elif self.effector_suppr_btn.isChecked():
                 cclass_effector = 42
-            self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass_effector
-            self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name] = t0_effector
-
-            indices = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].index
-            timeline = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+            try:
+                self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass_effector
+                self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name] = t0_effector
+            except:
+                self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_class_name] = cclass_effector
+                self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name] = t0_effector
+            try:
+                indices = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].index
+                timeline = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+            except:
+                indices = self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_class_name].index
+                timeline = self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
             status = np.zeros_like(timeline)
             if t0_effector > 0:
                 status[timeline>=t0_effector] = 1.
@@ -1343,11 +1415,11 @@ class SignalAnnotator2(QMainWindow):
                 cclass_relative = 2
             elif self.relative_suppr_btn.isChecked():
                 cclass_relative = 42
-            self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID']==self.effector_track_of_interest), self.relative_class_name] = cclass_relative
-            self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID']==self.effector_track_of_interest), self.relative_time_name] = t0_relative
+            self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.effector_track_of_interest), self.relative_class_name] = cclass_relative
+            self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.effector_track_of_interest), self.relative_time_name] = t0_relative
 
-            indices = self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID']==self.effector_track_of_interest), self.relative_class_name].index
-            timeline = self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID']==self.effector_track_of_interest), 'FRAME'].to_numpy()
+            indices = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.effector_track_of_interest), self.relative_class_name].index
+            timeline = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.effector_track_of_interest), 'FRAME'].to_numpy()
             status = np.zeros_like(timeline)
             if t0_relative > 0:
                 status[timeline>=t0_relative] = 1.
@@ -1398,7 +1470,7 @@ class SignalAnnotator2(QMainWindow):
 
         """
 
-        movies = glob(self.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
+        movies = glob(self.pos + f"movie/{self.parent_window.parent_window.movie_prefix}*.tif")
 
         if len(movies)==0:
             msgBox = QMessageBox()
@@ -1411,7 +1483,7 @@ class SignalAnnotator2(QMainWindow):
                 self.close()
         else:
             self.stack_path = movies[0]
-            self.len_movie = self.parent.parent.len_movie
+            self.len_movie = self.parent_window.parent_window.len_movie
             len_movie_auto = auto_load_number_of_frames(self.stack_path)
             if len_movie_auto is not None:
                 self.len_movie = len_movie_auto
@@ -1553,7 +1625,11 @@ class SignalAnnotator2(QMainWindow):
 
             # Load and prep tracks
             self.df_effectors = pd.read_csv(self.effector_trajectories_path)
-            self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            try:
+                self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            except:
+                self.df_effectors = self.df_effectors.sort_values(by=['ID', 'FRAME'])
+
 
             cols = np.array(self.df_effectors.columns)
             self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
@@ -1610,7 +1686,11 @@ class SignalAnnotator2(QMainWindow):
             self.df_effectors['y_anim'] = self.df_effectors['y_anim'].astype(int)
 
             self.extract_scatter_from_effector_trajectories()
-            self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            try:
+                self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            except:
+                self.effector_track_of_interest = self.df_effectors['ID'].min()
+
 
             self.loc_t = []
             self.loc_idx = []
@@ -1628,7 +1708,7 @@ class SignalAnnotator2(QMainWindow):
             # self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
             # print(self.columns_to_rescale)
 
-            cols_to_remove = ['status','status_color','class_color','TRACK_ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.effector_class_cols
+            cols_to_remove = ['status','status_color','class_color','TRACK_ID','ID', 'FRAME','x_anim','y_anim','t', 'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X', 'POSITION_Y','position','well','well_index','well_name','pos_name','index','concentration','cell_type','antibody','pharmaceutical_agent'] + self.effector_class_cols
             cols = np.array(list(self.df_effectors.columns))
             time_cols = np.array([c.startswith('t_') for c in cols])
             time_cols = list(cols[time_cols])
@@ -1666,23 +1746,30 @@ class SignalAnnotator2(QMainWindow):
 
             # Load and prep tracks
             self.df_relative = pd.read_csv(self.relative_trajectories_path)
-            self.df_relative= self.df_relative.sort_values(by=['TARGET_ID', 'FRAME'])
+            self.df_relative= self.df_relative.sort_values(by=['REFERENCE_ID', 'FRAME'])
 
             self.relative_cols = np.array(self.df_relative.columns)
 
         self.columns_to_rescale_relative = list(self.df_relative.columns)
+
 
         # is_number = np.vectorize(lambda x: np.issubdtype(x, np.number))
         # is_number_test = is_number(self.df_tracks.dtypes)
         # self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
         # print(self.columns_to_rescale)
 
-        cols_to_remove = ['TARGET_ID','EFFECTOR_ID','FRAME','t0_lysis']
+        cols_to_remove = ['REFERENCE_ID','NEIGHBOR_ID','FRAME','t0_arrival']
         cols = np.array(list(self.df_relative.columns))
         time_cols = np.array([c.startswith('t_') for c in cols])
         time_cols = list(cols[time_cols])
         cols_to_remove += time_cols
         self.relative_class_cols = np.array([c.startswith('class') for c in list(self.df_relative.columns)])
+        self.neighborhood_cols = np.array([c.startswith('neighborhood') for c in list(self.df_relative.columns)])
+
+        try:
+            self.neighborhood_cols = list(cols[self.neighborhood_cols])
+        except:
+            pass
         try:
             self.relative_class_cols = list(cols[self.relative_class_cols])
         except:
@@ -1710,7 +1797,7 @@ class SignalAnnotator2(QMainWindow):
                 self.relative_expected_status += '_' + suffix
                 self.relative_expected_time = 't_' + suffix
             else:
-                self.relative_expected_time = 't0_lysis'
+                self.relative_expected_time = 't0_arrival'
             self.relative_time_name = self.relative_expected_time
             self.relative_status_name = self.relative_expected_status
         else:
@@ -1814,6 +1901,20 @@ class SignalAnnotator2(QMainWindow):
     # self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
 
+    def set_reference(self):
+        n = self.neighborhood_choice_cb.currentText()
+        if 'self' in self.neighborhood_choice_cb.currentText():
+
+            self.ref_pop=np.array(self.df_relative.loc[self.df_relative[n]==1,'ref_population'])
+            self.ref_pop=self.ref_pop[0]
+            self.neigh_pop = self.ref_pop
+        else:
+            self.ref_pop=np.array(self.df_relative.loc[self.df_relative[n]==1,'ref_population'])
+            self.ref_pop=self.ref_pop[0]
+            if self.ref_pop=='targets':
+                self.neigh_pop='effectors'
+            else:
+                self.neigh_pop='targets'
 
     def make_target_status_column(self):
 
@@ -1840,9 +1941,12 @@ class SignalAnnotator2(QMainWindow):
 
 
     def make_effector_status_column(self):
-
+        if 'TRACK_ID' in self.df_effectors.columns:
+            id_type="TRACK_ID"
+        else:
+            id_type="ID"
         print('remaking the status column')
-        for tid, group in self.df_effectors.groupby('TRACK_ID'):
+        for tid, group in self.df_effectors.groupby(id_type):
 
             indices = group.index
             t0 = group[self.effector_time_name].to_numpy()[0]
@@ -1869,7 +1973,7 @@ class SignalAnnotator2(QMainWindow):
         self.target_signals = list(self.df_targets.columns)
         self.effector_signals = list(self.df_effectors.columns)
         self.relative_signals = list(self.relative_cols)
-        to_remove = ['TARGET_ID', 'EFFECTOR_ID', 'FRAME', 't0_lysis', 'TRACK_ID', 'class_color', 'status_color',
+        to_remove = ['REFERENCE_ID', 'NEIGHBOR_ID', 'FRAME', 't0_arrival', 'TRACK_ID', 'class_color', 'status_color',
                      'FRAME', 'x_anim', 'y_anim', 't', 'state', 'generation', 'root', 'parent', 'class_id', 'class',
                      't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name',
                      'index', 'relxy', 'tc', 'nk']
@@ -1970,7 +2074,10 @@ class SignalAnnotator2(QMainWindow):
 
 
     def plot_signals(self):
-
+        self.dataframes = {
+            'targets': self.df_targets,
+            'effectors': self.df_effectors,
+        }
         try:
             yvalues = []
             for i in range(len(self.signal_choices)):
@@ -1984,72 +2091,97 @@ class SignalAnnotator2(QMainWindow):
                 else:
                     if i == 0:
                         if self.target_button1.isChecked():
-                            self.lines[i].set_label('target '+signal_choice)
+                            df_ref=self.dataframes[self.ref_pop]
+                            self.lines[i].set_label(f'{self.ref_pop} '+signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
-                            xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+                            xdata = df_ref.loc[df_ref['TRACK_ID']==self.reference_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = df_ref.loc[df_ref['TRACK_ID']==self.reference_track_of_interest, signal_choice].to_numpy()
                         if self.effector_button1.isChecked():
-                            self.lines[i].set_label('effector ' + signal_choice)
+                            df_neigh=self.dataframes[self.neigh_pop]
+                            self.lines[i].set_label(f'{self.neigh_pop} ' + signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
-                            xdata = self.df_effectors.loc[
-                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_effectors.loc[self.df_effectors[
-                                                              'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                            xdata = df_neigh.loc[
+                                df_neigh['TRACK_ID'] == self.neighbor_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = df_neigh.loc[df_neigh[
+                                                            'TRACK_ID'] == self.neighbor_track_of_interest, signal_choice].to_numpy()
+                            # except:
+                            #     xdata = self.df_effectors.loc[
+                            #         self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                            #     ydata = self.df_effectors.loc[self.df_effectors[
+                            #                                   'ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
                         if self.relative_button1.isChecked():
                             self.lines[i].set_label('relative ' + signal_choice)
                             print(
                                 f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
-                            xdata = self.df_targets.loc[
-                                self.df_targets['TRACK_ID'] == self.target_track_of_interest, 'FRAME'].to_numpy()
+                            xdata = self.dataframes[self.ref_pop].loc[self.dataframes[self.ref_pop][
+                                                                          'TRACK_ID'] == self.reference_track_of_interest, 'FRAME'].to_numpy()
                             ydata = self.df_relative.loc[
-                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-                                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                                (self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest) & (
+                                            self.df_relative['NEIGHBOR_ID'] == self.neighbor_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),
                                 signal_choice].to_numpy()
                     elif i == 1:
                         if self.target_button2.isChecked():
-                            self.lines[i].set_label('target '+signal_choice)
+                            df_ref = self.dataframes[self.ref_pop]
+                            self.lines[i].set_label(f'{self.ref_pop} ' + signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
-                            xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+                            xdata = df_ref.loc[
+                                df_ref['TRACK_ID'] == self.reference_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = df_ref.loc[
+                                df_ref['TRACK_ID'] == self.reference_track_of_interest, signal_choice].to_numpy()
                         if self.effector_button2.isChecked():
-                            self.lines[i].set_label('effector ' + signal_choice)
+                            df_neigh = self.dataframes[self.neigh_pop]
+                            self.lines[i].set_label(f'{self.neigh_pop} ' + signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
-                            xdata = self.df_effectors.loc[
-                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_effectors.loc[self.df_effectors[
-                                                              'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                            xdata = df_neigh.loc[
+                                df_neigh['TRACK_ID'] == self.neighbor_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = df_neigh.loc[df_neigh[
+                                                     'TRACK_ID'] == self.neighbor_track_of_interest, signal_choice].to_numpy()
+                            # except:
+                            #     xdata = self.df_effectors.loc[
+                            #         self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                            #     ydata = self.df_effectors.loc[self.df_effectors[
+                            #                                   'ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
                         if self.relative_button2.isChecked():
                             self.lines[i].set_label('relative ' + signal_choice)
                             print(
                                 f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
-                            xdata = self.df_targets.loc[
-                                self.df_targets['TRACK_ID'] == self.target_track_of_interest, 'FRAME'].to_numpy()
+                            xdata = self.dataframes[self.ref_pop].loc[self.dataframes[self.ref_pop][
+                                                                          'TRACK_ID'] == self.reference_track_of_interest, 'FRAME'].to_numpy()
                             ydata = self.df_relative.loc[
-                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-                                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                                (self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest) & (
+                                            self.df_relative['NEIGHBOR_ID'] == self.neighbor_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),
                                 signal_choice].to_numpy()
                     else:
                         if self.target_button3.isChecked():
-                            self.lines[i].set_label('target '+signal_choice)
+                            df_ref = self.dataframes[self.ref_pop]
+                            self.lines[i].set_label(f'{self.ref_pop} ' + signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.target_track_of_interest}')
-                            xdata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, signal_choice].to_numpy()
+                            xdata = df_ref.loc[
+                                df_ref['TRACK_ID'] == self.reference_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = df_ref.loc[
+                                df_ref['TRACK_ID'] == self.reference_track_of_interest, signal_choice].to_numpy()
                         if self.effector_button3.isChecked():
-                            self.lines[i].set_label('effector ' + signal_choice)
+                            df_neigh = self.dataframes[self.neigh_pop]
+                            self.lines[i].set_label(f'{self.neigh_pop} ' + signal_choice)
                             print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
-                            xdata = self.df_effectors.loc[
-                                self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
-                            ydata = self.df_effectors.loc[self.df_effectors[
-                                                              'TRACK_ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
+                            xdata = df_neigh.loc[
+                                df_neigh['TRACK_ID'] == self.neighbor_track_of_interest, 'FRAME'].to_numpy()
+                            ydata = df_neigh.loc[df_neigh[
+                                                     'TRACK_ID'] == self.neighbor_track_of_interest, signal_choice].to_numpy()
+                            # except:
+                            #     xdata = self.df_effectors.loc[
+                            #         self.df_effectors['ID'] == self.effector_track_of_interest, 'FRAME'].to_numpy()
+                            #     ydata = self.df_effectors.loc[self.df_effectors[
+                            #                                   'ID'] == self.effector_track_of_interest, signal_choice].to_numpy()
                         if self.relative_button3.isChecked():
                             self.lines[i].set_label('relative ' + signal_choice)
                             print(
                                 f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
-                            xdata = self.df_targets.loc[
-                                self.df_targets['TRACK_ID'] == self.target_track_of_interest, 'FRAME'].to_numpy()
+                            xdata = self.dataframes[self.ref_pop].loc[self.dataframes[self.ref_pop][
+                                                                          'TRACK_ID'] == self.reference_track_of_interest, 'FRAME'].to_numpy()
                             ydata = self.df_relative.loc[
-                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-                                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest),
+                                (self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest) & (
+                                            self.df_relative['NEIGHBOR_ID'] == self.neighbor_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),
                                 signal_choice].to_numpy()
                         # if ydata!=[]:
                         # 	print(ydata.shape)
@@ -2062,12 +2194,11 @@ class SignalAnnotator2(QMainWindow):
                     ydata = ydata[ydata == ydata]
 
                     yvalues.extend(ydata)
-                    #t0 = self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest)&(self.df_relative['effector']==self.effector_track_of_interest),'t0_lysis'].to_numpy()
-                    #print(t0)
-                    #self.line_dt.set_xdata([t0, t0])
-                    #min_val=np.min(ydata)
-                    #max_val=np.max(ydata)
-                    #self.line_dt.set_ydata([min_val, max_val])
+                    t0 = self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest),'t0_arrival'].to_numpy()
+                    self.line_dt.set_xdata([t0, t0])
+                    min_val=np.min(ydata)
+                    max_val=np.max(ydata)
+                    self.line_dt.set_ydata([min_val, max_val])
                     self.lines[i].set_xdata(xdata)
                     self.lines[i].set_ydata(ydata)
                     self.lines[i].set_color(tab10(i / 3.))
@@ -2077,8 +2208,8 @@ class SignalAnnotator2(QMainWindow):
             self.configure_ylims()
 
             min_val,max_val = self.cell_ax.get_ylim()
-            t0 = self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-                        self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), 't0_lysis'].to_numpy()
+            t0 = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest) & (
+                        self.df_relative['NEIGHBOR_ID'] == self.neighbor_track_of_interest), 't0_arrival'].to_numpy()
             if t0!=[]:
                 t0=t0[0]
                 self.line_dt.set_xdata([t0, t0])
@@ -2118,8 +2249,11 @@ class SignalAnnotator2(QMainWindow):
             self.effector_positions.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['x_anim', 'y_anim']].to_numpy())
             self.effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['class_color', 'status_color']].to_numpy())
             self.initial_effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME'] == t, ['class_color', 'status_color']].to_numpy())
-            self.effector_tracks.append(self.df_effectors.loc[self.df_effectors['FRAME']==t, 'TRACK_ID'].to_numpy())
-
+            try:
+                self.effector_tracks.append(self.df_effectors.loc[self.df_effectors['FRAME']==t, 'TRACK_ID'].to_numpy())
+            except:
+                self.effector_tracks.append(
+                    self.df_effectors.loc[self.df_effectors['FRAME'] == t, 'ID'].to_numpy())
 
     def load_annotator_config(self):
 
@@ -2207,6 +2341,12 @@ class SignalAnnotator2(QMainWindow):
 
         print(f'Load stack of shape: {self.stack.shape}.')
 
+    def neighborhood_changed(self):
+        self.set_reference()
+        self.cancel_selection()
+        # self.draw_frame(self.framedata)
+        self.plot_signals()
+
 
     def closeEvent(self, event):
 
@@ -2231,13 +2371,21 @@ class SignalAnnotator2(QMainWindow):
         self.fig, self.ax = plt.subplots(tight_layout=True)
         self.fcanvas = FigureCanvas(self.fig, interactive=True)
         self.ax.clear()
+        if not hasattr(self, 'lines'):
+            self.lines_data = {}
+        # if not hasattr(self, 'lines_neigh'):
+        #     self.lines_neigh = []
 
         self.im = self.ax.imshow(self.stack[0], cmap='gray')
         self.target_status_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker="x", c=self.target_colors[0][:,1], s=50, picker=True, pickradius=10)
         self.target_class_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker='o', facecolors='none',edgecolors=self.target_colors[0][:,0], s=200)
 
-        self.effector_status_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker="x", c=self.effector_colors[0][:,1], s=50, picker=True, pickradius=10)
-        self.effector_class_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker='^', facecolors='none',edgecolors=self.effector_colors[0][:,0], s=200)
+        if self.ref_pop!=self.neigh_pop:
+
+            self.effector_status_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker="x", c=self.effector_colors[0][:,1], s=50, picker=True, pickradius=10)
+            self.effector_class_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker='^', facecolors='none',edgecolors=self.effector_colors[0][:,0], s=200)
+
+
 
         self.ax.set_xticks([])
         self.ax.set_yticks([])
@@ -2292,19 +2440,30 @@ class SignalAnnotator2(QMainWindow):
     def on_scatter_pick(self, event):
 
         ind = event.ind
-
         label = event.artist.get_label()
         print(f'{label=}')
 
+        pop2='nothing'
         if label == '_child1':
-            pop = 'targets'
+            #print(f'{label=}')
+            self.pop = 'targets'
         elif label == '_child3':
-            pop = 'effectors'
+            #print(f'{label=}')
+            self.pop = 'effectors'
         else:
-            return None
+            number=int(label.split('_child')[1])
+            if number>4:
+                pop2 = 'pair'
+            else:
+                return None
+
+        # for line in self.lines_neigh:
+        #     line.remove()
+
+        #self.lines_data.clear()
 
 
-        if pop=='targets':
+        if self.pop=='targets':
             self.correction_tabs.setTabEnabled(0,True)
             if len(ind)>1:
                 # More than one point in vicinity
@@ -2328,13 +2487,15 @@ class SignalAnnotator2(QMainWindow):
                 except:
                     pass
                 try:
-                    neighbors = self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest),'EFFECTOR_ID']
-                    best_neighbor=self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest)]
-                    best_neighbor=best_neighbor
-                    best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'EFFECTOR_ID')])[0]
-                    self.effector_track_of_interest=best_neighbor
-                    self.give_effector_cell_information()
+                    neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
+                    #best_neighbor=self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1)]
+                    #best_neighbor=best_neighbor
                     neighbors = np.unique(neighbors)
+                    best_neighbor=np.min(neighbors)
+                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['NEIGHBOR_ID']==np.min(best_neighbor['NEIGHBOR_ID']),'NEIGHBOR_ID')])[0]
+                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'NEIGHBOR_ID')])[0]
+                    self.neighbor_track_of_interest=best_neighbor
+                    #self.give_effector_cell_information()
                 except:
                     neighbors=[]
                 # print(best_neighbor)
@@ -2342,7 +2503,7 @@ class SignalAnnotator2(QMainWindow):
 
                 print(f'You selected track {self.target_track_of_interest}.')
                 self.give_target_cell_information()
-
+                self.reference_track_of_interest=self.target_track_of_interest
                 self.plot_signals()
 
                 self.target_loc_t = []
@@ -2365,8 +2526,13 @@ class SignalAnnotator2(QMainWindow):
                 self.target_previous_color = []
                 self.neighbors={}
                 self.target_not_picked_initial_colors=[]
-
+                ref_x=[]
+                ref_y=[]
                 for t,idx in zip(self.target_loc_t,self.target_loc_idx):
+                    ref_x.append(self.target_positions[t][idx, 0])
+                    ref_y.append(self.target_positions[t][idx, 1])
+                    # ref_x[t] = self.target_positions[t][idx, 0]
+                    # ref_y[t] = self.target_positions[t][idx, 1]
                     #neigh=pd.read_pickle(self.neigh_trajectories_path)
                     #print(neigh)
                     #columns_of_interest = neigh.filter(like='neighborhood_2_circle_200_px').columns
@@ -2407,46 +2573,122 @@ class SignalAnnotator2(QMainWindow):
                     self.target_colors[t][idx] = 'lime'
                 for t, idx in zip(self.target_loc_t_not_picked, self.target_loc_idx_not_picked):
                     self.target_not_picked_initial_colors.append(self.target_colors[t][idx].copy())
+                    self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
                     self.target_colors[t][idx] = 'black'
-                # print(self.effector_loc_t)
-                # print(self.effector_loc_idx)
+
                 self.effector_previous_color = []
-                #print(neighbors)
-                # for t_eff, idx_eff in zip(self.effector_loc_t, self.effector_loc_idx):
-                # 	self.effector_previous_color.append(self.effector_colors[t_eff][idx_eff].copy())
-                # 	self.effector_colors[t_eff][idx_eff] = 'darkorange'
-                for effector in neighbors:
-                    self.effector_loc_t = []
-                    self.effector_loc_idx = []
-                    for t in range(len(self.effector_tracks)):
-                        indices = np.where(self.effector_tracks[t]==effector)[0]
-                        if len(indices)>0:
-                            self.effector_loc_t.append(t)
-                            self.effector_loc_idx.append(indices[0])
-                    self.effector_previous_color = []
-                    for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
-                        if effector == self.effector_track_of_interest:
-                            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                            self.effector_colors[t][idx] = 'magenta'
-                        else:
-                            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                            self.effector_colors[t][idx] = 'salmon'
-
-                for t in range(len(self.effector_colors)):
-                    for idx in range(len(self.effector_colors[t])):
-                        if self.effector_colors[t][idx].any() != 'salmon':
-                            if self.effector_colors[t][idx].any() != 'magenta':
-                                self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
-                                self.effector_colors[t][idx] = 'black'
+                self.lines_data = {}
+                self.points_data = {}
+                self.connections={}
 
 
-            elif len(ind)>0 and len(self.target_selection)==1:
+                if self.ref_pop != self.neigh_pop:
+                    for effector in neighbors:
+                        self.effector_loc_t = []
+                        self.effector_loc_idx = []
+                        for t in range(len(self.effector_tracks)):
+                            indices = np.where(self.effector_tracks[t]==effector)[0]
+                            if len(indices)>0:
+                                self.effector_loc_t.append(t)
+                                self.effector_loc_idx.append(indices[0])
+                        self.effector_previous_color = []
+                        for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+                            neigh_x=self.effector_positions[t][idx, 0]
+                            neigh_y=self.effector_positions[t][idx, 1]
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-',alpha=1,linewidth=2)
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                                                # linewidth=2,picker=True)
+                            #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
+                            else:
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
+
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            #self.ax.draw_artist(line)
+
+                            if effector == self.neighbor_track_of_interest:
+                                self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                self.effector_colors[t][idx] = 'magenta'
+                            else:
+                                self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                self.effector_colors[t][idx] = 'salmon'
+
+                    for t in range(len(self.effector_colors)):
+                        for idx in range(len(self.effector_colors[t])):
+                            if self.effector_colors[t][idx].any() != 'salmon':
+                                if self.effector_colors[t][idx].any() != 'magenta':
+                                    self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
+                                    self.effector_colors[t][idx] = 'black'
+                else:
+                    for target in neighbors:
+                        self.target_loc_t = []
+                        self.target_loc_idx = []
+                        for t in range(len(self.target_tracks)):
+                            indices = np.where(self.target_tracks[t] == target)[0]
+                            if len(indices) > 0:
+                                self.target_loc_t.append(t)
+                                self.target_loc_idx.append(indices[0])
+                        self.target_previous_color = []
+                        for t, idx in zip(self.target_loc_t, self.target_loc_idx):
+                            neigh_x = self.target_positions[t][idx, 0]
+                            neigh_y = self.target_positions[t][idx, 1]
+                            # print(ref_x[t])
+                            # print(ref_y[t])
+                            # print(neigh_x)
+                            # print(neigh_y)
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            # line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                            #                      linewidth=2,picker=True)
+                            #
+                            # point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
+                            else:
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
+
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            #     self.point_neigh[t]=[point]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            #     self.point_neigh[t].append(point)
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            #self.ax.draw_artist(line)
+
+                            if target == self.neighbor_track_of_interest:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'magenta'
+                            else:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'salmon'
+
+                    for t in range(len(self.target_colors)):
+                        for idx in range(len(self.target_colors[t])):
+                            if self.target_colors[t][idx].any() != 'salmon':
+                                if self.target_colors[t][idx].any() != 'magenta':
+                                    if self.target_colors[t][idx].any() != 'lime':
+                                        self.target_colors[t][idx] = 'black'
+
+            elif len(ind)>0 and len(self.target_selection)==1 and pop2!='pair':
                 self.cancel_btn.click()
             else:
                 pass
 
-        elif pop=='effectors':
-            self.correction_tabs.setTabEnabled(1, True)
+        elif self.pop=='effectors':
+            self.correction_tabs.setTabEnabled(1,True)
             if len(ind)>1:
                 # More than one point in vicinity
                 datax,datay = [self.effector_positions[self.framedata][i,0] for i in ind],[self.effector_positions[self.framedata][i,1] for i in ind]
@@ -2462,47 +2704,247 @@ class SignalAnnotator2(QMainWindow):
                 self.cancel_btn.setEnabled(True)
                 self.del_shortcut.setEnabled(True)
                 self.no_event_shortcut.setEnabled(True)
-                self.effector_loc_t = []
-                self.effector_loc_idx = []
-                for t in range(len(self.effector_tracks)):
-                    indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
-                    if len(indices) > 0:
-                        self.effector_loc_t.append(t)
-                        self.effector_loc_idx.append(indices[0])
 
-                self.effector_previous_color = []
-                for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
-                    if self.effector_colors[t][idx].any() == 'magenta':
-                        self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                        self.effector_colors[t][idx] = 'salmon'
                 self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
-                print(f'You selected track {self.effector_track_of_interest}.')
-
-                if hasattr(self, 'eff_cls'):
+                try:
                     self.hide_effector_cell_info()
-                self.give_effector_cell_information()
+                except:
+                    pass
+                try:
+                    neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.effector_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
+                    #best_neighbor=self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1)]
+                    #best_neighbor=best_neighbor
+                    neighbors = np.unique(neighbors)
+                    best_neighbor=np.min(neighbors)
+                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['NEIGHBOR_ID']==np.min(best_neighbor['NEIGHBOR_ID']),'NEIGHBOR_ID')])[0]
+                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'NEIGHBOR_ID')])[0]
+                    self.neighbor_track_of_interest=best_neighbor
+                    #self.give_effector_cell_information()
+                except:
+                    neighbors=[]
+                # print(best_neighbor)
+                # print(neighboors)
 
+                print(f'You selected track {self.effector_track_of_interest}.')
+                self.give_effector_cell_information()
+                self.reference_track_of_interest=self.effector_track_of_interest
                 self.plot_signals()
 
+                self.effector_loc_t = []
+                self.effector_loc_idx = []
+                self.effector_loc_t_not_picked = []
+                self.effector_loc_idx_not_picked=[]
+                self.target_loc_t_not_picked= []
+                self.target_loc_idx_not_picked = []
+                #self.effector_previous_color = []
                 for t in range(len(self.effector_tracks)):
-                    indices = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
-                    if len(indices)>0:
+                    indices_picked = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
+                    indices_not_picked = np.where(self.effector_tracks[t]!=self.effector_track_of_interest)
+                    self.effector_loc_t_not_picked.append(t)
+                    self.effector_loc_idx_not_picked.append(indices_not_picked[0])
+                    if len(indices_picked)>0:
                         self.effector_loc_t.append(t)
-                        self.effector_loc_idx.append(indices[0])
+                        self.effector_loc_idx.append(indices_picked[0])
 
 
                 self.effector_previous_color = []
+                self.neighbors={}
+                self.effector_not_picked_initial_colors=[]
+                ref_x=[]
+                ref_y=[]
                 for t,idx in zip(self.effector_loc_t,self.effector_loc_idx):
+                    ref_x.append(self.effector_positions[t][idx, 0])
+                    ref_y.append(self.effector_positions[t][idx, 1])
+                    # ref_x[t] = self.target_positions[t][idx, 0]
+                    # ref_y[t] = self.target_positions[t][idx, 1]
+                    #neigh=pd.read_pickle(self.neigh_trajectories_path)
+                    #print(neigh)
+                    #columns_of_interest = neigh.filter(like='neighborhood_2_circle_200_px').columns
+                    #first_column = next((col for col in columns_of_interest if col.startswith('neighborhood_2_circle_200_px')),
+                    #                   None)
+                    #effect = neigh.loc[(neigh['TRACK_ID'] == self.target_track_of_interest) &
+                    #                   (neigh['FRAME'] == t),
+                    #first_column]
+                    #print(effect.iloc[0])
+                    #print(len(effect.iloc[0]))
+                    #print(neigh.columns)
+                    #eff_dict1=[]
+                    #indices=[]
+
+                    #if effect.iloc[0]!=[]:
+                    #    if isinstance(effect.iloc[0],float):
+                    #        pass
+                    #    else:
+                    #        for i in range(0,len(effect.iloc[0])):
+                    #            eff_dict1.append(effect.iloc[0][i])
+                    #    for dictionn in eff_dict1:
+                            #print(dictionn)
+                    #        indices.append(np.where(self.effector_tracks[t] == dictionn['id'])[0])
+                        #print(eff_dict1)
+                        #eff_dict=effect.iloc[0][0]
+                        #indices = np.where(self.effector_tracks[t] == eff_dict['id'])[0]
+                        #print(eff_dict1)
+                        #print(eff_dict)
+                    #    if len(indices) > 0:
+                    #        indices2=[]
+                    #        for i in indices:
+                    #            indices2.append(i[0])
+                    #        self.effector_loc_t.append(t)
+                    #        self.neighbors[t]=indices2
+                    #        #print(self.effector_loc_t)
+
                     self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                    self.effector_colors[t][idx] = 'magenta'
-                    print(self.effector_colors)
+                    self.effector_colors[t][idx] = 'lime'
+                for t, idx in zip(self.effector_loc_t_not_picked, self.effector_loc_idx_not_picked):
+                    self.effector_not_picked_initial_colors.append(self.effector_colors[t][idx].copy())
+                    self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
+                    self.effector_colors[t][idx] = 'black'
 
+                self.target_previous_color = []
+                self.lines_data = {}
+                self.points_data={}
+                self.connections={}
 
+                if self.ref_pop != self.neigh_pop:
+                    for target in neighbors:
+                        self.target_loc_t = []
+                        self.target_loc_idx = []
+                        for t in range(len(self.target_tracks)):
+                            indices = np.where(self.target_tracks[t]==target)[0]
+                            if len(indices)>0:
+                                self.target_loc_t.append(t)
+                                self.target_loc_idx.append(indices[0])
+                        self.target_previous_color = []
+                        for t, idx in zip(self.target_loc_t, self.target_loc_idx):
+                            neigh_x=self.target_positions[t][idx, 0]
+                            neigh_y=self.target_positions[t][idx, 1]
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-',alpha=1,linewidth=2)
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                            #                     linewidth=2,markevery=x_m_point,marker='x',picker=True)
+                            #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
+                            else:
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            #     self.point_neigh[t]=[point]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            #     self.point_neigh[t].append(point)
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            # print('marker est?')
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            # self.ax.add_line(line)
+                            #self.ax.draw_artist(line)
+
+                            if target == self.neighbor_track_of_interest:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'magenta'
+                            else:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'salmon'
+
+                    for t in range(len(self.target_colors)):
+                        for idx in range(len(self.target_colors[t])):
+                            if self.target_colors[t][idx].any() != 'salmon':
+                                if self.target_colors[t][idx].any() != 'magenta':
+                                    self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
+                                    self.target_colors[t][idx] = 'black'
+                else:
+                    for effector in neighbors:
+                        self.effector_loc_t = []
+                        self.effector_loc_idx = []
+                        for t in range(len(self.effector_tracks)):
+                            indices = np.where(self.effector_tracks[t] == effector)[0]
+                            if len(indices) > 0:
+                                self.effector_loc_t.append(t)
+                                self.effector_loc_idx.append(indices[0])
+                        self.effector_previous_color = []
+                        for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+                            neigh_x = self.effector_positions[t][idx, 0]
+                            neigh_y = self.effector_positions[t][idx, 1]
+                            x_m_point = (ref_x[t] + neigh_x) / 2
+                            y_m_point = (ref_y[t] + neigh_y) / 2
+                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                                                # linewidth=2,picker=True)
+                            #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+                            if t not in self.lines_data.keys():
+                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                self.points_data[t]=[(x_m_point, y_m_point)]
+                            else:
+                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                self.points_data[t].append((x_m_point, y_m_point))
+                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
+
+                            # if t not in self.lines_neigh.keys():
+                            #     self.lines_neigh[t]=[line]
+                            #     self.point_neigh[t]=[point]
+                            # else:
+                            #     self.lines_neigh[t].append(line)
+                            #     self.point_neigh[t].append(point)
+                            # self.ax.add_line(line)
+                            # self.ax.add_artist(point)
+                            #self.ax.draw_artist(line)
+
+                            if effector == self.neighbor_track_of_interest:
+                                self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                self.effector_colors[t][idx] = 'magenta'
+                            else:
+                                self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                self.effector_colors[t][idx] = 'salmon'
+
+                    for t in range(len(self.effector_colors)):
+                        for idx in range(len(self.effector_colors[t])):
+                            if self.effector_colors[t][idx].any() != 'salmon':
+                                if self.effector_colors[t][idx].any() != 'magenta':
+                                    if self.effector_colors[t][idx].any() != 'lime':
+                                        self.effector_colors[t][idx] = 'black'
 
             elif len(ind)>0 and len(self.effector_selection)==1:
                 self.cancel_btn.click()
+
             else:
                 pass
+        if pop2=='pair':
+            ind2=event.ind
+            artist = event.artist
+            plz=artist.get_offsets()
+            print(plz[0][0], plz[0][1])
+            connect=self.connections[(plz[0][0],plz[0][1])]
+            print(connect[0])
+            self.reference_track_of_interest=connect[0][0]
+            self.neighb_track_of_interest=connect[0][1]
+            print(f'REFERENCE : {self.reference_track_of_interest}')
+            print(f'NEIGHBOR : {self.neighb_track_of_interest}')
+
+            # print(self.point_list[ind2])
+            # # x_data, y_data = [self.ax[i, 0] for i in ind2], [
+            # #     self.ax[i, 1] for i in ind2]
+            # print(self.reference_track_of_interest)
+            # print(self.neighbor_track_of_interest)
+            # Find the index of the picked scatter point
+            # artist=event.artist
+            # print(artist)
+            # inf=artist.get_paths()
+            # print(inf)
+            # x_data=event.xdata
+            # y_data=event.ydata
+            # print(x_data)
+            # print(y_data)
+            # print(self.connections)
+            # print(self.connections[(x_data[0],y_data[0])])
+
+
 
     def shortcut_suppr(self):
         self.correct_btn.click()
@@ -2587,21 +3029,92 @@ class SignalAnnotator2(QMainWindow):
         self.framedata = framedata
         self.frame_lbl.setText(f'frame: {self.framedata}')
         self.im.set_array(self.stack[self.framedata])
+        if self.ref_pop=='targets':
+            self.target_status_scatter.set_visible(True)
+            self.target_class_scatter.set_visible(True)
+            # self.target_status_scatter.set_alpha(1)
+            self.target_status_scatter.set_picker(True)
+            # self.target_class_scatter.set_alpha(1)
+            self.target_status_scatter.set_offsets(self.target_positions[self.framedata])
+            self.target_status_scatter.set_color(self.target_colors[self.framedata][:,1])
+            self.target_class_scatter.set_offsets(self.target_positions[self.framedata])
+            self.target_class_scatter.set_edgecolor(self.target_colors[self.framedata][:,0])
+            if self.ref_pop!=self.neigh_pop:
+                self.effector_status_scatter.set_visible(True)
+                self.effector_class_scatter.set_visible(True)
+                # self.effector_status_scatter.set_alpha(1)
+                self.effector_status_scatter.set_picker(True)
+                # self.effector_class_scatter.set_alpha(1)
+                self.effector_status_scatter.set_offsets(self.effector_positions[self.framedata])
+                self.effector_status_scatter.set_color(self.effector_colors[self.framedata][:,1])
 
-        self.target_status_scatter.set_offsets(self.target_positions[self.framedata])
-        self.target_status_scatter.set_color(self.target_colors[self.framedata][:,1])
+                self.effector_class_scatter.set_offsets(self.effector_positions[self.framedata])
+                self.effector_class_scatter.set_edgecolor(self.effector_colors[self.framedata][:,0])
 
-        self.target_class_scatter.set_offsets(self.target_positions[self.framedata])
-        self.target_class_scatter.set_edgecolor(self.target_colors[self.framedata][:,0])
+            else:
+                self.effector_status_scatter.set_visible(False)
+                self.effector_class_scatter.set_visible(False)
+                # self.effector_status_scatter.set_alpha(0)
+                self.effector_status_scatter.set_picker(None)
+                # self.effector_class_scatter.set_alpha(0)
+        else:
+                self.effector_status_scatter.set_visible(True)
+                self.effector_status_scatter.set_picker(True)
+                self.effector_class_scatter.set_visible(True)
+                self.effector_status_scatter.set_offsets(self.effector_positions[self.framedata])
+                self.effector_status_scatter.set_color(self.effector_colors[self.framedata][:, 1])
 
-        self.effector_status_scatter.set_offsets(self.effector_positions[self.framedata])
-        self.effector_status_scatter.set_color(self.effector_colors[self.framedata][:,1])
+                self.effector_class_scatter.set_offsets(self.effector_positions[self.framedata])
+                self.effector_class_scatter.set_edgecolor(self.effector_colors[self.framedata][:, 0])
+                if self.ref_pop != self.neigh_pop:
+                    self.target_status_scatter.set_visible(True)
+                    self.target_status_scatter.set_picker(True)
+                    self.target_class_scatter.set_visible(True)
+                    self.target_status_scatter.set_offsets(self.target_positions[self.framedata])
+                    self.target_status_scatter.set_color(self.target_colors[self.framedata][:, 1])
 
-        self.effector_class_scatter.set_offsets(self.effector_positions[self.framedata])
-        self.effector_class_scatter.set_edgecolor(self.effector_colors[self.framedata][:,0])
+                    self.target_class_scatter.set_offsets(self.target_positions[self.framedata])
+                    self.target_class_scatter.set_edgecolor(self.target_colors[self.framedata][:, 0])
+
+                else:
+                    self.target_status_scatter.set_visible(False)
+                    self.target_status_scatter.set_picker(None)
+                    self.target_class_scatter.set_visible(False)
+        self.lines_list=[]
+        self.point_list=[]
+
+        for key in self.lines_data:
+            if key==self.framedata:
+                for line in self.lines_data[key]:
+                    x_coords, y_coords = line
+                    self.lines=self.ax.plot(x_coords, y_coords, 'b-', alpha=1, linewidth=2)
+                    #self.ax.draw_artist(self.lines)
+                    # for l in self.lines:
+                    #     self.ax.draw_artist(l)
+                    self.lines_list.append(self.lines[0])
 
 
-        return (self.im,self.target_status_scatter,self.target_class_scatter,self.effector_status_scatter,self.effector_class_scatter,)
+                # Plot points
+                for point in self.points_data[key]:
+                    x, y = point
+                    self.points=self.ax.scatter(x, y, marker="x", color='red',picker=True)
+                    self.ax.draw_artist(self.points)
+                    #self.ax.draw_artist(self.points)
+                    self.point_list.append(self.points)
+                # for coords_line in self.lines_data[key]:
+                #     line.set_alpha(1)
+                #     self.ax.draw_artist(line)
+                #     self.lines_list.append(line)
+                # for coords_point in self.points_data[key]:
+                #     point.set_alpha(1)
+                #     self.ax.draw_artist(point)
+                #     self.point_list.append(point)
+
+        if self.lines_list!=[]:
+            return [self.im,self.target_status_scatter,self.target_class_scatter,self.effector_status_scatter,self.effector_class_scatter] +self.lines_list +self.point_list
+        else:
+            return [self.im, self.target_status_scatter, self.target_class_scatter, self.effector_status_scatter,
+                    self.effector_class_scatter,]
 
     def stop(self):
         # # On stop we disconnect all of our events.
@@ -2649,7 +3162,7 @@ class SignalAnnotator2(QMainWindow):
         self.effector_cell_info.setContentsMargins(0, 20, 0, 30)
         self.neigh_eff_combo=QComboBox()
         #self.neighb_eff_combo.addItems(self.df_relative.loc[(self.df_relative['target']==self.target_track_of_interest),'effecor'])
-        neighs=self.df_relative.loc[(self.df_relative['TARGET_ID']==self.target_track_of_interest),'EFFECTOR_ID'].to_numpy()
+        neighs=self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.target_track_of_interest),'NEIGHBOR_ID'].to_numpy()
         neighs=np.unique(neighs)
         for effector in neighs:
             self.neigh_eff_combo.addItem(str(effector))
@@ -2664,15 +3177,23 @@ class SignalAnnotator2(QMainWindow):
         # self.eff_cell_sel.removeWidget(self.neigh_eff_combo)
         self.eff_cell_sel.addWidget(self.eff_cell)
         self.eff_cell_sel.addWidget(self.neigh_eff_combo, alignment=Qt.AlignLeft)
-        self.effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}"
-        self.eff_cls = QLabel(self.effector_cell_class)
-        self.effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}"
-        self.eff_tm=QLabel(self.effector_cell_time)
         try:
-            self.effector_probabilty = f"probability: {self.df_relative.loc[(self.df_relative['TARGET_ID']==self.target_track_of_interest)&(self.df_relative['EFFECTOR_ID']==self.effector_track_of_interest),'probability'].to_numpy()[0]}"
+            self.effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}"
         except:
-            self.effector_probabilty=f"probability: 0"
-        self.eff_prb=QLabel(self.effector_probabilty)
+            self.effector_cell_class = f"class: {self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]}"
+
+        self.eff_cls = QLabel(self.effector_cell_class)
+        try:
+            self.effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['TRACK_ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}"
+        except:
+            self.effector_cell_time = f"time of interest: {self.df_effectors.loc[self.df_effectors['ID']==self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]}"
+
+        self.eff_tm=QLabel(self.effector_cell_time)
+        # try:
+        #     self.effector_probabilty = f"probability: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.target_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.effector_track_of_interest),'probability'].to_numpy()[0]}"
+        # except:
+        #     self.effector_probabilty=f"probability: 0"
+        # self.eff_prb=QLabel(self.effector_probabilty)
         #self.effector_cell_info.setText(effector_cell_selected+effector_cell_class+effector_cell_time+effector_probabilty)
         # self.effector_cell_info.removeWidget(self.eff_cls)
         # self.effector_cell_info.removeWidget(self.eff_tm)
@@ -2680,9 +3201,9 @@ class SignalAnnotator2(QMainWindow):
         self.effector_cell_info.addLayout(self.eff_cell_sel)
         self.effector_cell_info.addWidget(self.eff_cls)
         self.effector_cell_info.addWidget(self.eff_tm)
-        self.effector_cell_info.addWidget(self.eff_prb)
+        #self.effector_cell_info.addWidget(self.eff_prb)
         self.neigh_eff_combo.currentIndexChanged.connect(self.update_effector_info)
-        self.eff_info_to_hide=[self.eff_cell,self.neigh_eff_combo,self.eff_cls,self.eff_tm,self.eff_prb]
+        self.eff_info_to_hide=[self.eff_cell,self.neigh_eff_combo,self.eff_cls,self.eff_tm]#self.eff_prb
 
 
 
@@ -2690,7 +3211,7 @@ class SignalAnnotator2(QMainWindow):
     def hide_effector_cell_info(self):
         self.eff_cls.clear()
         self.eff_tm.clear()
-        self.eff_prb.clear()
+        #self.eff_prb.clear()
 
         for info in self.eff_info_to_hide:
             info.hide()
@@ -2785,7 +3306,7 @@ class SignalAnnotator2(QMainWindow):
         # Clear existing labels
         self.eff_cls.clear()
         self.eff_tm.clear()
-        self.eff_prb.clear()
+        #self.eff_prb.clear()
         self.effector_loc_t=[]
         self.effector_loc_idx=[]
         for t in range(len(self.effector_tracks)):
@@ -2806,20 +3327,24 @@ class SignalAnnotator2(QMainWindow):
             effector_class = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
         except:
             effector_class = 0
-        effector_time = \
-        self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
-
         try:
-            effector_probability = self.df_relative.loc[
-                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), 'probability'].to_numpy()[0]
-        except IndexError:
-            effector_probability = 0
+            effector_time = \
+            self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+        except:
+            effector_time = \
+            self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+
+        # try:
+        #     effector_probability = self.df_relative.loc[
+        #         (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest) & (
+        #                     self.df_relative['NEIGHBOR_ID'] == self.effector_track_of_interest), 'probability'].to_numpy()[0]
+        # except IndexError:
+        #     effector_probability = 0
 
         # Update labels with new information
         self.eff_cls.setText(f"class: {effector_class}")
         self.eff_tm.setText(f"time of interest: {effector_time}")
-        self.eff_prb.setText(f"probability: {effector_probability}")
+        #self.eff_prb.setText(f"probability: {effector_probability}")
         self.effector_loc_t=[]
         self.effector_loc_idx=[]
         for t in range(len(self.effector_tracks)):
@@ -2987,15 +3512,15 @@ class SignalAnnotator2(QMainWindow):
         if self.relative_button3.isChecked():
             self.relative_signal_choice.addItems(['--'] + self.relative_signals)
 
-class MeasureAnnotator2(SignalAnnotator2):
+class MeasureAnnotator2(SignalAnnotator2,Styles):
     def __init__(self, parent=None):
 
         QMainWindow.__init__(self)
-        self.parent = parent
+        self.parent_window = parent
         self.setWindowTitle("Signal annotator")
-        self.mode = self.parent.mode
-        self.pos = self.parent.parent.pos
-        self.exp_dir = self.parent.exp_dir
+        self.mode = self.parent_window.mode
+        self.pos = self.parent_window.parent_window.pos
+        self.exp_dir = self.parent_window.exp_dir
         self.n_signals = 3
         self.soft_path = get_software_location()
         self.recently_modified = False
@@ -3006,13 +3531,13 @@ class MeasureAnnotator2(SignalAnnotator2):
 
 
 
-        self.screen_height = self.parent.parent.parent.screen_height
-        self.screen_width = self.parent.parent.parent.screen_width
+        self.screen_height = self.parent_window.parent_window.parent_window.screen_height
+        self.screen_width = self.parent_window.parent_window.parent_window.screen_width
         self.current_frame = 0
         self.show_fliers = False
 
-        self.screen_height = self.parent.parent.parent.screen_height
-        self.screen_width = self.parent.parent.parent.screen_width
+        self.screen_height = self.parent_window.parent_window.parent_window.screen_height
+        self.screen_width = self.parent_window.parent_window.parent_window.screen_width
 
         # default params
 
@@ -3153,7 +3678,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                             labels.append(signal_choice)
 
                         if self.effector_button1.isChecked():
-                            if 'TRACK_ID' in self.df_targets.columns:
+                            if 'TRACK_ID' in self.df_effectors.columns:
                                 self.lines[i].set_label('effector ' + signal_choice)
                                 print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
                                 ydata = self.df_effectors.loc[
@@ -3180,9 +3705,9 @@ class MeasureAnnotator2(SignalAnnotator2):
                             print(
                                 f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
                             ydata = self.df_relative.loc[
-                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
+                                (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest) & (
                                         self.df_relative[
-                                            'EFFECTOR_ID'] == self.effector_track_of_interest)& (self.df_relative['FRAME']==current_frame), signal_choice].to_numpy()
+                                            'NEIGHBOR_ID'] == self.effector_track_of_interest)& (self.df_relative['FRAME']==current_frame), signal_choice].to_numpy()
                             all_ydata = self.df_relative.loc[:, signal_choice].to_numpy()
                             ydata = ydata[ydata == ydata]
                             current_ydata = self.df_relative.loc[
@@ -3217,7 +3742,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                             all_yvalues.append(all_ydata)
                             labels.append(signal_choice)
                         if self.effector_button2.isChecked():
-                            if 'TRACK_ID' in self.df_targets.columns:
+                            if 'TRACK_ID' in self.df_effectors.columns:
                                 self.lines[i].set_label('effector ' + signal_choice)
                                 print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
                                 ydata = self.df_effectors.loc[
@@ -3245,9 +3770,9 @@ class MeasureAnnotator2(SignalAnnotator2):
                             print(
                                 f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
                             ydata = self.df_relative.loc[
-                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
+                                (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest) & (
                                         self.df_relative[
-                                            'EFFECTOR_ID'] == self.effector_track_of_interest)& (self.df_relative['FRAME']==current_frame), signal_choice].to_numpy()
+                                            'NEIGHBOR_ID'] == self.effector_track_of_interest)& (self.df_relative['FRAME']==current_frame), signal_choice].to_numpy()
                             all_ydata = self.df_relative.loc[:, signal_choice].to_numpy()
                             ydata = ydata[ydata == ydata]
                             current_ydata = self.df_relative.loc[
@@ -3282,7 +3807,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                             all_yvalues.append(all_ydata)
                             labels.append(signal_choice)
                         if self.effector_button3.isChecked():
-                            if 'TRACK_ID' in self.df_targets.columns:
+                            if 'TRACK_ID' in self.df_effectors.columns:
                                 self.lines[i].set_label('effector ' + signal_choice)
                                 print(f'plot signal {signal_choice} for cell {self.effector_track_of_interest}')
                                 ydata = self.df_effectors.loc[
@@ -3309,8 +3834,8 @@ class MeasureAnnotator2(SignalAnnotator2):
                             self.lines[i].set_label('relative ' + signal_choice)
                             print(f'plot signal {signal_choice} for target cell {self.target_track_of_interest} and effector cell {self.effector_track_of_interest}')
                             ydata = self.df_relative.loc[
-                                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-                                        self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest) & (self.df_relative['FRAME']==current_frame), signal_choice].to_numpy()
+                                (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest) & (
+                                        self.df_relative['NEIGHBOR_ID'] == self.effector_track_of_interest) & (self.df_relative['FRAME']==current_frame), signal_choice].to_numpy()
                             all_ydata = self.df_relative.loc[:, signal_choice].to_numpy()
                             ydata = ydata[ydata == ydata]
                             current_ydata = self.df_relative.loc[
@@ -3351,8 +3876,8 @@ class MeasureAnnotator2(SignalAnnotator2):
         #     min_val, max_val = self.cell_ax.get_ylim()
         #     print(min_val)
         #     print(max_val)
-        #     t0 = self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-        #             self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), 't0_lysis'].to_numpy()
+        #     t0 = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest) & (
+        #             self.df_relative['NEIGHBOR_ID'] == self.effector_track_of_interest), 't0_arrival'].to_numpy()
         #     if t0 != []:
         #         t0 = t0[0]
         #         self.line_dt.set_xdata([t0, t0])
@@ -3373,7 +3898,7 @@ class MeasureAnnotator2(SignalAnnotator2):
 
         print("this is the loaded position: ", self.pos)
         if isinstance(self.pos, str):
-            movies = glob(self.pos + f"movie/{self.parent.parent.movie_prefix}*.tif")
+            movies = glob(self.pos + f"movie/{self.parent_window.parent_window.movie_prefix}*.tif")
 
         else:
             msgBox = QMessageBox()
@@ -3398,7 +3923,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                 self.close()
         else:
             self.stack_path = movies[0]
-            self.len_movie = self.parent.parent.len_movie
+            self.len_movie = self.parent_window.parent_window.len_movie
             len_movie_auto = auto_load_number_of_frames(self.stack_path)
             if len_movie_auto is not None:
                 self.len_movie = len_movie_auto
@@ -3455,7 +3980,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         class_hbox.addWidget(self.target_class_choice_cb, 70)
 
         self.target_add_class_btn = QPushButton('')
-        self.target_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.target_add_class_btn.setStyleSheet(self.button_select_all)
         self.target_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
         self.target_add_class_btn.setToolTip("Add a new event class")
         self.target_add_class_btn.setIconSize(QSize(20, 20))
@@ -3463,7 +3988,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         class_hbox.addWidget(self.target_add_class_btn, 5)
 
         self.target_del_class_btn = QPushButton('')
-        self.target_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.target_del_class_btn.setStyleSheet(self.button_select_all)
         self.target_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
         self.target_del_class_btn.setToolTip("Delete an event class")
         self.target_del_class_btn.setIconSize(QSize(20, 20))
@@ -3496,7 +4021,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         class_hbox.addWidget(self.effector_class_choice_cb, 70)
 
         self.effector_add_class_btn = QPushButton('')
-        self.effector_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.effector_add_class_btn.setStyleSheet(self.button_select_all)
         self.effector_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
         self.effector_add_class_btn.setToolTip("Add a new event class")
         self.effector_add_class_btn.setIconSize(QSize(20, 20))
@@ -3504,7 +4029,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         class_hbox.addWidget(self.effector_add_class_btn, 5)
 
         self.effector_del_class_btn = QPushButton('')
-        self.effector_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.effector_del_class_btn.setStyleSheet(self.button_select_all)
         self.effector_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
         self.effector_del_class_btn.setToolTip("Delete an event class")
         self.effector_del_class_btn.setIconSize(QSize(20, 20))
@@ -3523,7 +4048,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         class_hbox.addWidget(self.relative_class_choice_cb, 70)
 
         self.relative_add_class_btn = QPushButton('')
-        self.relative_add_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.relative_add_class_btn.setStyleSheet(self.button_select_all)
         self.relative_add_class_btn.setIcon(icon(MDI6.plus,color="black"))
         self.relative_add_class_btn.setToolTip("Add a new event class")
         self.relative_add_class_btn.setIconSize(QSize(20, 20))
@@ -3531,7 +4056,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         class_hbox.addWidget(self.relative_add_class_btn, 5)
 
         self.relative_del_class_btn = QPushButton('')
-        self.relative_del_class_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.relative_del_class_btn.setStyleSheet(self.button_select_all)
         self.relative_del_class_btn.setIcon(icon(MDI6.delete,color="black"))
         self.relative_del_class_btn.setToolTip("Delete an event class")
         self.relative_del_class_btn.setIconSize(QSize(20, 20))
@@ -3599,18 +4124,18 @@ class MeasureAnnotator2(SignalAnnotator2):
         target_tab_layout=QVBoxLayout()
         target_options_hbox = QHBoxLayout()
         self.target_event_btn = QRadioButton('event')
-        self.target_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.target_no_event_btn = QRadioButton('no event')
-        self.target_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_no_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_no_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.target_else_btn = QRadioButton('else')
-        self.target_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_else_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_else_btn.toggled.connect(self.enable_time_of_interest)
         self.target_suppr_btn = QRadioButton('mark for\nsuppression')
-        self.target_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.target_suppr_btn.setStyleSheet(self.button_style_sheet_2)
         self.target_suppr_btn.toggled.connect(self.enable_time_of_interest)
         target_options_hbox.addWidget(self.target_event_btn)
         target_options_hbox.addWidget(self.target_no_event_btn)
@@ -3628,18 +4153,18 @@ class MeasureAnnotator2(SignalAnnotator2):
         effector_tab_layout = QVBoxLayout()
         effector_options_hbox = QHBoxLayout()
         self.effector_event_btn = QRadioButton('event')
-        self.effector_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.effector_no_event_btn = QRadioButton('no event')
-        self.effector_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_no_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_no_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.effector_else_btn = QRadioButton('else')
-        self.effector_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_else_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_else_btn.toggled.connect(self.enable_time_of_interest)
         self.effector_suppr_btn = QRadioButton('mark for\nsuppression')
-        self.effector_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.effector_suppr_btn.setStyleSheet(self.button_style_sheet_2)
         self.effector_suppr_btn.toggled.connect(self.enable_time_of_interest)
         effector_options_hbox.addWidget(self.effector_event_btn)
         effector_options_hbox.addWidget(self.effector_no_event_btn)
@@ -3657,18 +4182,18 @@ class MeasureAnnotator2(SignalAnnotator2):
         relative_tab_layout = QVBoxLayout()
         relative_options_hbox = QHBoxLayout()
         self.relative_event_btn = QRadioButton('event')
-        self.relative_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.relative_no_event_btn = QRadioButton('no event')
-        self.relative_no_event_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_no_event_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_no_event_btn.toggled.connect(self.enable_time_of_interest)
 
         self.relative_else_btn = QRadioButton('else')
-        self.relative_else_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_else_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_else_btn.toggled.connect(self.enable_time_of_interest)
         self.relative_suppr_btn = QRadioButton('mark for\nsuppression')
-        self.relative_suppr_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.relative_suppr_btn.setStyleSheet(self.button_style_sheet_2)
         self.relative_suppr_btn.toggled.connect(self.enable_time_of_interest)
         relative_options_hbox.addWidget(self.relative_event_btn)
         relative_options_hbox.addWidget(self.relative_no_event_btn)
@@ -3726,13 +4251,13 @@ class MeasureAnnotator2(SignalAnnotator2):
         self.correct_btn = QPushButton('correct')
         self.correct_btn.setIcon(icon(MDI6.redo_variant,color="white"))
         self.correct_btn.setIconSize(QSize(20, 20))
-        self.correct_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+        self.correct_btn.setStyleSheet(self.button_style_sheet)
         self.correct_btn.clicked.connect(self.show_annotation_buttons)
         self.correct_btn.setEnabled(False)
         main_action_hbox.addWidget(self.correct_btn)
 
         self.cancel_btn = QPushButton('cancel')
-        self.cancel_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet_2)
+        self.cancel_btn.setStyleSheet(self.button_style_sheet_2)
         self.cancel_btn.setShortcut(QKeySequence("Esc"))
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_selection)
@@ -3767,7 +4292,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         self.outliers_check.toggled.connect(self.show_outliers)
 
         self.normalize_features_btn = QPushButton('')
-        self.normalize_features_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.normalize_features_btn.setStyleSheet(self.button_select_all)
         self.normalize_features_btn.setIcon(icon(MDI6.arrow_collapse_vertical,color="black"))
         self.normalize_features_btn.setIconSize(QSize(25, 25))
         self.normalize_features_btn.setFixedSize(QSize(30, 30))
@@ -3781,7 +4306,7 @@ class MeasureAnnotator2(SignalAnnotator2):
 
         self.log_btn = QPushButton()
         self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-        self.log_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.log_btn.setStyleSheet(self.button_select_all)
         self.log_btn.clicked.connect(self.switch_to_log)
         plot_buttons_hbox.addWidget(self.log_btn, 5)
 
@@ -3835,12 +4360,12 @@ class MeasureAnnotator2(SignalAnnotator2):
 
         btn_hbox = QHBoxLayout()
         self.save_btn = QPushButton('Save')
-        self.save_btn.setStyleSheet(self.parent.parent.parent.button_style_sheet)
+        self.save_btn.setStyleSheet(self.button_style_sheet)
         self.save_btn.clicked.connect(self.save_trajectories)
         btn_hbox.addWidget(self.save_btn, 90)
 
         self.export_btn = QPushButton('')
-        self.export_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.export_btn.setStyleSheet(self.button_select_all)
         self.export_btn.clicked.connect(self.export_signals)
         self.export_btn.setIcon(icon(MDI6.export,color="black"))
         self.export_btn.setIconSize(QSize(25, 25))
@@ -3857,7 +4382,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         self.first_frame_btn.clicked.connect(self.set_previous_frame)
         self.first_frame_btn.setShortcut(QKeySequence('f'))
         self.first_frame_btn.setIcon(icon(MDI6.page_first,color="black"))
-        self.first_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.first_frame_btn.setStyleSheet(self.button_select_all)
         self.first_frame_btn.setFixedSize(QSize(60, 60))
         self.first_frame_btn.setIconSize(QSize(30, 30))
 
@@ -3867,7 +4392,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         self.last_frame_btn.clicked.connect(self.set_next_frame)
         self.last_frame_btn.setShortcut(QKeySequence('l'))
         self.last_frame_btn.setIcon(icon(MDI6.page_last,color="black"))
-        self.last_frame_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.last_frame_btn.setStyleSheet(self.button_select_all)
         self.last_frame_btn.setFixedSize(QSize(60, 60))
         self.last_frame_btn.setIconSize(QSize(30, 30))
 
@@ -3882,7 +4407,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         self.start_btn.clicked.connect(self.start)
         self.start_btn.setIcon(icon(MDI6.play,color="black"))
         self.start_btn.setFixedSize(QSize(60, 60))
-        self.start_btn.setStyleSheet(self.parent.parent.parent.button_select_all)
+        self.start_btn.setStyleSheet(self.button_select_all)
         self.start_btn.setIconSize(QSize(30, 30))
         self.start_btn.hide()
 
@@ -4076,7 +4601,10 @@ class MeasureAnnotator2(SignalAnnotator2):
 
             # Load and prep tracks
             self.df_effectors = pd.read_csv(self.effector_trajectories_path)
-            self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            try:
+                self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
+            except:
+                self.df_effectors = self.df_effectors.sort_values(by=['ID', 'FRAME'])
 
             cols = np.array(self.df_effectors.columns)
             self.effector_class_cols = np.array([c.startswith('class') for c in list(self.df_effectors.columns)])
@@ -4133,7 +4661,11 @@ class MeasureAnnotator2(SignalAnnotator2):
             self.df_effectors['y_anim'] = self.df_effectors['y_anim'].astype(int)
 
             self.extract_scatter_from_effector_trajectories()
-            self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            try:
+                self.effector_track_of_interest = self.df_effectors['TRACK_ID'].min()
+            except:
+                self.effector_track_of_interest = self.df_effectors['ID'].min()
+
 
             self.loc_t = []
             self.loc_idx = []
@@ -4189,7 +4721,7 @@ class MeasureAnnotator2(SignalAnnotator2):
 
             # Load and prep tracks
             self.df_relative = pd.read_csv(self.relative_trajectories_path)
-            self.df_relative= self.df_relative.sort_values(by=['TARGET_ID', 'FRAME'])
+            self.df_relative= self.df_relative.sort_values(by=['REFERENCE_ID', 'FRAME'])
 
             self.relative_cols = np.array(self.df_relative.columns)
 
@@ -4200,7 +4732,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         # self.columns_to_rescale = [col for t,col in zip(is_number_test,self.df_tracks.columns) if t]
         # print(self.columns_to_rescale)
 
-        cols_to_remove = ['TARGET_ID','EFFECTOR_ID','FRAME','t0_lysis']
+        cols_to_remove = ['REFERENCE_ID','NEIGHBOR_ID','FRAME','t0_arrival']
         cols = np.array(list(self.df_relative.columns))
         time_cols = np.array([c.startswith('t_') for c in cols])
         time_cols = list(cols[time_cols])
@@ -4233,7 +4765,7 @@ class MeasureAnnotator2(SignalAnnotator2):
                 self.relative_expected_status += '_' + suffix
                 self.relative_expected_time = 't_' + suffix
             else:
-                self.relative_expected_time = 't0_lysis'
+                self.relative_expected_time = 't0_arrival'
             self.relative_time_name = self.relative_expected_time
             self.relative_status_name = self.relative_expected_status
         else:
@@ -4384,10 +4916,12 @@ class MeasureAnnotator2(SignalAnnotator2):
                 except:
                     pass
                 try:
-                    neighbors = self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest),'EFFECTOR_ID']
-                    best_neighbor=self.df_relative.loc[(self.df_relative['TARGET_ID'] == self.target_track_of_interest)]
+                    neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest),'NEIGHBOR_ID']
+                    best_neighbor=self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)]
                     best_neighbor=best_neighbor
-                    best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'EFFECTOR_ID')])[0]
+                    #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'NEIGHBOR_ID')])[0]
+                    best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['NEIGHBOR_ID']==np.min(best_neighbor['NEIGHBOR_ID']),'NEIGHBOR_ID')])[0]
+
                     self.effector_track_of_interest=best_neighbor
                     self.give_effector_cell_information()
                     neighbors = np.unique(neighbors)
@@ -4529,27 +5063,27 @@ class MeasureAnnotator2(SignalAnnotator2):
                 pass
             self.draw_frame(self.current_frame)
             self.fcanvas.canvas.draw()
-    def plot_red_points(self, ax):
-        yvalues = []
-        current_frame = self.current_frame
-        for i in range(len(self.signal_choice_cb)):
-            signal_choice = self.signal_choice_cb[i].currentText()
-            if signal_choice != "--":
-                print(f'plot signal {signal_choice} for cell {self.track_of_interest} at frame {current_frame}')
-                if 'TRACK_ID' in self.df_tracks.columns:
-                    ydata = self.df_tracks.loc[
-                        (self.df_tracks['TRACK_ID'] == self.track_of_interest) &
-                        (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
-                else:
-                    ydata = self.df_tracks.loc[
-                        (self.df_tracks['ID'] == self.track_of_interest) &
-                        (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
-                ydata = ydata[ydata == ydata]  # remove nan
-                yvalues.extend(ydata)
-        x_pos = np.arange(len(yvalues)) + 1
-        ax.plot(x_pos, yvalues, marker='H', linestyle='None', color=tab10.colors[3],
-                alpha=1)  # Plot red points representing cells
-        self.cell_fcanvas.canvas.draw()
+    # def plot_red_points(self, ax):
+    #     yvalues = []
+    #     current_frame = self.current_frame
+    #     for i in range(len(self.signal_choice_cb)):
+    #         signal_choice = self.signal_choice_cb[i].currentText()
+    #         if signal_choice != "--":
+    #             print(f'plot signal {signal_choice} for cell {self.track_of_interest} at frame {current_frame}')
+    #             if 'TRACK_ID' in self.df_tracks.columns:
+    #                 ydata = self.df_tracks.loc[
+    #                     (self.df_tracks['TRACK_ID'] == self.track_of_interest) &
+    #                     (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
+    #             else:
+    #                 ydata = self.df_tracks.loc[
+    #                     (self.df_tracks['ID'] == self.track_of_interest) &
+    #                     (self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
+    #             ydata = ydata[ydata == ydata]  # remove nan
+    #             yvalues.extend(ydata)
+    #     x_pos = np.arange(len(yvalues)) + 1
+    #     ax.plot(x_pos, yvalues, marker='H', linestyle='None', color=tab10.colors[3],
+    #             alpha=1)  # Plot red points representing cells
+    #     self.cell_fcanvas.canvas.draw()
 
     def show_outliers(self):
         if self.outliers_check.isChecked():
@@ -4576,7 +5110,7 @@ class MeasureAnnotator2(SignalAnnotator2):
         # Clear existing labels
         self.eff_cls.clear()
         self.eff_tm.clear()
-        self.eff_prb.clear()
+        #self.eff_prb.clear()
         self.effector_loc_t=[]
         self.effector_loc_idx=[]
         for t in range(len(self.effector_tracks)):
@@ -4597,20 +5131,22 @@ class MeasureAnnotator2(SignalAnnotator2):
             effector_class = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
         except:
             effector_class = 0
-        effector_time = \
-        self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
-
         try:
-            effector_probability = self.df_relative.loc[
-                (self.df_relative['TARGET_ID'] == self.target_track_of_interest) & (
-                            self.df_relative['EFFECTOR_ID'] == self.effector_track_of_interest), 'probability'].to_numpy()[0]
-        except IndexError:
-            effector_probability = 0
+            effector_time = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+        except:
+            effector_time = self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
+
+        # try:
+        #     effector_probability = self.df_relative.loc[
+        #         (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest) & (
+        #                     self.df_relative['NEIGHBOR_ID'] == self.effector_track_of_interest), 'probability'].to_numpy()[0]
+        # except IndexError:
+        #     effector_probability = 0
 
         # Update labels with new information
         self.eff_cls.setText(f"class: {effector_class}")
         self.eff_tm.setText(f"time of interest: {effector_time}")
-        self.eff_prb.setText(f"probability: {effector_probability}")
+        #self.eff_prb.setText(f"probability: {effector_probability}")
         self.effector_loc_t=[]
         self.effector_loc_idx=[]
         for t in range(len(self.effector_tracks)):

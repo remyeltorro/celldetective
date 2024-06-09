@@ -9,7 +9,23 @@ Celldetective
 		</p>
 	</embed>
 
-Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images.
+|ico1| |ico17| |ico4| |ico6| |ico5| |ico2| |ico3|
+ 
+.. |ico1| image:: https://img.shields.io/readthedocs/celldetective?link=https%3A%2F%2Fcelldetective.readthedocs.io%2Fen%2Flatest%2Findex.html
+
+.. |ico2| image:: https://img.shields.io/github/forks/remyeltorro/celldetective?link=https%3A%2F%2Fgithub.com%2Fremyeltorro%2Fcelldetective%2Fforks
+
+.. |ico3| image:: https://img.shields.io/github/stars/remyeltorro/celldetective?link=https%3A%2F%2Fgithub.com%2Fremyeltorro%2Fcelldetective%2Fstargazers
+
+.. |ico4| image:: https://img.shields.io/pypi/v/celldetective
+
+.. |ico5| image:: https://img.shields.io/pypi/dm/celldetective
+
+.. |ico6| image:: https://img.shields.io/github/downloads/remyeltorro/celldetective/total
+
+.. |ico17| image:: https://github.com/remyeltorro/celldetective/actions/workflows/test.yml/badge.svg
+
+Celldetective is a python package and software to perform single-cell analysis on multimodal time lapse microscopy images. 
 
 - **Documentation:** https://celldetective.readthedocs.io
 - **Source code:** https://github.com/remyeltorro/celldetective
@@ -84,7 +100,25 @@ Installation
 Stable release
 --------------
 
-The first release will be available once we open the GitHub repository to the public.
+Celldetective can be installed with ``pip``:
+
+.. code-block:: bash
+
+	pip install celldetective
+
+We recommend that you create an environment to use Celldetective, *e.g.* with ``conda``:
+
+.. code-block:: bash
+
+	conda create -n celldetective python=3.9.18 pyqt
+	conda activate celldetective
+	pip install celldetective
+
+Need an update? Simply type the following in the terminal (in your environment):
+
+.. code-block:: bash
+
+	pip install --upgrade celldetective
 
 
 Development version
@@ -92,8 +126,6 @@ Development version
 
 From GitHub
 ~~~~~~~~~~~
-
-Cloning or installing from the GitHub repository will be available once we open the repository to the public.
 
 
 If you want to run the latest development version, you can clone the repository to your local machine and install Celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
@@ -128,6 +160,15 @@ You can also download the repository as a compressed file. Unzip the file and op
 The installation of the dependencies will take a few minutes (up to half an hour if the network is bad). The Celldetective package itself is light and installs in a few seconds.
 
 Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
+
+Quick start
+===========
+
+You can launch the GUI by 1) opening a terminal and 2) typing the following:
+
+.. code-block:: bash
+
+	python -m celldetective
 
 
 Documentation

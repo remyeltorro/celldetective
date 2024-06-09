@@ -308,10 +308,11 @@ def drop_tonal_features(features):
 
     """
 
+    feat2 = features[:]
     for f in features:
         if 'intensity' in f:
-            features.remove(f)
-    return features
+            feat2.remove(f)
+    return feat2
 
 def measure_features(img, label, features=['area', 'intensity_mean'], channels=None,
                      border_dist=None, haralick_options=None, verbose=True, normalisation_list=None,
@@ -389,26 +390,20 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
                                                       columns=['count', 'spot_mean_intensity']).reset_index()
             # Rename columns
             df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
+        
         if normalisation_list:
             for norm in normalisation_list:
                 for index, channel in enumerate(channels):
-                    if channel == norm['target channel']:
+                    if channel == norm['target_channel']:
                         ind = index
-                if norm['mode'] == 'local':
+                if norm['correction_type'] == 'local':
                     normalised_image = normalise_by_cell(img[:, :, ind].copy(), label,
-                                                         distance=int(norm['distance']), mode=norm['type'],
-                                                         operation=norm['operation'])
+                                                         distance=int(norm['distance']), model=norm['model'],
+                                                         operation=norm['operation'], clip=norm['clip'])
                     img[:, :, ind] = normalised_image
                 else:
-                    if norm['operation'] == 'Divide':
-                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
-                                                                   normalisation_operation=norm['operation'],
-                                                                   clip=False, mode=norm['type'])
-                    else:
-                        normalised_image, bg = field_normalisation(img[:, :, ind].copy(), threshold=norm['threshold'],
-                                                                   normalisation_operation=norm['operation'],
-                                                                   clip=norm['clip'], mode=norm['type'])
-                    img[:, :, ind] = normalised_image
+                    corrected_image = field_correction(img[:,:,ind].copy(), threshold_on_std=norm['threshold_on_std'], operation=norm['operation'], model=norm['model'], clip=norm['clip'])
+                    img[:, :, ind] = corrected_image
 
     extra_props = getmembers(extra_properties, isfunction)
     extra_props = [extra_props[i][0] for i in range(len(extra_props))]
@@ -427,8 +422,8 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
     df_props = pd.DataFrame(props)
     if spot_detection is not None:
         df_props = df_props.merge(df_spots, how='outer', on='label')
-        df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
-        df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
+        df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0).infer_objects(copy=False)
+        df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0).infer_objects(copy=False)
 
 
 
@@ -725,7 +720,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
     """
 
-
+    epsilon = -10000
     assert ((img.ndim==2)|(img.ndim==3)),f'Invalid image shape to compute the Haralick features. Expected YXC, got {img.shape}...'
 
     if img.ndim==2:
@@ -753,7 +748,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
             pad_value_x = mask.shape[0]//2 + 1
             pad_value_y = mask.shape[1]//2 + 1
-            frame_padded = np.pad(img, [(pad_value_x,pad_value_x),(pad_value_y,pad_value_y),(0,0)])
+            frame_padded = np.pad(img.astype(float), [(pad_value_x,pad_value_x),(pad_value_y,pad_value_y),(0,0)], constant_values=[(epsilon,epsilon),(epsilon,epsilon),(0,0)])
 
             # Find a way to measure intensity in mask
             for tid,group in positions.groupby(column_labels['track']):
@@ -770,11 +765,17 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
                 expanded_mask = np.expand_dims(mask, axis=-1)  # shape: (X, Y, 1)
                 crop = frame_padded[ymin:ymax,xmin:xmax]
-                projection = np.multiply(crop, expanded_mask)
+
+                crop_temp = crop.copy()
+                crop_temp[crop_temp==epsilon] = 0.
+                projection = np.multiply(crop_temp, expanded_mask)
+
+                projection[crop==epsilon] = epsilon
+                projection[expanded_mask==0.] = epsilon
 
                 for op in operations:
                     func = eval('np.'+op)
-                    intensity_values = func(projection, axis=(0,1), where=projection!=0.)
+                    intensity_values = func(projection, axis=(0,1), where=projection>epsilon)
                     for k in range(crop.shape[-1]):
                         if isinstance(r,list):
                             positions.loc[group.index, f'{channels[k]}_ring_{min(r)}_{max(r)}_{op}'] = intensity_values[k]
@@ -806,7 +807,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
 
             for op in operations:
                 func = eval('np.'+op)
-                intensity_values = func(projection, axis=(0,1), where=projection!=0.)
+                intensity_values = func(projection, axis=(0,1), where=projection==projection)
                 for k in range(crop.shape[-1]):
                     positions.loc[group.index, f'{channels[k]}_custom_kernel_{op}'] = intensity_values[k]
 
@@ -860,7 +861,7 @@ def measure_at_position(pos, mode, return_measurements=False, threads=1):
         return None
 
 
-def local_normalisation(image, labels, background_intensity, mode, operation):
+def local_normalisation(image, labels, background_intensity, model='median', operation='subtract', clip=False):
     """
      Perform local normalization on an image based on labels.
 
@@ -900,19 +901,23 @@ def local_normalisation(image, labels, background_intensity, mode, operation):
        based on the mode specified.
      - The background intensity values should be provided in the same order as the labels.
      """
+    
     for index, cell in enumerate(np.unique(labels)):
         if cell == 0:
             continue
-        if operation == 'Subtract':
+        if operation == 'subtract':
             image[np.where(labels == cell)] = image[np.where(labels == cell)].astype(float) - \
-                                              background_intensity[f'intensity_{mode.lower()}'][index-1].astype(float)
-        elif operation == 'Divide':
+                                              background_intensity[f'intensity_{model.lower()}'][index-1].astype(float)
+        elif operation == 'divide':
             image[np.where(labels == cell)] = image[np.where(labels == cell)].astype(float) / \
-                                              background_intensity[f'intensity_{mode.lower()}'][index-1].astype(float)
+                                              background_intensity[f'intensity_{model.lower()}'][index-1].astype(float)
+    if clip:
+        image[image<=0.] = 0.
+
     return image.astype(float)
 
 
-def normalise_by_cell(image, labels, distance, mode, operation):
+def normalise_by_cell(image, labels, distance=5, model='median', operation='subtract', clip=False):
     """
     Normalize an image based on cell regions.
 
@@ -950,17 +955,17 @@ def normalise_by_cell(image, labels, distance, mode, operation):
     - The operation determines whether to subtract or divide the background intensity from the image.
     """
     border = contour_of_instance_segmentation(label=labels, distance=distance * (-1))
-    if mode == 'Mean':
+    if model == 'mean':
         background_intensity = regionprops_table(intensity_image=image, label_image=border,
                                                  properties=['intensity_mean'])
-    elif mode == 'Median':
+    elif model == 'median':
         median = []
         median.append(getattr(extra_properties, 'intensity_median'))
         background_intensity = regionprops_table(intensity_image=image, label_image=border,
                                                  extra_properties=median)
     normalised_frame = local_normalisation(image=image.astype(float).copy(),
-                                           labels=labels, background_intensity=background_intensity, mode=mode,
-                                           operation=operation)
+                                           labels=labels, background_intensity=background_intensity, model=model,
+                                           operation=operation, clip=clip)
 
     return normalised_frame
 
@@ -1015,7 +1020,7 @@ def fit_plane(image, cell_masks=None):
                        x=xx,
                        y=yy,
                        weights=weights,
-                       params=params, max_nfev=100)
+                       params=params, max_nfev=3000)
     a = result.params['a'].value
     b = result.params['b'].value
     c = result.params['c'].value
@@ -1069,7 +1074,7 @@ def fit_paraboloid(image, cell_masks=None):
                        x=xx,
                        y=yy,
                        weights=weights,
-                       params=params, max_nfev=100)
+                       params=params, max_nfev=3000)
     a = result.params['a'].value
     b = result.params['b'].value
     c = result.params['c'].value
@@ -1240,7 +1245,7 @@ def blob_detection(image, label, threshold, diameter):
         removed_background[np.where(dilated_copy == 0)] = 0
         min_sigma = (1 / (1 + math.sqrt(2))) * diameter
         max_sigma = math.sqrt(2) * min_sigma
-        blobs = skimage.feature.blob_dog(removed_background, threshold_rel=threshold, min_sigma=min_sigma,
+        blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
                                          max_sigma=max_sigma)
 
         mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])

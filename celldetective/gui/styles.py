@@ -4,6 +4,14 @@ class Styles(object):
 
 		self.init_button_styles()
 		self.init_tab_styles()
+		self.init_label_styles()
+
+		self.celldetective_blue = "#1565c0"
+
+		self.action_lbl_style_sheet = """
+			font-size: 10px;
+			padding-left: 10px;
+			"""
 
 	def init_button_styles(self):
 
@@ -215,3 +223,10 @@ class Styles(object):
 			margin-bottom: 0;
 		}
 		"""
+
+	def init_label_styles(self):
+
+		self.block_title = '''
+			font-weight: bold;
+			padding: 0px;
+		'''

@@ -30,19 +30,21 @@ from skimage.measure import regionprops_table
 import json
 import os
 
+from celldetective.gui.viewers import StackVisualizer
+from celldetective.gui import Styles
 
-class ThresholdConfigWizard(QMainWindow):
+class ThresholdConfigWizard(QMainWindow, Styles):
 	"""
 	UI to create a threshold pipeline for segmentation.
 
 	"""
 
-	def __init__(self, parent=None):
+	def __init__(self, parent_window=None):
 
 		super().__init__()
-		self.parent = parent
-		self.screen_height = self.parent.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.parent.screen_width
+		self.parent_window = parent_window
+		self.screen_height = self.parent_window.parent_window.parent_window.parent_window.screen_height
+		self.screen_width = self.parent_window.parent_window.parent_window.parent_window.screen_width
 		self.setMinimumWidth(int(0.8 * self.screen_width))
 		self.setMinimumHeight(int(0.8 * self.screen_height))
 		self.setWindowTitle("Threshold configuration wizard")
@@ -50,9 +52,9 @@ class ThresholdConfigWizard(QMainWindow):
 		self._createActions()
 		self._createMenuBar()
 
-		self.mode = self.parent.mode
-		self.pos = self.parent.parent.parent.pos
-		self.exp_dir = self.parent.parent.exp_dir
+		self.mode = self.parent_window.mode
+		self.pos = self.parent_window.parent_window.parent_window.pos
+		self.exp_dir = self.parent_window.parent_window.exp_dir
 		self.soft_path = get_software_location()
 		self.footprint = 30
 		self.min_dist = 30
@@ -157,14 +159,14 @@ class ThresholdConfigWizard(QMainWindow):
 		filter_list_option_grid.addWidget(section_preprocess, 90, alignment=Qt.AlignLeft)
 
 		self.delete_filter = QPushButton("")
-		self.delete_filter.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
+		self.delete_filter.setStyleSheet(self.button_select_all)
 		self.delete_filter.setIcon(icon(MDI6.trash_can, color="black"))
 		self.delete_filter.setToolTip("Remove filter")
 		self.delete_filter.setIconSize(QSize(20, 20))
 		self.delete_filter.clicked.connect(self.filters_qlist.removeSel)
 
 		self.add_filter = QPushButton("")
-		self.add_filter.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
+		self.add_filter.setStyleSheet(self.button_select_all)
 		self.add_filter.setIcon(icon(MDI6.filter_plus, color="black"))
 		self.add_filter.setToolTip("Add filter")
 		self.add_filter.setIconSize(QSize(20, 20))
@@ -180,7 +182,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.apply_filters_btn = QPushButton("Apply")
 		self.apply_filters_btn.setIcon(icon(MDI6.filter_cog_outline, color="white"))
 		self.apply_filters_btn.setIconSize(QSize(20, 20))
-		self.apply_filters_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
+		self.apply_filters_btn.setStyleSheet(self.button_style_sheet)
 		self.apply_filters_btn.clicked.connect(self.preprocess_image)
 		grid_preprocess.addWidget(self.apply_filters_btn, 2, 0, 1, 3)
 
@@ -201,14 +203,14 @@ class ThresholdConfigWizard(QMainWindow):
 
 		self.ylog_check = QPushButton("")
 		self.ylog_check.setIcon(icon(MDI6.math_log, color="black"))
-		self.ylog_check.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
+		self.ylog_check.setStyleSheet(self.button_select_all)
 		self.ylog_check.clicked.connect(self.switch_to_log)
 		threshold_title_grid.addWidget(self.ylog_check, 5)
 
 		self.equalize_option_btn = QPushButton("")
 		self.equalize_option_btn.setIcon(icon(MDI6.equalizer, color="black"))
 		self.equalize_option_btn.setIconSize(QSize(20, 20))
-		self.equalize_option_btn.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
+		self.equalize_option_btn.setStyleSheet(self.button_select_all)
 		self.equalize_option_btn.setToolTip("Enable histogram matching")
 		self.equalize_option_btn.clicked.connect(self.activate_histogram_equalizer)
 		self.equalize_option = False
@@ -223,7 +225,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.threshold_slider.setTickInterval(0.00001)
 		self.threshold_slider.setOrientation(1)
 		self.threshold_slider.setDecimals(3)
-		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.threshold_slider.setValue([np.percentile(self.img.flatten(), 90), np.amax(self.img)])
 		self.threshold_slider.valueChanged.connect(self.threshold_changed)
 
@@ -246,7 +248,7 @@ class ThresholdConfigWizard(QMainWindow):
 		#################
 
 		self.save_btn = QPushButton('Save')
-		self.save_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
+		self.save_btn.setStyleSheet(self.button_style_sheet)
 		self.save_btn.clicked.connect(self.write_instructions)
 		self.left_panel.addWidget(self.save_btn)
 
@@ -290,14 +292,14 @@ class ThresholdConfigWizard(QMainWindow):
 
 		self.markers_btn = QPushButton("Run")
 		self.markers_btn.clicked.connect(self.detect_markers)
-		self.markers_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
+		self.markers_btn.setStyleSheet(self.button_style_sheet)
 		hbox_marker_btns.addWidget(self.markers_btn)
 
 		self.watershed_btn = QPushButton("Watershed")
 		self.watershed_btn.setIcon(icon(MDI6.waves_arrow_up, color="white"))
 		self.watershed_btn.setIconSize(QSize(20, 20))
 		self.watershed_btn.clicked.connect(self.apply_watershed_to_selection)
-		self.watershed_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
+		self.watershed_btn.setStyleSheet(self.button_style_sheet)
 		self.watershed_btn.setEnabled(False)
 		hbox_marker_btns.addWidget(self.watershed_btn)
 		marker_box.addLayout(hbox_marker_btns)
@@ -329,7 +331,7 @@ class ThresholdConfigWizard(QMainWindow):
 			'eliminate points using a query such as: area > 100 or eccentricity > 0.95')
 		hbox_classify.addWidget(self.property_query_le, 70)
 		self.submit_query_btn = QPushButton('Submit...')
-		self.submit_query_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
+		self.submit_query_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_query_btn.clicked.connect(self.apply_property_query)
 		hbox_classify.addWidget(self.submit_query_btn, 20)
 		properties_box.addLayout(hbox_classify)
@@ -367,7 +369,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.contrast_slider.setSingleStep(0.00001)
 		self.contrast_slider.setTickInterval(0.00001)
 		self.contrast_slider.setOrientation(1)
-		self.contrast_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.contrast_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.contrast_slider.setValue([np.percentile(self.img.flatten(), 1), np.percentile(self.img.flatten(), 99.99)])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
 		contrast_hbox.addWidget(QLabel('contrast: '))
@@ -383,7 +385,7 @@ class ThresholdConfigWizard(QMainWindow):
 
 		print("this is the loaded position: ", self.pos)
 		if isinstance(self.pos, str):
-			movies = glob(self.pos + f"movie/{self.parent.parent.parent.movie_prefix}*.tif")
+			movies = glob(self.pos + f"movie/{self.parent_window.parent_window.parent_window.movie_prefix}*.tif")
 
 		else:
 			msgBox = QMessageBox()
@@ -408,7 +410,7 @@ class ThresholdConfigWizard(QMainWindow):
 				self.close()
 		else:
 			self.stack_path = movies[0]
-			self.len_movie = self.parent.parent.parent.len_movie
+			self.len_movie = self.parent_window.parent_window.parent_window.len_movie
 			len_movie_auto = auto_load_number_of_frames(self.stack_path)
 			if len_movie_auto is not None:
 				self.len_movie = len_movie_auto
@@ -480,10 +482,10 @@ class ThresholdConfigWizard(QMainWindow):
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
 		# self.ax_hist.set_yticks([])
-		self.ax_hist.set_xlim(np.amin(self.img), np.amax(self.img))
+		self.ax_hist.set_xlim(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.ax_hist.set_ylim(0, self.hist_y.max())
 
-		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.threshold_slider.setValue([np.nanpercentile(self.img.flatten(), 90), np.amax(self.img)])
 		self.add_hist_threshold()
 
@@ -505,12 +507,12 @@ class ThresholdConfigWizard(QMainWindow):
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
 		# self.ax_hist.set_yticks([])
-		self.ax_hist.set_xlim(np.amin(self.img), np.amax(self.img))
+		self.ax_hist.set_xlim(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.ax_hist.set_ylim(0, self.hist_y.max())
 		self.add_hist_threshold()
 		self.canvas_hist.canvas.draw()
 
-		self.threshold_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.threshold_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.threshold_slider.setValue([np.nanpercentile(self.img.flatten(), 90), np.amax(self.img)])
 		self.threshold_changed(self.threshold_slider.value())
 
@@ -571,7 +573,7 @@ class ThresholdConfigWizard(QMainWindow):
 		self.vmax = np.nanpercentile(self.img.flatten(), 99.)
 
 		self.contrast_slider.disconnect()
-		self.contrast_slider.setRange(np.amin(self.img), np.amax(self.img))
+		self.contrast_slider.setRange(np.amin(self.img[self.img==self.img]), np.amax(self.img[self.img==self.img]))
 		self.contrast_slider.setValue([self.vmin, self.vmax])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
 
@@ -815,9 +817,9 @@ class ThresholdConfigWizard(QMainWindow):
 				outfile.write(json_object)
 			print("Configuration successfully written in ", self.instruction_file)
 
-			self.parent.filename = self.instruction_file
-			self.parent.file_label.setText(self.instruction_file[:16] + '...')
-			self.parent.file_label.setToolTip(self.instruction_file)
+			self.parent_window.filename = self.instruction_file
+			self.parent_window.file_label.setText(self.instruction_file[:16] + '...')
+			self.parent_window.file_label.setToolTip(self.instruction_file)
 
 			self.close()
 		else:
@@ -872,11 +874,11 @@ class ThresholdConfigWizard(QMainWindow):
 
 
 class ThresholdNormalisation(ThresholdConfigWizard):
-	def __init__(self, min_threshold, current_channel, parent=None):
+	def __init__(self, min_threshold, current_channel, parent_window=None):
 		QMainWindow.__init__(self)
-		self.parent = parent
-		self.screen_height = self.parent.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.parent.screen_width
+		self.parent_window = parent_window
+		self.screen_height = self.parent_window.parent_window.parent_window.parent_window.screen_height
+		self.screen_width = self.parent_window.parent_window.parent_window.parent_window.screen_width
 		self.setMaximumWidth(int(self.screen_width // 3))
 		self.setMinimumHeight(int(0.8 * self.screen_height))
 		self.setWindowTitle("Normalisation threshold preview")
@@ -884,23 +886,26 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.img = None
 		self.min_threshold = min_threshold
 		self.current_channel = current_channel
-		self.mode = self.parent.mode
-		self.pos = self.parent.parent.parent.pos
-		self.exp_dir = self.parent.parent.exp_dir
+		self.mode = self.parent_window.mode
+		self.pos = self.parent_window.parent_window.parent_window.pos
+		self.exp_dir = self.parent_window.parent_window.exp_dir
 		self.soft_path = get_software_location()
+		self.auto_close = False
 
 		self.locate_stack()
-		if self.img is not None:
-			self.test_frame = np.squeeze(self.img)
-			self.frame = std_filter(gauss_filter(self.test_frame, 2), 4)
-			self.threshold_slider = QLabeledDoubleSlider()
-			self.threshold_slider.setOrientation(1)
-			#self.threshold_slider.setValue(np.percentile(self.frame, 99.99))
-			self.initialize_histogram()
-			self.show_threshold_image()
-			self.populate_norm_widget()
-			self.threshold_changed(self.threshold_slider.value())
-			self.setAttribute(Qt.WA_DeleteOnClose)
+		if not self.auto_close:
+			if self.img is not None:
+				self.test_frame = np.squeeze(self.img)
+				self.frame = std_filter(gauss_filter(self.test_frame, 2), 4)
+				self.threshold_slider = QLabeledDoubleSlider()
+				self.threshold_slider.setOrientation(1)
+				self.initialize_histogram()
+				self.show_threshold_image()
+				self.populate_norm_widget()
+				self.threshold_changed(self.threshold_slider.value())
+				self.setAttribute(Qt.WA_DeleteOnClose)
+		else:
+			self.close()
 
 	def show_threshold_image(self):
 		if self.test_frame is not None:
@@ -942,7 +947,7 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.contrast_slider.setSingleStep(0.00001)
 		self.contrast_slider.setTickInterval(0.00001)
 		self.contrast_slider.setOrientation(1)
-		self.contrast_slider.setRange(np.amin(self.frame), np.amax(self.frame))
+		self.contrast_slider.setRange(np.amin(self.frame[self.frame==self.frame]), np.amax(self.frame[self.frame==self.frame]))
 		self.contrast_slider.setValue(
 			[np.percentile(self.frame.flatten(), 1), np.percentile(self.frame.flatten(), 99.99)])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
@@ -951,11 +956,11 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		contrast_slider_layout.addWidget(self.contrast_slider)
 
 		self.submit_threshold_btn = QPushButton('Submit')
-		self.submit_threshold_btn.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet_2)
+		self.submit_threshold_btn.setStyleSheet(self.button_style_sheet_2)
 		self.submit_threshold_btn.clicked.connect(self.get_threshold)
 		self.ylog_check = QPushButton("")
 		self.ylog_check.setIcon(icon(MDI6.math_log, color="black"))
-		self.ylog_check.setStyleSheet(self.parent.parent.parent.parent.button_select_all)
+		self.ylog_check.setStyleSheet(self.button_select_all)
 		self.ylog_check.clicked.connect(self.switch_to_log)
 		self.ylog_check.setMaximumWidth(30)
 		log_button = QHBoxLayout()
@@ -986,11 +991,11 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.ax_hist.set_xlabel('intensity [a.u.]')
 		self.ax_hist.spines['top'].set_visible(False)
 		self.ax_hist.spines['right'].set_visible(False)
-		self.ax_hist.set_xlim(np.amin(self.frame), np.amax(self.frame))
+		self.ax_hist.set_xlim(np.amin(self.frame[self.frame==self.frame]), np.amax(self.frame[self.frame==self.frame]))
 		self.ax_hist.set_ylim(0, self.hist_y.max())
 		self.threshold_slider.setSingleStep(0.001)
 		self.threshold_slider.setTickInterval(0.001)
-		self.threshold_slider.setRange(np.amin(self.frame), np.amax(self.frame))
+		self.threshold_slider.setRange(np.amin(self.frame[self.frame==self.frame]), np.amax(self.frame[self.frame==self.frame]))
 		self.threshold_slider.setValue(np.percentile(self.frame,90))
 		self.add_hist_threshold()
 
@@ -1051,7 +1056,7 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		"""
 
 		if isinstance(self.pos, str):
-			movies = glob(self.pos + f"movie/{self.parent.parent.parent.movie_prefix}*.tif")
+			movies = glob(self.pos + f"movie/{self.parent_window.parent_window.parent_window.movie_prefix}*.tif")
 		else:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
@@ -1061,7 +1066,7 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Ok:
 				self.img = None
-				self.close()
+				self.auto_close = True
 				return None
 
 		if len(movies) == 0:
@@ -1073,10 +1078,11 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Yes:
-				self.close()
+				self.auto_close = True
+				return None
 		else:
 			self.stack_path = movies[0]
-			self.len_movie = self.parent.parent.parent.len_movie
+			self.len_movie = self.parent_window.parent_window.parent_window.len_movie
 			len_movie_auto = auto_load_number_of_frames(self.stack_path)
 			if len_movie_auto is not None:
 				self.len_movie = len_movie_auto
@@ -1092,24 +1098,24 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 			print(f'{self.stack_path} successfully located.')
 
 	def get_threshold(self):
-		self.parent.tab2_txt_threshold.setText(str(self.threshold_slider.value()))
+		self.parent_window.tab2_txt_threshold.setText(str(self.threshold_slider.value()))
 		self.close()
 
 
 class ThresholdSpot(ThresholdConfigWizard):
-	def __init__(self, current_channel, img, mask, parent=None):
+	def __init__(self, current_channel, img, mask, parent_window=None):
 		QMainWindow.__init__(self)
-		self.parent = parent
-		self.screen_height = self.parent.parent.parent.parent.screen_height
-		self.screen_width = self.parent.parent.parent.parent.screen_width
+		self.parent_window = parent_window
+		self.screen_height = self.parent_window.parent_window.parent_window.parent_window.screen_height
+		self.screen_width = self.parent_window.parent_window.parent_window.parent_window.screen_width
 		self.setMinimumHeight(int(0.8 * self.screen_height))
 		self.setWindowTitle("Spot threshold preview")
 		center_window(self)
 		self.img = img
 		self.current_channel = current_channel
-		self.mode = self.parent.mode
-		self.pos = self.parent.parent.parent.pos
-		self.exp_dir = self.parent.parent.exp_dir
+		self.mode = self.parent_window.mode
+		self.pos = self.parent_window.parent_window.parent_window.pos
+		self.exp_dir = self.parent_window.parent_window.exp_dir
 		self.onlyFloat = QDoubleValidator()
 		self.onlyInt = QIntValidator()
 		self.soft_path = get_software_location()
@@ -1122,29 +1128,25 @@ class ThresholdSpot(ThresholdConfigWizard):
 			self.test_mask = mask
 			self.populate_all()
 			self.setAttribute(Qt.WA_DeleteOnClose)
-
 		if self.auto_close:
 			self.close()
 
 	def populate_left_panel(self):
-		
+
 		self.left_layout = QVBoxLayout()
 		diameter_layout=QHBoxLayout()
 		self.diameter_lbl = QLabel('Spot diameter: ')
 		self.diameter_value = QLineEdit()
-		self.diameter_value.setText(self.parent.diameter_value.text())
+		self.diameter_value.setText(self.parent_window.diameter_value.text())
 		self.diameter_value.setValidator(self.onlyFloat)
-
 		diameter_layout.addWidget(self.diameter_lbl, alignment=Qt.AlignCenter)
 		diameter_layout.addWidget(self.diameter_value, alignment=Qt.AlignCenter)
 		self.left_layout.addLayout(diameter_layout)
 		threshold_layout=QHBoxLayout()
-		
 		self.threshold_lbl = QLabel('Spot threshold: ')
 		self.threshold_value = QLineEdit()
 		self.threshold_value.setValidator(self.onlyFloat)
-		self.threshold_value.setText(self.parent.threshold_value.text())
-
+		self.threshold_value.setText(self.parent_window.threshold_value.text())
 		threshold_layout.addWidget(self.threshold_lbl, alignment=Qt.AlignCenter)
 		threshold_layout.addWidget(self.threshold_value, alignment=Qt.AlignCenter)
 		self.left_layout.addLayout(threshold_layout)
@@ -1159,18 +1161,17 @@ class ThresholdSpot(ThresholdConfigWizard):
 		else:
 			self.preview_button.setEnabled(False)
 
-
 	def draw_spot_preview(self):
 
 		try:
-			diameter_value = float(self.parent.diameter_value.text().replace(',','.'))
+			diameter_value = float(self.parent_window.diameter_value.text().replace(',','.'))
 		except:
 			print('Diameter could not be converted to float... Abort.')
 			self.auto_close = True
 			return None
 
 		try:
-			threshold_value = float(self.parent.threshold_value.text().replace(',','.'))
+			threshold_value = float(self.parent_window.threshold_value.text().replace(',','.'))
 		except:
 			print('Threshold could not be converted to float... Abort.')
 			self.auto_close = True
@@ -1207,15 +1208,14 @@ class ThresholdSpot(ThresholdConfigWizard):
 		self.left_panel.setContentsMargins(30, 30, 30, 30)
 		self.populate_left_panel()
 		self.draw_spot_preview()
-		self.right_panel.addWidget(self.fcanvas.canvas)
-		self.right_panel.addWidget(self.fcanvas.toolbar)
 		self.setCentralWidget(self.button_widget)
 		contrast_slider_layout = QHBoxLayout()
 		self.contrast_slider = QLabeledDoubleRangeSlider()
 		self.contrast_slider.setSingleStep(0.00001)
 		self.contrast_slider.setTickInterval(0.00001)
 		self.contrast_slider.setOrientation(1)
-		self.contrast_slider.setRange(np.amin(self.frame[:, :, self.current_channel]), np.amax(self.frame[:, :, self.current_channel]))
+		selection = self.frame[:, :, self.current_channel]
+		self.contrast_slider.setRange(np.amin(selection[selection==selection]), np.amax(selection[selection==selection]))
 		self.contrast_slider.setValue(
 			[np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
@@ -1224,13 +1224,16 @@ class ThresholdSpot(ThresholdConfigWizard):
 		contrast_slider_layout.addWidget(self.contrast_slider)
 		self.preview_button=QPushButton("Preview")
 		self.preview_button.clicked.connect(self.update_spots)
-		self.preview_button.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet_2)
+		self.preview_button.setStyleSheet(self.button_style_sheet_2)
 		self.apply_changes=QPushButton("Apply")
-		self.apply_changes.setStyleSheet(self.parent.parent.parent.parent.button_style_sheet)
+		self.apply_changes.setStyleSheet(self.button_style_sheet)
 		self.apply_changes.clicked.connect(self.apply)
 
 		self.diameter_value.textChanged.connect(self.enable_preview)
 		self.threshold_value.textChanged.connect(self.enable_preview)
+
+		self.right_panel.addWidget(self.fcanvas.canvas)
+		self.right_panel.addWidget(self.fcanvas.toolbar)
 
 		main_layout.addLayout(self.right_panel)
 		main_layout.addLayout(self.left_panel)
@@ -1241,12 +1244,12 @@ class ThresholdSpot(ThresholdConfigWizard):
 
 	def blob_preview(self, image, label, threshold, diameter):
 		removed_background = image.copy()
-		dilated_image = ndimage.grey_dilation(label, footprint=disk(int(abs(10))))
+		dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
 		removed_background[np.where(dilated_image == 0)] = 0
 		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
 		max_sigma = math.sqrt(2) * min_sigma
-		blobs = skimage.feature.blob_dog(removed_background, threshold_rel=threshold, min_sigma=min_sigma,
-										 max_sigma=max_sigma)
+		blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
+										 max_sigma=max_sigma, overlap=0.75)
 		return blobs
 
 	def update_spots(self):
@@ -1262,7 +1265,9 @@ class ThresholdSpot(ThresholdConfigWizard):
 		except:
 			print('Threshold could not be converted to float... Abort.')
 			return None
-
+		xlim = self.ax_contour.get_xlim()
+		ylim = self.ax_contour.get_ylim()
+		contrast_levels = self.contrast_slider.value()
 		blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
 								  threshold=threshold_value,
 								  diameter=diameter_value)
@@ -1278,16 +1283,19 @@ class ThresholdSpot(ThresholdConfigWizard):
 		self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
 		for circle in self.circles:
 			self.ax_contour.add_artist(circle)
+		self.ax_contour.set_xlim(xlim)
+		self.ax_contour.set_ylim(ylim)
 
 		self.im.set_data(self.frame[:, :, self.current_channel])
-
 		self.fig_contour.canvas.draw()
-		self.contrast_slider.setValue(
-			[np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
+		self.contrast_slider.setValue(contrast_levels)
+
+
+
 
 	def apply(self):
-		self.parent.threshold_value.setText(self.threshold_value.text())
-		self.parent.diameter_value.setText(self.diameter_value.text())
+		self.parent_window.threshold_value.setText(self.threshold_value.text())
+		self.parent_window.diameter_value.setText(self.diameter_value.text())
 		self.close()
 
 

@@ -1,7 +1,7 @@
 import argparse
 import os
 import json
-from celldetective.relative_measurements import relative_quantities_per_pos2, update_effector_table
+from celldetective.relative_measurements import relative_quantities_per_pos2, update_effector_table, check_tables
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels
 
 from pathlib import Path, PurePath
@@ -62,13 +62,60 @@ if distance is None:
     os.abort()
     #distance = 0
 else:
-    rel = pd.DataFrame(relative_quantities_per_pos2(pos, [0,2], neigh_dist=distance))
+    neighbors_to_measure=check_tables(pos)
+    df_test=pd.DataFrame()
+    for ind,dic in enumerate(neighbors_to_measure):
+        #print(ind)
+        rel=relative_quantities_per_pos2(pos,reference=dic['reference'],neighbor=dic['neighbor'],neigh_dist=dic['distance'], target_classes=[0,1,2],description=dic['description'])
+        rel['ref_population']=dic['reference']
+        print(rel)
+        rel[f"{dic['description']}"] = 1
+        print(dic['description'])
+        rel=pd.DataFrame(rel)
+        print(rel)
+        #print(rel.columns)
+        if ind==0:
+            df_test=pd.DataFrame(rel)
+        else:
+            # Check if REFERENCE_ID, NEIGHBOR_ID, and POPULATION are the same
+            if dic['reference']!=dic['neighbor']:
+                common_cols = ['REFERENCE_ID', 'NEIGHBOR_ID', 'ref_population']
+                matching_rows = df_test.merge(rel[common_cols], on=common_cols, how='inner')
+                print(matching_rows)
+                if not matching_rows.empty:
+                    # Update description columns for matching rows
+                    for desc_col in [col for col in rel.columns if col.startswith('neighborhood')]:
+                        print('hello')
+                        print(rel)
+                        df_test.loc[df_test.set_index(common_cols).index.isin(
+                            matching_rows.set_index(common_cols).index), desc_col] = 1
+                        print(df_test)
+                else:
+                    # Append rel to df_test to add new information
+                    df_test = pd.concat([df_test, rel], ignore_index=True)
+            else:
+                df_test = pd.concat([df_test, rel], ignore_index=True)
+
+        # Fill NaN values in description columns with 'No'
+        description_cols = [col for col in df_test.columns if col.startswith('neighborhood')]
+        for col in description_cols:
+            df_test[col].fillna(0, inplace=True)
+
+    # Fill NaN values in description columns with 'No'
+    # description_cols = [col for col in df_test.columns if 'neighborhood' in col]
+    # for col in description_cols:
+    #     df_test[col].fillna('No', inplace=True)
+    #print(df_test)
+    #for row in df_test.iterrows():
+        #print(row)
+
+    # rel = pd.DataFrame(relative_quantities_per_pos2(pos, [0,2], neigh_dist=distance))
     path = pos + 'output/tables/relative_measurements_neighborhood.csv'
-    rel.to_csv(path, index=False)
-    tab_eff = pos + os.sep.join(['output', 'tables', 'trajectories_effectors.csv'])
-    df_effectors = pd.read_csv(tab_eff)
-    updated_eff=update_effector_table(rel,df_effectors)
-    updated_eff.to_csv(tab_eff, index=False)
-    print(f'Measurements successfully written in table {pos + os.sep.join(["output", "tables", "relative_measurements_neighborhood.csv"])}')
+    df_test.to_csv(path, index=False)
+    # tab_eff = pos + os.sep.join(['output', 'tables', 'trajectories_effectors.csv'])
+    # df_effectors = pd.read_csv(tab_eff)
+    # updated_eff=update_effector_table(rel,df_effectors)
+    # updated_eff.to_csv(tab_eff, index=False)
+    # print(f'Measurements successfully written in table {pos + os.sep.join(["output", "tables", "relative_measurements_neighborhood.csv"])}')
     #print('Done.')
 

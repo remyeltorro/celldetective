@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QFileDialog, QApplication, \
     QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QTabWidget, \
-    QButtonGroup, QGridLayout, QSlider, QCheckBox
+    QButtonGroup, QGridLayout, QSlider, QCheckBox, QToolButton
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
 from matplotlib.collections import LineCollection
@@ -25,6 +25,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.cm import tab10
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
+import qtawesome as qta
 
 class SignalAnnotator2(QMainWindow,Styles):
 
@@ -200,7 +201,7 @@ class SignalAnnotator2(QMainWindow,Styles):
         neigh_hbox.addWidget(QLabel('neighborhood: '), 25)
         self.neighborhood_choice_cb = QComboBox()
         self.neighborhood_choice_cb.addItems(self.neighborhood_cols)
-        # self.relative_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+        self.neighborhood_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_pair)
         self.neighborhood_choice_cb.setCurrentIndex(0)
         self.set_reference()
         self.neighborhood_choice_cb.currentIndexChanged.connect(self.neighborhood_changed)
@@ -267,10 +268,10 @@ class SignalAnnotator2(QMainWindow,Styles):
 
         self.left_panel.addLayout(class_hbox)
         self.cell_info_hbox=QHBoxLayout()
-        self.target_cell_info = QLabel('')
-        self.effector_cell_info= QVBoxLayout()
-        self.cell_info_hbox.addWidget(self.target_cell_info)
-        self.cell_info_hbox.addLayout(self.effector_cell_info)
+        self.reference_cell_info = QLabel('')
+        self.neighbor_cell_info= QLabel('')
+        self.cell_info_hbox.addWidget(self.reference_cell_info)
+        self.cell_info_hbox.addWidget(self.neighbor_cell_info)
 
         self.left_panel.addLayout(self.cell_info_hbox)
 
@@ -494,21 +495,36 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.left_panel.addLayout(plot_buttons_hbox)
         signal_choice_grid = QGridLayout()
         signal_choice_grid.setContentsMargins(30,0,30,50)
-        target_label = QLabel("T")
-        effector_label = QLabel("E")
-        relative_label = QLabel("R")
-        signal_choice_grid.addWidget(target_label, 0, 0)
-        signal_choice_grid.addWidget(effector_label, 0, 1)
-        signal_choice_grid.addWidget(relative_label, 0, 2)
-        signal_choice_grid.addWidget(self.target_button1, 1, 0)
-        signal_choice_grid.addWidget(self.effector_button1, 1, 1)
-        signal_choice_grid.addWidget(self.relative_button1, 1, 2)
-        signal_choice_grid.addWidget(self.target_button2, 2, 0)
-        signal_choice_grid.addWidget(self.effector_button2, 2, 1)
-        signal_choice_grid.addWidget(self.relative_button2, 2, 2)
-        signal_choice_grid.addWidget(self.target_button3, 3, 0)
-        signal_choice_grid.addWidget(self.effector_button3, 3, 1)
-        signal_choice_grid.addWidget(self.relative_button3, 3, 2)
+        target_label = QPushButton()
+        target_label.setStyleSheet(self.button_select_all)
+        target_label.setIcon(icon(MDI6.close_circle_outline,color='black'))
+        target_label.setToolTip('reference cell')
+        #self.correct_btn.setIcon(icon(MDI6.redo_variant, color="white"))
+        #icon1 = qta.icon('MDI.close_circle_outline',color='black')
+        #pixmap=icon1.pixmap
+        #target_label.setPixmap(pixmap)
+        effector_label = QPushButton()
+        effector_label.setStyleSheet(self.button_select_all)
+        effector_label.setIcon(icon(MDI6.triangle_outline,color='black'))
+        effector_label.setToolTip('neighbor cell')
+
+        relative_label = QPushButton()
+        relative_label.setStyleSheet(self.button_select_all)
+        relative_label.setIcon(icon(MDI6.vector_line,color='black'))
+        relative_label.setToolTip('pair')
+
+        signal_choice_grid.addWidget(target_label, 0, 0,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(effector_label, 0, 1,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(relative_label, 0, 2,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.target_button1, 1, 0,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.effector_button1, 1, 1,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.relative_button1, 1, 2,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.target_button2, 2, 0,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.effector_button2, 2, 1,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.relative_button2, 2, 2,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.target_button3, 3, 0,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.effector_button3, 3, 1,alignment=Qt.AlignHCenter)
+        signal_choice_grid.addWidget(self.relative_button3, 3, 2,alignment=Qt.AlignHCenter)
 
         signal_choice_vbox = QVBoxLayout()
         signal_choice_vbox.setContentsMargins(30,0,30,50)
@@ -1050,7 +1066,43 @@ class SignalAnnotator2(QMainWindow,Styles):
 
         self.extract_scatter_from_effector_trajectories()
 
+    def compute_status_and_colors_pair(self):
 
+        self.pair_class_name = self.neighborhood_choice_cb.currentText()
+        self.pair_expected_status = 'status'
+        suffix = self.pair_class_name.replace('class','')
+        if suffix!='':
+            self.pair_expected_status+='_'+suffix
+            self.pair_expected_time = 't0_'+suffix
+        else:
+            self.pair_expected_time = 't0'
+
+        self.pair_time_name = self.pair_expected_time
+        self.pair_status_name = self.pair_expected_status
+
+        print('selection and expected names: ', self.pair_class_name, self.pair_expected_time, self.pair_expected_status)
+
+        #if self.pair_time_name in self.df_pair.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
+            # only create the status column if it does not exist to not erase static classification results
+        #    self.make_effector_status_column()
+        #elif self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns:
+            # all good, do nothing
+        #    pass
+        #else:
+            #if not self.effector_status_name in self.df_effectors.columns:
+                #self.df_effectors[self.effector_status_name] = 0
+                #self.df_effectors['status_color'] = color_from_status(0)
+                #self.df_effectors['class_color'] = color_from_class(1)
+
+        #if not self.effector_class_name in self.df_effectors.columns:
+        #    self.df_effectors[self.effector_class_name] = 1
+        #if not self.effector_time_name in self.df_effectors.columns:
+        #    self.df_effectors[self.effector_time_name] = -1
+
+        self.df_relative['status_color'] = [color_from_status(i) for i in self.df_relative[self.pair_status_name].to_numpy()]
+        #self.df_effectors['class_color'] = [color_from_class(i) for i in self.df_effectors[self.effector_class_name].to_numpy()]
+
+        self.extract_scatter_from_lines()
     def contrast_slider_action(self):
 
         """
@@ -1070,7 +1122,12 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.cancel_btn.setEnabled(False)
         self.correct_btn.disconnect()
         self.correct_btn.clicked.connect(self.show_annotation_buttons)
+        try:
+            self.lines_colors=self.initial_lines_colors.copy()
+            print(self.initial_lines_colors)
 
+        except:
+            pass
         try:
             self.target_selection.pop(0)
             self.hide_target_cell_info()
@@ -1123,8 +1180,11 @@ class SignalAnnotator2(QMainWindow,Styles):
                 for ind in range(len(self.effector_colors[t])):
                     self.effector_colors[t][ind] = self.initial_effector_colors[t][ind]
 
+
+
         except Exception as e:
             print(f'{e=}')
+
 
         try:
             self.lines_data={}
@@ -1349,7 +1409,7 @@ class SignalAnnotator2(QMainWindow,Styles):
             self.df_targets.loc[indices, self.target_status_name] = status
             self.df_targets.loc[indices, 'status_color'] = status_color
             self.df_targets.loc[indices, 'class_color'] = class_color
-            self.give_target_cell_information()
+            self.give_reference_cell_information()
 
         if self.correction_tabs.currentIndex()==1:
             t0_effector = -1
@@ -1393,8 +1453,8 @@ class SignalAnnotator2(QMainWindow,Styles):
             self.df_effectors.loc[indices, self.effector_status_name] = status
             self.df_effectors.loc[indices, 'status_color'] = status_color
             self.df_effectors.loc[indices, 'class_color'] = class_color
-            self.hide_effector_cell_info()
-            self.give_effector_cell_information()
+            #self.hide_effector_cell_info()
+            #self.give_effector_cell_information()
 
         if self.correction_tabs.currentIndex()==2:
             self.relative_class_name=self.relative_class_choice_cb.currentText()
@@ -2220,7 +2280,37 @@ class SignalAnnotator2(QMainWindow,Styles):
         except Exception as e:
             print(f"{e=}")
 
+    def extract_scatter_from_lines(self):
 
+        #self.lines_list = []
+        self.lines_colors = []
+        self.initial_lines_colors=[]
+
+        for t in np.arange(self.len_movie):
+            self.lines_colors.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1), ['REFERENCE_ID', 'NEIGHBOR_ID','status_color']].to_numpy())
+            self.initial_lines_colors.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1), ['REFERENCE_ID', 'NEIGHBOR_ID','status_color']].to_numpy().copy())
+
+
+        #for line in self.lines:
+            #xdata=line.get_xdata()
+            #ydata=line.get_ydata()
+            #print(xdata)
+            #print(self.line_connections)
+            #print(self.line_connections[xdata[0],xdata[1],ydata[0],ydata[1]])
+        #print(self.points)
+        #self.initial_effector_colors=[]
+        #self.effector_tracks = []
+
+        #for t in np.arange(self.len_movie):
+
+            #self.effector_positions.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['x_anim', 'y_anim']].to_numpy())
+            #self.effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME']==t,['class_color', 'status_color']].to_numpy())
+            #self.initial_effector_colors.append(self.df_effectors.loc[self.df_effectors['FRAME'] == t, ['class_color', 'status_color']].to_numpy())
+            #try:
+                #self.effector_tracks.append(self.df_effectors.loc[self.df_effectors['FRAME']==t, 'TRACK_ID'].to_numpy())
+            #except:
+                #self.effector_tracks.append(
+                    #self.df_effectors.loc[self.df_effectors['FRAME'] == t, 'ID'].to_numpy())
     def extract_scatter_from_target_trajectories(self):
 
         self.target_positions = []
@@ -2438,17 +2528,16 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 
     def on_scatter_pick(self, event):
-
         ind = event.ind
         label = event.artist.get_label()
-        print(f'{label=}')
+        #print(f'{label=}')
 
         pop2='nothing'
         if label == '_child1':
-            #print(f'{label=}')
+            print(f'{label=}')
             self.pop = 'targets'
         elif label == '_child3':
-            #print(f'{label=}')
+            print(f'{label=}')
             self.pop = 'effectors'
         else:
             number=int(label.split('_child')[1])
@@ -2495,6 +2584,7 @@ class SignalAnnotator2(QMainWindow,Styles):
                     #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['NEIGHBOR_ID']==np.min(best_neighbor['NEIGHBOR_ID']),'NEIGHBOR_ID')])[0]
                     #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'NEIGHBOR_ID')])[0]
                     self.neighbor_track_of_interest=best_neighbor
+                    self.give_neighbor_cell_information()
                     #self.give_effector_cell_information()
                 except:
                     neighbors=[]
@@ -2502,8 +2592,8 @@ class SignalAnnotator2(QMainWindow,Styles):
                 # print(neighboors)
 
                 print(f'You selected track {self.target_track_of_interest}.')
-                self.give_target_cell_information()
                 self.reference_track_of_interest=self.target_track_of_interest
+                self.give_reference_cell_information()
                 self.plot_signals()
 
                 self.target_loc_t = []
@@ -2580,6 +2670,7 @@ class SignalAnnotator2(QMainWindow,Styles):
                 self.lines_data = {}
                 self.points_data = {}
                 self.connections={}
+                self.line_connections={}
 
 
                 if self.ref_pop != self.neigh_pop:
@@ -2608,7 +2699,9 @@ class SignalAnnotator2(QMainWindow,Styles):
                             else:
                                 self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
                                 self.points_data[t].append((x_m_point, y_m_point))
+
                             self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
+                            self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, effector)]
 
                             # self.ax.add_line(line)
                             # self.ax.add_artist(point)
@@ -2656,7 +2749,10 @@ class SignalAnnotator2(QMainWindow,Styles):
                             else:
                                 self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
                                 self.points_data[t].append((x_m_point, y_m_point))
+
                             self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
+                            self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, target)]
+
 
                             # if t not in self.lines_neigh.keys():
                             #     self.lines_neigh[t]=[line]
@@ -2681,7 +2777,6 @@ class SignalAnnotator2(QMainWindow,Styles):
                                 if self.target_colors[t][idx].any() != 'magenta':
                                     if self.target_colors[t][idx].any() != 'lime':
                                         self.target_colors[t][idx] = 'black'
-
             elif len(ind)>0 and len(self.target_selection)==1 and pop2!='pair':
                 self.cancel_btn.click()
             else:
@@ -2719,6 +2814,7 @@ class SignalAnnotator2(QMainWindow,Styles):
                     #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['NEIGHBOR_ID']==np.min(best_neighbor['NEIGHBOR_ID']),'NEIGHBOR_ID')])[0]
                     #best_neighbor=np.unique(best_neighbor.loc[(best_neighbor['probability']==np.max(best_neighbor['probability']),'NEIGHBOR_ID')])[0]
                     self.neighbor_track_of_interest=best_neighbor
+                    self.give_neighbor_cell_information()
                     #self.give_effector_cell_information()
                 except:
                     neighbors=[]
@@ -2726,8 +2822,8 @@ class SignalAnnotator2(QMainWindow,Styles):
                 # print(neighboors)
 
                 print(f'You selected track {self.effector_track_of_interest}.')
-                self.give_effector_cell_information()
                 self.reference_track_of_interest=self.effector_track_of_interest
+                self.give_reference_cell_information()
                 self.plot_signals()
 
                 self.effector_loc_t = []
@@ -2916,17 +3012,34 @@ class SignalAnnotator2(QMainWindow,Styles):
             else:
                 pass
         if pop2=='pair':
+            print(ind)
             ind2=event.ind
             artist = event.artist
-            plz=artist.get_offsets()
-            print(plz[0][0], plz[0][1])
-            connect=self.connections[(plz[0][0],plz[0][1])]
-            print(connect[0])
-            self.reference_track_of_interest=connect[0][0]
-            self.neighb_track_of_interest=connect[0][1]
-            print(f'REFERENCE : {self.reference_track_of_interest}')
-            print(f'NEIGHBOR : {self.neighb_track_of_interest}')
+            coordinates=artist.get_offsets()
+            try:
+                connect=self.connections[(coordinates[0][0],coordinates[0][1])]
+                print('CHECK COLORS')
+                print(connect[0][1])
+                for t in range(self.len_movie):
+                    self.lines_colors[t][:, :2] = self.lines_colors[t][:, :2].astype(float)
+                    indices = np.where((self.lines_colors[t][:, 0] == connect[0][0]) &
+                                   (self.lines_colors[t][:, 1] == connect[0][1]))[0]
+                    print(self.initial_lines_colors[t][indices, 2])
+                    self.lines_colors[t][indices, 2] = 'lime'
+                    print(self.initial_lines_colors[t][indices, 2])
+                self.reference_track_of_interest=connect[0][0]
+                self.neighbor_track_of_interest=connect[0][1]
+                print(f'REFERENCE : {self.reference_track_of_interest}')
+                print(f'NEIGHBOR : {self.neighbor_track_of_interest}')
+                ref_now=connect[0][0]
+                self.give_reference_cell_information()
+                self.give_neighbor_cell_information()
 
+            except:
+                pass
+            #if ref_now!=self.reference_track_of_interest:
+             #   print('missed')
+              #  self.cancel_selection()
             # print(self.point_list[ind2])
             # # x_data, y_data = [self.ax[i, 0] for i in ind2], [
             # #     self.ax[i, 1] for i in ind2]
@@ -3087,17 +3200,26 @@ class SignalAnnotator2(QMainWindow,Styles):
             if key==self.framedata:
                 for line in self.lines_data[key]:
                     x_coords, y_coords = line
-                    self.lines=self.ax.plot(x_coords, y_coords, 'b-', alpha=1, linewidth=2)
+                    pair=self.line_connections[x_coords[0],x_coords[1],y_coords[0],y_coords[1]]
+
+                    this_frame=self.lines_colors[self.framedata]
+
+                    this_pair=this_frame[(this_frame[:, 0] == pair[0][0]) & (this_frame[:, 1] == pair[0][1])]
+                    self.lines=self.ax.plot(x_coords, y_coords, alpha=1, linewidth=2,color=this_pair[0][2])
+
                     #self.ax.draw_artist(self.lines)
                     # for l in self.lines:
                     #     self.ax.draw_artist(l)
                     self.lines_list.append(self.lines[0])
 
-
                 # Plot points
                 for point in self.points_data[key]:
                     x, y = point
-                    self.points=self.ax.scatter(x, y, marker="x", color='red',picker=True)
+                    pair=self.connections[x,y]
+
+                    this_frame=self.lines_colors[self.framedata]
+                    this_pair=this_frame[(this_frame[:, 0] == pair[0][0]) & (this_frame[:, 1] == pair[0][1])]
+                    self.points=self.ax.scatter(x, y, marker="x", color=this_pair[0][2],picker=True)
                     self.ax.draw_artist(self.points)
                     #self.ax.draw_artist(self.points)
                     self.point_list.append(self.points)
@@ -3153,6 +3275,26 @@ class SignalAnnotator2(QMainWindow,Styles):
 
         self.target_cell_info.setText(target_cell_selected+target_cell_class+target_cell_time)#+effector_cell_selected+effector_cell_class+effector_cell_time)
 
+    def give_reference_cell_information(self):
+
+        reference_cell_selected = f"reference cell: {self.reference_track_of_interest}\n"
+        reference_cell_population = f"population: {self.ref_pop}\n"
+        #reference_cell_class = f"class: {self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name].to_numpy()[0]}\n"
+        #target_cell_time = f"time of interest: {self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_time_name].to_numpy()[0]}\n"
+
+        self.reference_cell_info.setText(reference_cell_selected+reference_cell_population)#+effector_cell_selected+effector_cell_class+effector_cell_time+target_cell_class+target_cell_time))
+
+    def give_neighbor_cell_information(self):
+        neighbor_cell_selected = f"neighbor cell: {self.neighbor_track_of_interest}\n"
+        neighbor_cell_population = f"population: {self.neigh_pop}\n"
+        #reference_cell_class = f"class: {self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_class_name].to_numpy()[0]}\n"
+        #target_cell_time = f"time of interest: {self.df_targets.loc[self.df_targets['TRACK_ID']==self.target_track_of_interest, self.target_time_name].to_numpy()[0]}\n"
+
+        self.neighbor_cell_info.setText(neighbor_cell_selected+neighbor_cell_population)#+effector_cell_selected+effector_cell_class+effector_cell_time+target_cell_class+target_cell_time))
+
+    def hide_neighbor_cell_info(self):
+        neighbor_cell_selected.hide()
+        neighbor_cell_population.hide()
     def hide_target_cell_info(self):
 
         self.target_cell_info.setText('')
@@ -4929,7 +5071,7 @@ class MeasureAnnotator2(SignalAnnotator2,Styles):
                     neighbors=[]
 
                 print(f'You selected track {self.target_track_of_interest}.')
-                self.give_target_cell_information()
+                #self.give_target_cell_information()
 
                 self.plot_signals()
 

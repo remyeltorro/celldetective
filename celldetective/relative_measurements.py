@@ -65,9 +65,10 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
     #     # all NK neighbours until target death
             neigh_ids = []
             t0_arrival={}
-            t_departure=[]
+            t_departure={}
             for t in range(len(timeline)):
                 n = neighbours[t]
+                all_ids_at_t=[]
                 if isinstance(n, float):
                         pass
                 else:
@@ -75,6 +76,12 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
                         if nn['id'] not in neigh_ids:
                             t0_arrival[nn['id']]=t
                         neigh_ids.append(nn['id'])
+                        all_ids_at_t.append(nn['id'])
+                    for id in neigh_ids:
+                        if id not in all_ids_at_t:
+                            if id not in t_departure.keys():
+                                t_departure[id]=t
+
                 #print(neigh_ids)
                 #for n in neighbours:
                 # if isinstance(n, float):
@@ -202,9 +209,39 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
         #             'syn_class': syn_class, 'lamp1': nk_lamp, 'relxy': relative_distance_xy1,
         #             't_residence_rel': duration_in_neigh})
                 for t in range(len(relative_distance)):
-                    df_rel.append({'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-                                   'velocity': dddt[t], 't0_arrival': t0_arrival[nc], 'angle_tc-eff': relative_angle1[t],
-                                   'angle-eff-tc': relative_angle2[t],'angular_velocity': angular_velocity[t]})
+                    if nc in t_departure:
+                        if t_departure[nc] > t >= t0_arrival[nc]:
+                            df_rel.append(
+                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                                 f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
+                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                                 f'status_{description}': 1})
+                        else:
+
+                            df_rel.append(
+                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                                 f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
+                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                                 f'status_{description}': 0})
+                    else:
+                        if t >= t0_arrival[nc]:
+
+                            df_rel.append(
+                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                                 f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
+                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                                 f'status_{description}': 1})
+                        else:
+                            df_rel.append(
+                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                                 f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
+                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                                 f'status_{description}': 0})
+
                 # for t in range(len(relative_distance)):
                 #     df_rel.append({'TARGET_ID': tid, 'EFFECTOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
                 #                    'velocity': dddt[t], 't0_lysis': t0, 'angle_tc-eff': relative_angle1[t],

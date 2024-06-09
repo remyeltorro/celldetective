@@ -81,15 +81,12 @@ else:
             if dic['reference']!=dic['neighbor']:
                 common_cols = ['REFERENCE_ID', 'NEIGHBOR_ID', 'ref_population']
                 matching_rows = df_test.merge(rel[common_cols], on=common_cols, how='inner')
-                print(matching_rows)
                 if not matching_rows.empty:
                     # Update description columns for matching rows
-                    for desc_col in [col for col in rel.columns if col.startswith('neighborhood')]:
-                        print('hello')
-                        print(rel)
+                    for desc_col in [col for col in rel.columns if col.startswith('neighborhood') or col.startswith('status')]:
+
                         df_test.loc[df_test.set_index(common_cols).index.isin(
                             matching_rows.set_index(common_cols).index), desc_col] = 1
-                        print(df_test)
                 else:
                     # Append rel to df_test to add new information
                     df_test = pd.concat([df_test, rel], ignore_index=True)

@@ -916,7 +916,8 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 							idx_B = np.where(mask_ids_B==int(mask_B))[0][0]
 							print(idx_A, idx_B)
 							indices_to_keep.append([idx_A,idx_B])
-						except:
+						except Exception as e:
+							print(f'{e} {t=} error something happened!!')
 							pass
 
 					print(f'Indices to keep: {indices_to_keep}...')
@@ -927,6 +928,8 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 							mask[indices_to_keep[:,1],indices_to_keep[:,0]] = False
 						dist_map[mask] = 1.0E06
 						plot_map=True
+					else:
+						dist_map[:,:] = 1.0E06
 				else:
 					dist_map[:,:] = 1.0E06
 

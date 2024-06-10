@@ -633,6 +633,7 @@ class TableUI(QMainWindow, Styles):
 				group_table.insert(0, col, first_column)
 			group_table.pop('FRAME')
 
+
 		elif self.event_time_option.isChecked():
 			time_of_interest = self.event_times_cb.currentText()
 			self.projection_mode = f"measurements at {time_of_interest}"
@@ -649,13 +650,16 @@ class TableUI(QMainWindow, Styles):
 					values = dict(zip(list(self.data.columns), values[0]))
 					values.update({'TRACK_ID': tid[1]})
 					values.update({'position': tid[0]})
-
 					new_table.append(values)
 			
 			group_table = pd.DataFrame(new_table)
 			for col in ['TRACK_ID']:
 				first_column = group_table.pop(col) 
 				group_table.insert(0, col, first_column)
+			
+			group_table = group_table.sort_values(by=['position','TRACK_ID','FRAME'],ignore_index=True)
+			group_table = group_table.reset_index(drop=True)
+
 
 		elif self.per_status_option.isChecked():
 
@@ -685,6 +689,7 @@ class TableUI(QMainWindow, Styles):
 				group_table.insert(0, col, first_column)
 			group_table.pop('FRAME')
 			group_table = group_table.sort_values(by=['position','TRACK_ID',status_of_interest],ignore_index=True)
+			group_table = group_table.reset_index(drop=True)
 
 
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")

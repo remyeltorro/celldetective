@@ -88,10 +88,16 @@ for k in range(len(X)):
 	x_interp = np.moveaxis([interpolate_nan(x[:,:,c].copy()) for c in range(x.shape[-1])],0,-1)
 	X[k] = x_interp
 
-for x in X[:10]:
-	plt.imshow(x[:,:,0])
-	plt.pause(2)
-	plt.close()
+# for x in X[:10]:
+# 	plt.imshow(x[:,:,0])
+# 	plt.colorbar()
+# 	plt.pause(2)
+# 	plt.close()
+
+# 	plt.imshow(x[:,:,1])
+# 	plt.colorbar()
+# 	plt.pause(2)
+# 	plt.close()
 
 Y = [fill_label_holes(y) for y in tqdm(Y)]
 

@@ -11,28 +11,14 @@ from tqdm import tqdm
 import numpy as np
 import random
 
-from celldetective.utils import load_image_dataset, normalize_per_channel, augmenter
+from celldetective.utils import load_image_dataset, normalize_per_channel, augmenter, interpolate_nan
 from celldetective.io import normalize_multichannel
 from stardist import fill_label_holes
 from art import tprint
 import matplotlib.pyplot as plt
 
-def interpolate_nan(array_like):
-	array = array_like.copy()
-	
-	isnan_array = ~np.isnan(array)
-	
-	xp = isnan_array.ravel().nonzero()[0]
-	
-	fp = array[~np.isnan(array)]
-	x = np.isnan(array).ravel().nonzero()[0]
-	
-	array[np.isnan(array)] = np.interp(x, xp, fp)
-	
-	return array
 
 tprint("Train")
-
 
 parser = argparse.ArgumentParser(description="Train a signal model from instructions.",
 								formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -97,19 +83,15 @@ for k in range(len(normalization_percentile)):
 
 X = [normalize_multichannel(x, **{"percentiles": percentiles, 'values': values, 'clip': normalization_clip}) for x in X]
 
+for k in range(len(X)):
+	x = X[k].copy()
+	x_interp = np.moveaxis([interpolate_nan(x[:,:,c].copy()) for c in range(x.shape[-1])],0,-1)
+	X[k] = x_interp
+
 for x in X[:10]:
 	plt.imshow(x[:,:,0])
-	plt.xlim(0,1004)
-	plt.ylim(0,1002)
-	plt.colorbar()
 	plt.pause(2)
 	plt.close()
-	print(x.shape)
-	interp = interpolate_nan(x)
-	print(interp.shape)
-	print(np.any(np.isnan(x).flatten()))
-	print(np.any(np.isnan(interp).flatten()))
-
 
 Y = [fill_label_holes(y) for y in tqdm(Y)]
 

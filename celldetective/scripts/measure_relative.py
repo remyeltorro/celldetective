@@ -68,12 +68,8 @@ else:
         #print(ind)
         rel=relative_quantities_per_pos2(pos,reference=dic['reference'],neighbor=dic['neighbor'],neigh_dist=dic['distance'], target_classes=[0,1,2],description=dic['description'])
         rel['ref_population']=dic['reference']
-        print(rel)
         rel[f"{dic['description']}"] = 1
-        print(dic['description'])
         rel=pd.DataFrame(rel)
-        print(rel)
-        #print(rel.columns)
         if ind==0:
             df_test=pd.DataFrame(rel)
         else:
@@ -83,7 +79,7 @@ else:
                 matching_rows = df_test.merge(rel[common_cols], on=common_cols, how='inner')
                 if not matching_rows.empty:
                     # Update description columns for matching rows
-                    for desc_col in [col for col in rel.columns if col.startswith('neighborhood') or col.startswith('status')]:
+                    for desc_col in [col for col in rel.columns if col.startswith('neighborhood') or col.startswith('status') or col.startswith('class')]:
 
                         df_test.loc[df_test.set_index(common_cols).index.isin(
                             matching_rows.set_index(common_cols).index), desc_col] = 1

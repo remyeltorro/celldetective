@@ -77,10 +77,10 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
                             t0_arrival[nn['id']]=t
                         neigh_ids.append(nn['id'])
                         all_ids_at_t.append(nn['id'])
-                    for id in neigh_ids:
-                        if id not in all_ids_at_t:
-                            if id not in t_departure.keys():
-                                t_departure[id]=t
+                    # for id in neigh_ids:
+                    #     if id not in all_ids_at_t:
+                    #         if id not in t_departure.keys():
+                    #             t_departure[id]=t
 
                 #print(neigh_ids)
                 #for n in neighbours:
@@ -209,38 +209,53 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
         #             'syn_class': syn_class, 'lamp1': nk_lamp, 'relxy': relative_distance_xy1,
         #             't_residence_rel': duration_in_neigh})
                 for t in range(len(relative_distance)):
-                    if nc in t_departure:
-                        if t_departure[nc] > t >= t0_arrival[nc]:
-                            df_rel.append(
+                    if t >= t0_arrival[nc]:
+                        df_rel.append(
                                 {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
                                  'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-                                 f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
+                                 'angle_tc-eff': relative_angle1[t],
                                  'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-                                 f'status_{description}': 1})
-                        else:
-
-                            df_rel.append(
-                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-                                 f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
-                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-                                 f'status_{description}': 0})
+                                 f'status_{description}': 1,f'class_{description}': 0})
                     else:
-                        if t >= t0_arrival[nc]:
+                        df_rel.append(
+                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                                 'angle_tc-eff': relative_angle1[t],
+                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                                 f'status_{description}': 0,f'class_{description}': 0})
 
-                            df_rel.append(
-                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-                                 f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
-                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-                                 f'status_{description}': 1})
-                        else:
-                            df_rel.append(
-                                {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-                                 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-                                 f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
-                                 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-                                 f'status_{description}': 0})
+                    # if nc in t_departure:
+                    #     if t_departure[nc] > t >= t0_arrival[nc]:
+                    #         df_rel.append(
+                    #             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                    #              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                    #              f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
+                    #              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                    #              f'status_{description}': 1})
+                    #     else:
+                    #
+                    #         df_rel.append(
+                    #             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                    #              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                    #              f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
+                    #              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                    #              f'status_{description}': 0})
+                    # else:
+                    #     if t >= t0_arrival[nc]:
+                    #
+                    #         df_rel.append(
+                    #             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                    #              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                    #              f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
+                    #              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                    #              f'status_{description}': 1})
+                    #     else:
+                    #         df_rel.append(
+                    #             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+                    #              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+                    #              f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
+                    #              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+                    #              f'status_{description}': 0})
 
                 # for t in range(len(relative_distance)):
                 #     df_rel.append({'TARGET_ID': tid, 'EFFECTOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
@@ -250,20 +265,19 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
     # #probs = probabilities(pts)
 
         df_rel = pd.DataFrame(df_rel)
-        for index,row in pts.iterrows():
-            df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'distance_mean'] = row[
-                'drel']
-            df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'velocity_mean'] = row[
-                'vrel']
-            df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 't_residence_rel'] = row[
-                't_residence_rel']
-        return df_rel
+        # for index,row in pts.iterrows():
+        #     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'distance_mean'] = row[
+        #         'drel']
+        #     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'velocity_mean'] = row[
+        #         'vrel']
+        #     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 't_residence_rel'] = row[
+        #         't_residence_rel']
     # #for prob in probs:
     #     #for index,row in prob.iterrows():
     #         #df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']),'probability']=row['total_prob']
     #
     #
-    # return df_rel
+        return df_rel
     except KeyError:
         print(f"Neighborhood {description} not found in data frame. Measurements for this neighborhood will not be calculated")
 
@@ -368,26 +382,22 @@ def check_tables(pos):
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'targets','neighbor':'targets','type':'circle','distance':distance,'description':description}
                     check=column.split('circle_')[1]
-                    print(check)
                 else:
                     distance=column.split('contact_')[1]
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'targets','neighbor':'targets','type':'contact','distance':distance,'description':description}
                     check=column.split('contact_')[1]
-                    print(check)
             else:
                 if 'circle' in column:
                     distance=column.split('circle_')[1]
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'targets','neighbor':'effectors','type':'circle','distance':distance,'description':description}
                     check=column.split('circle_')[1]
-                    print(check)
                 else:
                     distance=column.split('contact_')[1]
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'targets','neighbor':'effectors','type':'contact','distance':distance,'description':description}
                     check=column.split('contact_')[1]
-                    print(check)
             neighborhood_columns.append(neigh)
     for column in df_effectors.columns:
         if column.startswith('inclusive_count_neighborhood'):
@@ -397,25 +407,21 @@ def check_tables(pos):
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'effectors','neighbor':'effectors','type':'circle','distance':distance,'description':description}
                     check=column.split('circle_')[1]
-                    print(check)
                 else:
                     distance=column.split('contact_')[1]
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'effectors','neighbor':'effectors','type':'contact','distance':distance,'description':description}
                     check=column.split('contact_')[1]
-                    print(check)
             else:
                 if 'circle' in column:
                     distance=column.split('circle_')[1]
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'effectors','neighbor':'targets','type':'circle','distance':distance,'description':description}
                     check=column.split('circle_')[1]
-                    print(check)
                 else:
                     distance=column.split('contact_')[1]
                     description=column.split('inclusive_count_')[1]
                     neigh={'reference':'effectors','neighbor':'targets','type':'contact','distance':distance,'description':description}
                     check=column.split('contact_')[1]
-                    print(check)
             neighborhood_columns.append(neigh)
     return neighborhood_columns

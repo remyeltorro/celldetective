@@ -903,7 +903,6 @@ class SignalAnnotator2(QMainWindow,Styles):
         btn_hbox.addWidget(cancel_btn, 50)
         btn_hbox.addWidget(submit_btn, 50)
         layout.addLayout(btn_hbox)
-
         submit_btn.clicked.connect(self.write_new_relative_event_class)
         cancel_btn.clicked.connect(self.close_without_new_class)
 
@@ -996,7 +995,6 @@ class SignalAnnotator2(QMainWindow,Styles):
 
     def write_new_relative_event_class(self):
 
-
         if self.relative_class_name_le.text()=='':
             self.relative_class = 'class'
             self.relative_time = 't0'
@@ -1016,25 +1014,24 @@ class SignalAnnotator2(QMainWindow,Styles):
                 return None
             else:
                 pass
-
         fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
         self.df_relative.loc[:,self.relative_class] = fill_option
         if fill_option==0:
             self.df_relative.loc[:,self.relative_time] = 0.1
         else:
             self.df_relative.loc[:,self.relative_time] = -1
-
+        print(self.relative_class_choice_cb.currentText())
+        self.relative_class_choice_cb.disconnect()
         self.relative_class_choice_cb.clear()
         cols = np.array(self.df_relative.columns)
         self.relative_class_cols = np.array([c.startswith('class') for c in list(self.df_relative.columns)])
         self.relative_class_cols = list(cols[self.relative_class_cols])
-
-
         try:
-            self.relative_class_cols.remove('class_id')
             self.relative_class_cols.remove('class_color')
+            self.relative_class_cols.remove('class_id')
         except:
             pass
+        self.relative_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_pair)
         self.relative_class_choice_cb.addItems(self.relative_class_cols)
         idx = self.relative_class_choice_cb.findText(self.relative_class)
         self.relative_class_choice_cb.setCurrentIndex(idx)
@@ -1124,6 +1121,7 @@ class SignalAnnotator2(QMainWindow,Styles):
     def compute_status_and_colors_pair(self):
 
         self.pair_class_name=self.relative_class_choice_cb.currentText()
+        print(self.pair_class_name)
         self.pair_expected_status = 'status'
         suffix = self.pair_class_name.replace('class','').replace('_','',1)
         if suffix!='':

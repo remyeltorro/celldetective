@@ -12,6 +12,7 @@ import numpy as np
 import random
 
 from celldetective.utils import load_image_dataset, normalize_per_channel, augmenter
+from celldetective.io import normalize_multichannel
 from stardist import fill_label_holes
 from art import tprint
 import matplotlib.pyplot as plt
@@ -78,13 +79,25 @@ X,Y = load_image_dataset(datasets, target_channels, train_spatial_calibration=sp
 print('Dataset loaded...')
 
 # Normalize images
-X = normalize_per_channel(X,
-						  normalization_percentile_mode=normalization_percentile, 
-						  normalization_values=normalization_values, 
-						  normalization_clipping=normalization_clip
-						  )
+# X = normalize_per_channel(X,
+# 						  normalization_percentile_mode=normalization_percentile, 
+# 						  normalization_values=normalization_values, 
+# 						  normalization_clipping=normalization_clip
+# 						  )
 
-for x in X:
+values = []
+percentiles = []
+for k in range(len(normalization_percentile)):
+	if normalization_percentile[k]:
+		percentiles.append(normalization_values[k])
+		values.append(None)
+	else:
+		percentiles.append(None)
+		values.append(normalization_values[k])
+
+X = [normalize_multichannel(x, **{"percentiles": percentiles, 'values': values, 'clip': normalization_clip}) for x in X]
+
+for x in X[:10]:
 	plt.imshow(x[:,:,0])
 	plt.xlim(0,1004)
 	plt.ylim(0,1002)

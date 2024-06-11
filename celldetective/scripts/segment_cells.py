@@ -22,6 +22,9 @@ from art import tprint
 from scipy.ndimage import zoom
 import threading
 
+import matplotlib.pyplot as plt
+import time
+
 tprint("Segment")
 
 parser = argparse.ArgumentParser(description="Segment a movie in position with the selected model",
@@ -159,10 +162,18 @@ def segment_index(indices):
 	for t in tqdm(indices,desc="frame"):
 		
 		# Load channels at time t
-		f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=False)
-		f = normalize_per_channel([f], normalization_percentile_mode=normalization_percentile, normalization_values=normalization_values,
-									normalization_clipping=normalization_clip)
-		f = f[0]
+		values = []
+		percentiles = []
+		for k in range(len(normalization_percentile)):
+			if normalization_percentile[k]:
+				percentiles.append(normalization_values[k])
+				values.append(None)
+			else:
+				percentiles.append(None)
+				values.append(normalization_values[k])
+
+		f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=True, normalize_kwargs={"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
+
 		if np.any(img_num_channels[:,t]==-1):
 			f[:,:,np.where(img_num_channels[:,t]==-1)[0]] = 0.
 

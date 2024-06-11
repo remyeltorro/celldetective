@@ -1967,26 +1967,29 @@ def normalize_per_channel(X, normalization_percentile_mode=True, normalization_v
 	assert len(normalization_clipping)==n_channels
 	assert len(normalization_percentile_mode)==n_channels
 	
+	X_normalized = []
 	for i in range(len(X)):
-		x = X[i]
+		x = X[i].copy()
 		loc_i,loc_j,loc_c = np.where(x==0.)
 		norm_x = np.zeros_like(x, dtype=np.float32)
 		for k in range(x.shape[-1]):
-			chan = x[:,:,k]
+			chan = x[:,:,k].copy()
 			if not np.all(chan.flatten()==0):
 				if normalization_percentile_mode[k]:
-					min_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][0])
-					max_val = np.percentile(chan[chan!=0.].flatten(), normalization_values[k][1])
+					min_val = np.nanpercentile(chan[chan!=0.].flatten(), normalization_values[k][0])
+					max_val = np.nanpercentile(chan[chan!=0.].flatten(), normalization_values[k][1])
 				else:
 					min_val = normalization_values[k][0]
 					max_val = normalization_values[k][1]
 
 				clip_option = normalization_clipping[k]
-				norm_x[:,:,k] = normalize_mi_ma(chan.astype(np.float32), min_val, max_val, clip=clip_option, eps=1e-20, dtype=np.float32)
-		
-		X[i] = norm_x
+				norm_x[:,:,k] = normalize_mi_ma(chan.astype(np.float32).copy(), min_val, max_val, clip=clip_option, eps=1e-20, dtype=np.float32)
+			else:
+				norm_x[:,:,k] = 0.
+		norm_x[loc_i,loc_j,loc_c] = 0.
+		X_normalized.append(norm_x.copy())
 
-	return X
+	return X_normalized
 
 def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_suffix='labelled'):
 
@@ -2092,8 +2095,7 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 	
 				if im_calib != train_spatial_calibration:
 					factor = im_calib / train_spatial_calibration
-					print(f'{im_calib=}, {train_spatial_calibration=}, {factor=}')
-					image = zoom(image, [factor,factor,1], order=3)
+					image = np.moveaxis([zoom(image[:,:,c].astype(float).copy(), [factor,factor], order=3, prefilter=False) for c in range(image.shape[-1])],0,-1) #zoom(image, [factor,factor,1], order=3)
 					mask = zoom(mask, [factor,factor], order=0)        
 					
 			X.append(image)

@@ -71,6 +71,7 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.load_annotator_config()
         self.ref_pop='targets'
         self.neigh_pop='effectors'
+
         try:
             self.locate_target_tracks()
         except:
@@ -1020,7 +1021,6 @@ class SignalAnnotator2(QMainWindow,Styles):
             self.df_relative.loc[:,self.relative_time] = 0.1
         else:
             self.df_relative.loc[:,self.relative_time] = -1
-        print(self.relative_class_choice_cb.currentText())
         self.relative_class_choice_cb.disconnect()
         self.relative_class_choice_cb.clear()
         cols = np.array(self.df_relative.columns)
@@ -1121,7 +1121,6 @@ class SignalAnnotator2(QMainWindow,Styles):
     def compute_status_and_colors_pair(self):
 
         self.pair_class_name=self.relative_class_choice_cb.currentText()
-        print(self.pair_class_name)
         self.pair_expected_status = 'status'
         suffix = self.pair_class_name.replace('class','').replace('_','',1)
         if suffix!='':
@@ -1169,6 +1168,7 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.im.set_clim(vmin=self.vmin, vmax=self.vmax)
         self.fcanvas.canvas.draw_idle()
 
+
     def cancel_selection(self):
 
         self.hide_annotation_buttons()
@@ -1185,29 +1185,33 @@ class SignalAnnotator2(QMainWindow,Styles):
 
         try:
             self.target_selection.pop(0)
-            self.hide_target_cell_info()
+            #self.hide_target_cell_info()
             #self.hide_effector_cell_info()
         except Exception as e:
             print(e)
         try:
-
             self.effector_selection.pop(0)
             #self.hide_effector_cell_info()
         except Exception as e:
             print(e)
 
         try:
-
             for k,(t,idx) in enumerate(zip(self.target_loc_t,self.target_loc_idx)):
                 self.target_colors[t][idx, 0] = self.initial_target_colors[k][0]
                 self.target_colors[t][idx, 1] = self.initial_target_colors[k][1]
+
             for (t,idx) in (zip(self.target_loc_t_not_picked,self.target_loc_idx_not_picked)):
                 self.target_colors[t][idx, 0] = self.initial_target_colors[t][idx,0]
                 self.target_colors[t][idx, 1] = self.initial_target_colors[t][idx,1]
+
             for t in range(len(self.target_colors)):
                 for ind in range(len(self.target_colors[t])):
                     self.target_colors[t][ind] = self.initial_target_colors[t][ind]
+            for t in range(len(self.effector_colors)):
+                for ind in range(len(self.effector_colors[t])):
+                    self.effector_colors[t][ind] = self.initial_effector_colors[t][ind]
 
+            #
             # if self.neighbors != {}:
             #     # print(self.neigh_pop)
             #     # if self.neigh_pop=='effectors':
@@ -1221,7 +1225,7 @@ class SignalAnnotator2(QMainWindow,Styles):
             #                 self.target_colors[key][value, 0] = self.initial_target_colors[key][value, 0]
             #                 self.target_colors[key][value, 1] = self.initial_target_colors[key][value, 1]
             # else:
-            #     print('vsmisle')
+            #      print('vsmisle')
         except Exception as e:
             print(f'{e=}')
 
@@ -1236,6 +1240,9 @@ class SignalAnnotator2(QMainWindow,Styles):
             for t in range(len(self.effector_colors)):
                 for ind in range(len(self.effector_colors[t])):
                     self.effector_colors[t][ind] = self.initial_effector_colors[t][ind]
+            for t in range(len(self.target_colors)):
+                for ind in range(len(self.target_colors[t])):
+                    self.target_colors[t][ind] = self.initial_target_colors[t][ind]
 
 
 
@@ -1366,8 +1373,8 @@ class SignalAnnotator2(QMainWindow,Styles):
     def cancel_pair_selection(self):
         self.pair_selection=[]
         for t in range(len(self.lines_colors_status)):
-             for idx in range(len(self.lines_colors_status[t])):
-                 if self.lines_colors_status[t][idx,2] == 'lime':
+            for idx in range(len(self.lines_colors_status[t])):
+                if self.lines_colors_status[t][idx,2] == 'lime':
                     self.lines_colors_status[t][idx,2]=self.initial_lines_colors_status[t][idx,2]
                     self.lines_colors_class[t][idx,2]=self.initial_lines_colors_class[t][idx,2]
         if self.neigh_pop=='targets':
@@ -1378,6 +1385,7 @@ class SignalAnnotator2(QMainWindow,Styles):
             for k,(t,idx) in enumerate(zip(self.neighbor_loc_t,self.neighbor_loc_idx)):
                 self.effector_colors[t][idx, 0] = self.neigh_previous_color[k][0]
                 self.effector_colors[t][idx, 1] = self.neigh_previous_color[k][1]
+
 
 
     # def make_status_column_targets(self):
@@ -2447,7 +2455,7 @@ class SignalAnnotator2(QMainWindow,Styles):
             self.cell_ax.legend()
             self.cell_fcanvas.canvas.draw()
         except Exception as e:
-            print(f"{e=}")
+                print(f"{e=}")
 
     def extract_scatter_from_lines(self):
         # self.lines_colors = []
@@ -2733,7 +2741,6 @@ class SignalAnnotator2(QMainWindow,Styles):
         ind = event.ind
         label = event.artist.get_label()
 
-        pop2='nothing'
         if label == '_child1':
             print(f'{label=}')
             self.pop = 'targets'
@@ -2751,344 +2758,347 @@ class SignalAnnotator2(QMainWindow,Styles):
             else:
                 return None
 
-
+        print(ind)
         if self.pop=='targets':
             #self.correction_tabs.setTabEnabled(0,True)
-            if len(ind)>1:
-                # More than one point in vicinity
-                datax,datay = [self.target_positions[self.framedata][i,0] for i in ind],[self.target_positions[self.framedata][i,1] for i in ind]
-                msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
-                dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
-                ind = [ind[np.argmin(dist)]]
+            if self.pop==self.ref_pop:
+
+                if len(ind)>1:
+                    # More than one point in vicinity
+                    datax,datay = [self.target_positions[self.framedata][i,0] for i in ind],[self.target_positions[self.framedata][i,1] for i in ind]
+                    msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
+                    dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
+                    ind = [ind[np.argmin(dist)]]
 
 
-            if len(ind)>0 and (len(self.target_selection)==0):
-                ind = ind[0]
-                self.target_selection.append(ind)
-                # self.correct_btn.setEnabled(True)
-                # self.cancel_btn.setEnabled(True)
-                # self.del_shortcut.setEnabled(True)
-                # self.no_event_shortcut.setEnabled(True)
+                if len(ind)>0 and (len(self.target_selection)==0):
+                    ind = ind[0]
+                    self.target_selection.append(ind)
+                    # self.correct_btn.setEnabled(True)
+                    # self.cancel_btn.setEnabled(True)
+                    # self.del_shortcut.setEnabled(True)
+                    # self.no_event_shortcut.setEnabled(True)
 
-                self.target_track_of_interest = self.target_tracks[self.framedata][ind]
-                try:
-                    self.hide_effector_cell_info()
-                except:
-                    pass
-                try:
-                    neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
-                    neighbors = np.unique(neighbors)
-                    best_neighbor=np.min(neighbors)
-                    self.neighbor_track_of_interest=best_neighbor
-                    #self.give_neighbor_cell_information()
-                except:
-                    neighbors=[]
+                    self.target_track_of_interest = self.target_tracks[self.framedata][ind]
+                    try:
+                        self.hide_effector_cell_info()
+                    except:
+                        pass
+                    try:
+                        neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.target_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
+                        neighbors = np.unique(neighbors)
+                        best_neighbor=np.min(neighbors)
+                        self.neighbor_track_of_interest=best_neighbor
+                        #self.give_neighbor_cell_information()
+                    except:
+                        neighbors=[]
 
-                print(f'You selected track {self.target_track_of_interest}.')
-                self.reference_track_of_interest=self.target_track_of_interest
-                self.give_reference_cell_information()
-                self.plot_signals()
+                    print(f'You selected track {self.target_track_of_interest}.')
+                    self.reference_track_of_interest=self.target_track_of_interest
+                    self.give_reference_cell_information()
+                    self.plot_signals()
 
-                self.target_loc_t = []
-                self.target_loc_idx = []
-                self.target_loc_t_not_picked = []
-                self.target_loc_idx_not_picked=[]
-                self.effector_loc_t_not_picked= []
-                self.effector_loc_idx_not_picked = []
-                for t in range(len(self.target_tracks)):
-                    indices_picked = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
-                    indices_not_picked = np.where(self.target_tracks[t]!=self.target_track_of_interest)
-                    self.target_loc_t_not_picked.append(t)
-                    self.target_loc_idx_not_picked.append(indices_not_picked[0])
-                    if len(indices_picked)>0:
-                        self.target_loc_t.append(t)
-                        self.target_loc_idx.append(indices_picked[0])
-
-
-                self.target_previous_color = []
-                self.neighbors={}
-                self.target_not_picked_initial_colors=[]
-                ref_x=[]
-                ref_y=[]
-                for t,idx in zip(self.target_loc_t,self.target_loc_idx):
-                    ref_x.append(self.target_positions[t][idx, 0])
-                    ref_y.append(self.target_positions[t][idx, 1])
-                    self.target_previous_color.append(self.target_colors[t][idx].copy())
-                    self.target_colors[t][idx] = 'lime'
-                for t, idx in zip(self.target_loc_t_not_picked, self.target_loc_idx_not_picked):
-                    self.target_not_picked_initial_colors.append(self.target_colors[t][idx].copy())
-                    self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
-                    self.target_colors[t][idx] = 'black'
-
-                self.effector_previous_color = []
-                self.lines_data = {}
-                self.points_data = {}
-                self.connections={}
-                self.line_connections={}
+                    self.target_loc_t = []
+                    self.target_loc_idx = []
+                    self.target_loc_t_not_picked = []
+                    self.target_loc_idx_not_picked=[]
+                    self.effector_loc_t_not_picked= []
+                    self.effector_loc_idx_not_picked = []
+                    for t in range(len(self.target_tracks)):
+                        indices_picked = np.where(self.target_tracks[t]==self.target_track_of_interest)[0]
+                        indices_not_picked = np.where(self.target_tracks[t]!=self.target_track_of_interest)
+                        self.target_loc_t_not_picked.append(t)
+                        self.target_loc_idx_not_picked.append(indices_not_picked[0])
+                        if len(indices_picked)>0:
+                            self.target_loc_t.append(t)
+                            self.target_loc_idx.append(indices_picked[0])
 
 
-                if self.ref_pop != self.neigh_pop:
-                    for effector in neighbors:
-                        self.effector_loc_t = []
-                        self.effector_loc_idx = []
-                        for t in range(len(self.effector_tracks)):
-                            indices = np.where(self.effector_tracks[t]==effector)[0]
-                            if len(indices)>0:
-                                self.effector_loc_t.append(t)
-                                self.effector_loc_idx.append(indices[0])
-                        self.effector_previous_color = []
-                        for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
-                            neigh_x=self.effector_positions[t][idx, 0]
-                            neigh_y=self.effector_positions[t][idx, 1]
-                            x_m_point = (ref_x[t] + neigh_x) / 2
-                            y_m_point = (ref_y[t] + neigh_y) / 2
+                    self.target_previous_color = []
+                    self.neighbors={}
+                    self.target_not_picked_initial_colors=[]
+                    ref_x=[]
+                    ref_y=[]
+                    for t,idx in zip(self.target_loc_t,self.target_loc_idx):
+                        ref_x.append(self.target_positions[t][idx, 0])
+                        ref_y.append(self.target_positions[t][idx, 1])
+                        self.target_previous_color.append(self.target_colors[t][idx].copy())
+                        self.target_colors[t][idx] = 'lime'
+                    for t, idx in zip(self.target_loc_t_not_picked, self.target_loc_idx_not_picked):
+                        self.target_not_picked_initial_colors.append(self.target_colors[t][idx].copy())
+                        self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
+                        self.target_colors[t][idx] = 'black'
 
-                            if t not in self.lines_data.keys():
-                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
-                                self.points_data[t]=[(x_m_point, y_m_point)]
-                            else:
-                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
-                                self.points_data[t].append((x_m_point, y_m_point))
+                    self.effector_previous_color = []
+                    self.lines_data = {}
+                    self.points_data = {}
+                    self.connections={}
+                    self.line_connections={}
 
-                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
-                            self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, effector)]
 
-                            # if effector == self.neighbor_track_of_interest:
-                            #     self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                            #     self.effector_colors[t][idx] = 'magenta'
-                            # else:
-                            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                            self.effector_colors[t][idx] = 'salmon'
+                    if self.ref_pop != self.neigh_pop:
+                        for effector in neighbors:
+                            self.effector_loc_t = []
+                            self.effector_loc_idx = []
+                            for t in range(len(self.effector_tracks)):
+                                indices = np.where(self.effector_tracks[t]==effector)[0]
+                                if len(indices)>0:
+                                    self.effector_loc_t.append(t)
+                                    self.effector_loc_idx.append(indices[0])
+                            self.effector_previous_color = []
+                            for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+                                neigh_x=self.effector_positions[t][idx, 0]
+                                neigh_y=self.effector_positions[t][idx, 1]
+                                x_m_point = (ref_x[t] + neigh_x) / 2
+                                y_m_point = (ref_y[t] + neigh_y) / 2
 
-                    for t in range(len(self.effector_colors)):
-                        for idx in range(len(self.effector_colors[t])):
-                            if self.effector_colors[t][idx].any() != 'salmon':
-                                if self.effector_colors[t][idx].any() != 'magenta':
-                                    self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
-                                    self.effector_colors[t][idx] = 'black'
+                                if t not in self.lines_data.keys():
+                                    self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                    self.points_data[t]=[(x_m_point, y_m_point)]
+                                else:
+                                    self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                    self.points_data[t].append((x_m_point, y_m_point))
+
+                                self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
+                                self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, effector)]
+
+                                # if effector == self.neighbor_track_of_interest:
+                                #     self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                #     self.effector_colors[t][idx] = 'magenta'
+                                # else:
+                                self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                self.effector_colors[t][idx] = 'salmon'
+
+                        for t in range(len(self.effector_colors)):
+                            for idx in range(len(self.effector_colors[t])):
+                                if self.effector_colors[t][idx].any() != 'salmon':
+                                    if self.effector_colors[t][idx].any() != 'magenta':
+                                        self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
+                                        self.effector_colors[t][idx] = 'black'
+                    else:
+                        for target in neighbors:
+                            self.target_loc_t = []
+                            self.target_loc_idx = []
+                            for t in range(len(self.target_tracks)):
+                                indices = np.where(self.target_tracks[t] == target)[0]
+                                if len(indices) > 0:
+                                    self.target_loc_t.append(t)
+                                    self.target_loc_idx.append(indices[0])
+                            self.target_previous_color = []
+                            for t, idx in zip(self.target_loc_t, self.target_loc_idx):
+                                neigh_x = self.target_positions[t][idx, 0]
+                                neigh_y = self.target_positions[t][idx, 1]
+
+                                x_m_point = (ref_x[t] + neigh_x) / 2
+                                y_m_point = (ref_y[t] + neigh_y) / 2
+
+                                if t not in self.lines_data.keys():
+                                    self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                    self.points_data[t]=[(x_m_point, y_m_point)]
+                                else:
+                                    self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                    self.points_data[t].append((x_m_point, y_m_point))
+
+                                self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
+                                self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, target)]
+
+                                # if target == self.neighbor_track_of_interest:
+                                #     self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                #     self.target_colors[t][idx] = 'magenta'
+                                # else:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'salmon'
+
+                        for t in range(len(self.target_colors)):
+                            for idx in range(len(self.target_colors[t])):
+                                if self.target_colors[t][idx].any() != 'salmon':
+                                    if self.target_colors[t][idx].any() != 'magenta':
+                                        if self.target_colors[t][idx].any() != 'lime':
+                                            self.target_colors[t][idx] = 'black'
+                elif len(ind)>0 and len(self.target_selection)==1 and pop2!='pair':
+
+                    self.cancel_btn.click()
+                    self.cancel_selection()
                 else:
-                    for target in neighbors:
-                        self.target_loc_t = []
-                        self.target_loc_idx = []
-                        for t in range(len(self.target_tracks)):
-                            indices = np.where(self.target_tracks[t] == target)[0]
-                            if len(indices) > 0:
-                                self.target_loc_t.append(t)
-                                self.target_loc_idx.append(indices[0])
-                        self.target_previous_color = []
-                        for t, idx in zip(self.target_loc_t, self.target_loc_idx):
-                            neigh_x = self.target_positions[t][idx, 0]
-                            neigh_y = self.target_positions[t][idx, 1]
 
-                            x_m_point = (ref_x[t] + neigh_x) / 2
-                            y_m_point = (ref_y[t] + neigh_y) / 2
-
-                            if t not in self.lines_data.keys():
-                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
-                                self.points_data[t]=[(x_m_point, y_m_point)]
-                            else:
-                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
-                                self.points_data[t].append((x_m_point, y_m_point))
-
-                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
-                            self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, target)]
-
-                            # if target == self.neighbor_track_of_interest:
-                            #     self.target_previous_color.append(self.target_colors[t][idx].copy())
-                            #     self.target_colors[t][idx] = 'magenta'
-                            # else:
-                            self.target_previous_color.append(self.target_colors[t][idx].copy())
-                            self.target_colors[t][idx] = 'salmon'
-
-                    for t in range(len(self.target_colors)):
-                        for idx in range(len(self.target_colors[t])):
-                            if self.target_colors[t][idx].any() != 'salmon':
-                                if self.target_colors[t][idx].any() != 'magenta':
-                                    if self.target_colors[t][idx].any() != 'lime':
-                                        self.target_colors[t][idx] = 'black'
-            elif len(ind)>0 and len(self.target_selection)==1 and pop2!='pair':
-
-                self.cancel_btn.click()
-                self.cancel_selection()
-            else:
-
-                pass
+                    pass
 
         elif self.pop=='effectors':
             #self.correction_tabs.setTabEnabled(1,True)
-            if len(ind)>1:
-                # More than one point in vicinity
-                datax,datay = [self.effector_positions[self.framedata][i,0] for i in ind],[self.effector_positions[self.framedata][i,1] for i in ind]
-                msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
-                dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
-                ind = [ind[np.argmin(dist)]]
+            if self.pop==self.ref_pop:
+                if len(ind)>1:
+                    # More than one point in vicinity
+                    datax,datay = [self.effector_positions[self.framedata][i,0] for i in ind],[self.effector_positions[self.framedata][i,1] for i in ind]
+                    msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
+                    dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
+                    ind = [ind[np.argmin(dist)]]
 
 
-            if len(ind)>0 and (len(self.effector_selection)==0):
-                ind = ind[0]
-                self.effector_selection.append(ind)
-                # self.correct_btn.setEnabled(True)
-                # self.cancel_btn.setEnabled(True)
-                # self.del_shortcut.setEnabled(True)
-                # self.no_event_shortcut.setEnabled(True)
+                if len(ind)>0 and (len(self.effector_selection)==0):
+                    ind = ind[0]
+                    self.effector_selection.append(ind)
+                    # self.correct_btn.setEnabled(True)
+                    # self.cancel_btn.setEnabled(True)
+                    # self.del_shortcut.setEnabled(True)
+                    # self.no_event_shortcut.setEnabled(True)
 
-                self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
-                try:
-                    self.hide_effector_cell_info()
-                except:
-                    pass
-                try:
-                    neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.effector_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
+                    self.effector_track_of_interest = self.effector_tracks[self.framedata][ind]
+                    try:
+                        self.hide_effector_cell_info()
+                    except:
+                        pass
+                    try:
+                        neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.effector_track_of_interest)&(self.df_relative[self.neighborhood_choice_cb.currentText()]==1),'NEIGHBOR_ID']
 
-                    neighbors = np.unique(neighbors)
-                    best_neighbor=np.min(neighbors)
+                        neighbors = np.unique(neighbors)
+                        best_neighbor=np.min(neighbors)
 
-                    self.neighbor_track_of_interest=best_neighbor
-                    #self.give_neighbor_cell_information()
-                except:
-                    neighbors=[]
-
-
-                print(f'You selected track {self.effector_track_of_interest}.')
-                self.reference_track_of_interest=self.effector_track_of_interest
-                self.give_reference_cell_information()
-                self.plot_signals()
-
-                self.effector_loc_t = []
-                self.effector_loc_idx = []
-                self.effector_loc_t_not_picked = []
-                self.effector_loc_idx_not_picked=[]
-                self.target_loc_t_not_picked= []
-                self.target_loc_idx_not_picked = []
-                for t in range(len(self.effector_tracks)):
-                    indices_picked = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
-                    indices_not_picked = np.where(self.effector_tracks[t]!=self.effector_track_of_interest)
-                    self.effector_loc_t_not_picked.append(t)
-                    self.effector_loc_idx_not_picked.append(indices_not_picked[0])
-                    if len(indices_picked)>0:
-                        self.effector_loc_t.append(t)
-                        self.effector_loc_idx.append(indices_picked[0])
+                        self.neighbor_track_of_interest=best_neighbor
+                        #self.give_neighbor_cell_information()
+                    except:
+                        neighbors=[]
 
 
-                self.effector_previous_color = []
-                self.neighbors={}
-                self.effector_not_picked_initial_colors=[]
-                ref_x=[]
-                ref_y=[]
-                for t,idx in zip(self.effector_loc_t,self.effector_loc_idx):
-                    ref_x.append(self.effector_positions[t][idx, 0])
-                    ref_y.append(self.effector_positions[t][idx, 1])
+                    print(f'You selected track {self.effector_track_of_interest}.')
+                    self.reference_track_of_interest=self.effector_track_of_interest
+                    self.give_reference_cell_information()
+                    self.plot_signals()
 
-                    self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                    self.effector_colors[t][idx] = 'lime'
-                for t, idx in zip(self.effector_loc_t_not_picked, self.effector_loc_idx_not_picked):
-                    self.effector_not_picked_initial_colors.append(self.effector_colors[t][idx].copy())
-                    self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
-                    self.effector_colors[t][idx] = 'black'
+                    self.effector_loc_t = []
+                    self.effector_loc_idx = []
+                    self.effector_loc_t_not_picked = []
+                    self.effector_loc_idx_not_picked=[]
+                    self.target_loc_t_not_picked= []
+                    self.target_loc_idx_not_picked = []
+                    for t in range(len(self.effector_tracks)):
+                        indices_picked = np.where(self.effector_tracks[t]==self.effector_track_of_interest)[0]
+                        indices_not_picked = np.where(self.effector_tracks[t]!=self.effector_track_of_interest)
+                        self.effector_loc_t_not_picked.append(t)
+                        self.effector_loc_idx_not_picked.append(indices_not_picked[0])
+                        if len(indices_picked)>0:
+                            self.effector_loc_t.append(t)
+                            self.effector_loc_idx.append(indices_picked[0])
 
-                self.target_previous_color = []
-                self.lines_data = {}
-                self.points_data={}
-                self.connections={}
-                self.lines_connections={}
 
-                if self.ref_pop != self.neigh_pop:
-                    for target in neighbors:
-                        self.target_loc_t = []
-                        self.target_loc_idx = []
-                        for t in range(len(self.target_tracks)):
-                            indices = np.where(self.target_tracks[t]==target)[0]
-                            if len(indices)>0:
-                                self.target_loc_t.append(t)
-                                self.target_loc_idx.append(indices[0])
-                        self.target_previous_color = []
-                        for t, idx in zip(self.target_loc_t, self.target_loc_idx):
-                            neigh_x=self.target_positions[t][idx, 0]
-                            neigh_y=self.target_positions[t][idx, 1]
-                            x_m_point = (ref_x[t] + neigh_x) / 2
-                            y_m_point = (ref_y[t] + neigh_y) / 2
+                    self.effector_previous_color = []
+                    self.neighbors={}
+                    self.effector_not_picked_initial_colors=[]
+                    ref_x=[]
+                    ref_y=[]
+                    for t,idx in zip(self.effector_loc_t,self.effector_loc_idx):
+                        ref_x.append(self.effector_positions[t][idx, 0])
+                        ref_y.append(self.effector_positions[t][idx, 1])
 
-                            if t not in self.lines_data.keys():
-                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
-                                self.points_data[t]=[(x_m_point, y_m_point)]
-                            else:
-                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
-                                self.points_data[t].append((x_m_point, y_m_point))
-                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
-                            self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, target)]
+                        self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                        self.effector_colors[t][idx] = 'lime'
+                    for t, idx in zip(self.effector_loc_t_not_picked, self.effector_loc_idx_not_picked):
+                        self.effector_not_picked_initial_colors.append(self.effector_colors[t][idx].copy())
+                        self.initial_effector_colors[t][idx] = self.effector_colors[t][idx].copy()
+                        self.effector_colors[t][idx] = 'black'
 
-                            # if target == self.neighbor_track_of_interest:
-                            #     self.target_previous_color.append(self.target_colors[t][idx].copy())
-                            #     self.target_colors[t][idx] = 'magenta'
-                            # else:
-                            self.target_previous_color.append(self.target_colors[t][idx].copy())
-                            self.target_colors[t][idx] = 'salmon'
+                    self.target_previous_color = []
+                    self.lines_data = {}
+                    self.points_data={}
+                    self.connections={}
+                    self.lines_connections={}
 
-                    for t in range(len(self.target_colors)):
-                        for idx in range(len(self.target_colors[t])):
-                            if self.target_colors[t][idx].any() != 'salmon':
-                                if self.target_colors[t][idx].any() != 'magenta':
-                                    self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
-                                    self.target_colors[t][idx] = 'black'
+                    if self.ref_pop != self.neigh_pop:
+                        for target in neighbors:
+                            self.target_loc_t = []
+                            self.target_loc_idx = []
+                            for t in range(len(self.target_tracks)):
+                                indices = np.where(self.target_tracks[t]==target)[0]
+                                if len(indices)>0:
+                                    self.target_loc_t.append(t)
+                                    self.target_loc_idx.append(indices[0])
+                            self.target_previous_color = []
+                            for t, idx in zip(self.target_loc_t, self.target_loc_idx):
+                                neigh_x=self.target_positions[t][idx, 0]
+                                neigh_y=self.target_positions[t][idx, 1]
+                                x_m_point = (ref_x[t] + neigh_x) / 2
+                                y_m_point = (ref_y[t] + neigh_y) / 2
+
+                                if t not in self.lines_data.keys():
+                                    self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                    self.points_data[t]=[(x_m_point, y_m_point)]
+                                else:
+                                    self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                    self.points_data[t].append((x_m_point, y_m_point))
+                                self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, target)]
+                                self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, target)]
+
+                                # if target == self.neighbor_track_of_interest:
+                                #     self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                #     self.target_colors[t][idx] = 'magenta'
+                                # else:
+                                self.target_previous_color.append(self.target_colors[t][idx].copy())
+                                self.target_colors[t][idx] = 'salmon'
+
+                        for t in range(len(self.target_colors)):
+                            for idx in range(len(self.target_colors[t])):
+                                if self.target_colors[t][idx].any() != 'salmon':
+                                    if self.target_colors[t][idx].any() != 'magenta':
+                                        self.initial_target_colors[t][idx] = self.target_colors[t][idx].copy()
+                                        self.target_colors[t][idx] = 'black'
+                    else:
+                        for effector in neighbors:
+                            self.effector_loc_t = []
+                            self.effector_loc_idx = []
+                            for t in range(len(self.effector_tracks)):
+                                indices = np.where(self.effector_tracks[t] == effector)[0]
+                                if len(indices) > 0:
+                                    self.effector_loc_t.append(t)
+                                    self.effector_loc_idx.append(indices[0])
+                            self.effector_previous_color = []
+                            for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
+                                neigh_x = self.effector_positions[t][idx, 0]
+                                neigh_y = self.effector_positions[t][idx, 1]
+                                x_m_point = (ref_x[t] + neigh_x) / 2
+                                y_m_point = (ref_y[t] + neigh_y) / 2
+                                #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
+                                                    # linewidth=2,picker=True)
+                                #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
+                                if t not in self.lines_data.keys():
+                                    self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
+                                    self.points_data[t]=[(x_m_point, y_m_point)]
+                                else:
+                                    self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
+                                    self.points_data[t].append((x_m_point, y_m_point))
+                                self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
+                                self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, effector)]
+
+
+                                # if t not in self.lines_neigh.keys():
+                                #     self.lines_neigh[t]=[line]
+                                #     self.point_neigh[t]=[point]
+                                # else:
+                                #     self.lines_neigh[t].append(line)
+                                #     self.point_neigh[t].append(point)
+                                # self.ax.add_line(line)
+                                # self.ax.add_artist(point)
+                                #self.ax.draw_artist(line)
+
+                                # if effector == self.neighbor_track_of_interest:
+                                #     self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                #     self.effector_colors[t][idx] = 'magenta'
+                                # else:
+                                self.effector_previous_color.append(self.effector_colors[t][idx].copy())
+                                self.effector_colors[t][idx] = 'salmon'
+
+                        for t in range(len(self.effector_colors)):
+                            for idx in range(len(self.effector_colors[t])):
+                                if self.effector_colors[t][idx].any() != 'salmon':
+                                    if self.effector_colors[t][idx].any() != 'magenta':
+                                        if self.effector_colors[t][idx].any() != 'lime':
+                                            self.effector_colors[t][idx] = 'black'
+
+                elif len(ind) > 0 and len(self.effector_selection) == 1 and pop2 != 'pair':
+
+                    self.cancel_btn.click()
+                    self.cancel_selection()
+
                 else:
-                    for effector in neighbors:
-                        self.effector_loc_t = []
-                        self.effector_loc_idx = []
-                        for t in range(len(self.effector_tracks)):
-                            indices = np.where(self.effector_tracks[t] == effector)[0]
-                            if len(indices) > 0:
-                                self.effector_loc_t.append(t)
-                                self.effector_loc_idx.append(indices[0])
-                        self.effector_previous_color = []
-                        for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
-                            neigh_x = self.effector_positions[t][idx, 0]
-                            neigh_y = self.effector_positions[t][idx, 1]
-                            x_m_point = (ref_x[t] + neigh_x) / 2
-                            y_m_point = (ref_y[t] + neigh_y) / 2
-                            #line, = self.ax.plot([ref_x[t], neigh_x], [ref_y[t], neigh_y], 'b-', alpha=1,
-                                                # linewidth=2,picker=True)
-                            #point = self.ax.scatter(x_m_point, y_m_point, marker="x", color='red',picker=True)
-                            if t not in self.lines_data.keys():
-                                self.lines_data[t]=[([ref_x[t], neigh_x], [ref_y[t], neigh_y])]
-                                self.points_data[t]=[(x_m_point, y_m_point)]
-                            else:
-                                self.lines_data[t].append(([ref_x[t], neigh_x], [ref_y[t], neigh_y]))
-                                self.points_data[t].append((x_m_point, y_m_point))
-                            self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, effector)]
-                            self.line_connections[(ref_x[t], neigh_x,ref_y[t], neigh_y)]=[(self.reference_track_of_interest, effector)]
-
-
-                            # if t not in self.lines_neigh.keys():
-                            #     self.lines_neigh[t]=[line]
-                            #     self.point_neigh[t]=[point]
-                            # else:
-                            #     self.lines_neigh[t].append(line)
-                            #     self.point_neigh[t].append(point)
-                            # self.ax.add_line(line)
-                            # self.ax.add_artist(point)
-                            #self.ax.draw_artist(line)
-
-                            # if effector == self.neighbor_track_of_interest:
-                            #     self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                            #     self.effector_colors[t][idx] = 'magenta'
-                            # else:
-                            self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-                            self.effector_colors[t][idx] = 'salmon'
-
-                    for t in range(len(self.effector_colors)):
-                        for idx in range(len(self.effector_colors[t])):
-                            if self.effector_colors[t][idx].any() != 'salmon':
-                                if self.effector_colors[t][idx].any() != 'magenta':
-                                    if self.effector_colors[t][idx].any() != 'lime':
-                                        self.effector_colors[t][idx] = 'black'
-
-            elif len(ind) > 0 and len(self.effector_selection) == 1 and pop2 != 'pair':
-
-                self.cancel_btn.click()
-                self.cancel_selection()
-
-            else:
-                pass
+                    pass
         if pop2=='pair':
             # if len(ind)>1:
             #     # More than one point in vicinity
@@ -3110,7 +3120,7 @@ class SignalAnnotator2(QMainWindow,Styles):
                     self.neigh=-1
                 # connect = self.connections[(selected_point[0], selected_point[1])]
                 # neigh = connect[0][1]
-                if len(self.pair_selection) == 0 and (selected_point[0],selected_point[1] in self.connections.keys()):
+                if len(self.pair_selection) == 0 and ((selected_point[0],selected_point[1]) in self.connections.keys()):
                     connect = self.connections[(selected_point[0], selected_point[1])]
                     self.correct_btn.setEnabled(True)
                     self.cancel_btn.setEnabled(True)
@@ -3167,6 +3177,8 @@ class SignalAnnotator2(QMainWindow,Styles):
                         print("Connection not found in dictionary.")
                 elif len(self.pair_selection) ==1 and self.neigh!=self.neighbor_track_of_interest:
                         self.cancel_pair_selection()
+        else:
+            pass
 
     def show_annotation_buttons(self):
 

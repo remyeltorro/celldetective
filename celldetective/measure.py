@@ -723,6 +723,8 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
     epsilon = -10000
     assert ((img.ndim==2)|(img.ndim==3)),f'Invalid image shape to compute the Haralick features. Expected YXC, got {img.shape}...'
 
+    print(img.shape, 'before measurement')
+
     if img.ndim==2:
         img = img[:,:,np.newaxis]
         if isinstance(channels, str):
@@ -771,7 +773,7 @@ def measure_isotropic_intensity(positions, # Dataframe of cell positions @ t
                 projection = np.multiply(crop_temp, expanded_mask)
 
                 projection[crop==epsilon] = epsilon
-                projection[expanded_mask==0.] = epsilon
+                projection[expanded_mask[:,:,0]==0.,:] = epsilon
 
                 for op in operations:
                     func = eval('np.'+op)

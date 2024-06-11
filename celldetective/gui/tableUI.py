@@ -14,6 +14,8 @@ from celldetective.gui import Styles
 from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
 from math import floor
 
+from matplotlib import colormaps
+
 class PandasModel(QAbstractTableModel):
 
 	def __init__(self, data):
@@ -505,7 +507,12 @@ class TableUI(QMainWindow, Styles):
 		layout.addLayout(hbox)
 
 		self.cmap_cb = QColormapComboBox()
-		self.cmap_cb.addColormaps(list(plt.colormaps()))
+		for cm in list(colormaps):
+			try:
+				self.cmap_cb.addColormap(cm)
+			except:
+				pass
+		
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('colormap: '), 33)
 		hbox.addWidget(self.cmap_cb, 66)

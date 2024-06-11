@@ -1,0 +1,29 @@
+{
+    "channels": [
+        "effector_fluo_channel",
+        "None"
+    ],
+    "diameter": 30.0,
+    "cellprob_threshold": 0.0,
+    "flow_threshold": 0.4,
+    "normalization_percentile": [
+        true,
+        true
+    ],
+    "normalization_clip": [
+        true,
+        true
+    ],
+    "normalization_values": [
+        [
+            0.5,
+            99.0
+        ],
+        [
+            1.0,
+            99.0
+        ]
+    ],
+    "model_type": "cellpose",
+    "spatial_calibration": 0.21783999999999998
+}

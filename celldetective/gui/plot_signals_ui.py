@@ -32,6 +32,7 @@ from lifelines import KaplanMeierFitter
 from matplotlib.cm import viridis, tab10
 import math
 from celldetective.gui import Styles
+from matplotlib import colormaps
 
 
 

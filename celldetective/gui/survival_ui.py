@@ -28,6 +28,7 @@ import matplotlib.cm as mcm
 import math
 from celldetective.events import switch_to_events
 from celldetective.gui import Styles
+from matplotlib import colormaps
 
 class ConfigSurvival(QWidget, Styles):
 	
@@ -124,7 +125,12 @@ class ConfigSurvival(QWidget, Styles):
 				self.cbs[i].addItems(self.cb_options[i])
 			choice_layout.addLayout(hbox)
 
-		self.cbs[-1].addColormaps(self.cb_options[-1])
+		for cm in list(colormaps):
+			try:
+				self.cbs[-1].addColormap(cm)
+			except:
+				pass
+
 		main_layout.addLayout(choice_layout)
 
 		self.cbs[0].setCurrentIndex(0)

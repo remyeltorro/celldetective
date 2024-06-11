@@ -2634,14 +2634,14 @@ def columnwise_mean(matrix, min_nbr_values = 1):
 	
 	for k in range(matrix.shape[1]):
 		values = matrix[:,k]
-		values = values[values!=0]
+		values = values[values==values]
 		if len(values[values==values])>min_nbr_values:
 			mean_line[k] = np.nanmean(values)
 			mean_line_std[k] = np.nanstd(values)
 	return mean_line, mean_line_std
 
 
-def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], return_matrix=False, forced_max_duration=None, min_nbr_values=2):
+def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], return_matrix=False, forced_max_duration=None, min_nbr_values=2,conflict_mode='mean'):
 
 	"""
 	Calculate the mean and standard deviation of a specified signal for tracks of a given class in the input DataFrame.
@@ -2687,12 +2687,13 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 	else:
 		max_duration = forced_max_duration
 	n_tracks = len(df.groupby(['position','TRACK_ID']))
-	signal_matrix = np.zeros((n_tracks,max_duration*2 + 1))
+	signal_matrix = np.zeros((n_tracks,int(max_duration)*2 + 1))
 	signal_matrix[:,:] = np.nan
+
+	df = df.sort_values(by=['position','TRACK_ID','FRAME'])
 
 	trackid=0
 	for track,track_group in df.loc[df[class_col].isin(class_value)].groupby(['position','TRACK_ID']):
-		track_group = track_group.sort_values(by='FRAME')
 		cclass = track_group[class_col].to_numpy()[0]
 		if cclass != 0:
 			ref_time = 0
@@ -2701,8 +2702,14 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 				ref_time = floor(track_group[time_col].to_numpy()[0])
 			except:
 				continue
-		signal = track_group[signal_name].to_numpy()
-		timeline = track_group['FRAME'].to_numpy().astype(int)
+		if conflict_mode=='mean':
+			signal = track_group.groupby('FRAME')[signal_name].mean().to_numpy()
+		elif conflict_mode=='first':
+			signal = track_group.groupby('FRAME')[signal_name].first().to_numpy()
+		else:
+			signal = track_group[signal_name].to_numpy()
+
+		timeline = track_group['FRAME'].unique().astype(int)
 		timeline_shifted = timeline - ref_time + max_duration
 		signal_matrix[trackid,timeline_shifted] = signal
 		trackid+=1

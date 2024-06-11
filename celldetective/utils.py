@@ -22,6 +22,7 @@ import zipfile
 from tqdm import tqdm
 import shutil
 import tempfile
+from scipy.interpolate import griddata
 
 
 def derivative(x, timeline, window, mode='bi'):
@@ -2213,17 +2214,21 @@ def download_zenodo_file(file, output_dir):
 
 	os.remove(path_to_zip_file)
 
-def interpolate_nan(array_like):
+def interpolate_nan(img, method='nearest'):
 
-	array = array_like.copy()
-	
-	isnan_array = ~np.isnan(array)
-	
-	xp = isnan_array.ravel().nonzero()[0]
-	
-	fp = array[~np.isnan(array)]
-	x = np.isnan(array).ravel().nonzero()[0]
-	
-	array[np.isnan(array)] = np.interp(x, xp, fp)
-	
-	return array
+	"""
+	Interpolate NaN on single channel array 2D
+	"""
+
+	if np.any(img.flatten()!=img.flatten()):
+		# then need to interpolate
+		x_grid, y_grid = np.meshgrid(np.arange(img.shape[1]),np.arange(img.shape[0]))
+		mask = [~np.isnan(img)][0]
+		x = x_grid[mask].reshape(-1)
+		y = y_grid[mask].reshape(-1)
+		points = np.array([x,y]).T
+		values = img[mask].reshape(-1)
+		interp_grid = griddata(points, values, (x_grid, y_grid), method=method)
+		return interp_grid
+	else:
+		return img

@@ -13,7 +13,7 @@ from stardist import fill_label_holes
 from csbdeep.io import save_tiff_imagej_compatible
 from gc import collect
 from lmfit import Parameters, Model, models
-import matplotlib.pyplot as plt
+import tifffile.tifffile as tiff
 
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):
 	
@@ -670,6 +670,7 @@ def correct_background_model(
 						   movie_prefix=None,
 						   activation_protocol=[['gauss',2],['std',4]],
 						   export_prefix='Corrected',
+						   return_stack = True,
 						   **kwargs,
 						   ):
 
@@ -770,6 +771,7 @@ def correct_background_model(
 														export=export,
 														prefix=export_prefix,
 														activation_protocol=activation_protocol,
+														return_stacks = return_stacks,
 													  )
 			print('Correction successful.')
 			if return_stacks:
@@ -791,7 +793,8 @@ def fit_and_apply_model_background_to_stack(stack_path,
 											clip=False, 
 											export=False,
 											activation_protocol=[['gauss',2],['std',4]], 
-											prefix="Corrected"
+											prefix="Corrected",
+											return_stacks=True,
 											):
 
 	"""
@@ -851,34 +854,55 @@ def fit_and_apply_model_background_to_stack(stack_path,
 	if stack_length_auto is not None:
 		stack_length = stack_length_auto
 
+	corrected_stack = []
+
 	if export:
 		path,file = os.path.split(stack_path)
 		if prefix is None:
-			newfile = file
+			newfile = 'temp_'+file
 		else:
 			newfile = '_'.join([prefix,file])
-
-	corrected_stack = []
-
-	for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
 		
-		frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
-		target_img = frames[:,:,target_channel_index].copy()
-		correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
-		frames[:,:,target_channel_index] = correction.copy()
-		corrected_stack.append(frames)
+		with tiff.TiffWriter(os.sep.join([path,newfile]),imagej=True) as tif:
 
-		del frames
-		del target_img
-		del correction
-		collect()
+			for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
+				
+				frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
+				target_img = frames[:,:,target_channel_index].copy()
+				correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
+				frames[:,:,target_channel_index] = correction.copy()
 
-	corrected_stack = np.array(corrected_stack)
+				if return_stacks:
+					corrected_stack.append(frames)
 
-	if export:
-		save_tiff_imagej_compatible(os.sep.join([path,newfile]), corrected_stack, axes='TYXC')
+				if export:
+					tif.write(np.moveaxis(frames,-1,0).astype(np.dtype('f')), contiguous=True)
+				del frames
+				del target_img
+				del correction
+				collect()
 
-	return corrected_stack
+		if prefix is None:
+			os.replace(os.sep.join([path,newfile]), os.sep.join([path,file]))
+	else:
+		for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
+			
+			frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
+			target_img = frames[:,:,target_channel_index].copy()
+			correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
+			frames[:,:,target_channel_index] = correction.copy()
+
+			corrected_stack.append(frames)
+
+			del frames
+			del target_img
+			del correction
+			collect()
+
+	if return_stacks:
+		return np.array(corrected_stack)
+	else:
+		return None
 
 def field_correction(img, threshold_on_std=1, operation='divide', model='paraboloid', clip=False, return_bg=False, activation_protocol=[['gauss',2],['std',4]]):
 	

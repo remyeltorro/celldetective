@@ -7,7 +7,7 @@ If intensity is in function name, it will be replaced by the name of the channel
 import warnings
 
 import numpy as np
-from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import distance_transform_edt, center_of_mass
 from scipy.spatial.distance import euclidean
 
 
@@ -45,15 +45,18 @@ def intensity_centre_of_mass_displacement(regionmask, intensity_image):
     y, x = np.mgrid[:regionmask.shape[0], :regionmask.shape[1]]
     xtemp = x.copy()
     ytemp = y.copy()
+    intensity_weighted_center = center_of_mass(intensity_image, regionmask)
+    centroid_x = intensity_weighted_center[1]
+    centroid_y = intensity_weighted_center[0]
 
-    centroid_x = np.sum(xtemp * intensity_image) / np.sum(intensity_image)
-    centroid_y = np.sum(ytemp * intensity_image) / np.sum(intensity_image)
     geometric_centroid_x = np.sum(xtemp * regionmask) / np.sum(regionmask)
     geometric_centroid_y = np.sum(ytemp * regionmask) / np.sum(regionmask)
     distance = euclidean(np.array((geometric_centroid_y, geometric_centroid_x)), np.array((centroid_y, centroid_x)))
     delta_x = geometric_centroid_x - centroid_x
     delta_y = geometric_centroid_y - centroid_y
-    direction_arctan = np.arctan2(delta_x, delta_y) * 180 / np.pi
+    direction_arctan = np.arctan2(delta_y, delta_x) * 180 / np.pi
+    if direction_arctan < 0:
+        direction_arctan += 360
     return distance, direction_arctan
 
 
@@ -86,15 +89,21 @@ def intensity_centre_of_mass_displacement_edge(regionmask, intensity_image):
     sum_regionmask = np.sum(regionmask)
 
     if sum_intensity_edge != 0 and sum_regionmask != 0:
-        centroid_x = np.sum(xtemp * intensity_edge) / sum_intensity_edge
-        centroid_y = np.sum(ytemp * intensity_edge) / sum_intensity_edge
-        geometric_centroid_x = np.sum(xtemp * regionmask) / sum_regionmask
-        geometric_centroid_y = np.sum(ytemp * regionmask) / sum_regionmask
+        y, x = np.mgrid[:regionmask.shape[0], :regionmask.shape[1]]
+        xtemp = x.copy()
+        ytemp = y.copy()
+        intensity_weighted_center = center_of_mass(intensity_image, regionmask)
+        centroid_x = intensity_weighted_center[1]
+        centroid_y = intensity_weighted_center[0]
 
-        distance = euclidean((geometric_centroid_y, geometric_centroid_x), (centroid_y, centroid_x))
+        geometric_centroid_x = np.sum(xtemp * regionmask) / np.sum(regionmask)
+        geometric_centroid_y = np.sum(ytemp * regionmask) / np.sum(regionmask)
+        distance = euclidean(np.array((geometric_centroid_y, geometric_centroid_x)), np.array((centroid_y, centroid_x)))
         delta_x = geometric_centroid_x - centroid_x
         delta_y = geometric_centroid_y - centroid_y
         direction_arctan = np.arctan2(delta_y, delta_x) * 180 / np.pi
+        if direction_arctan < 0:
+            direction_arctan += 360
         return distance, direction_arctan
     else:
         return np.nan, np.nan

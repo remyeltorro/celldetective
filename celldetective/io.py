@@ -1949,6 +1949,8 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 	
 	"""
 
+
+
 	mf = multichannel_frame.copy().astype(float)
 	assert mf.ndim==3,f'Wrong shape for the multichannel frame: {mf.shape}.'
 	if percentiles is None:
@@ -1960,12 +1962,13 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 			values = [values]*mf.shape[-1]
 		assert len(values)==mf.shape[-1],'Mismatch between the normalization values provided and the number of channels.'
 
+	mf_new = []
 	for c in range(mf.shape[-1]):
 		if values is not None:
 			v = values[c]
 		else:
 			v = None
-		mf[:,:,c] = normalize(mf[:,:,c].copy(),
+		norm = normalize(mf[:,:,c].copy(),
 							  percentiles=percentiles[c],
 							  values=v,
 							  ignore_gray_value=ignore_gray_value,
@@ -1973,7 +1976,9 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 							  amplification=amplification,
 							  dtype=dtype,
 							  )
-	return mf
+		mf_new.append(norm)
+
+	return np.moveaxis(mf_new,0,-1)
 
 def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=float, normalize_kwargs={"percentiles": (0.,99.99)}):
 
@@ -2029,7 +2034,7 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 	"""
 
 	try:
-		frames = skio.imread(stack_path, img_num=img_nums, plugin="tifffile")
+		frames = skio.imread(stack_path, key=img_nums, plugin="tifffile")
 	except Exception as e:
 		print(f'Error in loading the frame {img_nums} {e}. Please check that the experiment channel information is consistent with the movie being read.')
 		return None
@@ -2038,13 +2043,17 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 		# Systematically move channel axis to the end
 		channel_axis = np.argmin(frames.shape)
 		frames = np.moveaxis(frames, channel_axis, -1)
+
 	if frames.ndim==2:
 		frames = frames[:,:,np.newaxis].astype(float)
+	
 	if normalize_input:
 		frames = normalize_multichannel(frames, **normalize_kwargs)
+
 	if scale is not None:
-		frames = zoom(frames, [scale,scale,1], order=3, prefilter=False)
-	
+		frames = [zoom(frames[:,:,c].copy(), [scale,scale], order=3, prefilter=False) for c in range(frames.shape[-1])]
+		frames = np.moveaxis(frames,0,-1)
+
 	# add a fake pixel to prevent auto normalization errors on images that are uniform
 	# to revisit
 	for k in range(frames.shape[2]):

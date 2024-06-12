@@ -1330,11 +1330,16 @@ class MeasureAnnotator(SignalAnnotator):
 		center_window(self)
 
 		self.locate_stack()
+		self.locate_tracks()
 		data, properties, graph, labels, _ = load_napari_data(self.pos, prefix=None, population=self.mode,return_stack=False)
-		self.labels = relabel_segmentation(labels,data,properties)
+
+		if 'TRACK_ID' in self.df_tracks.columns:
+			self.labels = relabel_segmentation(labels, data, properties)
+		else:
+			self.labels = labels
+
 		self.current_channel = 0
 
-		self.locate_tracks()
 
 		self.generate_signal_choices()
 		self.frame_lbl = QLabel('position: ')

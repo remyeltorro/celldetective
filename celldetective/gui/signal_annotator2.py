@@ -2758,7 +2758,6 @@ class SignalAnnotator2(QMainWindow,Styles):
             else:
                 return None
 
-        print(ind)
         if self.pop=='targets':
             #self.correction_tabs.setTabEnabled(0,True)
             if self.pop==self.ref_pop:

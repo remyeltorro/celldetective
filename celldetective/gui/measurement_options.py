@@ -21,8 +21,7 @@ from fonticon_mdi6 import MDI6
 from celldetective.gui.thresholds_gui import ThresholdNormalisation, ThresholdSpot
 from celldetective.utils import extract_experiment_channels, get_software_location
 from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
-from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation, correct_image, \
-    field_normalisation, normalise_by_cell
+from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation, normalise_by_cell
 import numpy as np
 from tifffile import imread
 import json
@@ -736,6 +735,17 @@ class ConfigMeasurements(QMainWindow, Styles):
                 return None
         else:
             self.current_stack = movies[0]
+            self.stack_length = auto_load_number_of_frames(self.current_stack)
+            
+            if self.stack_length is None:
+                stack = imread(self.current_stack)
+                self.stack_length = len(stack)
+                del stack
+                gc.collect()
+            
+            self.mid_time = self.stack_length // 2
+            indices = self.mid_time + np.arange(len(self.channel_names))
+            self.test_frame = load_frames(list(indices.astype(int)),self.current_stack, normalize_input=False)
 
 
     def control_haralick_digitalization(self):
@@ -824,7 +834,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         Load the first mask of the detected movie.
         """
 
-        labels_path = str(Path(self.stack0).parent_window.parent_window) + f'/labels_{self.mode}/'
+        labels_path = str(Path(self.current_stack).parent.parent) + os.sep+f'labels_{self.mode}'+os.sep
         masks = natsorted(glob(labels_path + '*.tif'))
         if len(masks) == 0:
             print('no mask found')
@@ -858,47 +868,6 @@ class ConfigMeasurements(QMainWindow, Styles):
 
         self.im_mask.set_alpha(value)
         self.fig_contour.canvas.draw_idle()
-
-    # def populate_normalisation_tabs(self):
-
-    #     """
-    #     Multi-tab options to perform background correction before measurements.
-    #     """
-
-    #     layout = QVBoxLayout(self.normalisation_frame)
-
-    #     self.normalisation_lbl = QLabel("BACKGROUND CORRECTION")
-    #     self.normalisation_lbl.setStyleSheet("""
-    #         font-weight: bold;
-    #         padding: 0px;
-    #         """)
-    #     layout.addWidget(self.normalisation_lbl, alignment=Qt.AlignCenter)
-
-
-    #     self.tabs = QTabWidget()
-    #     self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-    #     self.tab1, self.tab2 = QWidget(), QWidget()
-    #     self.normalisation_list = QListWidget()
-    #     self.tabs.addTab(self.tab1, 'Local')
-    #     self.tabs.addTab(self.tab2, 'Field')
-    #     self.local_correction_layout = LocalCorrectionLayout(self, self.tab1)
-    #     self.fit_correction_layout = BackgroundFitCorrectionLayout(self, self.tab2)
-    #     layout.addWidget(self.tabs)
-
-    #     self.norm_list_lbl = QLabel('Background correction to perform:')
-    #     hbox = QHBoxLayout()
-    #     hbox.addWidget(self.norm_list_lbl)
-    #     self.del_norm_btn = QPushButton("")
-    #     self.del_norm_btn.setStyleSheet(self.button_select_all)
-    #     self.del_norm_btn.setIcon(icon(MDI6.trash_can, color="black"))
-    #     self.del_norm_btn.setToolTip("Remove background correction")
-    #     self.del_norm_btn.setIconSize(QSize(20, 20))
-    #     hbox.addWidget(self.del_norm_btn, alignment=Qt.AlignRight)
-    #     layout.addLayout(hbox)
-    #     self.del_norm_btn.clicked.connect(self.remove_item_from_list)
-    #     layout.addWidget(self.normalisation_list)
-
 
     def remove_item_from_list(self):
         current_item = self.normalisation_list.currentRow()
@@ -934,47 +903,6 @@ class ConfigMeasurements(QMainWindow, Styles):
 
     def fun(self, x, y):
         return x ** 2 + y
-
-    # def preview_normalisation(self):
-    #     plt.close('all')
-    #     plt.figure("Intensity Profiles",figsize=(10, 5))
-    #     self.locate_image()
-    #     diagonal_length = min(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[0], self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()].shape[1])
-    #     if self.tab2_subtract.isChecked():
-    #         norm_operation='Subtract'
-    #     else:
-    #         norm_operation='Divide'
-    #     normalised, bg_fit = field_normalisation(self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()],
-    #                                              threshold=self.tab2_txt_threshold.text(),
-    #                                              normalisation_operation=norm_operation,
-    #                                              clip=self.tab2_clip.isChecked(),
-    #                                              mode=self.tab2_dropdown.currentText())
-    #     diagonal_original = [self.test_frame[:, :, self.tab2_channel_dropdown.currentIndex()][i, i] for i in
-    #                          range(diagonal_length)]
-    #     diagonal_corrected = [normalised[i, i] for i in range(diagonal_length)]
-    #     diagonal_indices = np.arange(diagonal_length)
-
-    #     plt.subplot(1, 2, 1)
-    #     plt.plot(diagonal_indices, diagonal_original, color='black', linewidth=0.2)  # Adjust linewidth here
-    #     plt.title('Original Image')
-    #     plt.xlabel('Pixel Index along Diagonal')
-    #     plt.ylabel('Intensity')
-
-    #     plt.subplot(1, 2, 2)
-    #     plt.plot(diagonal_indices, diagonal_corrected, color='black', linewidth=0.2)  # Adjust linewidth here
-    #     plt.title('Corrected Image')
-    #     plt.xlabel('Pixel Index along Diagonal')
-    #     plt.ylabel('Intensity')
-
-    #     plt.tight_layout()
-    #     plt.show()
-
-    #     self.fig, self.ax = plt.subplots()
-    #     self.normalised_img = FigureCanvas(self.fig, "Corrected background image preview")
-    #     self.ax.clear()
-    #     self.ax.imshow(normalised, cmap='gray')
-    #     self.normalised_img.canvas.draw()
-    #     self.normalised_img.show()
 
     def view_normalisation_contour(self):
 
@@ -1061,30 +989,6 @@ class ConfigMeasurements(QMainWindow, Styles):
             if self.test_mask is not None:
                 self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
                                                  mask=self.test_mask, parent_window=self)
-        # for dictionary in self.background_correction:
-        #     if self.spot_channel.currentText() in dictionary['target channel']:
-        #         if dictionary['mode'] == 'field':
-        #             if dictionary['operation'] == 'Divide':
-        #                 normalised, bg_fit = field_normalisation(
-        #                     self.test_frame[:, :, self.spot_channel.currentIndex()],
-        #                     threshold=dictionary['threshold'],
-        #                     normalisation_operation=dictionary['operation'],
-        #                     clip=False,
-        #                     mode=dictionary['type'])
-        #             else:
-        #                 normalised, bg_fit = field_normalisation(
-        #                     self.test_frame[:, :, self.spot_channel.currentIndex()],
-        #                     threshold=dictionary['threshold'],
-        #                     normalisation_operation=dictionary['operation'],
-        #                     clip=dictionary['clip'],
-        #                     mode=dictionary['type'])
-        #             self.test_frame[:, :, self.spot_channel.currentIndex()] = normalised
-        #         if dictionary['mode'] == 'local':
-        #             normalised_image = normalise_by_cell(self.test_frame[:, :, self.spot_channel.currentIndex()].copy(), self.test_mask,
-        #                                                  distance=int(dictionary['distance']), mode=dictionary['type'],
-        #                                                  operation=dictionary['operation'])
-        #             self.test_frame[:, :, self.spot_channel.currentIndex()] = normalised_image
-
 
     def enable_spot_detection(self):
         if self.spot_check.isChecked():

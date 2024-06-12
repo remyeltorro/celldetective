@@ -1288,7 +1288,7 @@ class PreprocessingPanel(QFrame, Styles):
 				correct_background_model_free(self.exp_dir, 
 								   well_option=well_option,
 								   position_option=pos_option,
-								   export= True,
+								   export = True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
 								   show_progress_per_pos = True,

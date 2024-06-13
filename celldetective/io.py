@@ -1238,12 +1238,23 @@ def load_napari_data(position, prefix="Aligned", population="target", return_sta
 	"""
 	position = position.replace('\\','/')
 	if population.lower()=="target" or population.lower()=="targets":
-		napari_data = np.load(position+os.sep.join(['output','tables','napari_target_trajectories.npy']), allow_pickle=True)
+		if os.path.exists(position+os.sep.join(['output','tables','napari_target_trajectories.npy'])):
+			napari_data = np.load(position+os.sep.join(['output','tables','napari_target_trajectories.npy']), allow_pickle=True)
+		else:
+			napari_data = None
 	elif population.lower()=="effector" or population.lower()=="effectors":
-		napari_data = np.load(position+os.sep.join(['output', 'tables', 'napari_effector_trajectories.npy']), allow_pickle=True)
-	data = napari_data.item()['data']
-	properties = napari_data.item()['properties']
-	graph = napari_data.item()['graph']
+		if os.path.exists(position+os.sep.join(['output', 'tables', 'napari_effector_trajectories.npy'])):
+			napari_data = np.load(position+os.sep.join(['output', 'tables', 'napari_effector_trajectories.npy']), allow_pickle=True)
+		else:
+			napari_data = None
+	if napari_data is not None:
+		data = napari_data.item()['data']
+		properties = napari_data.item()['properties']
+		graph = napari_data.item()['graph']
+	else:
+		data = None
+		properties = None
+		graph = None
 	if return_stack:
 		stack,labels = locate_stack_and_labels(position, prefix=prefix, population=population)
 	else:

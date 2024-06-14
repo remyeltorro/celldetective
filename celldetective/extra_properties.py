@@ -7,7 +7,7 @@ If intensity is in function name, it will be replaced by the name of the channel
 import warnings
 
 import numpy as np
-from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import distance_transform_edt, center_of_mass
 from scipy.spatial.distance import euclidean
 
 

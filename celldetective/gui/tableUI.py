@@ -408,7 +408,7 @@ class TableUI(QMainWindow, Styles):
 		self.status_operation.setEnabled(False)
 		self.status_operation.addItems(['mean','median','min','max', 'prod', 'sum'])
 
-		status_cols = np.array([c.startswith('status_') for c in cols])
+		status_cols = np.array([c.startswith('status_') or c.startswith('group_') for c in cols])
 		status_cols = list(cols[status_cols])
 		if 'status' in list(self.data.columns):
 			status_cols.append('status')

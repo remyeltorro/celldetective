@@ -236,11 +236,14 @@ We highly recommend that you align the movie beforehand using for example, the "
     Demonstration of the of the SIFT multichannel tool on FIJI
 
 
-Normalization
-~~~~~~~~~~~~~
+Background correction
+~~~~~~~~~~~~~~~~~~~~~
 
-Currently, Celldetective does not support image normalization, but it is possible to develop a pipeline that normalizes selected channels in the stacks. If the pipeline creates a copy of the original stack in the position folder, then you just have to change de prefix in the experiment configuration, to measure intensities from the normalized stack instead of the original one.
+Since version 1.1.0, Celldetective supports two methods of image preprocessing to estimate and correct the background for the target channels. You can define a list of correction protocols that will be run sequentially over the image stack of interest (defined by the ``movie_prefix`` in the experiment configuration). The new stack will have the ``Corrected_`` prefix and can become the stack of interest for segmentation and measurements. 
 
+The first method is model-based. The principle is to fit a background model to the image *in-situ*, by masking the non-homogeneous parts first, with a combination of a Gaussian blur and a standard-deviation filter. You can currently choose between a paraboloid and a plane model to fit the background. The background can be subtracted (with or without clipping) from the images or divided to the image. 
+
+The second method exploits spatial-sampling information to estimate a shared background for each individual condition. For time-series, you can select the frame-range over which you have the highest chances of observing the background (less cells). Non-homogeneous parts are masked using the standard-deviation filter technique from above. A median projection over the multiple positions is performed to estimate the model-free background. This background can be applied to each the original images, for this condition, using the same kind of operations as above. In addition, an optimization can be performed to minimize the intensity difference between the non-homogeneous part of each image and the model-free background, by multiplying the background intensities with a coefficient. 
 
 References
 ----------

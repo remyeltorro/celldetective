@@ -232,6 +232,11 @@ class TableUI(QMainWindow, Styles):
 			self.plot_action.setShortcut("Ctrl+p")
 			self.fileMenu.addAction(self.plot_action)		
 
+			self.plot_inst_action = QAction("&Plot instantaneous...", self)
+			self.plot_inst_action.triggered.connect(self.plot_instantaneous)
+			self.plot_inst_action.setShortcut("Ctrl+i")
+			self.fileMenu.addAction(self.plot_inst_action)	
+
 			self.groupby_action = QAction("&Group by tracks...", self)
 			self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
 			self.groupby_action.setShortcut("Ctrl+g")
@@ -738,6 +743,15 @@ class TableUI(QMainWindow, Styles):
 			return np.array(array, dtype=int)
 		else:
 			return array
+
+	def plot_instantaneous(self):
+		
+		if self.plot_mode=='plot_track_signals':
+			self.plot_mode = 'static'
+			self.plot()
+			self.plot_mode = 'plot_track_signals'
+		elif self.plot_mode=="static":
+			self.plot()
 
 	def plot(self):
 		if self.plot_mode == "static":

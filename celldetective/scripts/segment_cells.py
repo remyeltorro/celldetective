@@ -9,7 +9,7 @@ import json
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
-from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
+from celldetective.utils import interpolate_nan, _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
@@ -173,9 +173,11 @@ def segment_index(indices):
 				values.append(normalization_values[k])
 
 		f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=True, normalize_kwargs={"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
+		f = np.moveaxis([interpolate_nan(f[:,:,c].copy()) for c in range(f.shape[-1])],0,-1)
 
 		if np.any(img_num_channels[:,t]==-1):
 			f[:,:,np.where(img_num_channels[:,t]==-1)[0]] = 0.
+		
 
 		if model_type=="stardist":
 			Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)

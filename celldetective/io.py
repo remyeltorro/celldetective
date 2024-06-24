@@ -1979,15 +1979,19 @@ def normalize_multichannel(multichannel_frame, percentiles=None,
 			v = values[c]
 		else:
 			v = None
-		norm = normalize(mf[:,:,c].copy(),
-							  percentiles=percentiles[c],
-							  values=v,
-							  ignore_gray_value=ignore_gray_value,
-							  clip=clip,
-							  amplification=amplification,
-							  dtype=dtype,
-							  )
-		mf_new.append(norm)
+
+		if np.all(mf[:,:,c]==0.):
+			mf_new.append(mf[:,:,c].copy())
+		else:
+			norm = normalize(mf[:,:,c].copy(),
+								  percentiles=percentiles[c],
+								  values=v,
+								  ignore_gray_value=ignore_gray_value,
+								  clip=clip,
+								  amplification=amplification,
+								  dtype=dtype,
+								  )
+			mf_new.append(norm)
 
 	return np.moveaxis(mf_new,0,-1)
 

@@ -136,9 +136,10 @@ class ClassifierWidget(QWidget, Styles):
 
 		self.irreversible_event_btn = QRadioButton('irreversible event')
 		self.unique_state_btn = QRadioButton('unique state')
-		self.time_corr_options = [self.irreversible_event_btn, self.unique_state_btn]
 		time_corr_btn_group = QButtonGroup()
 		self.unique_state_btn.click()
+		self.time_corr_options = [self.irreversible_event_btn, self.unique_state_btn]
+
 		for btn in self.time_corr_options:
 			time_corr_btn_group.addButton(btn)
 			btn.setEnabled(False)
@@ -148,7 +149,27 @@ class ClassifierWidget(QWidget, Styles):
 		time_corr_layout.addWidget(self.irreversible_event_btn, 50,alignment=Qt.AlignCenter)
 		layout.addLayout(time_corr_layout)
 
+		self.r2_slider = QLabeledDoubleSlider()
+		self.r2_slider.setValue(0.75)
+		self.r2_slider.setRange(0,1)
+		self.r2_slider.setSingleStep(0.01)
+		self.r2_slider.setOrientation(1)
+		self.r2_label = QLabel('R2 tolerance:')
+		self.r2_label.setToolTip('Minimum R2 between the fit sigmoid and the binary response to the filters to accept the event.')
+		r2_threshold_layout = QHBoxLayout()
+		r2_threshold_layout.addWidget(QLabel(''), 50)
+		r2_threshold_layout.addWidget(self.r2_label, 15)
+		r2_threshold_layout.addWidget(self.r2_slider, 35)
+		layout.addLayout(r2_threshold_layout)	
+		
+		self.irreversible_event_btn.clicked.connect(self.activate_r2)
+		self.unique_state_btn.clicked.connect(self.activate_r2)
+
+		for wg in [self.r2_slider, self.r2_label]:
+			wg.setEnabled(False)
+
 		layout.addWidget(QLabel())
+
 
 		self.submit_btn = QPushButton('apply')
 		self.submit_btn.setStyleSheet(self.button_style_sheet)
@@ -158,14 +179,30 @@ class ClassifierWidget(QWidget, Styles):
 		self.frame_slider.valueChanged.connect(self.set_frame)
 		self.alpha_slider.valueChanged.connect(self.set_transparency)
 
+	def activate_r2(self):
+		if self.irreversible_event_btn.isChecked() and self.time_corr.isChecked():
+			for wg in [self.r2_slider, self.r2_label]:
+				wg.setEnabled(True)
+		else:
+			for wg in [self.r2_slider, self.r2_label]:
+				wg.setEnabled(False)				
+
 	def activate_time_corr_options(self):
 
 		if self.time_corr.isChecked():
 			for btn in self.time_corr_options:
 				btn.setEnabled(True)
+			if self.irreversible_event_btn.isChecked():
+				for wg in [self.r2_slider, self.r2_label]:
+					wg.setEnabled(True)
+			else:
+				for wg in [self.r2_slider, self.r2_label]:
+					wg.setEnabled(False)				
 		else:
 			for btn in self.time_corr_options:
 				btn.setEnabled(False)
+			for wg in [self.r2_slider, self.r2_label]:
+				wg.setEnabled(False)
 
 	def init_class(self):
 
@@ -412,15 +449,16 @@ class ClassifierWidget(QWidget, Styles):
 			timeline = group['FRAME'].values
 			
 			try:
-				popt, pcov = curve_fit(step_function, timeline, status_signal,p0=[self.df['FRAME'].max()//2, 0.5],maxfev=10000)
-				r2 = r2_score(status_signal, step_function(timeline, *popt))
+				popt, pcov = curve_fit(step_function, timeline.astype(int), status_signal, p0=[self.df['FRAME'].max()//2, 0.5],maxfev=10000)
+				values = [step_function(t, *popt) for t in timeline]
+				r2 = r2_score(status_signal,values)
 			except Exception as e:
 				print(e)
 				self.df.loc[indices, self.class_name_user] = 2.0
 				self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
 				continue
 
-			if r2 > 0.7:
+			if r2 > float(self.r2_slider.value()):
 				t0 = popt[0]
 				self.df.loc[indices, self.class_name_user.replace('class','t')] = t0
 				self.df.loc[indices, self.class_name_user] = 0.0
@@ -429,7 +467,6 @@ class ClassifierWidget(QWidget, Styles):
 				self.df.loc[indices, self.class_name_user] = 2.0
 
 		print('Done.')
-
 
 
 

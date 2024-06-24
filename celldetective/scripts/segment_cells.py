@@ -121,6 +121,7 @@ if model_type=='cellpose':
 	flow_threshold = input_config['flow_threshold']
 
 scale = _estimate_scale_factor(spatial_calibration, required_spatial_calibration)
+print(f"Scale = {scale}...")
 
 nbr_channels = _extract_nbr_channels_from_config(config)
 print(f'Number of channels in the input movie: {nbr_channels}')
@@ -140,6 +141,7 @@ with open(pos+f'log_{mode}.json', 'a') as f:
 
 # Loop over all frames and segment
 def segment_index(indices):
+	global scale
 
 	if model_type=='stardist':
 		model = StarDist2D(None, name=modelname, basedir=Path(model_complete_path).parent)
@@ -156,7 +158,11 @@ def segment_index(indices):
 			device = torch.device("cuda")
 
 		model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=model_complete_path+modelname, model_type=None, nchan=len(required_channels)) #diam_mean=30.0,
-		model.diam_mean = 30.0
+		if scale is None:
+			scale_model = model.diam_mean / model.diam_labels
+		else:
+			scale_model = scale * model.diam_mean / model.diam_labels
+		print(f"Diam mean: {model.diam_mean}; Diam labels: {model.diam_labels}; Final rescaling: {scale_model}...")
 		print(f'Cellpose model {modelname} successfully loaded.')
 
 	for t in tqdm(indices,desc="frame"):
@@ -172,7 +178,7 @@ def segment_index(indices):
 				percentiles.append(None)
 				values.append(normalization_values[k])
 
-		f = load_frames(img_num_channels[:,t], file, scale=scale, normalize_input=True, normalize_kwargs={"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
+		f = load_frames(img_num_channels[:,t], file, scale=scale_model, normalize_input=True, normalize_kwargs={"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
 		f = np.moveaxis([interpolate_nan(f[:,:,c].copy()) for c in range(f.shape[-1])],0,-1)
 
 		if np.any(img_num_channels[:,t]==-1):
@@ -190,7 +196,7 @@ def segment_index(indices):
 			Y_pred = Y_pred.astype(np.uint16)
 
 		if scale is not None:
-			Y_pred = zoom(Y_pred, [1./scale,1./scale],order=0)
+			Y_pred = zoom(Y_pred, [1./scale_model,1./scale_model],order=0)
 
 		template = load_frames(0,file,scale=1,normalize_input=False)
 		if Y_pred.shape != template.shape[:2]:

@@ -2220,6 +2220,9 @@ def interpolate_nan(img, method='nearest'):
 	Interpolate NaN on single channel array 2D
 	"""
 
+	if np.all(img==0):
+		return img
+
 	if np.any(img.flatten()!=img.flatten()):
 		# then need to interpolate
 		x_grid, y_grid = np.meshgrid(np.arange(img.shape[1]),np.arange(img.shape[0]))

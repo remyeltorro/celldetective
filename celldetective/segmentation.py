@@ -116,6 +116,10 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 
 	elif model_type=='cellpose':
 		model = CellposeModel(gpu=use_gpu, pretrained_model=model_path+model_path.split('/')[-2], diam_mean=30.0)
+		if scale is None:
+			scale_model = model.diam_mean / model.diam_labels
+		else:
+			scale_model = scale * model.diam_mean / model.diam_labels
 
 	labels = []
 	if (time_flat_normalization)*normalize:
@@ -133,7 +137,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 			frame = normalize_multichannel(frame, values=normalization_values)
 
 		if scale is not None:
-			frame = [ndi.zoom(frame[:,:,c].copy(), [scale,scale], order=3, prefilter=False) for c in range(frame.shape[-1])]
+			frame = [ndi.zoom(frame[:,:,c].copy(), [scale_model,scale_model], order=3, prefilter=False) for c in range(frame.shape[-1])]
 
 		if model_type=="stardist":
 
@@ -142,16 +146,11 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 
 		elif model_type=="cellpose":
 
-			if stack.ndim==3:
-				channels_cp = [[0,0]]
-			else:
-				channels_cp = [[0,1]]
-
-			Y_pred, _, _ = model.eval([frame], diameter = diameter, flow_threshold=flow_threshold, channels=channels_cp, normalize=normalize)
-			Y_pred = Y_pred[0].astype(np.uint16)
+			Y_pred, _, _ = model.eval(frame, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
+			Y_pred = Y_pred.astype(np.uint16)
 
 		if scale is not None:
-			Y_pred = ndi.zoom(Y_pred, [1./scale,1./scale],order=0)
+			Y_pred = ndi.zoom(Y_pred, [1./scale_model,1./scale_model],order=0)
 
 
 		if Y_pred.shape != stack[0].shape[:2]:

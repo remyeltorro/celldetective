@@ -1310,7 +1310,6 @@ class NeighPanel(QFrame, Styles):
 
 
                         #table = os.sep.join([self.pos, 'output', 'tables', 'relative.csv'])
-                print('Done.')
             #
             # def check_signals2(self):
             #

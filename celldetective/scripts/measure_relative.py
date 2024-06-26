@@ -92,7 +92,8 @@ else:
         # Fill NaN values in description columns with 'No'
         description_cols = [col for col in df_test.columns if col.startswith('neighborhood')]
         for col in description_cols:
-            df_test[col].fillna(0, inplace=True)
+            #df_test[col].fillna(0, inplace=True)
+            df_test.fillna({col: 0}, inplace=True)
 
     # Fill NaN values in description columns with 'No'
     # description_cols = [col for col in df_test.columns if 'neighborhood' in col]

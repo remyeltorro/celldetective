@@ -152,6 +152,7 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
                             angle2 += 360
                         relative_angle2[t] = angle2
                 dddt = derivative(relative_distance, full_timeline, **velocity_kwargs)
+                dddt = np.insert(dddt, 0, np.nan)[:-1]
                 angular_velocity = np.zeros(len(full_timeline))
                 angular_velocity[:] = np.nan
 

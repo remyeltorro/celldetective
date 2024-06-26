@@ -3634,9 +3634,7 @@ class SignalAnnotator2(QMainWindow,Styles):
             # Add all signals at given track
             signals = {}
             tracks_neigh = np.unique(relative_filtered.loc[relative_filtered["REFERENCE_ID"]==track,'NEIGHBOR_ID'].to_numpy())
-            print(track)
             for neigh in tracks_neigh:
-                print(neigh)
                 for c in cols_relative:
                     signals.update({'relative_'+c: relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), c].to_numpy()})
                 time_of_interest = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"] == neigh), self.pair_time_name].to_numpy()

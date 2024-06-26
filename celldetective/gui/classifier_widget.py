@@ -449,7 +449,7 @@ class ClassifierWidget(QWidget, Styles):
 			timeline = group['FRAME'].values
 			
 			try:
-				popt, pcov = curve_fit(step_function, timeline.astype(int), status_signal, p0=[self.df['FRAME'].max()//2, 0.5],maxfev=10000)
+				popt, pcov = curve_fit(step_function, timeline.astype(int), status_signal, p0=[self.df['FRAME'].max()//2, 0.8],maxfev=30000)
 				values = [step_function(t, *popt) for t in timeline]
 				r2 = r2_score(status_signal,values)
 			except Exception as e:

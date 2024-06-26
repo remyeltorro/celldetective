@@ -6,6 +6,7 @@ from fonticon_mdi6 import MDI6
 import gc
 from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 
+from celldetective.gui.retrain_signal_model_options import ConfigPairSignalModelTraining
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import MeasureAnnotator2, SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
@@ -1009,68 +1010,7 @@ class NeighPanel(QFrame, Styles):
             "Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
         dist_neigh_hbox.addWidget(self.dist_neigh_btn,95)
         self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
-        rel_layout = QHBoxLayout()
-        self.measure_rel = QCheckBox("MEASURE")
-        self.measure_rel.setStyleSheet("""
-                    font-size: 10px;
-                    padding-left: 10px;
-                    padding-top: 5px;
-                    """)
-        self.measure_rel.setIcon(icon(MDI6.eyedropper, color="black"))
-        self.measure_rel.setIconSize(QSize(20, 20))
-        self.measure_rel.setToolTip(
-            "Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
-        rel_layout.addWidget(self.measure_rel, 90)
 
-        # self.visu_btn = QPushButton()
-        # self.visu_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
-        # self.visu_btn.setIconSize(QSize(20, 20))
-        # self.visu_btn.clicked.connect(self.check_measurements2)
-        # self.visu_btn.setToolTip("Open measurement annotator for two populations.")
-        # self.visu_btn.setStyleSheet(self.button_select_all)
-        #self.grid_contents.addWidget(self.visu_btn, 1,1,1,1,alignment=Qt.AlignRight)
-        #rel_layout.addWidget(self.visu_btn, 6)
-
-        self.config_rel_annotator_btn = QPushButton()
-        self.config_rel_annotator_btn.setIcon(icon(MDI6.cog_outline,color="black"))
-        self.config_rel_annotator_btn.setIconSize(QSize(20, 20))
-        self.config_rel_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
-        self.config_rel_annotator_btn.setStyleSheet(self.button_select_all)
-        self.config_rel_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-        #self.grid_contents.addWidget(self.config_rel_annotator_btn, 1,2,1,1, alignment=Qt.AlignRight)
-        rel_layout.addWidget(self.config_rel_annotator_btn, 6)
-        self.grid_contents.addLayout(rel_layout, 5,0,1,4)
-
-        signal_hlayout = QHBoxLayout()
-        self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
-        self.signal_analysis_action.setStyleSheet("""
-        font-size: 10px;
-        padding-left: 10px;
-        padding-top: 5px;""")
-
-        self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
-        self.signal_analysis_action.setIconSize(QSize(20, 20))
-        self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
-        #self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
-        signal_hlayout.addWidget(self.signal_analysis_action, 90)
-
-        self.check_signals_btn = QPushButton()
-        self.check_signals_btn.setIcon(icon(MDI6.eye_check_outline, color="black"))
-        self.check_signals_btn.setIconSize(QSize(20, 20))
-        self.check_signals_btn.clicked.connect(self.check_signals2)
-        self.check_signals_btn.setToolTip("Open signal annotator for two populations.")
-        self.check_signals_btn.setStyleSheet(self.button_select_all)
-        signal_hlayout.addWidget(self.check_signals_btn, 6)
-
-        self.config_signal_annotator_btn = QPushButton()
-        self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
-        self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
-        self.config_signal_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
-        self.config_signal_annotator_btn.setStyleSheet(self.button_select_all)
-        self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-        signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
-
-        self.grid_contents.addLayout(signal_hlayout, 6,0,1,4)
         # def generate_signal_analysis_options(self):
         # 	signal_layout = QVBoxLayout()
         # 	signal_hlayout = QHBoxLayout()
@@ -1170,17 +1110,113 @@ class NeighPanel(QFrame, Styles):
         list_header_layout.addWidget(self.delete_protocol_btn, alignment=Qt.AlignRight)
         self.grid_contents.addLayout(list_header_layout, 3, 0, 1, 4)
         self.grid_contents.addWidget(self.protocol_list, 4, 0, 1, 4)
+        rel_layout = QHBoxLayout()
+        self.measure_rel = QCheckBox("MEASURE")
+        self.measure_rel.setStyleSheet("""
+                    font-size: 10px;
+                    padding-left: 10px;
+                    padding-top: 5px;
+                    """)
+        self.measure_rel.setIcon(icon(MDI6.eyedropper, color="black"))
+        self.measure_rel.setIconSize(QSize(20, 20))
+        self.measure_rel.setToolTip(
+            "Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
+        rel_layout.addWidget(self.measure_rel, 90)
 
+        # self.visu_btn = QPushButton()
+        # self.visu_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
+        # self.visu_btn.setIconSize(QSize(20, 20))
+        # self.visu_btn.clicked.connect(self.check_measurements2)
+        # self.visu_btn.setToolTip("Open measurement annotator for two populations.")
+        # self.visu_btn.setStyleSheet(self.button_select_all)
+        # self.grid_contents.addWidget(self.visu_btn, 1,1,1,1,alignment=Qt.AlignRight)
+        # rel_layout.addWidget(self.visu_btn, 6)
+
+        self.config_rel_annotator_btn = QPushButton()
+        self.config_rel_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
+        self.config_rel_annotator_btn.setIconSize(QSize(20, 20))
+        self.config_rel_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
+        self.config_rel_annotator_btn.setStyleSheet(self.button_select_all)
+        self.config_rel_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
+        # self.grid_contents.addWidget(self.config_rel_annotator_btn, 1,2,1,1, alignment=Qt.AlignRight)
+        rel_layout.addWidget(self.config_rel_annotator_btn, 6)
+        self.grid_contents.addLayout(rel_layout, 5, 0, 1, 4)
+
+        signal_layout = QVBoxLayout()
+        signal_hlayout = QHBoxLayout()
+        self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
+        self.signal_analysis_action.setStyleSheet("""
+        font-size: 10px;
+        padding-left: 10px;
+        padding-top: 5px;""")
+
+        self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
+        self.signal_analysis_action.setIconSize(QSize(20, 20))
+        self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
+        # self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
+        signal_hlayout.addWidget(self.signal_analysis_action, 90)
+
+        self.check_signals_btn = QPushButton()
+        self.check_signals_btn.setIcon(icon(MDI6.eye_check_outline, color="black"))
+        self.check_signals_btn.setIconSize(QSize(20, 20))
+        self.check_signals_btn.clicked.connect(self.check_signals2)
+        self.check_signals_btn.setToolTip("Open signal annotator for two populations.")
+        self.check_signals_btn.setStyleSheet(self.button_select_all)
+        signal_hlayout.addWidget(self.check_signals_btn, 6)
+
+        self.config_signal_annotator_btn = QPushButton()
+        self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
+        self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
+        self.config_signal_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
+        self.config_signal_annotator_btn.setStyleSheet(self.button_select_all)
+        self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
+        signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
+        signal_layout.addLayout(signal_hlayout)
+        # self.to_disable.append(self.measure_action_tc)
+        pair_signal_model_vbox = QVBoxLayout()
+        pair_signal_model_vbox.setContentsMargins(25, 0, 25, 0)
+
+        pair_model_zoo_layout = QHBoxLayout()
+        pair_model_zoo_layout.addWidget(QLabel("Model zoo:"), 90)
+
+        self.pair_signal_models_list = QComboBox()
+        self.pair_signal_models_list.setEnabled(False)
+        self.refresh_signal_models()
+        # self.to_disable.append(self.cell_models_list)
+
+        self.pair_train_signal_model_btn = QPushButton("TRAIN")
+        self.pair_train_signal_model_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
+        self.pair_train_signal_model_btn.setIcon(icon(MDI6.redo_variant, color='black'))
+        self.pair_train_signal_model_btn.setIconSize(QSize(20, 20))
+        self.pair_train_signal_model_btn.setStyleSheet(self.button_style_sheet_3)
+        pair_model_zoo_layout.addWidget(self.pair_train_signal_model_btn, 5)
+        self.pair_train_signal_model_btn.clicked.connect(self.open_signal_model_config_ui)
+
+        pair_signal_model_vbox.addLayout(pair_model_zoo_layout)
+        pair_signal_model_vbox.addWidget(self.pair_signal_models_list)
+
+        signal_layout.addLayout(pair_signal_model_vbox)
+
+        self.grid_contents.addLayout(signal_layout, 6, 0, 1, 4)
+        self.grid_contents.addWidget(QHSeperationLine(), 10, 0, 1, 4)
         self.submit_btn = QPushButton("Submit")
         self.submit_btn.setStyleSheet(self.button_style_sheet_2)
         self.submit_btn.clicked.connect(self.process_neighborhood)
+        self.grid_contents.addWidget(self.submit_btn, 11, 0, 1, 4)
 
-        self.grid_contents.addWidget(self.submit_btn, 7, 0, 1, 4)
+
+    def refresh_signal_models(self):
+        signal_models = get_signal_models_list()
+        self.pair_signal_models_list.clear()
+        self.pair_signal_models_list.addItems(signal_models)
 
     def open_signal_annotator_configuration_ui(self):
         self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
         self.ConfigSignalAnnotator.show()
+    def open_signal_model_config_ui(self):
 
+        self.ConfigSignalTrain = ConfigPairSignalModelTraining(self)
+        self.ConfigSignalTrain.show()
     def remove_protocol_from_list(self):
 
         current_item = self.protocol_list.currentRow()

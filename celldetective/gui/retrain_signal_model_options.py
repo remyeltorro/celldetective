@@ -727,9 +727,6 @@ class ConfigPairSignalModelTraining(ConfigSignalModelTraining, Styles):
 		tables_target = glob(self.exp_dir + os.sep.join(['W*', '*', 'output', 'tables', f'trajectories_targets.csv']))
 		tables_effectors = glob(self.exp_dir + os.sep.join(['W*', '*', 'output', 'tables', f'trajectories_effectors.csv']))
 		tables_relative = glob(self.exp_dir + os.sep.join(['W*', '*', 'output', 'tables', f'relative_measurements_neighborhood.csv']))
-		print(tables_target)
-		print(tables_effectors)
-		print(tables_relative)
 		all_measurements = []
 
 		for tab in tables_target:

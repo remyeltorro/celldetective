@@ -724,13 +724,49 @@ class ConfigPairSignalModelTraining(ConfigSignalModelTraining, Styles):
 		self.normalization_max_value_lbl = [QLabel('Max %: ') for i in range(self.max_nbr_channels)]
 		self.normalization_max_value_le = [QLineEdit('99.99') for i in range(self.max_nbr_channels)]
 
-		tables = glob(self.exp_dir + os.sep.join(['W*', '*', 'output', 'tables', f'trajectories_*.csv']))
-		print(tables)
+		tables_target = glob(self.exp_dir + os.sep.join(['W*', '*', 'output', 'tables', f'trajectories_targets.csv']))
+		tables_effectors = glob(self.exp_dir + os.sep.join(['W*', '*', 'output', 'tables', f'trajectories_effectors.csv']))
+		tables_relative = glob(self.exp_dir + os.sep.join(['W*', '*', 'output', 'tables', f'relative_measurements_neighborhood.csv']))
+		print(tables_target)
+		print(tables_effectors)
+		print(tables_relative)
 		all_measurements = []
-		for tab in tables:
-			cols = pd.read_csv(tab, nrows=1).columns.tolist()
-			all_measurements.extend(cols)
+
+		for tab in tables_target:
+			cols_ref = []
+			cols_neigh = []
+			cols_target = pd.read_csv(tab, nrows=1).columns.tolist()
+			for col in cols_target:
+				col_r = 'reference_'+col
+				col_n = 'neighbor_'+col
+				cols_ref.append(col_r)
+				cols_neigh.append(col_n)
+			all_measurements.extend(cols_ref)
+			all_measurements.extend(cols_neigh)
+
+		for tab in tables_effectors:
+			cols_effectors = pd.read_csv(tab, nrows=1).columns.tolist()
+			cols_ref=[]
+			cols_neigh=[]
+			for col in cols_effectors:
+				col_r = 'reference_'+col
+				col_n = 'neighbor_'+col
+				cols_ref.append(col_r)
+				cols_neigh.append(col_n)
+			all_measurements.extend(cols_ref)
+			all_measurements.extend(cols_neigh)
+
+		for tab in tables_relative:
+			cols_relative = pd.read_csv(tab, nrows=1).columns.tolist()
+			cols_rel=[]
+			for col in cols_relative:
+				col_rel = f'relative_'+col
+				cols_rel.append(col_rel)
+			all_measurements.extend(cols_rel)
+
+
 		all_measurements = np.unique(all_measurements)
+
 		generic_measurements = ['brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel',
 								'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2',
 								"area", "area_bbox", "area_convex", "area_filled", "major_axis_length",

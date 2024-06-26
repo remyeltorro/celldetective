@@ -626,7 +626,7 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.export_btn.clicked.connect(self.export_signals)
         self.export_btn.setIcon(icon(MDI6.export,color="black"))
         self.export_btn.setIconSize(QSize(25, 25))
-        #btn_hbox.addWidget(self.export_btn, 10)
+        btn_hbox.addWidget(self.export_btn, 10)
         self.left_panel.addLayout(btn_hbox)
 
         # Animation
@@ -3594,10 +3594,73 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.stop_btn.clicked.connect(self.start)
         self.start_btn.setShortcut(QKeySequence("f"))
 
-
     def export_signals(self):
 
-        pass
+        auto_dataset_name = self.pos.split(os.sep)[-4] + '_' + self.pos.split(os.sep)[-2] + '.npy'
+
+        if self.normalized_signals:
+            self.normalize_features_btn.click()
+
+        training_set = []
+        cols_relative=self.df_relative.columns
+        relative_filtered=self.df_relative[self.df_relative[f'{self.neighborhood_choice_cb.currentText()}'] == 1]
+        tracks_reference=np.unique(relative_filtered["REFERENCE_ID"].to_numpy())
+        # if self.ref_pop=='targets':
+        #     cols_reference= self.df_targets.columns
+        #     tracks_reference = np.unique(self.df_targets["TRACK_ID"].to_numpy())
+        # else:
+        #     cols_reference= self.df_effectors.columns
+        #     tracks_reference = np.unique(self.df_effectors["TRACK_ID"].to_numpy())
+        # if self.neigh_pop=='targets':
+        #     cols_neigh = self.df_targets.columns
+        #     tracks_neigh = np.unique(self.df_targets["TRACK_ID"].to_numpy())
+        # else:
+        #     cols_neigh = self.df_effectors.columns
+        #     tracks_neigh = np.unique(self.df_effectors["TRACK_ID"].to_numpy())
+        if self.ref_pop == 'targets':
+            df_ref=self.df_targets
+            cols_ref = self.df_targets.columns
+
+        else:
+            df_ref=self.df_effectors
+            cols_ref = self.df_effectors.columns
+        if self.neigh_pop == 'targets':
+            df_neigh=self.df_targets
+            cols_neigh = self.df_targets.columns
+        else:
+            df_neigh=self.df_effectors
+            cols_neigh = self.df_effectors.columns
+        for track in tracks_reference:
+            # Add all signals at given track
+            signals = {}
+            tracks_neigh = np.unique(relative_filtered.loc[relative_filtered["REFERENCE_ID"]==track,'NEIGHBOR_ID'].to_numpy())
+            print(track)
+            for neigh in tracks_neigh:
+                print(neigh)
+                for c in cols_relative:
+                    signals.update({'relative_'+c: relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), c].to_numpy()})
+                time_of_interest = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"] == neigh), self.pair_time_name].to_numpy()
+                cclass = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), self.pair_class_name].to_numpy()
+                signals.update({"time_of_interest": time_of_interest, "class": cclass})
+                for c in cols_ref:
+                    signals.update({'reference_'+c: df_ref.loc[(df_ref["TRACK_ID"] == track), c].to_numpy()})
+                for c in cols_neigh:
+                    signals.update({'neighbor_' + c: df_neigh.loc[(df_neigh["TRACK_ID"] == neigh), c].to_numpy()})
+
+            # Here auto add all available channels
+            training_set.append(signals)
+
+        #print(training_set)
+
+        pathsave = QFileDialog.getSaveFileName(self, "Select file name", self.exp_dir + auto_dataset_name, ".npy")[0]
+        if pathsave != '':
+           if not pathsave.endswith(".npy"):
+               pathsave += ".npy"
+           try:
+               np.save(pathsave, training_set)
+               print(f'File successfully written in {pathsave}.')
+           except Exception as e:
+               print(f"Error {e}...")
 
     def update_effector_info(self):
         # Clear existing labels

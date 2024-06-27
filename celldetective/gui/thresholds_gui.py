@@ -2,7 +2,7 @@ import math
 
 import skimage
 from PyQt5.QtWidgets import QAction, QMenu, QMainWindow, QMessageBox, QLabel, QWidget, QFileDialog, QHBoxLayout, \
-	QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton
+	QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton, QRadioButton, QButtonGroup
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from matplotlib.backends.backend_qt import NavigationToolbar2QT
 from matplotlib.patches import Circle
@@ -17,6 +17,7 @@ from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.segmentation import threshold_image, identify_markers_from_binary, apply_watershed, \
 	segment_frame_from_thresholds
 from scipy.ndimage import binary_fill_holes
+import scipy.ndimage as ndi
 from PyQt5.QtCore import Qt, QSize
 from glob import glob
 from superqt.fonticon import icon
@@ -263,9 +264,19 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		marker_box = QVBoxLayout()
 		marker_box.setContentsMargins(30, 30, 30, 30)
 
-		marker_lbl = QLabel('Markers')
+		marker_lbl = QLabel('Objects')
 		marker_lbl.setStyleSheet("font-weight: bold;")
 		marker_box.addWidget(marker_lbl, alignment=Qt.AlignCenter)
+
+		object_option_hbox = QHBoxLayout()
+		self.marker_option = QRadioButton('markers')
+		self.all_objects_option = QRadioButton('all non-contiguous objects')
+		self.marker_option_group = QButtonGroup()
+		self.marker_option_group.addButton(self.marker_option)
+		self.marker_option_group.addButton(self.all_objects_option)
+		object_option_hbox.addWidget(self.marker_option, 50, alignment=Qt.AlignCenter)
+		object_option_hbox.addWidget(self.all_objects_option, 50, alignment=Qt.AlignCenter)
+		marker_box.addLayout(object_option_hbox)
 
 		hbox_footprint = QHBoxLayout()
 		hbox_footprint.addWidget(QLabel('Footprint: '), 20)
@@ -275,7 +286,8 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.footprint_slider.setRange(1, self.binary.shape[0] // 4)
 		self.footprint_slider.setValue(self.footprint)
 		self.footprint_slider.valueChanged.connect(self.set_footprint)
-		hbox_footprint.addWidget(self.footprint_slider, 80)
+		hbox_footprint.addWidget(self.footprint_slider, 30)
+		hbox_footprint.addWidget(QLabel(''), 50)
 		marker_box.addLayout(hbox_footprint)
 
 		hbox_distance = QHBoxLayout()
@@ -286,7 +298,8 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.min_dist_slider.setRange(0, self.binary.shape[0] // 4)
 		self.min_dist_slider.setValue(self.min_dist)
 		self.min_dist_slider.valueChanged.connect(self.set_min_dist)
-		hbox_distance.addWidget(self.min_dist_slider, 80)
+		hbox_distance.addWidget(self.min_dist_slider, 30)
+		hbox_distance.addWidget(QLabel(''), 50)
 		marker_box.addLayout(hbox_distance)
 
 		hbox_marker_btns = QHBoxLayout()
@@ -305,7 +318,22 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		hbox_marker_btns.addWidget(self.watershed_btn)
 		marker_box.addLayout(hbox_marker_btns)
 
+		self.marker_option.clicked.connect(self.enable_marker_options)
+		self.all_objects_option.clicked.connect(self.enable_marker_options)
+		self.marker_option.click()
+
 		self.left_panel.addLayout(marker_box)
+
+	def enable_marker_options(self):
+		if self.marker_option.isChecked():
+			self.footprint_slider.setEnabled(True)
+			self.min_dist_slider.setEnabled(True)
+			self.markers_btn.setEnabled(True)
+		else:
+			self.footprint_slider.setEnabled(False)
+			self.min_dist_slider.setEnabled(False)
+			self.markers_btn.setEnabled(False)
+			self.watershed_btn.setEnabled(True)	
 
 	def generate_props_contents(self):
 
@@ -675,7 +703,10 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 
 	def apply_watershed_to_selection(self):
 
-		self.labels = apply_watershed(self.binary, self.coords, self.edt_map)
+		if self.marker_option.isChecked():
+			self.labels = apply_watershed(self.binary, self.coords, self.edt_map)
+		else:
+			self.labels,_ = ndi.label(self.binary.astype(int))
 
 		self.current_channel = self.channels_cb.currentIndex()
 		t = int(self.frame_slider.value())
@@ -806,6 +837,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 			"marker_footprint_size": self.footprint,
 			"feature_queries": [self.property_query_le.text()],
 			"equalize_reference": [self.equalize_option, self.frame_slider.value()],
+			"do_watershed": self.marker_option.isChecked(),
 		}
 
 		print('The following instructions will be written: ', instructions)
@@ -872,6 +904,13 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		feature_queries = threshold_instructions['feature_queries']
 		self.property_query_le.setText(feature_queries[0])
 		self.submit_query_btn.click()
+
+		if 'do_watershed' in threshold_instructions:
+			do_watershed = threshold_instructions['do_watershed']
+			if do_watershed:
+				self.marker_option.click()
+			else:
+				self.all_objects_option.click()
 
 
 class ThresholdNormalisation(ThresholdConfigWizard):

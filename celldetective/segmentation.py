@@ -228,7 +228,7 @@ def segment_from_thresholds(stack, target_channel=0, thresholds=None, view_on_na
 	return masks
 
 def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equalize_reference=None,
-								  filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None, channel_names=None):
+								  filters=None, marker_min_distance=30, marker_footprint_size=20, marker_footprint=None, feature_queries=None, channel_names=None, do_watershed=True):
 	
 	"""
 	Segments objects within a single frame based on intensity thresholds and optional image processing steps.
@@ -275,8 +275,13 @@ def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equa
 	img = filter_image(img, filters=filters)
 	edge = estimate_unreliable_edge(filters)
 	binary_image = threshold_image(img, thresholds[0], thresholds[1], fill_holes=True, edge_exclusion=edge)
-	coords,distance = identify_markers_from_binary(binary_image, marker_min_distance, footprint_size=marker_footprint_size, footprint=marker_footprint, return_edt=True)
-	instance_seg = apply_watershed(binary_image, coords, distance)
+	
+	if do_watershed:
+		coords,distance = identify_markers_from_binary(binary_image, marker_min_distance, footprint_size=marker_footprint_size, footprint=marker_footprint, return_edt=True)
+		instance_seg = apply_watershed(binary_image, coords, distance)
+	else:
+		instance_seg, _ = ndi.label(binary_image.astype(int).copy())
+
 	instance_seg = filter_on_property(instance_seg, intensity_image=img_mc, queries=feature_queries, channel_names=channel_names)
 
 	return instance_seg

@@ -702,12 +702,12 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 						   show_progress_per_pos = False,
 							)
 		
-
 		self.viewer = StackVisualizer(
 									  stack=corrected_stacks[0],
 									  window_title='Corrected channel',
 									  frame_slider = True,
-									  contrast_slider = True
+									  contrast_slider = True,
+									  target_channel=self.channels_cb.currentIndex(),
 									 )
 		self.viewer.show()
 	

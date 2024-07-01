@@ -12,6 +12,8 @@ import matplotlib.cm as mcm
 import os
 from celldetective.gui import Styles
 from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
+from superqt.fonticon import icon
+from fonticon_mdi6 import MDI6
 from math import floor
 
 from matplotlib import colormaps
@@ -71,6 +73,92 @@ class QueryWidget(QWidget):
 		except Exception as e:
 			print(e)
 			return None
+
+
+class MergeOneHotWidget(QWidget, Styles):
+
+	def __init__(self, parent_window, selected_columns=None):
+
+		super().__init__()
+		self.parent_window = parent_window
+		self.selected_columns = selected_columns
+
+		self.setWindowTitle("Merge one-hot encoded columns...")
+		# Create the QComboBox and add some items
+		center_window(self)
+		
+		self.layout = QVBoxLayout(self)
+		self.layout.setContentsMargins(30,30,30,30)
+
+		if self.selected_columns is not None:
+			n_cols = len(self.selected_columns)
+		else:
+			n_cols = 2
+
+		name_hbox = QHBoxLayout()
+		name_hbox.addWidget(QLabel('New categorical column: '), 33)
+		self.new_col_le = QLineEdit()
+		self.new_col_le.setText('categorical_')
+		self.new_col_le.textChanged.connect(self.allow_merge)
+		name_hbox.addWidget(self.new_col_le, 66)
+		self.layout.addLayout(name_hbox)
+
+
+		self.layout.addWidget(QLabel('Source columns: '))
+
+		self.cbs = [QSearchableComboBox() for i in range(n_cols)]
+		self.cbs_layout = QVBoxLayout()
+
+		for i in range(n_cols):
+			lay = QHBoxLayout()
+			lay.addWidget(QLabel(f'column {i}: '), 33)
+			self.cbs[i].addItems(['--']+list(self.parent_window.data.columns))
+			if self.selected_columns is not None:
+				self.cbs[i].setCurrentText(self.selected_columns[i])
+			lay.addWidget(self.cbs[i], 66)
+			self.cbs_layout.addLayout(lay)
+
+		self.layout.addLayout(self.cbs_layout)
+
+		hbox = QHBoxLayout()
+		self.add_col_btn = QPushButton('Add column')
+		self.add_col_btn.clicked.connect(self.add_col)
+		self.add_col_btn.setStyleSheet(self.button_add)
+		self.add_col_btn.setIcon(icon(MDI6.plus,color="black"))
+
+		hbox.addWidget(QLabel(''), 50)
+		hbox.addWidget(self.add_col_btn, 50, alignment=Qt.AlignRight)
+		self.layout.addLayout(hbox)
+
+		self.submit_btn = QPushButton('Merge')
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
+		self.submit_btn.clicked.connect(self.merge_cols)
+		self.layout.addWidget(self.submit_btn, 30)
+
+		self.setAttribute(Qt.WA_DeleteOnClose)
+
+	def add_col(self):
+		self.cbs.append(QSearchableComboBox())
+		self.cbs[-1].addItems(['--']+list(self.parent_window.data.columns))
+		lay = QHBoxLayout()
+		lay.addWidget(QLabel(f'column {len(self.cbs)}: '), 33)
+		lay.addWidget(self.cbs[-1], 66)
+		self.cbs_layout.addLayout(lay)	
+
+	def merge_cols(self):
+		
+		self.parent_window.data[self.new_col_le.text()] = self.parent_window.data.loc[:,list(self.selected_columns)].idxmax(axis=1)
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
+		self.close()
+
+	def allow_merge(self):
+
+		if self.new_col_le.text()=='':
+			self.submit_btn.setEnabled(False)
+		else:
+			self.submit_btn.setEnabled(True)
+
 
 class DifferentiateColWidget(QWidget, Styles):
 
@@ -264,7 +352,12 @@ class TableUI(QMainWindow, Styles):
 			self.derivative_action = QAction('&Differentiate...', self)
 			self.derivative_action.triggered.connect(self.differenciate_selected_feature)
 			self.derivative_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.derivative_action)			
+			self.mathMenu.addAction(self.derivative_action)
+
+			self.onehot_action = QAction('&One hot to categorical...', self)
+			self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
+			#self.onehot_action.setShortcut("Ctrl+D")
+			self.mathMenu.addAction(self.onehot_action)		
 
 	def delete_columns(self):
 
@@ -333,6 +426,19 @@ class TableUI(QMainWindow, Styles):
 
 		self.diffWidget = DifferentiateColWidget(self, selected_col)
 		self.diffWidget.show()
+
+	def transform_one_hot_cols_to_categorical(self):
+
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		if list(col_idx):
+			cols = np.array(list(self.data.columns))
+			selected_cols = cols[col_idx]
+		else:
+			selected_cols = None
+
+		self.mergewidget = MergeOneHotWidget(self, selected_columns=selected_cols)
+		self.mergewidget.show()
 
 
 	def groupby_time_table(self):

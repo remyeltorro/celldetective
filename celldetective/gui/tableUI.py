@@ -141,7 +141,7 @@ class MergeOneHotWidget(QWidget, Styles):
 		self.cbs.append(QSearchableComboBox())
 		self.cbs[-1].addItems(['--']+list(self.parent_window.data.columns))
 		lay = QHBoxLayout()
-		lay.addWidget(QLabel(f'column {len(self.cbs)}: '), 33)
+		lay.addWidget(QLabel(f'column {len(self.cbs)-1}: '), 33)
 		lay.addWidget(self.cbs[-1], 66)
 		self.cbs_layout.addLayout(lay)	
 

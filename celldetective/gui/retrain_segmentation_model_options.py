@@ -2,6 +2,8 @@ from PyQt5.QtWidgets import QMainWindow, QApplication,QRadioButton, QMessageBox,
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QIcon
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
+from celldetective.gui.layouts import ChannelNormGenerator
+
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
@@ -90,6 +92,8 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		self.submit_btn.clicked.connect(self.prep_model)
 		self.main_layout.addWidget(self.submit_btn)
 		self.submit_btn.setEnabled(False)
+
+		self.spatial_calib_le.textChanged.connect(self.activate_train_btn)
 
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
@@ -308,83 +312,25 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		# layout.addLayout(recompile_layout)
 
 		self.max_nbr_channels = 5
-		self.channel_cbs = [QComboBox() for i in range(self.max_nbr_channels)]
-		self.normalization_mode_btns = [QPushButton('') for i in range(self.max_nbr_channels)]
-		self.normalization_mode = [True for i in range(self.max_nbr_channels)]
-
-		self.normalization_clip_btns = [QPushButton('') for i in range(self.max_nbr_channels)]
-		self.clip_option = [False for i in range(self.max_nbr_channels)]
-
-		for i in range(self.max_nbr_channels):
-
-			self.normalization_mode_btns[i].setIcon(icon(MDI6.percent_circle,color="#1565c0"))
-			self.normalization_mode_btns[i].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[i].setStyleSheet(self.button_select_all)	
-			self.normalization_mode_btns[i].setToolTip("Switch to absolute normalization values.")
-			self.normalization_mode_btns[i].clicked.connect(partial(self.switch_normalization_mode, i))
-
-			self.normalization_clip_btns[i].setIcon(icon(MDI6.content_cut,color="black"))
-			self.normalization_clip_btns[i].setIconSize(QSize(20, 20))	
-			self.normalization_clip_btns[i].setStyleSheet(self.button_select_all)	
-			self.normalization_clip_btns[i].clicked.connect(partial(self.switch_clipping_mode, i))
-			self.normalization_clip_btns[i].setToolTip('clip')
-
-		self.normalization_min_value_lbl = [QLabel('Min %: ') for i in range(self.max_nbr_channels)]
-		self.normalization_min_value_le = [QLineEdit('0.1') for i in range(self.max_nbr_channels)]
-
-		self.normalization_max_value_lbl = [QLabel('Max %: ') for i in range(self.max_nbr_channels)]		
-		self.normalization_max_value_le = [QLineEdit('99.99') for i in range(self.max_nbr_channels)]
-
-		self.channel_items = ['--', 'brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 
-							 'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2','None'
-							]
-		exp_ch = self.parent_window.parent_window.exp_channels
-		for c in exp_ch:
-			if c not in self.channel_items:
-				self.channel_items.append(c)
-
-		self.channel_option_layouts = []
-		for i in range(len(self.channel_cbs)):
-			ch_layout = QHBoxLayout()
-			ch_layout.addWidget(QLabel(f'channel {i}: '), 30)
-			self.channel_cbs[i].addItems(self.channel_items)
-			self.channel_cbs[i].currentIndexChanged.connect(self.check_valid_channels)
-			ch_layout.addWidget(self.channel_cbs[i], 70)
-			layout.addLayout(ch_layout)
-
-			channel_norm_options_layout = QHBoxLayout()
-			channel_norm_options_layout.setContentsMargins(130,0,0,0)
-			channel_norm_options_layout.addWidget(self.normalization_min_value_lbl[i])			
-			channel_norm_options_layout.addWidget(self.normalization_min_value_le[i])
-			channel_norm_options_layout.addWidget(self.normalization_max_value_lbl[i])
-			channel_norm_options_layout.addWidget(self.normalization_max_value_le[i])
-			channel_norm_options_layout.addWidget(self.normalization_clip_btns[i])
-			channel_norm_options_layout.addWidget(self.normalization_mode_btns[i])
-			layout.addLayout(channel_norm_options_layout)
-
-		# for i in range(self.max_nbr_channels):
-		# 	self.channel_cbs[i].currentIndexChanged.connect(partial(self.show_norm_options, i))
+		self.ch_norm = ChannelNormGenerator(self, mode='channels')
+		layout.addLayout(self.ch_norm)
 
 		spatial_calib_layout = QHBoxLayout()
 		spatial_calib_layout.addWidget(QLabel('input spatial\ncalibration'), 30)
-		self.spatial_calib_le = QLineEdit('')
+		parent_pxtoum = f"{self.parent_window.parent_window.PxToUm}"
+		self.spatial_calib_le = QLineEdit(parent_pxtoum.replace('.',','))
 		self.spatial_calib_le.setPlaceholderText('e.g. 0.1 µm per pixel')
+		self.spatial_calib_le.setValidator(self.onlyFloat)
 		spatial_calib_layout.addWidget(self.spatial_calib_le, 70)
 		layout.addLayout(spatial_calib_layout)
 
 
-		# model_length_layout = QHBoxLayout()
-		# model_length_layout.addWidget(QLabel('Max signal length: '), 30)
-		# self.model_length_slider = QLabeledSlider()
-		# self.model_length_slider.setSingleStep(1)
-		# self.model_length_slider.setTickInterval(1)
-		# self.model_length_slider.setSingleStep(1)
-		# self.model_length_slider.setOrientation(1)
-		# self.model_length_slider.setRange(0,1024)
-		# self.model_length_slider.setValue(128)		
-		# model_length_layout.addWidget(self.model_length_slider, 70)
-		# layout.addLayout(model_length_layout)
 
+	def activate_train_btn(self):
+		if self.spatial_calib_le.text()=='':
+			self.submit_btn.setEnabled(False)
+		elif not np.all([cb.currentText()=='--' for cb in self.ch_norm.channel_cbs]):
+			self.submit_btn.setEnabled(True)
 
 	def rescale_slider(self):
 		if self.stardist_model.isChecked():
@@ -400,36 +346,44 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		except:
 			pass
 
+		self.pretrained_model = None
 		self.pretrained_model = QFileDialog.getExistingDirectory(
 						self, "Open Directory",
 						os.sep.join([self.soft_path, 'celldetective', 'models', f'segmentation_generic','']),
 						QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
 						)
+		
+		if self.pretrained_model=='':
+			return None
+		
+		if self.pretrained_model is None:
+			return None
 
-		if self.pretrained_model is not None:
-
+		else:
 			self.pretrained_model = self.pretrained_model.replace('\\','/')
 			self.pretrained_model = rf"{self.pretrained_model}"
 			
-			subfiles = glob('/'.join([self.pretrained_model,"*"]))
+			subfiles = glob(os.sep.join([self.pretrained_model,"*"]))
 			subfiles = [s.replace('\\','/') for s in subfiles]
 			subfiles = [rf"{s}" for s in subfiles]
 
-			if '/'.join([self.pretrained_model,"config_input.json"]) in subfiles:
+			if os.sep.join([self.pretrained_model,"config_input.json"]) in subfiles:
 				self.load_pretrained_config()
 				self.pretrained_lbl.setText(self.pretrained_model.split("/")[-1])
 				self.cancel_pretrained.setVisible(True)
 				#self.recompile_option.setEnabled(True)
-				self.modelname_le.setText(f"{self.pretrained_model.split('/')[-1]}_{datetime.today().strftime('%Y-%m-%d')}")
+				self.modelname_le.setText(f"{self.pretrained_model.split(os.sep)[-1]}_{datetime.today().strftime('%Y-%m-%d')}")
 			else:
 				self.pretrained_model = None
 				self.pretrained_lbl.setText('No folder chosen')	
 				#self.recompile_option.setEnabled(False)	
 				self.cancel_pretrained.setVisible(False)
+				return None
+
 		print(self.pretrained_model)
 
-		self.seg_folder = self.pretrained_model.split('/')[-2]
-		self.model_name = self.pretrained_model.split('/')[-1]
+		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
+		self.model_name = self.pretrained_model.split(os.sep)[-1]
 		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
 
 			self.diamWidget = QWidget()
@@ -456,7 +410,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		scale = self.parent_window.parent_window.PxToUm * float(self.diameter_le.text()) / 30.0
 		if self.model_name=="CP_nuclei":
 			scale = self.parent_window.parent_window.PxToUm * float(self.diameter_le.text()) / 17.0
-		self.spatial_calib_le.setText(str(scale))
+		self.spatial_calib_le.setText(str(scale).replace('.',','))
 		self.diamWidget.close()		
 
 
@@ -485,14 +439,15 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		
 		self.pretrained_model = None
 		self.pretrained_lbl.setText('No folder chosen')
-		for i in range(len(self.channel_cbs)):
-			self.channel_cbs[i].setEnabled(True)
-			self.normalization_mode_btns[i].setEnabled(True)
-			self.normalization_max_value_le[i].setEnabled(True)
-			self.normalization_min_value_le[i].setEnabled(True)
-			self.normalization_clip_btns[i].setEnabled(True)
-			self.normalization_min_value_lbl[i].setEnabled(True)
-			self.normalization_max_value_lbl[i].setEnabled(True)
+		for i in range(len(self.ch_norm.channel_cbs)):
+			self.ch_norm.channel_cbs[i].setEnabled(True)
+			self.ch_norm.normalization_mode_btns[i].setEnabled(True)
+			self.ch_norm.normalization_max_value_le[i].setEnabled(True)
+			self.ch_norm.normalization_min_value_le[i].setEnabled(True)
+			self.ch_norm.normalization_clip_btns[i].setEnabled(True)
+			self.ch_norm.normalization_min_value_lbl[i].setEnabled(True)
+			self.ch_norm.normalization_max_value_lbl[i].setEnabled(True)
+		self.ch_norm.add_col_btn.setEnabled(True)
 
 		self.cancel_pretrained.setVisible(False)
 		self.modelname_le.setText(f"Untitled_model_{datetime.today().strftime('%Y-%m-%d')}")
@@ -507,7 +462,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 
 	def load_pretrained_config(self):
 
-		f = open('/'.join([self.pretrained_model,"config_input.json"]))
+		f = open(os.sep.join([self.pretrained_model,"config_input.json"]))
 		data = json.load(f)
 		channels = data["channels"]
 		self.seg_folder = self.pretrained_model.split('/')[-2]
@@ -533,36 +488,37 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 			self.stardist_model.setChecked(False)
 			self.cellpose_model.setChecked(True)			
 
-		for c,cb in zip(channels, self.channel_cbs):
+		for c,cb in zip(channels, self.ch_norm.channel_cbs):
 			index = cb.findText(c)
 			cb.setCurrentIndex(index)
 
 		for i in range(len(channels)):
 
 			to_clip = normalization_clip[i]
-			if self.clip_option[i] != to_clip:
-				self.normalization_clip_btns[i].click()
+			if self.ch_norm.clip_option[i] != to_clip:
+				self.ch_norm.normalization_clip_btns[i].click()
 
 			use_percentile = normalization_percentile[i]
-			if self.normalization_mode[i] != use_percentile:
-				self.normalization_mode_btns[i].click()
+			if self.ch_norm.normalization_mode[i] != use_percentile:
+				self.ch_norm.normalization_mode_btns[i].click()
 
-			self.normalization_min_value_le[i].setText(str(normalization_values[i][0]))
-			self.normalization_max_value_le[i].setText(str(normalization_values[i][1]))
+			self.ch_norm.normalization_min_value_le[i].setText(str(normalization_values[i][0]))
+			self.ch_norm.normalization_max_value_le[i].setText(str(normalization_values[i][1]))
 			
 
-		if len(channels)<len(self.channel_cbs):
-			for k in range(len(self.channel_cbs)-len(channels)):
-				self.channel_cbs[len(channels)+k].setCurrentIndex(0)
-				self.channel_cbs[len(channels)+k].setEnabled(False)
-				self.normalization_mode_btns[len(channels)+k].setEnabled(False)
-				self.normalization_max_value_le[len(channels)+k].setEnabled(False)
-				self.normalization_min_value_le[len(channels)+k].setEnabled(False)
-				self.normalization_min_value_lbl[len(channels)+k].setEnabled(False)
-				self.normalization_max_value_lbl[len(channels)+k].setEnabled(False)
-				self.normalization_clip_btns[len(channels)+k].setEnabled(False)
+		if len(channels)<len(self.ch_norm.channel_cbs):
+			for k in range(len(self.ch_norm.channel_cbs)-len(channels)):
+				self.ch_norm.channel_cbs[len(channels)+k].setCurrentIndex(0)
+				self.ch_norm.channel_cbs[len(channels)+k].setEnabled(False)
+				self.ch_norm.normalization_mode_btns[len(channels)+k].setEnabled(False)
+				self.ch_norm.normalization_max_value_le[len(channels)+k].setEnabled(False)
+				self.ch_norm.normalization_min_value_le[len(channels)+k].setEnabled(False)
+				self.ch_norm.normalization_min_value_lbl[len(channels)+k].setEnabled(False)
+				self.ch_norm.normalization_max_value_lbl[len(channels)+k].setEnabled(False)
+				self.ch_norm.normalization_clip_btns[len(channels)+k].setEnabled(False)
+		self.ch_norm.add_col_btn.setEnabled(False)
 
-		self.spatial_calib_le.setText(str(spatial_calib))
+		self.spatial_calib_le.setText(str(spatial_calib).replace('.',','))
 
 	def adjustScrollArea(self):
 		
@@ -581,23 +537,23 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		pretrained_model = self.pretrained_model
 
 		channels = []
-		for i in range(len(self.channel_cbs)):
-			channels.append(self.channel_cbs[i].currentText())
+		for i in range(len(self.ch_norm.channel_cbs)):
+			channels.append(self.ch_norm.channel_cbs[i].currentText())
 
 		slots_to_keep = np.where(np.array(channels)!='--')[0]
 		while '--' in channels:
 			channels.remove('--')
 
-		norm_values = np.array([[float(a.replace(',','.')),float(b.replace(',','.'))] for a,b in zip([l.text() for l in self.normalization_min_value_le],
-											[l.text() for l in self.normalization_max_value_le])])
+		norm_values = np.array([[float(a.replace(',','.')),float(b.replace(',','.'))] for a,b in zip([l.text() for l in self.ch_norm.normalization_min_value_le],
+											[l.text() for l in self.ch_norm.normalization_max_value_le])])
 		norm_values = norm_values[slots_to_keep]
 		norm_values = [list(v) for v in norm_values]
 
-		clip_values = np.array(self.clip_option)
+		clip_values = np.array(self.ch_norm.clip_option)
 		clip_values = list(clip_values[slots_to_keep])
 		clip_values = [bool(c) for c in clip_values]
 
-		normalization_mode = np.array(self.normalization_mode)
+		normalization_mode = np.array(self.ch_norm.normalization_mode)
 		normalization_mode = list(normalization_mode[slots_to_keep])
 		normalization_mode = [bool(m) for m in normalization_mode]
 
@@ -651,57 +607,3 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		train_segmentation_model(model_folder+"training_instructions.json", use_gpu=self.parent_window.parent_window.parent_window.use_gpu)
 
 		# self.parent.refresh_signal_models()
-
-
-	def check_valid_channels(self):
-
-		if np.all([cb.currentText()=='--' for cb in self.channel_cbs]):
-			self.submit_btn.setEnabled(False)
-		else:
-			self.submit_btn.setEnabled(True)
-
-
-	def switch_normalization_mode(self, index):
-
-		"""
-		Use absolute or percentile values for the normalization of each individual channel.
-		
-		"""
-
-		currentNormMode = self.normalization_mode[index]
-		self.normalization_mode[index] = not currentNormMode
-
-		if self.normalization_mode[index]:
-			self.normalization_mode_btns[index].setIcon(icon(MDI6.percent_circle,color="#1565c0"))
-			self.normalization_mode_btns[index].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[index].setStyleSheet(self.button_select_all)	
-			self.normalization_mode_btns[index].setToolTip("Switch to absolute normalization values.")
-			self.normalization_min_value_lbl[index].setText('Min %: ')
-			self.normalization_max_value_lbl[index].setText('Max %: ')
-			self.normalization_min_value_le[index].setText('0.1')
-			self.normalization_max_value_le[index].setText('99.99')
-
-		else:
-			self.normalization_mode_btns[index].setIcon(icon(MDI6.percent_circle_outline,color="black"))
-			self.normalization_mode_btns[index].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[index].setStyleSheet(self.button_select_all)	
-			self.normalization_mode_btns[index].setToolTip("Switch to percentile normalization values.")
-			self.normalization_min_value_lbl[index].setText('Min: ')
-			self.normalization_min_value_le[index].setText('0')
-			self.normalization_max_value_lbl[index].setText('Max: ')
-			self.normalization_max_value_le[index].setText('1000')
-
-	def switch_clipping_mode(self, index):
-
-		currentClipMode = self.clip_option[index]
-		self.clip_option[index] = not currentClipMode
-
-		if self.clip_option[index]:
-			self.normalization_clip_btns[index].setIcon(icon(MDI6.content_cut,color="#1565c0"))
-			self.normalization_clip_btns[index].setIconSize(QSize(20, 20))
-			self.normalization_clip_btns[index].setStyleSheet(self.button_select_all)	
-
-		else:
-			self.normalization_clip_btns[index].setIcon(icon(MDI6.content_cut,color="black"))
-			self.normalization_clip_btns[index].setIconSize(QSize(20, 20))		
-			self.normalization_clip_btns[index].setStyleSheet(self.button_select_all)	

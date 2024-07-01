@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea,
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QIcon
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
+from celldetective.gui.layouts import ChannelNormGenerator
 from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
@@ -306,103 +307,9 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		recompile_layout.addWidget(self.recompile_option, 70)
 		layout.addLayout(recompile_layout)
 
-		#self.channel_cbs = [QComboBox() for i in range(4)]
-
 		self.max_nbr_channels = 5
-		self.channel_cbs = [QComboBox() for i in range(self.max_nbr_channels)]
-		self.normalization_mode_btns = [QPushButton('') for i in range(self.max_nbr_channels)]
-		self.normalization_mode = [True for i in range(self.max_nbr_channels)]
-
-		self.normalization_clip_btns = [QPushButton('') for i in range(self.max_nbr_channels)]
-		self.clip_option = [False for i in range(self.max_nbr_channels)]
-
-		for i in range(self.max_nbr_channels):
-
-			self.normalization_mode_btns[i].setIcon(icon(MDI6.percent_circle,color="#1565c0"))
-			self.normalization_mode_btns[i].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[i].setStyleSheet(self.button_select_all)	
-			self.normalization_mode_btns[i].setToolTip("Switch to absolute normalization values.")
-			self.normalization_mode_btns[i].clicked.connect(partial(self.switch_normalization_mode, i))
-
-			self.normalization_clip_btns[i].setIcon(icon(MDI6.content_cut,color="black"))
-			self.normalization_clip_btns[i].setIconSize(QSize(20, 20))	
-			self.normalization_clip_btns[i].setStyleSheet(self.button_select_all)	
-			self.normalization_clip_btns[i].clicked.connect(partial(self.switch_clipping_mode, i))
-			self.normalization_clip_btns[i].setToolTip('clip')
-
-		self.normalization_min_value_lbl = [QLabel('Min %: ') for i in range(self.max_nbr_channels)]
-		self.normalization_min_value_le = [QLineEdit('0.1') for i in range(self.max_nbr_channels)]
-
-		self.normalization_max_value_lbl = [QLabel('Max %: ') for i in range(self.max_nbr_channels)]		
-		self.normalization_max_value_le = [QLineEdit('99.99') for i in range(self.max_nbr_channels)]
-
-		tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{self.mode}.csv']))
-		print(tables)
-		all_measurements = []
-		for tab in tables:
-			cols = pd.read_csv(tab, nrows=1).columns.tolist()
-			all_measurements.extend(cols)
-		all_measurements = np.unique(all_measurements)
-		generic_measurements = ['brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 
-							 'effector_fluo_channel', 'adhesion_channel', 'fluo_channel_1', 'fluo_channel_2',
-							 "area", "area_bbox","area_convex","area_filled","major_axis_length", 
-							 "minor_axis_length", 
-							"eccentricity",
-							"equivalent_diameter_area",
-							"euler_number",
-							"extent",
-							"feret_diameter_max",
-							"orientation", 
-							"perimeter",
-							"perimeter_crofton",
-							"solidity",
-							"angular_second_moment",
-							"contrast",
-							"correlation",
-							"sum_of_square_variance",
-							"inverse_difference_moment",
-							"sum_average",
-							"sum_variance",
-							"sum_entropy",
-							"entropy",
-							"difference_variance",
-							"difference_entropy",
-							"information_measure_of_correlation_1",
-							"information_measure_of_correlation_2",
-							"maximal_correlation_coefficient",
-							"POSITION_X",
-							"POSITION_Y",
-							]
-
-		self.channel_items = np.unique(generic_measurements + list(all_measurements))
-		self.channel_items = np.insert(self.channel_items, 0, '--')
-
-		self.channel_option_layouts = []
-		for i in range(len(self.channel_cbs)):
-			ch_layout = QHBoxLayout()
-			ch_layout.addWidget(QLabel(f'channel {i}: '), 30)
-			self.channel_cbs[i].addItems(self.channel_items)
-			self.channel_cbs[i].currentIndexChanged.connect(self.check_valid_channels)
-			ch_layout.addWidget(self.channel_cbs[i], 70)
-			layout.addLayout(ch_layout)
-
-			channel_norm_options_layout = QHBoxLayout()
-			channel_norm_options_layout.setContentsMargins(130,0,0,0)
-			channel_norm_options_layout.addWidget(self.normalization_min_value_lbl[i])			
-			channel_norm_options_layout.addWidget(self.normalization_min_value_le[i])
-			channel_norm_options_layout.addWidget(self.normalization_max_value_lbl[i])
-			channel_norm_options_layout.addWidget(self.normalization_max_value_le[i])
-			channel_norm_options_layout.addWidget(self.normalization_clip_btns[i])
-			channel_norm_options_layout.addWidget(self.normalization_mode_btns[i])
-			layout.addLayout(channel_norm_options_layout)
-
-		# for i in range(len(self.channel_cbs)):
-		# 	ch_layout = QHBoxLayout()
-		# 	ch_layout.addWidget(QLabel(f'channel {i}: '), 30)
-		# 	self.channel_cbs[i].addItems(self.channel_items)
-		# 	self.channel_cbs[i].currentIndexChanged.connect(self.check_valid_channels)
-		# 	ch_layout.addWidget(self.channel_cbs[i], 70)
-		# 	layout.addLayout(ch_layout)
+		self.ch_norm = ChannelNormGenerator(self, mode='signals')
+		layout.addLayout(self.ch_norm)
 
 		model_length_layout = QHBoxLayout()
 		model_length_layout.addWidget(QLabel('Max signal length: '), 30)
@@ -465,8 +372,9 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		
 		self.pretrained_model = None
 		self.pretrained_lbl.setText('No folder chosen')
-		for cb in self.channel_cbs:
+		for cb in self.ch_norm.channel_cbs:
 			cb.setEnabled(True)
+		self.ch_norm.add_col_btn.setEnabled(True)
 		self.recompile_option.setEnabled(False)
 		self.cancel_pretrained.setVisible(False)
 		self.model_length_slider.setEnabled(True)
@@ -495,14 +403,15 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.model_length_slider.setValue(int(signal_length))
 		self.model_length_slider.setEnabled(False)
 
-		for c,cb in zip(channels, self.channel_cbs):
+		for c,cb in zip(channels, self.ch_norm.channel_cbs):
 			index = cb.findText(c)
 			cb.setCurrentIndex(index)
 
-		if len(channels)<len(self.channel_cbs):
-			for k in range(len(self.channel_cbs)-len(channels)):
-				self.channel_cbs[len(channels)+k].setCurrentIndex(0)
-				self.channel_cbs[len(channels)+k].setEnabled(False)
+		if len(channels)<len(self.ch_norm.channel_cbs):
+			for k in range(len(self.ch_norm.channel_cbs)-len(channels)):
+				self.ch_norm.channel_cbs[len(channels)+k].setCurrentIndex(0)
+				self.ch_norm.channel_cbs[len(channels)+k].setEnabled(False)
+		self.ch_norm.add_col_btn.setEnabled(False)
 
 
 	def adjustScrollArea(self):
@@ -524,23 +433,23 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		recompile_op = self.recompile_option.isChecked()
 
 		channels = []
-		for i in range(len(self.channel_cbs)):
-			channels.append(self.channel_cbs[i].currentText())
+		for i in range(len(self.ch_norm.channel_cbs)):
+			channels.append(self.ch_norm.channel_cbs[i].currentText())
 
 		slots_to_keep = np.where(np.array(channels)!='--')[0]
 		while '--' in channels:
 			channels.remove('--')
 
-		norm_values = np.array([[float(a.replace(',','.')),float(b.replace(',','.'))] for a,b in zip([l.text() for l in self.normalization_min_value_le],
-											[l.text() for l in self.normalization_max_value_le])])
+		norm_values = np.array([[float(a.replace(',','.')),float(b.replace(',','.'))] for a,b in zip([l.text() for l in self.ch_norm.normalization_min_value_le],
+											[l.text() for l in self.ch_norm.normalization_max_value_le])])
 		norm_values = norm_values[slots_to_keep]
 		norm_values = [list(v) for v in norm_values]
 
-		clip_values = np.array(self.clip_option)
+		clip_values = np.array(self.ch_norm.clip_option)
 		clip_values = list(clip_values[slots_to_keep])
 		clip_values = [bool(c) for c in clip_values]
 
-		normalization_mode = np.array(self.normalization_mode)
+		normalization_mode = np.array(self.ch_norm.normalization_mode)
 		normalization_mode = list(normalization_mode[slots_to_keep])
 		normalization_mode = [bool(m) for m in normalization_mode]
 
@@ -587,58 +496,3 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		train_signal_model(model_folder+"training_instructions.json")
 
 		self.parent_window.refresh_signal_models()
-
-
-	def check_valid_channels(self):
-
-		if np.all([cb.currentText()=='--' for cb in self.channel_cbs]):
-			self.submit_btn.setEnabled(False)
-		else:
-			self.submit_btn.setEnabled(True)
-
-
-	def switch_normalization_mode(self, index):
-
-		"""
-		Use absolute or percentile values for the normalization of each individual channel.
-		
-		"""
-
-		currentNormMode = self.normalization_mode[index]
-		self.normalization_mode[index] = not currentNormMode
-
-		if self.normalization_mode[index]:
-			self.normalization_mode_btns[index].setIcon(icon(MDI6.percent_circle,color="#1565c0"))
-			self.normalization_mode_btns[index].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[index].setStyleSheet(self.button_select_all)	
-			self.normalization_mode_btns[index].setToolTip("Switch to absolute normalization values.")
-			self.normalization_min_value_lbl[index].setText('Min %: ')
-			self.normalization_max_value_lbl[index].setText('Max %: ')
-			self.normalization_min_value_le[index].setText('0.1')
-			self.normalization_max_value_le[index].setText('99.99')
-
-		else:
-			self.normalization_mode_btns[index].setIcon(icon(MDI6.percent_circle_outline,color="black"))
-			self.normalization_mode_btns[index].setIconSize(QSize(20, 20))	
-			self.normalization_mode_btns[index].setStyleSheet(self.button_select_all)	
-			self.normalization_mode_btns[index].setToolTip("Switch to percentile normalization values.")
-			self.normalization_min_value_lbl[index].setText('Min: ')
-			self.normalization_min_value_le[index].setText('0')
-			self.normalization_max_value_lbl[index].setText('Max: ')
-			self.normalization_max_value_le[index].setText('1000')
-
-	def switch_clipping_mode(self, index):
-
-		currentClipMode = self.clip_option[index]
-		self.clip_option[index] = not currentClipMode
-
-		if self.clip_option[index]:
-			self.normalization_clip_btns[index].setIcon(icon(MDI6.content_cut,color="#1565c0"))
-			self.normalization_clip_btns[index].setIconSize(QSize(20, 20))
-			self.normalization_clip_btns[index].setStyleSheet(self.button_select_all)	
-
-		else:
-			self.normalization_clip_btns[index].setIcon(icon(MDI6.content_cut,color="black"))
-			self.normalization_clip_btns[index].setIconSize(QSize(20, 20))		
-			self.normalization_clip_btns[index].setStyleSheet(self.button_select_all)	
-

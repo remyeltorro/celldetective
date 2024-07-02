@@ -583,6 +583,7 @@ class TableUI(QMainWindow, Styles):
 		layout.addWidget(QLabel('Representations: '))
 		self.hist_check = QCheckBox('histogram')
 		self.kde_check = QCheckBox('KDE plot')
+		self.count_check = QCheckBox('Countplot')
 		self.ecdf_check = QCheckBox('ECDF plot')
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
@@ -592,6 +593,7 @@ class TableUI(QMainWindow, Styles):
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
+		layout.addWidget(self.count_check)
 		layout.addWidget(self.ecdf_check)
 		layout.addWidget(self.swarm_check)
 		layout.addWidget(self.violin_check)
@@ -602,14 +604,36 @@ class TableUI(QMainWindow, Styles):
 		self.x_cb = QSearchableComboBox()
 		self.x_cb.addItems(['--']+list(self.data.columns))
 
+		self.y_cb = QSearchableComboBox()
+		self.y_cb.addItems(['--']+list(self.data.columns))
+
 		self.hue_cb = QSearchableComboBox()
 		self.hue_cb.addItems(['--']+list(self.data.columns))
 		idx = self.hue_cb.findText('--')
+		self.hue_cb.setCurrentIndex(idx)
 
-		self.x_cb.findText('--')
+		# Set selected column
+
+		try:
+			x = self.table_view.selectedIndexes()
+			col_idx = np.array([l.column() for l in x])
+			row_idx = np.array([l.row() for l in x])
+			column_names = self.data.columns
+			unique_cols = np.unique(col_idx)[0]
+			y = column_names[unique_cols]
+			idx = self.y_cb.findText(y)
+			self.y_cb.setCurrentIndex(idx)
+		except:
+			pass
+
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('x: '), 33)
 		hbox.addWidget(self.x_cb, 66)
+		layout.addLayout(hbox)
+
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('y: '), 33)
+		hbox.addWidget(self.y_cb, 66)
 		layout.addLayout(hbox)
 
 		hbox = QHBoxLayout()
@@ -645,18 +669,10 @@ class TableUI(QMainWindow, Styles):
 			self.x_option = True
 			self.x = self.x_cb.currentText()
 
-		x = self.table_view.selectedIndexes()
-		col_idx = np.array([l.column() for l in x])
-		row_idx = np.array([l.row() for l in x])
-		column_names = self.data.columns
-		unique_cols = np.unique(col_idx)[0]
-
 		self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
 		self.plot1dWindow = FigureCanvas(self.fig, title="scatter")
 		self.ax.clear()
-		row_idx_i = row_idx[np.where(col_idx==unique_cols)[0]]
-		y = self.data.iloc[row_idx_i, unique_cols]
-		
+
 		cmap = getattr(mcm, self.cmap_cb.currentText())
 
 		try:
@@ -668,58 +684,68 @@ class TableUI(QMainWindow, Styles):
 		if self.hue_cb.currentText()=='--':
 			hue_variable = None
 
-		#for w,well_group in self.data.groupby('well_index'):
+		if self.y_cb.currentText()=='--':
+			self.y = None
+		else:
+			self.y = self.y_cb.currentText()
+
+		if self.x_cb.currentText()=='--':
+			self.x = None
+		else:
+			self.x = self.x_cb.currentText()
 
 		legend=True
 		if self.hist_check.isChecked():
-			sns.histplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
+			sns.histplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
 			legend = False
 		if self.kde_check.isChecked():
-			sns.kdeplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
+			sns.kdeplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
 			legend = False
-
+		if self.count_check.isChecked():
+			sns.countplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+			legend = False
 		if self.ecdf_check.isChecked():
-			sns.ecdfplot(data=self.data, x=column_names[unique_cols], hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+			sns.ecdfplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
 			legend = False
 
 		if self.swarm_check.isChecked():
 			if self.x_option:
-				sns.swarmplot(data=self.data, x=self.x,y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				sns.swarmplot(data=self.data, x=self.x,y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
 				legend = False
 			else:
-				sns.swarmplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				sns.swarmplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
 				legend = False
 
 		if self.violin_check.isChecked():
 			if self.x_option:
-				sns.stripplot(data=self.data,x=self.x, y=column_names[unique_cols],dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				sns.stripplot(data=self.data,x=self.x, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
 				legend = False
 			else:
-				sns.violinplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
+				sns.violinplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
 				legend = False
 
 		if self.box_check.isChecked():
 			if self.x_option:
-				sns.boxplot(data=self.data, x=self.x, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxplot(data=self.data, x=self.x, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 			else:
-				sns.boxplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 
 		if self.boxenplot_check.isChecked():
 			if self.x_option:
-				sns.boxenplot(data=self.data, x = self.x, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxenplot(data=self.data, x=self.x, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 			else:
-				sns.boxenplot(data=self.data, y=column_names[unique_cols],dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxenplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 
 		if self.strip_check.isChecked():
 			if self.x_option:
-				sns.stripplot(data=self.data, x = self.x, y=column_names[unique_cols],dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				sns.stripplot(data=self.data, x = self.x, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
 				legend = False
 			else:
-				sns.stripplot(data=self.data, y=column_names[unique_cols],dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				sns.stripplot(data=self.data, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
 				legend = False
 
 		plt.tight_layout()
@@ -868,42 +894,10 @@ class TableUI(QMainWindow, Styles):
 			column_names = self.data.columns
 			unique_cols = np.unique(col_idx)
 
-			if len(unique_cols)==1:
-				# 1D plot
-				# Open widget to set 1D data representations
+			if len(unique_cols)==1 or len(unique_cols)==0:
 				self.set_1D_plot_params()
 
-
-
-				# x = self.table_view.selectedIndexes()
-				# col_idx = np.array([l.column() for l in x])
-				# row_idx = np.array([l.row() for l in x])
-				# column_names = self.data.columns
-				# unique_cols = np.unique(col_idx)[0]
-
-				# self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
-				# self.histogram_window = FigureCanvas(self.fig, title="scatter")
-				# self.ax.clear()
-				# row_idx_i = row_idx[np.where(col_idx==unique_cols)[0]]
-				# y = self.data.iloc[row_idx_i, unique_cols]
-
-				# colors = [viridis(i / len(self.data['well_index'].unique())) for i in range(len(self.data['well_index'].unique()))]
-				# #for w,well_group in self.data.groupby('well_index'):
-				# sns.boxplot(data=self.data, y=column_names[unique_cols],dodge=True, hue='well_index',legend=False, ax=self.ax, fill=False,palette=colors, linewidth=2,)
-				# sns.stripplot(data=self.data, y=column_names[unique_cols],dodge=True, ax=self.ax, hue='well_index', legend=False, palette=colors)
-				# # sns.kdeplot(data=self.data, x=column_names[unique_cols], hue='well_index', ax=self.ax, fill=False,common_norm=False, palette=colors, alpha=.5, linewidth=2,)
-				# # for k,(w,well_group) in enumerate(self.data.groupby('well_index')):
-				# # 	self.ax.hist(well_group[column_names[unique_cols]],label=w, density=True, alpha=0.5, color=colors[k])
-				# #self.ax.legend()
-				# self.ax.set_xlabel(column_names[unique_cols])
-				# plt.tight_layout()
-				# self.fig.set_facecolor('none')  # or 'None'
-				# self.fig.canvas.setStyleSheet("background-color: transparent;")
-				# self.histogram_window.canvas.draw()
-				# self.histogram_window.show()
-
-
-			elif len(unique_cols) == 2:
+			if len(unique_cols) == 2:
 
 				print("two columns, plot mode")
 				x1 = self.test_bool(self.data.iloc[row_idx, unique_cols[0]])

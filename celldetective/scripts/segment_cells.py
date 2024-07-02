@@ -148,6 +148,7 @@ def segment_index(indices):
 		model.config.use_gpu = use_gpu
 		model.use_gpu = use_gpu
 		print(f"StarDist model {modelname} successfully loaded.")
+		scale_model = scale
 
 	elif model_type=='cellpose':
 

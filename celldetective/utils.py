@@ -2046,7 +2046,7 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 		
 	assert isinstance(channels, list),'Please provide a list of channels. Abort.'
 
-	X = []; Y = [];
+	X = []; Y = []; files = [];
 
 	for ds in datasets:
 		print(f'Loading data from dataset {ds}...')
@@ -2101,9 +2101,10 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 					
 			X.append(image)
 			Y.append(mask)
+			files.append(im)
 
 	assert len(X)==len(Y),'The number of images does not match with the number of masks... Abort.'
-	return X,Y
+	return X,Y,files
 
 
 def download_url_to_file(url, dst, progress=True):

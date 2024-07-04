@@ -60,16 +60,9 @@ batch_size = training_instructions['batch_size']
 
 # Load dataset
 print(f'Datasets: {datasets}')
-X,Y = load_image_dataset(datasets, target_channels, train_spatial_calibration=spatial_calibration,
+X,Y,filenames = load_image_dataset(datasets, target_channels, train_spatial_calibration=spatial_calibration,
 						mask_suffix='labelled')
 print('Dataset loaded...')
-
-# Normalize images
-# X = normalize_per_channel(X,
-# 						  normalization_percentile_mode=normalization_percentile, 
-# 						  normalization_values=normalization_values, 
-# 						  normalization_clipping=normalization_clip
-# 						  )
 
 values = []
 percentiles = []
@@ -88,17 +81,6 @@ for k in range(len(X)):
 	x_interp = np.moveaxis([interpolate_nan(x[:,:,c].copy()) for c in range(x.shape[-1])],0,-1)
 	X[k] = x_interp
 
-# for x in X[:10]:
-# 	plt.imshow(x[:,:,0])
-# 	plt.colorbar()
-# 	plt.pause(2)
-# 	plt.close()
-
-# 	plt.imshow(x[:,:,1])
-# 	plt.colorbar()
-# 	plt.pause(2)
-# 	plt.close()
-
 Y = [fill_label_holes(y) for y in tqdm(Y)]
 
 assert len(X) > 1, "not enough training data"
@@ -107,7 +89,11 @@ ind = rng.permutation(len(X))
 n_val = max(1, int(round(validation_split * len(ind))))
 ind_train, ind_val = ind[:-n_val], ind[-n_val:]
 X_val, Y_val = [X[i] for i in ind_val]  , [Y[i] for i in ind_val]
-X_trn, Y_trn = [X[i] for i in ind_train], [Y[i] for i in ind_train] 
+X_trn, Y_trn = [X[i] for i in ind_train], [Y[i] for i in ind_train]
+
+files_train = [filenames[i] for i in ind_train]
+files_val = [filenames[i] for i in ind_val]
+
 print('number of images: %3d' % len(X))
 print('- training:       %3d' % len(X_trn))
 print('- validation:     %3d' % len(X_val))
@@ -134,7 +120,10 @@ if model_type=='cellpose':
 	import torch
 	
 	if not use_gpu:
+		print('Using CPU for training...')
 		device = torch.device("cpu")
+	else:
+		print('Using GPU for training...')
 		
 	logger, log_file = logger_setup()
 	print(f'Pretrained model: ',pretrained)
@@ -163,7 +152,7 @@ if model_type=='cellpose':
 	config_inputs = {"channels": target_channels, "diameter": standard_diameter, 'cellprob_threshold': 0., 'flow_threshold': 0.4,
 	'normalization_percentile': normalization_percentile, 'normalization_clip': normalization_clip,
 	'normalization_values': normalization_values, 'model_type': 'cellpose',
-	'spatial_calibration': input_spatial_calibration}
+	'spatial_calibration': input_spatial_calibration, 'dataset': {'train': files_train, 'validation': files_val}}
 	json_input_config = json.dumps(config_inputs, indent=4)
 	with open(os.sep.join([target_directory, model_name, "config_input.json"]), "w") as outfile:
 		outfile.write(json_input_config)
@@ -234,7 +223,7 @@ elif model_type=='stardist':
 
 	config_inputs = {"channels": target_channels, 'normalization_percentile': normalization_percentile,
 	'normalization_clip': normalization_clip, 'normalization_values': normalization_values, 
-	'model_type': 'stardist', 'spatial_calibration': spatial_calibration}
+	'model_type': 'stardist', 'spatial_calibration': spatial_calibration, 'dataset': {'train': files_train, 'validation': files_val}}
 
 	json_input_config = json.dumps(config_inputs, indent=4)
 	with open(os.sep.join([target_directory, model_name, "config_input.json"]), "w") as outfile:

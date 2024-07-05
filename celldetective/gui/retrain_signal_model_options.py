@@ -574,7 +574,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		'recompile_pretrained': recompile_op, 'ds': data_folders, 'augmentation_factor': aug_factor, 'validation_split': val_split,
 		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs, 'label': self.class_name_le.text()}
 
-		model_folder = self.signal_models_dir + model_name + os.sep
+		model_folder = self.signal_models_dir +os.sep+ model_name + os.sep
 		if not os.path.exists(model_folder):
 			os.mkdir(model_folder)
 
@@ -646,6 +646,9 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 class ConfigPairSignalModelTraining(ConfigSignalModelTraining, Styles):
 	def __init__(self, parent_window=None):
 		super().__init__(parent_window)
+		self.signal_models_dir = self.soft_path + os.sep + os.sep.join(['celldetective', 'models', 'pair_signal_detection'])
+		if not os.path.exists(self.signal_models_dir):
+			os.mkdir(self.signal_models_dir)
 
 	def generate_model_panel_contents(self):
 

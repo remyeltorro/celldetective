@@ -270,12 +270,37 @@ class SignalAnnotator2(QMainWindow,Styles):
         # class_hbox.addWidget(self.del_class_btn, 5)
 
         self.left_panel.addLayout(class_hbox)
+        self.cell_events_hbox = QHBoxLayout()
+        self.cell_events_hbox.addWidget(QLabel('reference event: '), 25)
+        self.reference_event_choice_cb = QComboBox()
+        if self.ref_pop=='targets':
+            self.reference_event_choice_cb.addItems(self.target_class_cols)
+            self.reference_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
+
+        else:
+            self.reference_event_choice_cb.addItems(self.effector_class_cols)
+            self.reference_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+        self.cell_events_hbox.addWidget(self.reference_event_choice_cb, 70)
+        if 'self' not in self.neighborhood_choice_cb.currentText():
+            self.neigh_lab=QLabel('neighbor event: ')
+            self.cell_events_hbox.addWidget(self.neigh_lab, 25)
+            self.neighbor_event_choice_cb = QComboBox()
+            if self.neigh_pop=='targets':
+                self.neighbor_event_choice_cb.addItems(self.target_class_cols)
+                self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
+            else:
+                self.neighbor_event_choice_cb.addItems(self.effector_class_cols)
+                self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+
+
+            self.cell_events_hbox.addWidget(self.neighbor_event_choice_cb, 70)
+
+        self.left_panel.addLayout(self.cell_events_hbox)
         self.cell_info_hbox=QHBoxLayout()
         self.reference_cell_info = QLabel('')
         self.neighbor_cell_info= QLabel('')
         self.cell_info_hbox.addWidget(self.reference_cell_info)
         self.cell_info_hbox.addWidget(self.neighbor_cell_info)
-
         self.left_panel.addLayout(self.cell_info_hbox)
 
         # Annotation buttons
@@ -714,6 +739,8 @@ class SignalAnnotator2(QMainWindow,Styles):
         main_layout.addLayout(self.left_panel, 35)
         main_layout.addLayout(self.right_panel, 65)
         self.button_widget.adjustSize()
+        self.compute_status_and_colors_targets()
+
 
         self.setCentralWidget(self.button_widget)
         self.show()
@@ -788,6 +815,50 @@ class SignalAnnotator2(QMainWindow,Styles):
                     print(e)
             item_idx = self.relative_class_choice_cb.findText(class_to_delete)
             self.relative_class_choice_cb.removeItem(item_idx)
+
+    def update_cell_events(self):
+        if 'self' in self.neighborhood_choice_cb.currentText():
+            try:
+                self.neighbor_event_choice_cb.hide()
+                self.neigh_lab.hide()
+            except:
+                pass
+            self.reference_event_choice_cb.disconnect()
+            self.reference_event_choice_cb.clear()
+            if self.ref_pop=='targets':
+                self.reference_event_choice_cb.addItems(self.target_class_cols)
+                self.reference_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
+            else:
+                self.reference_event_choice_cb.addItems(self.effector_class_cols)
+                self.reference_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+
+        else:
+            try:
+                self.neighbor_event_choice_cb.show()
+                self.neigh_lab.show()
+            except:
+                pass
+            self.reference_event_choice_cb.disconnect()
+            self.reference_event_choice_cb.clear()
+
+            if self.ref_pop=='targets':
+                self.reference_event_choice_cb.addItems(self.target_class_cols)
+                self.reference_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
+
+            else:
+                self.reference_event_choice_cb.addItems(self.effector_class_cols)
+                self.reference_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+
+            self.neighbor_event_choice_cb.disconnect()
+            self.neighbor_event_choice_cb.clear()
+
+            if self.neigh_pop=='targets':
+                self.neighbor_event_choice_cb.addItems(self.target_class_cols)
+                self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
+
+            else:
+                self.neighbor_event_choice_cb.addItems(self.effector_class_cols)
+                self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
 
 
 
@@ -1043,9 +1114,15 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.newClassWidget.close()
 
     def compute_status_and_colors_targets(self):
-
-        self.target_class_name = self.target_class_choice_cb.currentText()
-        self.expected_target_status = 'status'
+        if self.ref_pop=='targets':
+            self.target_class_name = self.reference_event_choice_cb.currentText()
+        elif self.neigh_pop == 'targets':
+            self.target_class_name = self.neighbor_event_choice_cb.currentText()
+        else:
+            self.target_class_name=''
+        #self.target_class_name = self.target_class_choice_cb.currentText()
+        #self.target_class_name='class_lowPI'
+        self.expected_target_status = 'status_'
         suffix = self.target_class_name.replace('class','').replace('_','')
         if suffix!='':
             self.expected_target_status+='_'+suffix
@@ -1081,8 +1158,13 @@ class SignalAnnotator2(QMainWindow,Styles):
         self.extract_scatter_from_target_trajectories()
 
     def compute_status_and_colors_effectors(self):
-
-        self.effector_class_name = self.effector_class_choice_cb.currentText()
+        if self.ref_pop=='effectors':
+            self.effector_class_name = self.reference_event_choice_cb.currentText()
+        elif self.neigh_pop == 'effectors':
+            self.effector_class_name = self.neighbor_event_choice_cb.currentText()
+        else:
+            self.effector_class_name=''
+        #self.effector_class_name = self.effector_class_choice_cb.currentText()
         self.effector_expected_status = 'status'
         suffix = self.effector_class_name.replace('class','').replace('_','')
         if suffix!='':
@@ -1253,6 +1335,7 @@ class SignalAnnotator2(QMainWindow,Styles):
         try:
             self.lines_data={}
             self.lines_list=[]
+            self.lines_plot=[]
 
         except Exception as e:
             print(f'{e=}')
@@ -2107,6 +2190,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
     def set_reference(self):
         n = self.neighborhood_choice_cb.currentText()
+
         if 'self' in self.neighborhood_choice_cb.currentText():
 
             self.ref_pop=np.array(self.df_relative.loc[self.df_relative[n]==1,'ref_population'])
@@ -2643,6 +2727,7 @@ class SignalAnnotator2(QMainWindow,Styles):
     def neighborhood_changed(self):
         self.set_reference()
         self.cancel_selection()
+        self.update_cell_events()
         self.extract_scatter_from_lines()
         # self.draw_frame(self.framedata)
         self.plot_signals()
@@ -3183,13 +3268,14 @@ class SignalAnnotator2(QMainWindow,Styles):
 
         for a in self.annotation_btns_to_hide:
             a.show()
-
-        cclass = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&
-                                      (self.df_relative[f'{self.neighborhood_choice_cb.currentText()}']==1), self.pair_status_name].to_numpy()[0]
-
-        t0 = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&
+        try:
+            cclass = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&
+                                      (self.df_relative[f'{self.neighborhood_choice_cb.currentText()}']==1), self.pair_class_name].to_numpy()[0]
+            t0 = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&
                                       (self.df_relative[f'{self.neighborhood_choice_cb.currentText()}']==1), self.pair_time_name].to_numpy()[0]
-
+        except:
+            print('chet ne nashel')
+            pass
         if cclass == 0:
             self.event_btn.setChecked(True)
             self.time_of_interest_le.setText(str(t0))
@@ -3517,6 +3603,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 
 
+
     def hide_effector_cell_info(self):
         self.eff_cls.clear()
         self.eff_tm.clear()
@@ -3632,13 +3719,14 @@ class SignalAnnotator2(QMainWindow,Styles):
             cols_neigh = self.df_effectors.columns
         for track in tracks_reference:
             # Add all signals at given track
-            signals = {}
+
             tracks_neigh = np.unique(relative_filtered.loc[relative_filtered["REFERENCE_ID"]==track,'NEIGHBOR_ID'].to_numpy())
             for neigh in tracks_neigh:
+                signals = {}
                 for c in cols_relative:
                     signals.update({'relative_'+c: relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), c].to_numpy()})
-                time_of_interest = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"] == neigh), self.pair_time_name].to_numpy()
-                cclass = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), self.pair_class_name].to_numpy()
+                time_of_interest = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"] == neigh), self.pair_time_name].to_numpy()[0]
+                cclass = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), self.pair_class_name].to_numpy()[0]
                 signals.update({"time_of_interest": time_of_interest, "class": cclass})
                 for c in cols_ref:
                     signals.update({'reference_'+c: df_ref.loc[(df_ref["TRACK_ID"] == track), c].to_numpy()})
@@ -3646,7 +3734,7 @@ class SignalAnnotator2(QMainWindow,Styles):
                     signals.update({'neighbor_' + c: df_neigh.loc[(df_neigh["TRACK_ID"] == neigh), c].to_numpy()})
 
             # Here auto add all available channels
-            training_set.append(signals)
+                training_set.append(signals)
 
         #print(training_set)
 

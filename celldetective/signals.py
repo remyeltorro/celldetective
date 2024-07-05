@@ -18,8 +18,8 @@ from sklearn.metrics import jaccard_score, balanced_accuracy_score, precision_sc
 from scipy.interpolate import interp1d
 from scipy.ndimage import shift
 
-from celldetective.io import get_signal_models_list, locate_signal_model
-from celldetective.tracking import clean_trajectories
+from celldetective.io import get_signal_models_list, locate_signal_model, locate_pair_signal_model
+from celldetective.tracking import clean_trajectories, interpolate_nan_properties
 from celldetective.utils import regression_plot, train_test_split, compute_weights
 import matplotlib.pyplot as plt
 from natsort import natsorted
@@ -335,6 +335,546 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True, return_table=Fal
 		return None		
 
 
+def analyze_signals(trajectories, model, interpolate_na=True,
+                    selected_signals=None,
+                    model_path=None,
+                    column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
+                    plot_outcome=False, output_dir=None):
+    """
+	Analyzes signals from trajectory data using a specified signal detection model and configuration.
+
+	This function preprocesses trajectory data, selects specified signals, and applies a pretrained signal detection
+	model to predict classes and times of interest for each trajectory. It supports custom column labeling, interpolation
+	of missing values, and plotting of analysis outcomes.
+
+	Parameters
+	----------
+	trajectories : pandas.DataFrame
+		DataFrame containing trajectory data with columns for track ID, frame, position, and signals.
+	model : str
+		The name of the signal detection model to be used for analysis.
+	interpolate_na : bool, optional
+		Whether to interpolate missing values in the trajectories (default is True).
+	selected_signals : list of str, optional
+		A list of column names from `trajectories` representing the signals to be analyzed. If None, signals will
+		be automatically selected based on the model configuration (default is None).
+	column_labels : dict, optional
+		A dictionary mapping the default column names ('track', 'time', 'x', 'y') to the corresponding column names
+		in `trajectories` (default is {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}).
+	plot_outcome : bool, optional
+		If True, generates and saves a plot of the signal analysis outcome (default is False).
+	output_dir : str, optional
+		The directory where the outcome plot will be saved. Required if `plot_outcome` is True (default is None).
+
+	Returns
+	-------
+	pandas.DataFrame
+		The input `trajectories` DataFrame with additional columns for predicted classes, times of interest, and
+		corresponding colors based on status and class.
+
+	Raises
+	------
+	AssertionError
+		If the model or its configuration file cannot be located.
+
+	Notes
+	-----
+	- The function relies on an external model configuration file (`config_input.json`) located in the model's directory.
+	- Signal selection and preprocessing are based on the requirements specified in the model's configuration.
+
+	"""
+
+    model_path = locate_signal_model(model, path=model_path)
+    complete_path = model_path  # +model
+    complete_path = rf"{complete_path}"
+    model_config_path = os.sep.join([complete_path, 'config_input.json'])
+    model_config_path = rf"{model_config_path}"
+    assert os.path.exists(complete_path), f'Model {model} could not be located in folder {model_path}... Abort.'
+    assert os.path.exists(
+        model_config_path), f'Model configuration could not be located in folder {model_path}... Abort.'
+
+    available_signals = list(trajectories.columns)
+    print('The available_signals are : ', available_signals)
+
+    f = open(model_config_path)
+    config = json.load(f)
+    required_signals = config["channels"]
+
+    try:
+        label = config['label']
+        if label == '':
+            label = None
+    except:
+        label = None
+
+    if selected_signals is None:
+        selected_signals = []
+        for s in required_signals:
+            pattern_test = [s in a or s == a for a in available_signals]
+            print(f'Pattern test for signal {s}: ', pattern_test)
+            assert np.any(
+                pattern_test), f'No signal matches with the requirements of the model {required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
+            valid_columns = np.array(available_signals)[np.array(pattern_test)]
+            if len(valid_columns) == 1:
+                selected_signals.append(valid_columns[0])
+            else:
+                # print(test_number_of_nan(trajectories, valid_columns))
+                print(f'Found several candidate signals: {valid_columns}')
+                for vc in natsorted(valid_columns):
+                    if 'circle' in vc:
+                        selected_signals.append(vc)
+                        break
+                else:
+                    selected_signals.append(valid_columns[0])
+        # do something more complicated in case of one to many columns
+        # pass
+    else:
+        assert len(selected_signals) == len(
+            required_signals), f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
+
+    print(f'The following channels will be passed to the model: {selected_signals}')
+    trajectories_clean = clean_trajectories(trajectories, interpolate_na=interpolate_na,
+                                            interpolate_position_gaps=interpolate_na, column_labels=column_labels)
+
+    max_signal_size = int(trajectories_clean[column_labels['time']].max()) + 2
+    tracks = trajectories_clean[column_labels['track']].unique()
+    signals = np.zeros((len(tracks), max_signal_size, len(selected_signals)))
+
+    for i, (tid, group) in enumerate(trajectories_clean.groupby(column_labels['track'])):
+        frames = group[column_labels['time']].to_numpy().astype(int)
+        for j, col in enumerate(selected_signals):
+            signal = group[col].to_numpy()
+            signals[i, frames, j] = signal
+            signals[i, max(frames):, j] = signal[-1]
+
+    # for i in range(5):
+    # 	print('pre model')
+    # 	plt.plot(signals[i,:,0])
+    # 	plt.show()
+
+    model = SignalDetectionModel(pretrained=complete_path)
+    print('signal shape: ', signals.shape)
+
+    classes = model.predict_class(signals)
+    times_recast = model.predict_time_of_interest(signals)
+
+    if label is None:
+        class_col = 'class'
+        time_col = 't0'
+        status_col = 'status'
+    else:
+        class_col = 'class_' + label
+        time_col = 't_' + label
+        status_col = 'status_' + label
+
+    for i, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
+        indices = group.index
+        trajectories.loc[indices, class_col] = classes[i]
+        trajectories.loc[indices, time_col] = times_recast[i]
+    print('Done.')
+
+    for tid, group in trajectories.groupby(column_labels['track']):
+
+        indices = group.index
+        t0 = group[time_col].to_numpy()[0]
+        cclass = group[class_col].to_numpy()[0]
+        timeline = group[column_labels['time']].to_numpy()
+        status = np.zeros_like(timeline)
+        if t0 > 0:
+            status[timeline >= t0] = 1.
+        if cclass == 2:
+            status[:] = 2
+        if cclass > 2:
+            status[:] = 42
+        status_color = [color_from_status(s) for s in status]
+        class_color = [color_from_class(cclass) for i in range(len(status))]
+
+        trajectories.loc[indices, status_col] = status
+        trajectories.loc[indices, 'status_color'] = status_color
+        trajectories.loc[indices, 'class_color'] = class_color
+
+    if plot_outcome:
+        fig, ax = plt.subplots(1, len(selected_signals), figsize=(10, 5))
+        for i, s in enumerate(selected_signals):
+            for k, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
+                cclass = group[class_col].to_numpy()[0]
+                t0 = group[time_col].to_numpy()[0]
+                timeline = group[column_labels['time']].to_numpy()
+                if cclass == 0:
+                    if len(selected_signals) > 1:
+                        ax[i].plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
+                    else:
+                        ax.plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
+        if len(selected_signals) > 1:
+            for a, s in zip(ax, selected_signals):
+                a.set_title(s)
+                a.set_xlabel(r'time - t$_0$ [frame]')
+                a.spines['top'].set_visible(False)
+                a.spines['right'].set_visible(False)
+        else:
+            ax.set_title(s)
+            ax.set_xlabel(r'time - t$_0$ [frame]')
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+        plt.tight_layout()
+        if output_dir is not None:
+            plt.savefig(output_dir + 'signal_collapse.png', bbox_inches='tight', dpi=300)
+        plt.pause(3)
+        plt.close()
+
+    return trajectories
+
+
+def analyze_pair_signals(trajectories_relative,trajectories_reference,trajectories_neighbor, model, interpolate_na=True,
+					selected_signals=None,
+					model_path=None,
+					column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y','reference': 'REFERENCE_ID','neighbor': 'NEIGHBOR_ID'},
+					plot_outcome=False, output_dir=None):
+	"""
+	Analyzes signals from trajectory data using a specified signal detection model and configuration.
+
+	This function preprocesses trajectory data, selects specified signals, and applies a pretrained signal detection
+	model to predict classes and times of interest for each trajectory. It supports custom column labeling, interpolation
+	of missing values, and plotting of analysis outcomes.
+
+	Parameters
+	----------
+	trajectories : pandas.DataFrame
+		DataFrame containing trajectory data with columns for track ID, frame, position, and signals.
+	model : str
+		The name of the signal detection model to be used for analysis.
+	interpolate_na : bool, optional
+		Whether to interpolate missing values in the trajectories (default is True).
+	selected_signals : list of str, optional
+		A list of column names from `trajectories` representing the signals to be analyzed. If None, signals will
+		be automatically selected based on the model configuration (default is None).
+	column_labels : dict, optional
+		A dictionary mapping the default column names ('track', 'time', 'x', 'y') to the corresponding column names
+		in `trajectories` (default is {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}).
+	plot_outcome : bool, optional
+		If True, generates and saves a plot of the signal analysis outcome (default is False).
+	output_dir : str, optional
+		The directory where the outcome plot will be saved. Required if `plot_outcome` is True (default is None).
+
+	Returns
+	-------
+	pandas.DataFrame
+		The input `trajectories` DataFrame with additional columns for predicted classes, times of interest, and
+		corresponding colors based on status and class.
+
+	Raises
+	------
+	AssertionError
+		If the model or its configuration file cannot be located.
+
+	Notes
+	-----
+	- The function relies on an external model configuration file (`config_input.json`) located in the model's directory.
+	- Signal selection and preprocessing are based on the requirements specified in the model's configuration.
+
+	"""
+
+	model_path = locate_pair_signal_model(model, path=model_path)
+	print(model_path)
+	complete_path = model_path  # +model
+	complete_path = rf"{complete_path}"
+	model_config_path = os.sep.join([complete_path, 'config_input.json'])
+	model_config_path = rf"{model_config_path}"
+	assert os.path.exists(complete_path), f'Model {model} could not be located in folder {model_path}... Abort.'
+	assert os.path.exists(
+		model_config_path), f'Model configuration could not be located in folder {model_path}... Abort.'
+
+	available_relative_signals = list(trajectories_relative.columns)
+	print('The available_relative_signals are : ', available_relative_signals)
+
+
+	available_reference_signals = list(trajectories_reference.columns)
+	print('The available_reference_signals are : ', available_reference_signals)
+
+
+	available_neighbor_signals = list(trajectories_neighbor.columns)
+	print('The available_neighbor_signals are : ', available_neighbor_signals)
+
+	f = open(model_config_path)
+	config = json.load(f)
+	required_signals = config["channels"]
+	relative_required_signals=[]
+	reference_required_signals=[]
+	neighbor_required_signals=[]
+	reference_ids = trajectories_relative['REFERENCE_ID'].unique()
+	neighbor_ids = trajectories_relative['NEIGHBOR_ID'].unique()
+	print(trajectories_relative['NEIGHBOR_ID'])
+	print(reference_ids)
+	print(neighbor_ids)
+	reference_df = trajectories_reference.rename(
+		columns=lambda x: 'reference_' + x)
+	neighbor_df = trajectories_neighbor.rename(columns=lambda x: 'neighbor_' + x)
+
+	# Add prefix to the columns in the pairs DataFrame
+	pairs_df = trajectories_relative.rename(
+		columns=lambda x: 'relative_' + x)
+
+	# Verify the columns after renaming
+	print("Pairs DataFrame columns:", pairs_df.columns)
+	print("Reference DataFrame columns:", reference_df.columns)
+	print("Neighbor DataFrame columns:", neighbor_df.columns)
+
+	# Merge pairs_df with reference_df on 'reference_id'
+	# merged1 = pd.merge(pairs_df, reference_df, left_on='relative_REFERENCE_ID', right_on='reference_TRACK_ID',
+	# 					how='left')
+	# merged1 = merged1.sort_values(by=['relative_REFERENCE_ID', 'relative_NEIGHBOR_ID'])
+	# print(trajectories_relative.shape[0])
+	# print(merged1)
+	# print(merged1.shape[0])
+	# #pairs_df=pairs_df.to_numpy()
+	# print(pairs_df.shape)
+	# print('this ok')
+	# print(pairs_df.columns)
+	# # Merge the resulting DataFrame with neighbor_df on 'neighbor_id'
+	# print('NEIGHBOR')
+	# print(neighbor_df['neighbor_TRACK_ID'])
+	# print('RELATIVE')
+	# print(pairs_df['relative_NEIGHBOR_ID'])
+	# merged2 = pd.merge(pairs_df, neighbor_df, left_on='relative_NEIGHBOR_ID', right_on='neighbor_TRACK_ID', how='left')
+	# print(merged2.shape[0])
+	# print('this ok as well')
+	# print(merged2)
+	# merged3 = pd.merge(merged1,merged2,on=['relative_REFERENCE_ID', 'relative_NEIGHBOR_ID'])
+	for required_signal in required_signals:
+		if 'relative_' in required_signal:
+			relative_required_signals.append(required_signal)
+		if 'reference_' in required_signal:
+			reference_required_signals.append(required_signal)
+		if 'neighbor_' in required_signal:
+			neighbor_required_signals.append(required_signal)
+
+	# print('Required signals: ', required_signals)
+	# print('Reference signals: ', reference_required_signals)
+	# print('Relative signals: ', relative_required_signals)
+	# print('Neighbor signals: ', neighbor_required_signals)
+	try:
+		label = config['label']
+		if label == '':
+			label = None
+	except:
+		label = None
+
+	if selected_signals is None:
+		selected_signals = []
+		relative_selected_signals = []
+		reference_selected_signals =[]
+		neighbor_selected_signals = []
+		for s in relative_required_signals:
+			s=s.split('relative_')[1]
+			pattern_test = [s in a or s == a for a in available_relative_signals]
+			print(f'Pattern test for signal {s}: ', pattern_test)
+			assert np.any(
+				pattern_test), f'No signal matches with the requirements of the model {relative_required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
+			valid_columns = np.array(available_relative_signals)[np.array(pattern_test)]
+			if len(valid_columns) == 1:
+				selected_signals.append(valid_columns[0])
+				relative_selected_signals.append(valid_columns[0])
+			else:
+				# print(test_number_of_nan(trajectories, valid_columns))
+				print(f'Found several candidate signals: {valid_columns}')
+				for vc in natsorted(valid_columns):
+					if 'circle' in vc:
+						selected_signals.append(vc)
+						relative_selected_signals.append(vc)
+						break
+				else:
+					selected_signals.append(valid_columns[0])
+					relative_selected_signals.append(valid_columns[0])
+		for s in reference_required_signals:
+			s=s.split('reference_')[1]
+			pattern_test = [s in a or s == a for a in available_reference_signals]
+			print(f'Pattern test for signal {s}: ', pattern_test)
+			assert np.any(
+				pattern_test), f'No signal matches with the requirements of the model {reference_required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
+			valid_columns = np.array(available_reference_signals)[np.array(pattern_test)]
+			if len(valid_columns) == 1:
+				selected_signals.append(valid_columns[0])
+				reference_selected_signals.append(valid_columns[0])
+			else:
+				# print(test_number_of_nan(trajectories, valid_columns))
+				print(f'Found several candidate signals: {valid_columns}')
+				for vc in natsorted(valid_columns):
+					if 'circle' in vc:
+						selected_signals.append(vc)
+						reference_selected_signals.append(vc)
+						break
+				else:
+					selected_signals.append(valid_columns[0])
+					reference_selected_signals.append(valid_columns[0])
+		for s in neighbor_required_signals:
+			s=s.split('neighbor_')[1]
+			pattern_test = [s in a or s == a for a in available_neighbor_signals]
+			print(f'Pattern test for signal {s}: ', pattern_test)
+			assert np.any(
+				pattern_test), f'No signal matches with the requirements of the model {neighbor_required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
+			valid_columns = np.array(available_neighbor_signals)[np.array(pattern_test)]
+			if len(valid_columns) == 1:
+				selected_signals.append(valid_columns[0])
+				neighbor_selected_signals.append(valid_columns[0])
+			else:
+				# print(test_number_of_nan(trajectories, valid_columns))
+				print(f'Found several candidate signals: {valid_columns}')
+				for vc in natsorted(valid_columns):
+					if 'circle' in vc:
+						selected_signals.append(vc)
+						neighbor_selected_signals.append(vc)
+						break
+				else:
+					selected_signals.append(valid_columns[0])
+					neighbor_selected_signals.append(valid_columns[0])
+		# do something more complicated in case of one to many columns
+		# pass
+	else:
+		assert len(selected_signals) == len(
+			required_signals), f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
+
+	print(f'The following channels will be passed to the model: {selected_signals}')
+	# relative_trajectories_clean = clean_trajectories(trajectories_relative, interpolate_na=interpolate_na,
+	# 										interpolate_position_gaps=interpolate_na, column_labels=column_labels)
+
+	max_signal_size = int(trajectories_relative[column_labels['time']].max()) + 2
+	#tracks_relative = relative_trajectories_clean[column_labels['track']].unique()
+	tracks_relative = trajectories_relative[
+		[column_labels['reference'], column_labels['neighbor']]]
+
+	# Get unique pairs
+	tracks_relative = tracks_relative.drop_duplicates()
+	relative_signals = np.zeros((len(tracks_relative), max_signal_size, len(relative_selected_signals)))
+	print(relative_signals)
+	reference_trajectories_clean = clean_trajectories(trajectories_reference, interpolate_na=interpolate_na,
+											interpolate_position_gaps=interpolate_na, column_labels=column_labels)
+
+	max_signal_size = int(reference_trajectories_clean[column_labels['time']].max()) + 2
+	tracks_reference = reference_trajectories_clean[column_labels['track']].unique()
+	reference_signals = np.zeros((len(tracks_reference), max_signal_size, len(reference_selected_signals)))
+	print(reference_signals)
+
+	neighbor_trajectories_clean = clean_trajectories(trajectories_neighbor, interpolate_na=interpolate_na,
+											interpolate_position_gaps=interpolate_na, column_labels=column_labels)
+
+	max_signal_size = int(neighbor_trajectories_clean[column_labels['time']].max()) + 2
+	tracks_neighbor = neighbor_trajectories_clean[column_labels['track']].unique()
+	neighbor_signals = np.zeros((len(tracks_neighbor), max_signal_size, len(neighbor_selected_signals)))
+	print(neighbor_signals)
+
+	for i, (tid, group) in enumerate(reference_trajectories_clean.groupby(column_labels['track'])):
+		frames = group[column_labels['time']].to_numpy().astype(int)
+		for j, col in enumerate(reference_selected_signals):
+			signal = group[col].to_numpy()
+			reference_signals[i, frames, j] = signal
+			reference_signals[i, max(frames):, j] = signal[-1]
+	print(reference_signals.shape)
+
+
+	for i, (tid, group) in enumerate(neighbor_trajectories_clean.groupby(column_labels['track'])):
+		frames = group[column_labels['time']].to_numpy().astype(int)
+		for j, col in enumerate(neighbor_selected_signals):
+			signal = group[col].to_numpy()
+			neighbor_signals[i, frames, j] = signal
+			neighbor_signals[i, max(frames):, j] = signal[-1]
+
+	print(neighbor_signals.shape)
+
+	grouped = trajectories_relative.groupby([column_labels['reference'], column_labels['neighbor']])
+
+	for i, (tid, group) in enumerate(grouped):
+		frames = group[column_labels['time']].to_numpy().astype(int)
+		for j, col in enumerate(relative_selected_signals):
+			signal = group[col].to_numpy()
+			relative_signals[i, frames, j] = signal
+			relative_signals[i, max(frames):, j] = signal[-1]
+	#relative_signals = interpolate_nan_properties(relative_signals.copy(), track_label=column_labels['reference'])
+
+	print(relative_signals.shape)
+
+	# for i in range(5):
+	# 	print('pre model')
+	# 	plt.plot(signals[i,:,0])
+	# 	plt.show()
+	#
+	relative_padded = np.pad(relative_signals, ((0, 0), (0, 0), (0, 2)), mode='constant')
+	reference_padded = np.pad(reference_signals, ((0, 0), (0, 0), (0, 3)), mode='constant')
+	neighbor_padded = np.pad(neighbor_signals, ((0, 0), (0, 0), (0, 3)), mode='constant')
+
+	# Stack the padded arrays along the first axis
+	signals = np.concatenate((relative_padded, reference_padded, neighbor_padded), axis=0)
+	model = SignalDetectionModel(pretrained=complete_path)
+	print('signal shape: ', signals.shape)
+
+	classes = model.predict_class(signals)
+	print(classes)
+	# times_recast = model.predict_time_of_interest(signals)
+	# #
+	# if label is None:
+	# 	class_col = 'class'
+	# 	time_col = 't0'
+	# 	status_col = 'status'
+	# else:
+	# 	class_col = 'class_' + label
+	# 	time_col = 't_' + label
+	# 	status_col = 'status_' + label
+	#
+	# for i, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
+	# 	indices = group.index
+	# 	trajectories.loc[indices, class_col] = classes[i]
+	# 	trajectories.loc[indices, time_col] = times_recast[i]
+	# print('Done.')
+	#
+	# for tid, group in trajectories.groupby(column_labels['track']):
+	#
+	# 	indices = group.index
+	# 	t0 = group[time_col].to_numpy()[0]
+	# 	cclass = group[class_col].to_numpy()[0]
+	# 	timeline = group[column_labels['time']].to_numpy()
+	# 	status = np.zeros_like(timeline)
+	# 	if t0 > 0:
+	# 		status[timeline >= t0] = 1.
+	# 	if cclass == 2:
+	# 		status[:] = 2
+	# 	if cclass > 2:
+	# 		status[:] = 42
+	# 	status_color = [color_from_status(s) for s in status]
+	# 	class_color = [color_from_class(cclass) for i in range(len(status))]
+	#
+	# 	trajectories.loc[indices, status_col] = status
+	# 	trajectories.loc[indices, 'status_color'] = status_color
+	# 	trajectories.loc[indices, 'class_color'] = class_color
+	#
+	# if plot_outcome:
+	# 	fig, ax = plt.subplots(1, len(selected_signals), figsize=(10, 5))
+	# 	for i, s in enumerate(selected_signals):
+	# 		for k, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
+	# 			cclass = group[class_col].to_numpy()[0]
+	# 			t0 = group[time_col].to_numpy()[0]
+	# 			timeline = group[column_labels['time']].to_numpy()
+	# 			if cclass == 0:
+	# 				if len(selected_signals) > 1:
+	# 					ax[i].plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
+	# 				else:
+	# 					ax.plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
+	# 	if len(selected_signals) > 1:
+	# 		for a, s in zip(ax, selected_signals):
+	# 			a.set_title(s)
+	# 			a.set_xlabel(r'time - t$_0$ [frame]')
+	# 			a.spines['top'].set_visible(False)
+	# 			a.spines['right'].set_visible(False)
+	# 	else:
+	# 		ax.set_title(s)
+	# 		ax.set_xlabel(r'time - t$_0$ [frame]')
+	# 		ax.spines['top'].set_visible(False)
+	# 		ax.spines['right'].set_visible(False)
+	# 	plt.tight_layout()
+	# 	if output_dir is not None:
+	# 		plt.savefig(output_dir + 'signal_collapse.png', bbox_inches='tight', dpi=300)
+	# 	plt.pause(3)
+	# 	plt.close()
+	#
+	# return trajectories
 class SignalDetectionModel(object):
 
 	"""
@@ -1312,8 +1852,9 @@ class SignalDetectionModel(object):
 		if isinstance(self.list_of_sets[0],str):
 			# Case 1: a list of npy files to be loaded
 			for s in self.list_of_sets:
-				
+
 				signal_dataset = self.load_set(s)
+				print(signal_dataset)
 				selected_signals, max_length = self.find_best_signal_match(signal_dataset)
 				signals_recast, classes, times_of_interest = self.cast_signals_into_training_data(signal_dataset, selected_signals, max_length)
 				signals_recast, times_of_interest = self.normalize_signals(signals_recast, times_of_interest)
@@ -1469,12 +2010,21 @@ class SignalDetectionModel(object):
 			for i in range(self.n_channels):
 				try:
 					# take into account timeline for accurate time regression
-					timeline = signal_dataset[k]['FRAME'].astype(int)
+
+					if selected_signals[i].startswith('relative_'):
+						timeline = signal_dataset[k]['relative_FRAME'].astype(int)
+					elif selected_signals[i].startswith('reference_'):
+						timeline = signal_dataset[k]['reference_FRAME'].astype(int)
+					elif selected_signals[i].startswith('neighbor_'):
+						timeline = signal_dataset[k]['neighbor_FRAME'].astype(int)
+					else:
+						timeline = signal_dataset[k]['FRAME'].astype(int)
 					signals_recast[k,timeline,i] = signal_dataset[k][selected_signals[i]]
 				except:
 					print(f"Attribute {selected_signals[i]} matched to {self.channel_option[i]} not found in annotation...")
 					pass
 
+			print(signal_dataset[k]["class"])
 			classes[k] = signal_dataset[k]["class"]
 			times_of_interest[k] = signal_dataset[k]["time_of_interest"]
 

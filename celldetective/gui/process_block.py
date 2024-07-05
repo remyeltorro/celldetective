@@ -9,7 +9,8 @@ from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 from celldetective.gui.retrain_signal_model_options import ConfigPairSignalModelTraining
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import MeasureAnnotator2, SignalAnnotator2
-from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack, load_experiment_tables
+from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
+    control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list
 from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
@@ -17,7 +18,7 @@ from celldetective.relative_measurements import rel_measure_at_position
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
 from celldetective.measure import measure_at_position
-from celldetective.signals import analyze_signals_at_position
+from celldetective.signals import analyze_signals_at_position, analyze_pair_signals
 from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
@@ -1153,7 +1154,7 @@ class NeighPanel(QFrame, Styles):
         self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
         self.signal_analysis_action.setIconSize(QSize(20, 20))
         self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
-        # self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
+        self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
         signal_hlayout.addWidget(self.signal_analysis_action, 90)
 
         self.check_signals_btn = QPushButton()
@@ -1206,7 +1207,7 @@ class NeighPanel(QFrame, Styles):
 
 
     def refresh_signal_models(self):
-        signal_models = get_signal_models_list()
+        signal_models = get_pair_signal_models_list()
         self.pair_signal_models_list.clear()
         self.pair_signal_models_list.addItems(signal_models)
 
@@ -1240,7 +1241,11 @@ class NeighPanel(QFrame, Styles):
                                                )
         self.ConfigNeigh.show()
 
-
+    def enable_signal_model_list(self):
+        if self.signal_analysis_action.isChecked():
+            self.pair_signal_models_list.setEnabled(True)
+        else:
+            self.pair_signal_models_list.setEnabled(False)
     def process_neighborhood(self):
 
         if self.parent_window.well_list.currentText()=="*":
@@ -1313,8 +1318,6 @@ class NeighPanel(QFrame, Styles):
                 #                                      event_time_col=config['event_time_col'],
                 #                                      neighborhood_kwargs=config['neighborhood_kwargs'],
                 #                                     )
-                if self.measure_rel.isChecked():
-                    rel_measure_at_position(self.pos)
                 if self.dist_neigh_btn.isChecked():
                     for protocol in self.protocols:
 
@@ -1343,6 +1346,63 @@ class NeighPanel(QFrame, Styles):
                                                         event_time_col=protocol['event_time_col'],
                                                         neighborhood_kwargs=protocol['neighborhood_kwargs'],
                                                         )
+                if self.measure_rel.isChecked():
+                    rel_measure_at_position(self.pos)
+
+                if self.signal_analysis_action.isChecked():
+                    table_reference_name = "trajectories_targets.csv"
+
+                    table_neighbor_name = "trajectories_effectors.csv"
+                    table_relative_name='relative_measurements_neighborhood.csv'
+                    pos=self.pos
+                    # Load trajectories, add centroid if not in trajectory
+                    trajectories_relative = pos + os.sep.join(['output', 'tables', table_relative_name])
+                    if os.path.exists(trajectories_relative):
+                        trajectories_relative = pd.read_csv(trajectories_relative)
+                    trajectories_reference = pos + os.sep.join(['output', 'tables', table_reference_name])
+                    if os.path.exists(trajectories_reference):
+                        trajectories_reference = pd.read_csv(trajectories_reference)
+                    trajectories_neighbor = pos + os.sep.join(['output', 'tables', table_neighbor_name])
+                    if os.path.exists(trajectories_neighbor):
+                        trajectories_neighbor = pd.read_csv(trajectories_neighbor)
+                    # reference_df = trajectories_reference.rename(
+                    #     columns=lambda x: 'reference_' + x )
+                    # neighbor_df = trajectories_neighbor.rename(columns=lambda x: 'neighbor_' + x )
+                    #
+                    # # Add prefix to the columns in the pairs DataFrame
+                    # pairs_df = trajectories_relative.rename(
+                    #     columns=lambda x: 'relative_' + x )
+                    #
+                    # # Verify the columns after renaming
+                    # print("Pairs DataFrame columns:", pairs_df.columns)
+                    # print("Reference DataFrame columns:", reference_df.columns)
+                    # print("Neighbor DataFrame columns:", neighbor_df.columns)
+                    #
+                    # # Merge pairs_df with reference_df on 'reference_id'
+                    # pairs_df = pd.merge(pairs_df, reference_df, left_on='relative_REFERENCE_ID', right_on='reference_TRACK_ID',how='left')
+                    # pairs_df = pairs_df.sort_values(by=['relative_REFERENCE_ID', 'relative_NEIGHBOR_ID'])
+                    # #merged_df=merged_df.to_numpy()
+                    # print('this ok')
+                    # print(pairs_df.columns)
+                    # # Merge the resulting DataFrame with neighbor_df on 'neighbor_id'
+                    # print('NEIGHBOR')
+                    # print(neighbor_df['neighbor_TRACK_ID'])
+                    # print('RELATIVE')
+                    # print(pairs_df['relative_NEIGHBOR_ID'])
+                    # pairs_df = pd.merge(pairs_df, neighbor_df, left_on='relative_NEIGHBOR_ID', right_on='neighbor_TRACK_ID',how='left')
+                    # print('this ok as well')
+                    #print(pairs_df)
+                    # merged_df = pd.merge(pairs_df, reference_df, left_on='relative_REFERENCE_ID',
+                    #                      right_on='reference_TRACK_ID', how='left')
+                    # print('After merging with reference_df:')
+                    # print(merged_df)
+                    #
+                    # # Merge the resulting DataFrame with neighbor_df on 'relative_NEIGHBOR_ID' and 'neighbor_TRACK_ID'
+                    # merged_df = pd.merge(merged_df, neighbor_df, left_on='relative_NEIGHBOR_ID',
+                    #                      right_on='neighbor_TRACK_ID', how='left')
+                    # print('After merging with neighbor_df:')
+                    # print(merged_df)
+                    analyze_pair_signals(trajectories_relative,trajectories_reference,trajectories_neighbor,model=self.pair_signal_models_list.currentText())
 
 
                         #table = os.sep.join([self.pos, 'output', 'tables', 'relative.csv'])

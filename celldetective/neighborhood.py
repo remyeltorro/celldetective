@@ -438,12 +438,12 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		elif neighborhood_kwargs['mode'] == 'self':
 			neigh_col = f'neighborhood_self_circle_{d}_px'
 
-		edge_filter_A = (df_A['POSITION_X'] > td) & (df_A['POSITION_Y'] > td) & (
-					df_A['POSITION_Y'] < (img_shape[0] - td)) & (df_A['POSITION_X'] < (img_shape[1] - td))
-		edge_filter_B = (df_B['POSITION_X'] > td) & (df_B['POSITION_Y'] > td) & (
-					df_B['POSITION_Y'] < (img_shape[0] - td)) & (df_B['POSITION_X'] < (img_shape[1] - td))
-		df_A.loc[~edge_filter_A, neigh_col] = np.nan
-		df_B.loc[~edge_filter_B, neigh_col] = np.nan
+		#edge_filter_A = (df_A['POSITION_X'] > td) & (df_A['POSITION_Y'] > td) & (
+		#			df_A['POSITION_Y'] < (img_shape[0] - td)) & (df_A['POSITION_X'] < (img_shape[1] - td))
+		#edge_filter_B = (df_B['POSITION_X'] > td) & (df_B['POSITION_Y'] > td) & (
+		#			df_B['POSITION_Y'] < (img_shape[0] - td)) & (df_B['POSITION_X'] < (img_shape[1] - td))
+		#df_A.loc[~edge_filter_A, neigh_col] = np.nan
+		#df_B.loc[~edge_filter_B, neigh_col] = np.nan
 
 		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive', 'exclusive', 'intermediate'],
 											decompose_by_status=True)

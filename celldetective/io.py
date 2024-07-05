@@ -986,10 +986,83 @@ def get_signal_models_list(return_path=False):
 	else:
 		return available_models, modelpath
 
+def get_pair_signal_models_list(return_path=False):
+	"""
+
+	Retrieve a list of available signal detection models.
+
+	Parameters
+	----------
+	return_path : bool, optional
+		If True, also returns the path to the models. Default is False.
+
+	Returns
+	-------
+	list or tuple
+		If return_path is False, returns a list of available signal detection models.
+		If return_path is True, returns a tuple containing the list of models and the path to the models.
+
+	Notes
+	-----
+	This function retrieves the list of available signal detection models by searching for model directories
+	in the predefined model path. The model path is derived from the parent directory of the current script
+	location and the path to the model directory. By default, it returns only the names of the models.
+	If return_path is set to True, it also returns the path to the models.
+
+	Examples
+	--------
+	>>> models = get_signal_models_list()
+	# Retrieve a list of available signal detection models.
+
+	>>> models, path = get_signal_models_list(return_path=True)
+	# Retrieve a list of available signal detection models and the path to the models.
+
+	"""
+
+	modelpath = os.sep.join(
+		[os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], "celldetective", "models", "pair_signal_detection",
+		 os.sep])
+	#repository_models = get_zenodo_files(cat=os.sep.join(["models", "pair_signal_detection"]))
+
+	available_models = glob(modelpath + f'*{os.sep}')
+	available_models = [m.replace('\\', '/').split('/')[-2] for m in available_models]
+	#for rm in repository_models:
+	#	if rm not in available_models:
+	#		available_models.append(rm)
+
+	if not return_path:
+		return available_models
+	else:
+		return available_models, modelpath
+
 
 def locate_signal_model(name, path=None):
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], "celldetective"])
 	modelpath = os.sep.join([main_dir, "models", "signal_detection", os.sep])
+	print(f'Looking for {name} in {modelpath}')
+	models = glob(modelpath + f'*{os.sep}')
+	if path is not None:
+		if not path.endswith(os.sep):
+			path += os.sep
+		models += glob(path + f'*{os.sep}')
+
+	match = None
+	for m in models:
+		if name == m.replace('\\', os.sep).split(os.sep)[-2]:
+			match = m
+			return match
+	# else no match, try zenodo
+	files, categories = get_zenodo_files()
+	if name in files:
+		index = files.index(name)
+		cat = categories[index]
+		download_zenodo_file(name, os.sep.join([main_dir, cat]))
+		match = os.sep.join([main_dir, cat, name]) + os.sep
+	return match
+
+def locate_pair_signal_model(name, path=None):
+	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], "celldetective"])
+	modelpath = os.sep.join([main_dir, "models", "pair_signal_detection", os.sep])
 	print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath + f'*{os.sep}')
 	if path is not None:

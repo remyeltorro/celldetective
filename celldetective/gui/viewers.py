@@ -396,7 +396,7 @@ class ThresholdedStackVisualizer(StackVisualizer):
 		# Compute the mask based on the threshold value
 		self.preprocess_image()
 		edge = estimate_unreliable_edge(self.preprocessing)
-		self.mask = threshold_image(self.processed_image, threshold_value, 1.0E06, foreground_value=1, edge_exclusion=edge).astype(int)
+		self.mask = threshold_image(self.processed_image, threshold_value, np.inf, foreground_value=1, edge_exclusion=edge).astype(int)
 
 	def preprocess_image(self):
 		# Preprocess the image before thresholding		

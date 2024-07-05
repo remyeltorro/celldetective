@@ -15,6 +15,8 @@ from gc import collect
 from lmfit import Parameters, Model, models
 import tifffile.tifffile as tiff
 
+from tifffile import imwrite
+
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):
 	
 	"""
@@ -69,6 +71,7 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 	...     print(bg["well"], bg["bg"].shape)
 	"""
 
+
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
 	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
@@ -79,7 +82,7 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
 	nbr_channels = _extract_nbr_channels_from_config(config)
 	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
-	
+
 	backgrounds = []
 
 	for k, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
@@ -110,7 +113,7 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 				frame = frame_mean.copy().astype(float)
 				std_frame = filter_image(frame.copy(),filters=activation_protocol)
 				edge = estimate_unreliable_edge(activation_protocol)
-				mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge)
+				mask = threshold_image(std_frame, threshold_on_std, np.inf, foreground_value=1, edge_exclusion=edge)
 				frame[np.where(mask.astype(int)==1)] = np.nan
 
 			elif mode=="tiles":
@@ -118,21 +121,23 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 				frames = load_frames(img_num_channels[0,:], stack_path, normalize_input=False).astype(float)
 				frames = np.moveaxis(frames, -1, 0).astype(float)
 
+				new_frames = []
 				for i in range(len(frames)):
 
 					if np.all(frames[i].flatten()==0):
-						frames[i,:,:] = np.nan
+						empty_frame = np.zeros_like(frames[i])
+						empty_frame[:,:] = np.nan
+						new_frames.append(empty_frame)
 						continue
 
 					f = frames[i].copy()
 					std_frame = filter_image(f.copy(),filters=activation_protocol)
 					edge = estimate_unreliable_edge(activation_protocol)
-					mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge)
+					mask = threshold_image(std_frame, threshold_on_std, np.inf, foreground_value=1, edge_exclusion=edge)
 					f[np.where(mask.astype(int)==1)] = np.nan
-
-					frames[i,:,:] = f
+					new_frames.append(f.copy())
 				
-				frame = np.nanmedian(frames, axis=0)
+				frame = np.nanmedian(new_frames, axis=0)
 
 			# store
 			frame_mean_per_position.append(frame)
@@ -371,18 +376,25 @@ def apply_background_to_stack(stack_path, background, target_channel_index=0, nb
 
 			std_frame = filter_image(target_copy.copy(),filters=activation_protocol)
 			edge = estimate_unreliable_edge(activation_protocol)
-			mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge)
+			mask = threshold_image(std_frame, threshold_on_std, np.inf, foreground_value=1, edge_exclusion=edge)
 			target_copy[np.where(mask.astype(int)==1)] = np.nan
 
 			loss = []
 			
 			# brute-force regression, could do gradient descent instead
 			for c in coefficients:
+				
 				target_crop = unpad(target_copy,edge)
 				bg_crop = unpad(background, edge)
-				diff = np.subtract(target_crop, c*bg_crop, where=target_crop==target_crop)
-				s = np.sum(np.abs(diff, where=diff==diff), where=diff==diff)
+				
+				roi = np.zeros_like(target_crop).astype(int)
+				roi[target_crop!=target_crop] = 1
+				roi[bg_crop!=bg_crop] = 1
+
+				diff = np.subtract(target_crop, c*bg_crop, where=roi==0)
+				s = np.sum(np.abs(diff, where=roi==0), where=roi==0)
 				loss.append(s)
+
 			c = coefficients[np.argmin(loss)]
 			print(f"Frame: {i}; optimal coefficient: {c}...")
 			# if c==min(coefficients) or c==max(coefficients):
@@ -954,7 +966,7 @@ def field_correction(img, threshold_on_std=1, operation='divide', model='parabol
 
 	std_frame = filter_image(target_copy,filters=activation_protocol)
 	edge = estimate_unreliable_edge(activation_protocol)
-	mask = threshold_image(std_frame, threshold_on_std, 1.0E06, foreground_value=1, edge_exclusion=edge).astype(int)
+	mask = threshold_image(std_frame, threshold_on_std, np.inf, foreground_value=1, edge_exclusion=edge).astype(int)
 	background = fit_background_model(img, cell_masks=mask, model=model, edge_exclusion=edge)
 
 	if operation=="divide":

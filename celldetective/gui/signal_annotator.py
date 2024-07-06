@@ -856,7 +856,7 @@ class SignalAnnotator(QMainWindow, Styles):
 			self.cell_ax.legend()
 			self.cell_fcanvas.canvas.draw()
 		except Exception as e:
-			print(f"{e=}")
+			print(f"Plot signals: {e=}")
 
 	def extract_scatter_from_trajectories(self):
 
@@ -1110,7 +1110,7 @@ class SignalAnnotator(QMainWindow, Styles):
 			if len(min_values) > 0:
 				self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
 		except Exception as e:
-			print(e)
+			print('Ylim error:',e)
 
 	def draw_frame(self, framedata):
 
@@ -1903,7 +1903,8 @@ class MeasureAnnotator(SignalAnnotator):
 				cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
 			self.cell_info.setText(cell_selected + cell_status)
 		except Exception as e:
-			print(e)
+			print('Cell info:',e)
+			print(self.track_of_interest, self.status_name)
 			
 	def create_new_event_class(self):
 
@@ -1992,7 +1993,7 @@ class MeasureAnnotator(SignalAnnotator):
 		try:
 			self.status_scatter.set_edgecolors(self.colors[self.framedata][:, 0])
 		except Exception as e:
-			print(e)
+			print('L1993: ',e)
 
 		self.current_label = self.labels[self.current_frame]
 		self.current_label = contour_of_instance_segmentation(self.current_label, 5)
@@ -2125,9 +2126,9 @@ class MeasureAnnotator(SignalAnnotator):
 
 			self.extract_scatter_from_trajectories()
 			if 'TRACK_ID' in self.df_tracks.columns:
-				self.track_of_interest = self.df_tracks['TRACK_ID'].min()
+				self.track_of_interest = self.df_tracks.dropna(subset='TRACK_ID')['TRACK_ID'].min()
 			else:
-				self.track_of_interest = self.df_tracks['ID'].min()
+				self.track_of_interest = self.df_tracks.dropna(subset='ID')['ID'].min()
 
 			self.loc_t = []
 			self.loc_idx = []
@@ -2189,9 +2190,13 @@ class MeasureAnnotator(SignalAnnotator):
 		"""
 		self.current_frame = self.frame_slider.value()
 		self.reload_frame()
-		if 'ID' in self.df_tracks.columns:
+		if 'TRACK_ID' in list(self.df_tracks.columns):
+			pass
+		elif 'ID' in list(self.df_tracks.columns):
+			print('ID in cols... change class of interest... ')
 			self.track_of_interest = self.df_tracks[self.df_tracks['FRAME'] == self.current_frame]['ID'].min()
 			self.modify()
+
 		self.draw_frame(self.current_frame)
 		self.fcanvas.canvas.draw()
 		self.plot_signals()
@@ -2319,7 +2324,7 @@ class MeasureAnnotator(SignalAnnotator):
 		try:
 			self.selection.pop(0)
 		except Exception as e:
-			print(e)
+			print('Cancel selection: ',e)
 
 		try:
 			for k, (t, idx) in enumerate(zip(self.loc_t, self.loc_idx)):

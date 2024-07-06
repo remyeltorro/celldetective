@@ -27,6 +27,7 @@ from matplotlib.cm import tab10
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from celldetective.gui import Styles
+from celldetective.measure import contour_of_instance_segmentation
 
 class SignalAnnotator(QMainWindow, Styles):
 	"""
@@ -1330,8 +1331,13 @@ class MeasureAnnotator(SignalAnnotator):
 		center_window(self)
 
 		self.locate_stack()
+
 		data, properties, graph, labels, _ = load_napari_data(self.pos, prefix=None, population=self.mode,return_stack=False)
-		self.labels = relabel_segmentation(labels,data,properties)
+		if data is not None:
+			self.labels = relabel_segmentation(labels,data,properties)
+		else:
+			self.labels = labels
+
 		self.current_channel = 0
 
 		self.locate_tracks()
@@ -1577,8 +1583,10 @@ class MeasureAnnotator(SignalAnnotator):
 		self.class_choice_cb = QComboBox()
 
 		cols = np.array(self.df_tracks.columns)
-		self.class_cols = np.array([c.startswith('group') for c in list(self.df_tracks.columns)])
+		self.class_cols = np.array([c.startswith('group') or c.startswith('status') for c in list(self.df_tracks.columns)])
 		self.class_cols = list(cols[self.class_cols])
+		print(self.class_cols)
+
 		try:
 			self.class_cols.remove('group_id')
 		except Exception:
@@ -1887,13 +1895,16 @@ class MeasureAnnotator(SignalAnnotator):
 
 	def give_cell_information(self):
 
-		cell_selected = f"cell: {self.track_of_interest}\n"
-		if 'TRACK_ID' in self.df_tracks.columns:
-			cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['TRACK_ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
-		else:
-			cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
-		self.cell_info.setText(cell_selected + cell_status)
-
+		try:
+			cell_selected = f"cell: {self.track_of_interest}\n"
+			if 'TRACK_ID' in self.df_tracks.columns:
+				cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['TRACK_ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
+			else:
+				cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
+			self.cell_info.setText(cell_selected + cell_status)
+		except Exception as e:
+			print(e)
+			
 	def create_new_event_class(self):
 
 		# display qwidget to name the event
@@ -1978,8 +1989,14 @@ class MeasureAnnotator(SignalAnnotator):
 		self.frame_lbl.setText(f'position: {self.framedata}')
 		self.im.set_array(self.img)
 		self.status_scatter.set_offsets(self.positions[self.framedata])
-		self.status_scatter.set_edgecolors(self.colors[self.framedata][:, 0])
+		try:
+			self.status_scatter.set_edgecolors(self.colors[self.framedata][:, 0])
+		except Exception as e:
+			print(e)
+
 		self.current_label = self.labels[self.current_frame]
+		self.current_label = contour_of_instance_segmentation(self.current_label, 5)
+
 		self.im_mask.remove()
 		self.im_mask = self.ax.imshow(np.ma.masked_where(self.current_label == 0, self.current_label),
 											   cmap='viridis', interpolation='none',alpha=self.current_alpha,vmin=0,vmax=np.nanmax(self.labels.flatten()))

@@ -319,16 +319,16 @@ class ConfigNeighborhoods(QWidget, Styles):
 	def fill_cbs_of_neighbor_population(self):
 
 		population = self.neighbor_population_cb.currentText()
-		class_cols, status_cols, time_cols = self.locate_population_specific_columns(population)
+		class_cols, status_cols, group_cols, time_cols = self.locate_population_specific_columns(population)
 		self.neighbor_population_status_cb.clear()
-		self.neighbor_population_status_cb.addItems(['--','class', 'status']+class_cols+status_cols)
+		self.neighbor_population_status_cb.addItems(['--','class', 'status']+class_cols+status_cols+group_cols)
 
 	def fill_cbs_of_reference_population(self):
 
 		population = self.reference_population_cb.currentText()
-		class_cols, status_cols, time_cols = self.locate_population_specific_columns(population)
+		class_cols, status_cols, group_cols, time_cols = self.locate_population_specific_columns(population)
 		self.reference_population_status_cb.clear()
-		self.reference_population_status_cb.addItems(['--','class', 'status']+class_cols+status_cols)
+		self.reference_population_status_cb.addItems(['--','class', 'status']+class_cols+status_cols+group_cols)
 		self.event_time_cb.addItems(['--', 't0']+time_cols)
 
 	def switch_not_reference(self):
@@ -364,6 +364,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
 		status_idx = np.array([s.startswith('status_') for s in self.all_columns])
+		group_idx = np.array([s.startswith('group_') for s in self.all_columns])		
 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
 
 		if len(class_idx)>0:
@@ -379,12 +380,17 @@ class ConfigNeighborhoods(QWidget, Styles):
 		else:
 			status_columns = []
 
+		if len(group_idx)>0:
+			group_columns = list(self.all_columns[group_idx])
+		else:
+			group_columns = []
+
 		if len(time_idx)>0:
 			time_columns = list(self.all_columns[time_idx])
 		else:
 			time_columns = []
 
-		return class_columns, status_columns, time_columns
+		return class_columns, status_columns, group_columns, time_columns
 
 	def write_instructions(self):
 

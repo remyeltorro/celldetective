@@ -16,6 +16,7 @@ import subprocess
 from celldetective.gui.viewers import StackVisualizer
 from celldetective.utils import extract_experiment_channels
 from celldetective.gui import Styles
+import pandas as pd
 
 class ControlPanel(QMainWindow, Styles):
 
@@ -452,26 +453,32 @@ class ControlPanel(QMainWindow, Styles):
 					self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv'])):
+					cols = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv']), nrows=1).columns.tolist()
 					self.ProcessEffectors.check_measurements_btn.setEnabled(True)
-					self.ProcessEffectors.check_signals_btn.setEnabled(True)
+					if 'TRACK_ID' in cols:
+						self.ProcessEffectors.check_signals_btn.setEnabled(True)
 					#self.ProcessEffectors.signal_analysis_action.setEnabled(True)
 					self.ProcessEffectors.view_tab_btn.setEnabled(True)
-
+					self.ProcessEffectors.classify_btn.setEnabled(True)
 				else:
 					self.ProcessEffectors.check_measurements_btn.setEnabled(False)
 					self.ProcessEffectors.check_signals_btn.setEnabled(False)
 					#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
 					self.ProcessEffectors.view_tab_btn.setEnabled(False)
+					self.ProcessEffectors.classify_btn.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_targets.csv'])):
+					cols = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_targets.csv']), nrows=1).columns.tolist()
 					self.ProcessTargets.check_measurements_btn.setEnabled(True)
-					self.ProcessTargets.check_signals_btn.setEnabled(True)
+					if 'TRACK_ID' in cols:
+						self.ProcessTargets.check_signals_btn.setEnabled(True)
 					#self.ProcessTargets.signal_analysis_action.setEnabled(True)
 					self.ProcessTargets.view_tab_btn.setEnabled(True)
-
+					self.ProcessTargets.classify_btn.setEnabled(True)
 				else:
 					self.ProcessTargets.check_measurements_btn.setEnabled(False)
 					self.ProcessTargets.check_signals_btn.setEnabled(False)
 					#self.ProcessTargets.signal_analysis_action.setEnabled(False)
 					self.ProcessTargets.view_tab_btn.setEnabled(False)
+					self.ProcessTargets.classify_btn.setEnabled(False)
 

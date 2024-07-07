@@ -97,9 +97,7 @@ We provide a module for spot detection to count the number of blob-like objects 
 Static measurements annotation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We provide a viewer for the measurements of single cells. You can open an image stack and navigate it frame-by-frame, with an option to switch the channel. You can click on individual cells, represented by circles on the image, and categorize them manually based on their characteristics. You can define a group in which you assign a phenotype for each cell. A value (and color) encodes for the cell phenotype. You can display the measurements of a given cell on the left-side graph by simply clicking on it on the image. The boxplots show the spread of values for all cells in the stack. The strip plot shows the measurements for the cells within the current frame. The red dot is the cell of interest. You can represent up to three measurements at a time, with options to normalize and log-rescale the measurements if they span orders of magnitude. Additionally, you can display the outliers for the boxplot, hidden by default.
-
-The tool is compatible with static and dynamic data. It is particularly relevant when reliable tracking of the cells is impossible, due to a poor time resolution.
+We provide a viewer for the measurements of single cells. If you select a single position, you can explore the associated image stack frame-by-frame. Interactive circles encode for the position and state of each individual cell. When available, the cell masks are outlines to clearly see the region of interest for the measurements. 
 
 .. figure:: _static/measurements_annotator.gif
     :width: 800px
@@ -107,3 +105,14 @@ The tool is compatible with static and dynamic data. It is particularly relevant
     :alt: measurements_annotator
 
     Application on an ADCC system of MCF-7 breast cancer cells co-cultured with human primary NK cells.
+
+You can select a group or status attribute to monitor how the cells were classified (*e.g.* using the classifier widget or a signal classification model) and correct mistakes. Alternatively, you can create a new group attribute with as many phenotypes as needed. The cell phenotype is encoded by a value (0,1,2...) and a color. 
+
+When you click on a single cell, the circle turns lime green on the image and its measurements are represented by a red dot on the left-side figure. Up to three measurements can be compared side-by-side, with an option to renormalize each measurement independently, show them in log-scale and mask outliers. For each represented measurement, a box plot shows the distribution of values across all the frames. The blue strip plot shows the measurements of all the cells within the current frame (or field of view). The red dot coincides with one such blue dots.  
+
+.. note::
+    
+    If your cells are tracked and there is a before/after phenotype, you should prefer using the signal annotator to perform cell classification instead, so that the instantaneous cell phenotype can be propagated effortlessly to the whole track.  
+
+For the selected group/status and the current frame, you can export an annotation set to train, later on, a classifier model (feature not available currently). The set consists of a list of dictionaries where each dictionary contains all the measurements of a single cell on the current frame. By convention, a *class* key is written as a copy of the group/status of interest at the time of export.  
+

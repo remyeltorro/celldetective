@@ -483,7 +483,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		'recompile_pretrained': recompile_op, 'ds': data_folders, 'augmentation_factor': aug_factor, 'validation_split': val_split,
 		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs, 'label': self.class_name_le.text()}
 
-		model_folder = self.signal_models_dir + model_name + os.sep
+		model_folder = self.signal_models_dir +os.sep+ model_name + os.sep
 		if not os.path.exists(model_folder):
 			os.mkdir(model_folder)
 

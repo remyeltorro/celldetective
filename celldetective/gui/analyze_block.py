@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QSizePolicy, QSpacerItem, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, QMessageBox
+from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+    QMessageBox, QSpacerItem, QSizePolicy
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
 

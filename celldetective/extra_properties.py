@@ -51,6 +51,7 @@ def intensity_centre_of_mass_displacement(regionmask, intensity_image):
 	centroid_x = intensity_weighted_center[1]
 	centroid_y = intensity_weighted_center[0]
 
+    centroid_x = np.sum(xtemp * intensity_image) / np.sum(intensity_image)
 	geometric_centroid_x = np.sum(xtemp * regionmask) / np.sum(regionmask)
 	geometric_centroid_y = np.sum(ytemp * regionmask) / np.sum(regionmask)
 	distance = euclidean(np.array((geometric_centroid_y, geometric_centroid_x)), np.array((centroid_y, centroid_x)))

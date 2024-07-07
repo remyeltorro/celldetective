@@ -1302,7 +1302,9 @@ class SignalAnnotator(QMainWindow, Styles):
 
 
 class MeasureAnnotator(SignalAnnotator):
+
 	def __init__(self, parent_window=None):
+
 		QMainWindow.__init__(self)
 		self.parent_window = parent_window
 		self.setWindowTitle("Signal annotator")
@@ -1316,11 +1318,11 @@ class MeasureAnnotator(SignalAnnotator):
 		self.int_validator = QIntValidator()
 		self.current_alpha=0.5
 		if self.mode == "targets":
-			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
-			self.trajectories_path = self.pos + 'output/tables/trajectories_targets.csv'
+			self.instructions_path = self.exp_dir + os.sep.join(['configs','signal_annotator_config_targets.json'])
+			self.trajectories_path = self.pos + os.sep.join(['output','tables','trajectories_targets.csv'])
 		elif self.mode == "effectors":
-			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_effectors.json"
-			self.trajectories_path = self.pos + 'output/tables/trajectories_effectors.csv'
+			self.instructions_path = self.exp_dir + os.sep.join(['configs','signal_annotator_config_effectors.json'])
+			self.trajectories_path = self.pos + os.sep.join(['output','tables','trajectories_effectors.csv'])
 
 		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
@@ -1719,6 +1721,14 @@ class MeasureAnnotator(SignalAnnotator):
 		btn_hbox.addWidget(self.save_btn, 90)
 		self.left_panel.addLayout(btn_hbox)
 
+		self.export_btn = QPushButton('')
+		self.export_btn.setStyleSheet(self.button_select_all)
+		self.export_btn.clicked.connect(self.export_measurements)
+		self.export_btn.setIcon(icon(MDI6.export, color="black"))
+		self.export_btn.setIconSize(QSize(25, 25))
+		btn_hbox.addWidget(self.export_btn, 10)
+		self.left_panel.addLayout(btn_hbox)
+
 		# Animation
 		animation_buttons_box = QHBoxLayout()
 
@@ -1817,6 +1827,28 @@ class MeasureAnnotator(SignalAnnotator):
 		# 			  )
 		# del self.img
 		gc.collect()
+
+
+	def export_measurements(self):
+
+		auto_dataset_name = self.pos.split(os.sep)[-4] + '_' + self.pos.split(os.sep)[-2] + f'_{str(self.current_frame).zfill(3)}' + f'_{self.status_name}.npy'
+
+		if self.normalized_signals:
+			self.normalize_features_btn.click()
+
+		subdf = self.df_tracks.loc[self.df_tracks['FRAME']==self.current_frame,:]
+		subdf['class'] = subdf[self.status_name]
+		dico = subdf.to_dict('records')
+
+		pathsave = QFileDialog.getSaveFileName(self, "Select file name", self.exp_dir + auto_dataset_name, ".npy")[0]
+		if pathsave != '':
+			if not pathsave.endswith(".npy"):
+				pathsave += ".npy"
+			try:
+				np.save(pathsave, dico)
+				print(f'File successfully written in {pathsave}.')
+			except Exception as e:
+				print(f"Error {e}...")
 
 	def set_next_frame(self):
 

@@ -65,8 +65,9 @@ else:
     neighbors_to_measure=check_tables(pos)
     df_test=pd.DataFrame()
     for ind,dic in enumerate(neighbors_to_measure):
-        #print(ind)
+
         rel=relative_quantities_per_pos2(pos,reference=dic['reference'],neighbor=dic['neighbor'],neigh_dist=dic['distance'], target_classes=[0,1,2],description=dic['description'])
+        print(rel)
         rel['ref_population']=dic['reference']
         rel[f"{dic['description']}"] = 1
         rel=pd.DataFrame(rel)

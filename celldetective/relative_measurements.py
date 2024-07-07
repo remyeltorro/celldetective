@@ -28,7 +28,9 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
 
 	# Load tables
 	tab_tc = pos + os.sep.join(['output', 'tables', f'trajectories_{reference}.csv'])
+	print(tab_tc)
 	if not os.path.exists(tab_tc):
+		print('tab does not exist. Return None.')
 		return None
 	neigh_trajectories_path = pos + f'output/tables/trajectories_{reference}.pkl'
 	df_reference = pd.read_csv(tab_tc)
@@ -381,36 +383,59 @@ def check_tables(pos):
 		df_effectors = None
 
 	neighborhood_columns=[]
-	cols = []
-	if df_targets is not None:
-		cols.extend(list(df_targets.columns))
-	if df_effectors is not None:
-		cols.extend(list(df_effectors.columns))
 
-	for column in cols:
-		if column.startswith('inclusive_count_neighborhood'):
-			if 'self' in column:
-				if 'circle' in column:
-					distance=column.split('circle_')[1]
-					description=column.split('inclusive_count_')[1]
-					neigh={'reference':'targets','neighbor':'targets','type':'circle','distance':distance,'description':description}
-					check=column.split('circle_')[1]
+	if df_targets is not None:
+		for column in list(df_targets.columns):
+			if column.startswith('inclusive_count_neighborhood'):
+				if 'self' in column:
+					if 'circle' in column:
+						distance=column.split('circle_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'targets','neighbor':'targets','type':'circle','distance':distance,'description':description}
+						check=column.split('circle_')[1]
+					else:
+						distance=column.split('contact_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'targets','neighbor':'targets','type':'contact','distance':distance,'description':description}
+						check=column.split('contact_')[1]
 				else:
-					distance=column.split('contact_')[1]
-					description=column.split('inclusive_count_')[1]
-					neigh={'reference':'targets','neighbor':'targets','type':'contact','distance':distance,'description':description}
-					check=column.split('contact_')[1]
-			else:
-				if 'circle' in column:
-					distance=column.split('circle_')[1]
-					description=column.split('inclusive_count_')[1]
-					neigh={'reference':'targets','neighbor':'effectors','type':'circle','distance':distance,'description':description}
-					check=column.split('circle_')[1]
+					if 'circle' in column:
+						distance=column.split('circle_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'targets','neighbor':'effectors','type':'circle','distance':distance,'description':description}
+						check=column.split('circle_')[1]
+					else:
+						distance=column.split('contact_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'targets','neighbor':'effectors','type':'contact','distance':distance,'description':description}
+						check=column.split('contact_')[1]
+				neighborhood_columns.append(neigh)
+
+	if df_effectors is not None:
+		for column in list(df_effectors.columns):
+			if column.startswith('inclusive_count_neighborhood'):
+				if 'self' in column:
+					if 'circle' in column:
+						distance=column.split('circle_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'effectors','neighbor':'effectors','type':'circle','distance':distance,'description':description}
+						check=column.split('circle_')[1]
+					else:
+						distance=column.split('contact_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'effectors','neighbor':'effectors','type':'contact','distance':distance,'description':description}
+						check=column.split('contact_')[1]
 				else:
-					distance=column.split('contact_')[1]
-					description=column.split('inclusive_count_')[1]
-					neigh={'reference':'targets','neighbor':'effectors','type':'contact','distance':distance,'description':description}
-					check=column.split('contact_')[1]
-			neighborhood_columns.append(neigh)
+					if 'circle' in column:
+						distance=column.split('circle_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'effectors','neighbor':'targets','type':'circle','distance':distance,'description':description}
+						check=column.split('circle_')[1]
+					else:
+						distance=column.split('contact_')[1]
+						description=column.split('inclusive_count_')[1]
+						neigh={'reference':'effectors','neighbor':'targets','type':'contact','distance':distance,'description':description}
+						check=column.split('contact_')[1]
+				neighborhood_columns.append(neigh)
 
 	return neighborhood_columns

@@ -396,7 +396,7 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
-		if 'TRACK_ID' in list(pkl_columns[neigh_columns]):
+		if 'TRACK_ID' in list(pkl_columns):
 			cols.append('TRACK_ID')
 			on_cols = ['TRACK_ID','FRAME']
 		else:
@@ -412,7 +412,7 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
-		if 'TRACK_ID' in list(pkl_columns[neigh_columns]):
+		if 'TRACK_ID' in list(pkl_columns):
 			cols.append('TRACK_ID')
 			on_cols = ['TRACK_ID','FRAME']
 		else:
@@ -1186,7 +1186,7 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
-		if 'TRACK_ID' in list(pkl_columns[neigh_columns]):
+		if 'TRACK_ID' in list(pkl_columns):
 			cols.append('TRACK_ID')
 			on_cols = ['TRACK_ID','FRAME']
 		else:
@@ -1202,7 +1202,7 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
-		if 'TRACK_ID' in list(pkl_columns[neigh_columns]):
+		if 'TRACK_ID' in list(pkl_columns):
 			cols.append('TRACK_ID')
 			on_cols = ['TRACK_ID','FRAME']
 		else:

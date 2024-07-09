@@ -380,16 +380,33 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 	if df_A_pkl is not None:
 		pkl_columns = np.array(df_A_pkl.columns)
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
-		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
+
+		if 'TRACK_ID' in list(pkl_columns):
+			cols.append('TRACK_ID')
+			on_cols = ['TRACK_ID','FRAME']
+		else:
+			cols.append('ID')
+			on_cols = ['ID','FRAME']
+
 		print(f'Recover {cols} from the pickle file...')
-		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
+		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=on_cols)
 		print(df_A.columns)
+
 	if df_B_pkl is not None and df_B is not None:
 		pkl_columns = np.array(df_B_pkl.columns)
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
-		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
+
+		if 'TRACK_ID' in list(pkl_columns):
+			cols.append('TRACK_ID')
+			on_cols = ['TRACK_ID','FRAME']
+		else:
+			cols.append('ID')
+			on_cols = ['ID','FRAME']
+
 		print(f'Recover {cols} from the pickle file...')
-		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
+		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=on_cols)
 
 	if clear_neigh:
 		unwanted = df_A.columns[df_A.columns.str.contains('neighborhood')]
@@ -408,10 +425,10 @@ def compute_neighborhood_at_position(pos, distance, population=['targets','effec
 		elif neighborhood_kwargs['mode']=='self':
 			neigh_col = f'neighborhood_self_circle_{d}_px'
 
-		edge_filter_A = (df_A['POSITION_X'] > td)&(df_A['POSITION_Y'] > td)&(df_A['POSITION_Y'] < (img_shape[0] - td))&(df_A['POSITION_X'] < (img_shape[1] - td))
-		edge_filter_B = (df_B['POSITION_X'] > td)&(df_B['POSITION_Y'] > td)&(df_B['POSITION_Y'] < (img_shape[0] - td))&(df_B['POSITION_X'] < (img_shape[1] - td))
-		df_A.loc[~edge_filter_A, neigh_col] = np.nan
-		df_B.loc[~edge_filter_B, neigh_col] = np.nan
+		# edge_filter_A = (df_A['POSITION_X'] > td)&(df_A['POSITION_Y'] > td)&(df_A['POSITION_Y'] < (img_shape[0] - td))&(df_A['POSITION_X'] < (img_shape[1] - td))
+		# edge_filter_B = (df_B['POSITION_X'] > td)&(df_B['POSITION_Y'] > td)&(df_B['POSITION_Y'] < (img_shape[0] - td))&(df_B['POSITION_X'] < (img_shape[1] - td))
+		# df_A.loc[~edge_filter_A, neigh_col] = np.nan
+		# df_B.loc[~edge_filter_B, neigh_col] = np.nan
 
 		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
 		if neighborhood_kwargs['symmetrize']:
@@ -485,9 +502,14 @@ def compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive','e
 
 	neigh_table = neigh_table.reset_index(drop=True)
 	if 'position' in list(neigh_table.columns):
-		groupbycols = ['position','TRACK_ID']
+		groupbycols = ['position']
 	else:
-		groupbycols = ['TRACK_ID']
+		groupbycols = []
+	if 'TRACK_ID' in list(neigh_table.columns):
+		groupbycols.append('TRACK_ID')
+	else:
+		groupbycols.append('ID')
+
 	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
 
 	for tid,group in neigh_table.groupby(groupbycols):
@@ -607,10 +629,16 @@ def mean_neighborhood_before_event(neigh_table, neigh_col, event_time_col, metri
 	"""
 
 
+	neigh_table = neigh_table.reset_index(drop=True)
 	if 'position' in list(neigh_table.columns):
-		groupbycols = ['position','TRACK_ID']
+		groupbycols = ['position']
 	else:
-		groupbycols = ['TRACK_ID']
+		groupbycols = []
+	if 'TRACK_ID' in list(neigh_table.columns):
+		groupbycols.append('TRACK_ID')
+	else:
+		groupbycols.append('ID')
+
 	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
 	suffix = '_before_event'
 	
@@ -681,10 +709,16 @@ def mean_neighborhood_after_event(neigh_table, neigh_col, event_time_col, metric
 	"""
 
 
+	neigh_table = neigh_table.reset_index(drop=True)
 	if 'position' in list(neigh_table.columns):
-		groupbycols = ['position','TRACK_ID']
+		groupbycols = ['position']
 	else:
-		groupbycols = ['TRACK_ID']
+		groupbycols = []
+	if 'TRACK_ID' in list(neigh_table.columns):
+		groupbycols.append('TRACK_ID')
+	else:
+		groupbycols.append('ID')
+
 	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
 	suffix = '_after_event'
 	
@@ -1103,16 +1137,33 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 	if df_A_pkl is not None:
 		pkl_columns = np.array(df_A_pkl.columns)
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
-		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
+		
+		if 'TRACK_ID' in list(pkl_columns):
+			cols.append('TRACK_ID')
+			on_cols = ['TRACK_ID','FRAME']
+		else:
+			cols.append('ID')
+			on_cols = ['ID','FRAME']
+
 		print(f'Recover {cols} from the pickle file...')
-		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
+		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=on_cols)
 		print(df_A.columns)
+
 	if df_B_pkl is not None and df_B is not None:
 		pkl_columns = np.array(df_B_pkl.columns)
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
-		cols = list(pkl_columns[neigh_columns]) + ['TRACK_ID','FRAME']
+		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
+
+		if 'TRACK_ID' in list(pkl_columns):
+			cols.append('TRACK_ID')
+			on_cols = ['TRACK_ID','FRAME']
+		else:
+			cols.append('ID')
+			on_cols = ['ID','FRAME']
+
 		print(f'Recover {cols} from the pickle file...')
-		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=['TRACK_ID','FRAME'])
+		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=on_cols)
 
 	labelsA = locate_labels(pos, population=population[0])
 	if population[1]==population[0]:

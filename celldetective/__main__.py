@@ -108,6 +108,10 @@ class AppInitWindow(QMainWindow):
 		OptionsMenu.addAction(self.MemoryAndThreadsAction)
 		menuBar.addMenu(OptionsMenu)
 
+		PluginsMenu = QMenu("Plugins", self)
+		PluginsMenu.addAction(self.CorrectAnnotationAction)
+		menuBar.addMenu(PluginsMenu)
+
 		helpMenu = QMenu("Help", self)
 		helpMenu.clear()
 		helpMenu.addAction(self.DocumentationAction)
@@ -129,6 +133,8 @@ class AppInitWindow(QMainWindow):
 		self.openAction.setShortcutVisibleInContextMenu(True)
 
 		self.MemoryAndThreadsAction = QAction('Memory & Threads...')
+
+		self.CorrectAnnotationAction = QAction('Correct a segmentation annotation...')
 
 		self.newExpAction = QAction('New', self)
 		self.newExpAction.setShortcut("Ctrl+N")
@@ -156,6 +162,7 @@ class AppInitWindow(QMainWindow):
 		self.openModels.triggered.connect(self.open_models_folder)
 		self.AboutAction.triggered.connect(self.open_about_window)
 		self.MemoryAndThreadsAction.triggered.connect(self.set_memory_and_threads)
+		self.CorrectAnnotationAction.triggered.connect(self.correct_seg_annotation)
 
 		self.DocumentationAction.triggered.connect(self.open_documentation)
 
@@ -185,6 +192,15 @@ class AppInitWindow(QMainWindow):
 			self.recentFileActs = [QAction(r,self) for r in recentExps]
 			for r in self.recentFileActs:
 				r.triggered.connect(lambda checked, item=r: self.load_recent_exp(item.text()))
+
+	def correct_seg_annotation(self):
+		
+		self.filename,_ = QFileDialog.getOpenFileName(self,"Open Image", "/home/", "TIF Files (*.tif)")
+		if self.filename!='':
+			print('Opening ',self.filename,' in napari...')
+			correct_annotation(self.filename)
+		else:
+			return None
 
 	def set_memory_and_threads(self):
 		
@@ -405,6 +421,7 @@ if __name__ == "__main__":
 	import subprocess
 	import os
 	from celldetective.gui.about import AboutWidget
+	from celldetective.io import correct_annotation
 	import psutil
 	import subprocess
 	import json

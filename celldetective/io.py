@@ -26,6 +26,7 @@ from stardist import fill_label_holes
 from celldetective.utils import interpolate_nan
 from scipy.interpolate import griddata
 
+
 def get_experiment_wells(experiment):
 	
 	"""
@@ -1488,6 +1489,59 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		del stack
 		del labels
 		gc.collect()
+
+def correct_annotation(filename):
+
+	"""
+	New function to reannotate an annotation image in post, using napari and save update inplace.
+	"""
+	
+	def export_labels():
+		labels_layer = viewer.layers['segmentation'].data
+		for t,im in enumerate(tqdm(labels_layer)):
+
+			try:
+				im = auto_correct_masks(im)
+			except Exception as e:
+				print(e)
+
+			save_tiff_imagej_compatible(existing_lbl, im.astype(np.int16), axes='YX')
+		print("The labels have been successfully rewritten.")
+
+	@magicgui(call_button='Save the modified labels')
+	def save_widget():
+		return export_labels()
+	
+	img = imread(filename.replace('\\','/'))
+	if img.ndim==3:
+		img = np.moveaxis(img, 0, -1)
+	elif img.ndim==2:
+		img = img[:,:,np.newaxis]
+		
+	existing_lbl = filename.replace('.tif','_labelled.tif')
+	if os.path.exists(existing_lbl):
+		labels = imread(existing_lbl)[np.newaxis,:,:].astype(int)
+	else:
+		labels = np.zeros_like(img[:,:,0]).astype(int)[np.newaxis,:,:]
+		
+	stack = img[np.newaxis,:,:,:]
+	
+	viewer = napari.Viewer()
+	viewer.add_image(stack,channel_axis=-1,colormap=["gray"]*stack.shape[-1])
+	viewer.add_labels(labels, name='segmentation',opacity=0.4)
+	viewer.window.add_dock_widget(save_widget, area='right')
+	viewer.show(block=True)    
+
+	# temporary fix for slight napari memory leak
+	for i in range(100):
+		try:
+			viewer.layers.pop()
+		except:
+			pass
+	del viewer
+	del stack
+	del labels
+	gc.collect()
 
 
 def _view_on_napari(tracks=None, stack=None, labels=None):

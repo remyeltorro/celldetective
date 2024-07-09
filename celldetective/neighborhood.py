@@ -48,8 +48,8 @@ def set_live_status(setA,setB,status, not_status_option):
 
 	"""
 
-
-	if status is None:
+	print(status)
+	if status is None or status==["live_status","live_status"]:
 		setA.loc[:,'live_status'] = 1
 		setB.loc[:,'live_status'] = 1
 		status = ['live_status', 'live_status']

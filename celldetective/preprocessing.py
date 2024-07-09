@@ -15,8 +15,6 @@ from gc import collect
 from lmfit import Parameters, Model, models
 import tifffile.tifffile as tiff
 
-from tifffile import imwrite
-
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):
 	
 	"""
@@ -98,6 +96,10 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 		for l,pos_path in enumerate(tqdm(positions, disable=not show_progress_per_pos)):
 			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
+			len_movie_auto = auto_load_number_of_frames(stack_path)
+			if len_movie_auto is not None:
+				len_movie = len_movie_auto
+				img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
 			if mode=="timeseries":
 
@@ -266,6 +268,10 @@ def correct_background_model_free(
 			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
 			print(f'Applying the correction to position {extract_position_name(pos_path)}...')
+			len_movie_auto = auto_load_number_of_frames(stack_path)
+			if len_movie_auto is not None:
+				len_movie = len_movie_auto
+				img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
 			corrected_stack = apply_background_to_stack(stack_path, 
 														background,
@@ -770,7 +776,10 @@ def correct_background_model(
 			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
 			print(f'Applying the correction to position {extract_position_name(pos_path)}...')
-			print(stack_path)
+			len_movie_auto = auto_load_number_of_frames(stack_path)
+			if len_movie_auto is not None:
+				len_movie = len_movie_auto
+				img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
 			corrected_stack = fit_and_apply_model_background_to_stack(stack_path, 
 														target_channel_index=channel_indices[0],

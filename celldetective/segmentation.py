@@ -118,7 +118,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		model = StarDist2D(None, name=model_name, basedir=Path(model_path).parent)
 		model.config.use_gpu = use_gpu
 		model.use_gpu = use_gpu
-		print(f"StarDist model {modelname} successfully loaded.")
+		print(f"StarDist model {model_name} successfully loaded.")
 		scale_model = scale
 
 	elif model_type=='cellpose':

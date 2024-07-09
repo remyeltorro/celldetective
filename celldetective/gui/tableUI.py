@@ -67,7 +67,7 @@ class QueryWidget(QWidget):
 		try:
 			query_text = self.query_le.text().replace('class', '`class`')
 			tab = self.parent_window.data.query(query_text)
-			self.subtable = TableUI(tab, query_text, plot_mode="scatter")
+			self.subtable = TableUI(tab, query_text, plot_mode="plot_track_signals")
 			self.subtable.show()
 			self.close()
 		except Exception as e:

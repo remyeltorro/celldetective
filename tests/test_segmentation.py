@@ -44,7 +44,7 @@ class TestDLMCF7Segmentation(unittest.TestCase):
 	def test_correct_segmentation_with_transferred_model(self):
 		
 		labels = segment(self.stack, "MCF7_h_versatile", channels=self.channels, spatial_calibration=self.spatial_calibration, view_on_napari=False,
-			use_gpu=True, time_flat_normalization=False, time_flat_percentiles=(0.0,99.99))
+			use_gpu=True)
 		np.testing.assert_array_equal(labels[0], labels[1])
 
 		self.binary_label_true = self.label_true.copy().astype(float)

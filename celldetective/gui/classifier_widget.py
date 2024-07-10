@@ -12,6 +12,7 @@ from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit
 from celldetective.gui import Styles
 from math import ceil
+from celldetective.utils import extract_cols_from_query
 
 def step_function(t, t_shift, dt):
 	return 1/(1+np.exp(-(t-t_shift)/dt))
@@ -263,17 +264,23 @@ class ClassifierWidget(QWidget, Styles):
 		self.propscanvas.canvas.draw_idle()
 
 	def apply_property_query(self):
+
 		query = self.property_query_le.text()
 		self.df[self.class_name] = 1
 
-		print(query, self.class_name)
+		cols = extract_cols_from_query(query) 
+		print(cols)
+		cols_in_df = np.all([c in list(self.df.columns) for c in cols], axis=0)
+		print(f'Testing if columns from query are in the dataframe: {cols_in_df}...')
 
 		if query=='':
 			print('empty query')
 		else:
 			try:
-				self.selection = self.df.query(query).index
-				print(self.selection)
+				if cols_in_df:
+					self.selection = self.df.dropna(subset=cols).query(query).index
+				else:
+					self.selection = self.df.query(query).index
 				self.df.loc[self.selection, self.class_name] = 0
 			except Exception as e:
 				print(e)

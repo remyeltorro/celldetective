@@ -990,10 +990,12 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 											)
 		bg = bg[0]
 		bg = bg['bg']
+		print(bg)
+		if len(bg)>0:
 
-		self.viewer = StackVisualizer(
-									  stack=[bg],
-									  window_title='Reconstructed background',
-									  frame_slider = False,
-									 )
-		self.viewer.show()
+			self.viewer = StackVisualizer(
+										  stack=[bg],
+										  window_title='Reconstructed background',
+										  frame_slider = False,
+										 )
+			self.viewer.show()

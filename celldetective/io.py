@@ -802,6 +802,10 @@ def auto_load_number_of_frames(stack_path):
 	"""
 
 	# Try to estimate automatically # frames
+	
+	if stack_path is None:
+		return None
+
 	stack_path = stack_path.replace('\\','/')
 
 	with TiffFile(stack_path) as tif:

@@ -65,7 +65,7 @@ class QueryWidget(QWidget):
 
 	def filter_table(self):
 		try:
-			query_text = self.query_le.text().replace('class', '`class`')
+			query_text = self.query_le.text() #.replace('class', '`class`')
 			tab = self.parent_window.data.query(query_text)
 			self.subtable = TableUI(tab, query_text, plot_mode="static")
 			self.subtable.show()
@@ -268,7 +268,6 @@ class RenameColWidget(QWidget):
 		old_name = self.column
 		new_name = self.new_col_name.text()
 		self.parent_window.data = self.parent_window.data.rename(columns={old_name: new_name})
-		print(self.parent.data.columns)
 
 		self.parent_window.model = PandasModel(self.parent_window.data)
 		self.parent_window.table_view.setModel(self.parent_window.model)

@@ -55,7 +55,7 @@ def set_live_status(setA,setB,status, not_status_option):
 		status = ['live_status', 'live_status']
 	elif isinstance(status,list):
 		assert len(status)==2,'Please provide only two columns to classify cells as alive or dead.'
-		if status[0] is None:
+		if status[0] is None or status[0]=='live_status':
 			setA.loc[:,'live_status'] = 1
 			status[0] = 'live_status'
 		elif status[0] is not None and isinstance(not_status_option,list):
@@ -63,7 +63,7 @@ def set_live_status(setA,setB,status, not_status_option):
 			if not_status_option[0]:
 				setA.loc[:,'not_'+status[0]] = [not a if a==0 or a==1 else np.nan for a in setA.loc[:,status[0]].values]
 				status[0] = 'not_'+status[0]
-		if status[1] is None:
+		if status[1] is None or status[1]=='live_status':
 			setB.loc[:,'live_status'] = 1
 			status[1] = 'live_status'
 		elif status[1] is not None and isinstance(not_status_option,list):

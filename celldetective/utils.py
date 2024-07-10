@@ -23,6 +23,7 @@ from tqdm import tqdm
 import shutil
 import tempfile
 from scipy.interpolate import griddata
+import re
 
 
 def derivative(x, timeline, window, mode='bi'):
@@ -428,6 +429,31 @@ def mask_edges(binary_mask, border_size):
 	binary_mask[:,(binary_mask.shape[1]-border_size):] = False
 
 	return binary_mask
+
+
+def extract_cols_from_query(query: str):
+	
+	# Track variables in a dictionary to be used as a dictionary of globals. From: https://stackoverflow.com/questions/64576913/extract-pandas-dataframe-column-names-from-query-string
+	
+	variables = {}
+
+	while True:
+		try:
+			# Try creating a Expr object with the query string and dictionary of globals.
+			# This will raise an error as long as the dictionary of globals is incomplete.
+			env = pd.core.computation.scope.ensure_scope(level=0, global_dict=variables)
+			pd.core.computation.eval.Expr(query, env=env)
+
+			# Exit the loop when evaluation is successful.
+			break
+		except pd.errors.UndefinedVariableError as e:
+			# This relies on the format defined here: https://github.com/pandas-dev/pandas/blob/965ceca9fd796940050d6fc817707bba1c4f9bff/pandas/errors/__init__.py#L401
+			name = re.findall("name '(.+?)' is not defined", str(e))[0]
+
+			# Add the name to the globals dictionary with a dummy value.
+			variables[name] = None
+
+	return list(variables.keys())
 
 
 def create_patch_mask(h, w, center=None, radius=None):

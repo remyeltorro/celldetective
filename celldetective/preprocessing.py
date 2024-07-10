@@ -15,8 +15,6 @@ from gc import collect
 from lmfit import Parameters, Model, models
 import tifffile.tifffile as tiff
 
-from tifffile import imwrite
-
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):
 	
 	"""
@@ -98,53 +96,65 @@ def estimate_background_per_condition(experiment, threshold_on_std=1, well_optio
 		for l,pos_path in enumerate(tqdm(positions, disable=not show_progress_per_pos)):
 			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
+			if stack_path is not None:
+				len_movie_auto = auto_load_number_of_frames(stack_path)
+				if len_movie_auto is not None:
+					len_movie = len_movie_auto
+					img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
-			if mode=="timeseries":
+				if mode=="timeseries":
 
-				frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
-				frames = np.moveaxis(frames, -1, 0).astype(float)
+					frames = load_frames(img_num_channels[0,frame_range[0]:frame_range[1]], stack_path, normalize_input=False)
+					frames = np.moveaxis(frames, -1, 0).astype(float)
 
-				for i in range(len(frames)):
-					if np.all(frames[i].flatten()==0):
-						frames[i,:,:] = np.nan
+					for i in range(len(frames)):
+						if np.all(frames[i].flatten()==0):
+							frames[i,:,:] = np.nan
 
-				frame_mean = np.nanmean(frames, axis=0)
-				
-				frame = frame_mean.copy().astype(float)
-				std_frame = filter_image(frame.copy(),filters=activation_protocol)
-				edge = estimate_unreliable_edge(activation_protocol)
-				mask = threshold_image(std_frame, threshold_on_std, np.inf, foreground_value=1, edge_exclusion=edge)
-				frame[np.where(mask.astype(int)==1)] = np.nan
-
-			elif mode=="tiles":
-
-				frames = load_frames(img_num_channels[0,:], stack_path, normalize_input=False).astype(float)
-				frames = np.moveaxis(frames, -1, 0).astype(float)
-
-				new_frames = []
-				for i in range(len(frames)):
-
-					if np.all(frames[i].flatten()==0):
-						empty_frame = np.zeros_like(frames[i])
-						empty_frame[:,:] = np.nan
-						new_frames.append(empty_frame)
-						continue
-
-					f = frames[i].copy()
-					std_frame = filter_image(f.copy(),filters=activation_protocol)
+					frame_mean = np.nanmean(frames, axis=0)
+					
+					frame = frame_mean.copy().astype(float)
+					std_frame = filter_image(frame.copy(),filters=activation_protocol)
 					edge = estimate_unreliable_edge(activation_protocol)
 					mask = threshold_image(std_frame, threshold_on_std, np.inf, foreground_value=1, edge_exclusion=edge)
-					f[np.where(mask.astype(int)==1)] = np.nan
-					new_frames.append(f.copy())
-				
-				frame = np.nanmedian(new_frames, axis=0)
+					frame[np.where(mask.astype(int)==1)] = np.nan
+
+				elif mode=="tiles":
+
+					frames = load_frames(img_num_channels[0,:], stack_path, normalize_input=False).astype(float)
+					frames = np.moveaxis(frames, -1, 0).astype(float)
+
+					new_frames = []
+					for i in range(len(frames)):
+
+						if np.all(frames[i].flatten()==0):
+							empty_frame = np.zeros_like(frames[i])
+							empty_frame[:,:] = np.nan
+							new_frames.append(empty_frame)
+							continue
+
+						f = frames[i].copy()
+						std_frame = filter_image(f.copy(),filters=activation_protocol)
+						edge = estimate_unreliable_edge(activation_protocol)
+						mask = threshold_image(std_frame, threshold_on_std, np.inf, foreground_value=1, edge_exclusion=edge)
+						f[np.where(mask.astype(int)==1)] = np.nan
+						new_frames.append(f.copy())
+					
+					frame = np.nanmedian(new_frames, axis=0)
+			else:
+				print(f'Stack not found for position {pos_path}...')
+				frame = []
 
 			# store
 			frame_mean_per_position.append(frame)
 
-		background = np.nanmedian(frame_mean_per_position,axis=0)
-		backgrounds.append({"bg": background, "well": well_path})
-		print(f"Background successfully computed for well {well_name}...")
+		try:
+			background = np.nanmedian(frame_mean_per_position,axis=0)
+			backgrounds.append({"bg": background, "well": well_path})
+			print(f"Background successfully computed for well {well_name}...")
+		except Exception as e:
+			print(e)
+			backgrounds.append(None)		
 
 	return backgrounds
 
@@ -266,28 +276,35 @@ def correct_background_model_free(
 			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
 			print(f'Applying the correction to position {extract_position_name(pos_path)}...')
+			if stack_path is not None:
+				len_movie_auto = auto_load_number_of_frames(stack_path)
+				if len_movie_auto is not None:
+					len_movie = len_movie_auto
+					img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
-			corrected_stack = apply_background_to_stack(stack_path, 
-														background,
-														target_channel_index=channel_indices[0],
-														nbr_channels=nbr_channels,
-														stack_length=len_movie,
-														threshold_on_std=threshold_on_std,
-														optimize_option=optimize_option,
-														opt_coef_range=opt_coef_range,
-														opt_coef_nbr=opt_coef_nbr,
-														operation=operation,
-														clip=clip,
-														export=export,
-														activation_protocol=activation_protocol,
-														prefix=export_prefix,
-													  )
-			print('Correction successful.')
-			if return_stacks:
-				stacks.append(corrected_stack)
+				corrected_stack = apply_background_to_stack(stack_path, 
+															background,
+															target_channel_index=channel_indices[0],
+															nbr_channels=nbr_channels,
+															stack_length=len_movie,
+															threshold_on_std=threshold_on_std,
+															optimize_option=optimize_option,
+															opt_coef_range=opt_coef_range,
+															opt_coef_nbr=opt_coef_nbr,
+															operation=operation,
+															clip=clip,
+															export=export,
+															activation_protocol=activation_protocol,
+															prefix=export_prefix,
+														  )
+				print('Correction successful.')
+				if return_stacks:
+					stacks.append(corrected_stack)
+				else:
+					del corrected_stack
+				collect()
 			else:
-				del corrected_stack
-			collect()
+				stacks.append(None)
 
 	if return_stacks:
 		return stacks
@@ -770,7 +787,10 @@ def correct_background_model(
 			
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
 			print(f'Applying the correction to position {extract_position_name(pos_path)}...')
-			print(stack_path)
+			len_movie_auto = auto_load_number_of_frames(stack_path)
+			if len_movie_auto is not None:
+				len_movie = len_movie_auto
+				img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
 			corrected_stack = fit_and_apply_model_background_to_stack(stack_path, 
 														target_channel_index=channel_indices[0],

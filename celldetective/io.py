@@ -807,7 +807,11 @@ def auto_load_number_of_frames(stack_path):
 	"""
 
 	# Try to estimate automatically # frames
-	stack_path = stack_path.replace('\\', '/')
+
+	if stack_path is None:
+		return None
+
+	stack_path = stack_path.replace('\\','/')
 
 	with TiffFile(stack_path) as tif:
 		try:
@@ -1445,7 +1449,15 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		exp_name = os.path.split(expfolder)[-1]
 		print(exp_name)
 
-		spatial_calibration = float(ConfigSectionMap(config, "MovieSettings")["pxtoum"])
+		wells = get_experiment_wells(expfolder)
+		well_idx = list(wells).index(str(parent1)+os.sep)
+		ab = get_experiment_antibodies(expfolder)[well_idx]
+		conc = get_experiment_concentrations(expfolder)[well_idx]
+		ct = get_experiment_cell_types(expfolder)[well_idx]
+		pa = get_experiment_pharmaceutical_agents(expfolder)[well_idx]
+
+
+		spatial_calibration = float(ConfigSectionMap(config,"MovieSettings")["pxtoum"])
 		channel_names, channel_indices = extract_experiment_channels(config)
 
 		annotation_folder = expfolder + os.sep + f'annotations_{population}' + os.sep
@@ -1496,14 +1508,10 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 						multichannel.append(frame)
 					except:
 						pass
-				multichannel = np.array(multichannel)
-				save_tiff_imagej_compatible(
-					annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif",
-					labels_layer[xmin:xmax, ymin:ymax].astype(np.int16), axes='YX')
-				save_tiff_imagej_compatible(
-					annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.tif",
-					multichannel, axes='CYX')
-				info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
+				multichannel = np.array(multichannel)        
+				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", labels_layer[xmin:xmax,ymin:ymax].astype(np.int16), axes='YX')
+				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.tif", multichannel, axes='CYX')
+				info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names), 'cell_type': ct, 'antibody': ab, 'concentration': conc, 'pharmaceutical_agent': pa}
 				info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.json"
 				with open(info_name, 'w') as f:
 					json.dump(info, f, indent=4)
@@ -1517,14 +1525,10 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 					multichannel.append(frame)
 				except:
 					pass
-			multichannel = np.array(multichannel)
-			save_tiff_imagej_compatible(
-				annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_labelled.tif",
-				labels_layer, axes='YX')
-			save_tiff_imagej_compatible(
-				annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", multichannel,
-				axes='CYX')
-			info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names)}
+			multichannel = np.array(multichannel)		
+			save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_labelled.tif", labels_layer, axes='YX')
+			save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", multichannel, axes='CYX')
+			info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names), 'cell_type': ct, 'antibody': ab, 'concentration': conc, 'pharmaceutical_agent': pa}
 			info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.json"
 			with open(info_name, 'w') as f:
 				json.dump(info, f, indent=4)
@@ -1771,8 +1775,8 @@ def locate_segmentation_model(name):
 
 	"""
 
-	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], "celldetective"])
-	modelpath = os.sep.join([main_dir, "models", "segmentation*", os.sep])
+	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
+	modelpath = os.sep.join([main_dir, "models", "segmentation*"]) + os.sep
 	print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath + f'*{os.sep}')
 
@@ -2174,7 +2178,7 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 	Returns
 	-------
 	ndarray or None
-		The loaded, and possibly normalized and rescaled, frames as a NumPy array. Returns None if there
+		The loaded, and possibly normalized and rescaled, frames as a NumPy array. Returns None if there 
 		is an error in loading the frames.
 
 	Raises

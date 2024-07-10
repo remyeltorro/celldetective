@@ -77,9 +77,9 @@ class SignalAnnotator(QMainWindow, Styles):
 
 		self.populate_widget()
 
-		self.setMinimumWidth(int(0.8 * self.screen_width))
+		#self.setMinimumWidth(int(0.8 * self.screen_width))
 		# self.setMaximumHeight(int(0.8*self.screen_height))
-		self.setMinimumHeight(int(0.8 * self.screen_height))
+		#self.setMinimumHeight(int(0.8 * self.screen_height))
 		# self.setMaximumHeight(int(0.8*self.screen_height))
 
 		self.setAttribute(Qt.WA_DeleteOnClose)
@@ -120,7 +120,6 @@ class SignalAnnotator(QMainWindow, Styles):
 
 		self.class_choice_cb.addItems(self.class_cols)
 		self.class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors)
-		self.class_choice_cb.setCurrentIndex(0)
 
 		class_hbox.addWidget(self.class_choice_cb, 70)
 
@@ -347,6 +346,8 @@ class SignalAnnotator(QMainWindow, Styles):
 		main_layout.addLayout(self.right_panel, 65)
 		self.button_widget.adjustSize()
 
+		self.compute_status_and_colors(0)
+
 		self.setCentralWidget(self.button_widget)
 		self.show()
 
@@ -463,6 +464,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.newClassWidget.close()
 
 	def compute_status_and_colors(self, i):
+
 		self.class_name = self.class_choice_cb.currentText()
 		self.expected_status = 'status'
 		suffix = self.class_name.replace('class', '').replace('_', '', 1)
@@ -475,11 +477,15 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.status_name = self.expected_status
 
 		print('selection and expected names: ', self.class_name, self.expected_time, self.expected_status)
+		cols = list(self.df_tracks.columns)
 
-		if self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns and not self.status_name in self.df_tracks.columns:
+		if self.time_name in cols and self.class_name in cols and not self.status_name in cols:
 			# only create the status column if it does not exist to not erase static classification results
 			self.make_status_column()
-		elif self.time_name in self.df_tracks.columns and self.class_name in self.df_tracks.columns:
+		elif self.time_name in cols and self.class_name in cols and self.df_tracks[self.status_name].isnull().all():
+			print('this is the case!', )
+			self.make_status_column()
+		elif self.time_name in cols and self.class_name in cols:
 			# all good, do nothing
 			pass
 		else:

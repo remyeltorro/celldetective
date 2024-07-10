@@ -47,23 +47,23 @@ def set_live_status(setA, setB, status, not_status_option):
 
 	"""
 
-	if status is None:
-		setA.loc[:, 'live_status'] = 1
-		setB.loc[:, 'live_status'] = 1
+	print(f"Provided statuses: {status}...")
+	if status is None or status==["live_status","live_status"] or status==[None,None]:
+		setA.loc[:,'live_status'] = 1
+		setB.loc[:,'live_status'] = 1
 		status = ['live_status', 'live_status']
-	elif isinstance(status, list):
-		assert len(status) == 2, 'Please provide only two columns to classify cells as alive or dead.'
-		if status[0] is None:
-			setA.loc[:, 'live_status'] = 1
+	elif isinstance(status,list):
+		assert len(status)==2,'Please provide only two columns to classify cells as alive or dead.'
+		if status[0] is None or status[0]=='live_status':
+			setA.loc[:,'live_status'] = 1
 			status[0] = 'live_status'
 		elif status[0] is not None and isinstance(not_status_option, list):
 			setA.loc[setA[status[0]] == 2, status[0]] = 1  # already happened events become event
 			if not_status_option[0]:
-				setA.loc[:, 'not_' + status[0]] = [not a if a == 0 or a == 1 else np.nan for a in
-												   setA.loc[:, status[0]].values]
-				status[0] = 'not_' + status[0]
-		if status[1] is None:
-			setB.loc[:, 'live_status'] = 1
+				setA.loc[:,'not_'+status[0]] = [not a if a==0 or a==1 else np.nan for a in setA.loc[:,status[0]].values]
+				status[0] = 'not_'+status[0]
+		if status[1] is None or status[1]=='live_status':
+			setB.loc[:,'live_status'] = 1
 			status[1] = 'live_status'
 		elif status[1] is not None and isinstance(not_status_option, list):
 			setB.loc[setB[status[1]] == 2, status[1]] = 1  # already happened events become event
@@ -404,8 +404,11 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 			on_cols = ['ID','FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
-		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=on_cols)
-		print(df_A.columns)
+		try:
+			df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=on_cols)
+			print(df_A.columns)
+		except Exception as e:
+			print(f'Failure to merge pickle and csv files: {e}')
 
 	if df_B_pkl is not None and df_B is not None:
 		pkl_columns = np.array(df_B_pkl.columns)
@@ -420,7 +423,10 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 			on_cols = ['ID','FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
-		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=on_cols)
+		try:
+			df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=on_cols)
+		except Exception as e:
+			print(f'Failure to merge pickle and csv files: {e}')
 
 	if clear_neigh:
 		unwanted = df_A.columns[df_A.columns.str.contains('neighborhood')]
@@ -444,14 +450,17 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		# df_A.loc[~edge_filter_A, neigh_col] = np.nan
 		# df_B.loc[~edge_filter_B, neigh_col] = np.nan
 
-		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive', 'exclusive', 'intermediate'],
-											decompose_by_status=True)
+		print('Count neighborhood...')
+		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
 		if neighborhood_kwargs['symmetrize']:
-			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive', 'exclusive', 'intermediate'],
-												decompose_by_status=True)
+			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
+		print('Done...')
 
-		df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col)
-		df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col)
+		if 'TRACK_ID' in list(df_A.columns):
+			print('Estimate average neighborhood before/after event...')
+			df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col)
+			df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col)
+			print('Done...')
 
 	df_A.to_pickle(path_A.replace('.csv', '.pkl'))
 	if not population[0] == population[1]:
@@ -1185,7 +1194,7 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		pkl_columns = np.array(df_A_pkl.columns)
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
-
+		
 		if 'TRACK_ID' in list(pkl_columns):
 			cols.append('TRACK_ID')
 			on_cols = ['TRACK_ID','FRAME']
@@ -1194,8 +1203,11 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 			on_cols = ['ID','FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
-		df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=on_cols)
-		print(df_A.columns)
+		try:
+			df_A = pd.merge(df_A, df_A_pkl.loc[:,cols], how="outer", on=on_cols)
+			print(df_A.columns)
+		except Exception as e:
+			print(f'Failure to merge pickle and csv files: {e}')
 
 	if df_B_pkl is not None and df_B is not None:
 		pkl_columns = np.array(df_B_pkl.columns)
@@ -1210,7 +1222,10 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 			on_cols = ['ID','FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
-		df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=on_cols)
+		try:
+			df_B = pd.merge(df_B, df_B_pkl.loc[:,cols], how="outer", on=on_cols)
+		except Exception as e:
+			print(f'Failure to merge pickle and csv files: {e}')
 
 	labelsA = locate_labels(pos, population=population[0])
 	if population[1] == population[0]:
@@ -1246,10 +1261,9 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive', 'intermediate'],
 											decompose_by_status=True)
 		if neighborhood_kwargs['symmetrize']:
-			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive', 'intermediate'],
-												decompose_by_status=True)
-
-		df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col, metrics=['inclusive', 'intermediate'])
+			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','intermediate'], decompose_by_status=True)
+		
+		df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col, metrics=['inclusive','intermediate'])
 		if event_time_col is not None:
 			df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col, metrics=['inclusive', 'intermediate'])
 

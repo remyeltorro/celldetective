@@ -20,6 +20,7 @@ from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
 from skimage.measure import regionprops_table
 from skimage.exposure import match_histograms
+from scipy.ndimage import zoom
 import pandas as pd
 import subprocess
 
@@ -27,7 +28,7 @@ import subprocess
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_napari=False,
-			use_gpu=True, time_flat_normalization=False, time_flat_percentiles=(0.0,99.99)):
+			use_gpu=True, channel_axis=-1):
 	
 	"""
 	
@@ -85,7 +86,10 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 	if not use_gpu:
 		os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 	else:
-		os.environ['CUDA_VISIBLE_DEVICES'] = '0'		
+		os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
+	if channel_axis != -1:
+		stack = np.moveaxis(stack, channel_axis, -1)
 
 	if channels is not None:
 		assert len(channels)==stack.shape[-1],f'The channel names provided do not match with the expected number of channels in the stack: {stack.shape[-1]}.'
@@ -96,48 +100,83 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 	required_spatial_calibration = input_config['spatial_calibration']
 	model_type = input_config['model_type']
 
-	if 'normalize' in input_config:
-		normalize = input_config['normalize']
-	else:
-		normalize = True
+	normalization_percentile = input_config['normalization_percentile']
+	normalization_clip = input_config['normalization_clip']
+	normalization_values = input_config['normalization_values']
 
 	if model_type=='cellpose':
 		diameter = input_config['diameter']
-		if diameter!=30:
-			required_spatial_calibration = None
+		# if diameter!=30:
+		# 	required_spatial_calibration = None
 		cellprob_threshold = input_config['cellprob_threshold']
 		flow_threshold = input_config['flow_threshold']
 
 	scale = _estimate_scale_factor(spatial_calibration, required_spatial_calibration)
 
 	if model_type=='stardist':
+
 		model = StarDist2D(None, name=model_name, basedir=Path(model_path).parent)
-		print(f"StarDist model {model_name} successfully loaded")
+		model.config.use_gpu = use_gpu
+		model.use_gpu = use_gpu
+		print(f"StarDist model {model_name} successfully loaded.")
+		scale_model = scale
 
 	elif model_type=='cellpose':
-		model = CellposeModel(gpu=use_gpu, pretrained_model=model_path+model_path.split('/')[-2], diam_mean=30.0)
+		
+		import torch
+		if not use_gpu:
+			device = torch.device("cpu")
+		else:
+			device = torch.device("cuda")
+
+		model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=model_path+model_path.split('/')[-2], model_type=None, nchan=len(required_channels))
 		if scale is None:
 			scale_model = model.diam_mean / model.diam_labels
 		else:
 			scale_model = scale * model.diam_mean / model.diam_labels
+		print(f"Diam mean: {model.diam_mean}; Diam labels: {model.diam_labels}; Final rescaling: {scale_model}...")
+		print(f'Cellpose model {model_name} successfully loaded.')
 
 	labels = []
-	if (time_flat_normalization)*normalize:
-		normalization_values = get_stack_normalization_values(stack[:,:,:,channel_indices], percentiles=time_flat_percentiles)
-	else:
-		normalization_values = [None]*len(channel_indices)
 
 	for t in tqdm(range(len(stack)),desc="frame"):
 
 		# normalize
-		frame = stack[t,:,:,np.array(channel_indices)]
-		if np.argmin(frame.shape)!=(frame.ndim-1):
-			frame = np.moveaxis(frame,np.argmin(frame.shape),-1)
-		if normalize:
-			frame = normalize_multichannel(frame, values=normalization_values)
+		channel_indices = np.array(channel_indices)
+		none_channel_indices = np.where(channel_indices==None)[0]
+		channel_indices[channel_indices==None] = 0
+		print(channel_indices)
 
-		if scale is not None:
-			frame = [ndi.zoom(frame[:,:,c].copy(), [scale_model,scale_model], order=3, prefilter=False) for c in range(frame.shape[-1])]
+		frame = stack[t,:,:,channel_indices.astype(int)].astype(float)
+		if frame.ndim==2:
+			frame = frame[:,:,np.newaxis]
+		if frame.ndim==3 and np.array(frame.shape).argmin()==0:
+			frame = np.moveaxis(frame,0,-1)
+		template = frame.copy()
+
+		values = []
+		percentiles = []
+		for k in range(len(normalization_percentile)):
+			if normalization_percentile[k]:
+				percentiles.append(normalization_values[k])
+				values.append(None)
+			else:
+				percentiles.append(None)
+				values.append(normalization_values[k])
+
+		frame = normalize_multichannel(frame, **{"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
+		
+		if scale_model is not None:
+			frame = [zoom(frame[:,:,c].copy(), [scale_model,scale_model], order=3, prefilter=False) for c in range(frame.shape[-1])]
+			frame = np.moveaxis(frame,0,-1)
+		
+		for k in range(frame.shape[2]):
+			unique_values = np.unique(frame[:,:,k])
+			if len(unique_values)==1:
+				frame[0,0,k] += 1
+		
+		frame = np.moveaxis([interpolate_nan(frame[:,:,c].copy()) for c in range(frame.shape[-1])],0,-1)
+		frame[:,:,none_channel_indices] = 0.
 
 		if model_type=="stardist":
 
@@ -145,16 +184,15 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 			Y_pred = Y_pred.astype(np.uint16)
 
 		elif model_type=="cellpose":
-
-			Y_pred, _, _ = model.eval(frame, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
+			
+			img = np.moveaxis(frame, -1, 0)
+			Y_pred, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
 			Y_pred = Y_pred.astype(np.uint16)
 
-		if scale is not None:
-			Y_pred = ndi.zoom(Y_pred, [1./scale_model,1./scale_model],order=0)
-
-
 		if Y_pred.shape != stack[0].shape[:2]:
-			Y_pred = resize(Y_pred, stack[0].shape, order=0)
+			Y_pred = zoom(Y_pred, [1./scale_model,1./scale_model],order=0)
+		if Y_pred.shape != template.shape[:2]:
+			Y_pred = resize(Y_pred, template.shape[:2], order=0)
 
 		labels.append(Y_pred)
 

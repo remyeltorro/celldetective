@@ -65,9 +65,9 @@ class QueryWidget(QWidget):
 
 	def filter_table(self):
 		try:
-			query_text = self.query_le.text().replace('class', '`class`')
+			query_text = self.query_le.text() #.replace('class', '`class`')
 			tab = self.parent_window.data.query(query_text)
-			self.subtable = TableUI(tab, query_text, plot_mode="scatter")
+			self.subtable = TableUI(tab, query_text, plot_mode="static")
 			self.subtable.show()
 			self.close()
 		except Exception as e:
@@ -268,7 +268,6 @@ class RenameColWidget(QWidget):
 		old_name = self.column
 		new_name = self.new_col_name.text()
 		self.parent_window.data = self.parent_window.data.rename(columns={old_name: new_name})
-		print(self.parent.data.columns)
 
 		self.parent_window.model = PandasModel(self.parent_window.data)
 		self.parent_window.table_view.setModel(self.parent_window.model)
@@ -583,18 +582,20 @@ class TableUI(QMainWindow, Styles):
 		layout.addWidget(QLabel('Representations: '))
 		self.hist_check = QCheckBox('histogram')
 		self.kde_check = QCheckBox('KDE plot')
-		self.count_check = QCheckBox('Countplot')
+		self.count_check = QCheckBox('countplot')
 		self.ecdf_check = QCheckBox('ECDF plot')
+		self.scat_check = QCheckBox('scatter plot')
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
 		self.strip_check = QCheckBox('strip')
-		self.box_check = QCheckBox('Boxplot')
-		self.boxenplot_check = QCheckBox('Boxenplot')
+		self.box_check = QCheckBox('boxplot')
+		self.boxenplot_check = QCheckBox('boxenplot')
 
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
 		layout.addWidget(self.count_check)
 		layout.addWidget(self.ecdf_check)
+		layout.addWidget(self.scat_check)
 		layout.addWidget(self.swarm_check)
 		layout.addWidget(self.violin_check)
 		layout.addWidget(self.strip_check)
@@ -707,6 +708,14 @@ class TableUI(QMainWindow, Styles):
 		if self.ecdf_check.isChecked():
 			sns.ecdfplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
 			legend = False
+		
+		if self.scat_check.isChecked():
+			if self.x_option:
+				sns.scatterplot(data=self.data, x=self.x,y=self.y, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				legend = False
+			else:
+				print('please provide a -x variable...')
+				pass
 
 		if self.swarm_check.isChecked():
 			if self.x_option:

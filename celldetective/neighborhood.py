@@ -1141,6 +1141,8 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 
 	df_A, path_A = get_position_table(pos, population=population[0], return_path=True)
 	df_B, path_B = get_position_table(pos, population=population[1], return_path=True)
+	if df_A is None or df_B is None:
+		return None
 
 	df_A_pkl = get_position_pickle(pos, population=population[0], return_path=False)
 	df_B_pkl = get_position_pickle(pos, population=population[1], return_path=False)

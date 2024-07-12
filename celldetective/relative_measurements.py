@@ -154,21 +154,21 @@ def measure_pair_signals_at_position(pos, reference, neighbor,target_classes, ne
 						relative_measurements.append(
 								{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
 								 'velocity': dddt[t], f't0_{description}': time_of_first_entrance_in_neighborhood[nc],
-								 'angle_tc-eff': relative_angle1[t],
-								 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+								 'angle_ref-neigh': relative_angle1[t],
+								 'angle-neigh-ref': relative_angle2[t], 'angular_velocity': angular_velocity[t],
 								 f'status_{description}': 1,f'class_{description}': 0})
 					else:
 						relative_measurements.append(
 								{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
 								 'velocity': dddt[t], f't0_{description}': time_of_first_entrance_in_neighborhood[nc],
-								 'angle_tc-eff': relative_angle1[t],
-								 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+								 'angle_ref-neigh': relative_angle1[t],
+								 'angle-neigh-ref': relative_angle2[t], 'angular_velocity': angular_velocity[t],
 								 f'status_{description}': 0,f'class_{description}': 0})
 
 		df_pairs = pd.DataFrame(relative_measurements)
 
 		return df_pairs
-	
+
 	except KeyError:
 		print(f"Neighborhood {description} not found in data frame. Measurements for this neighborhood will not be calculated")
 

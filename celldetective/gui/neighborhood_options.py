@@ -90,6 +90,8 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 		self.clear_previous_btn = QCheckBox('clear previous neighborhoods')
 		self.clear_previous_btn.setToolTip('Clear all previous neighborhood measurements.')
+		self.clear_previous_btn.setIcon(icon(MDI6.broom, color='black'))
+
 		main_layout.addWidget(self.clear_previous_btn, alignment=Qt.AlignRight)
 
 		main_layout.addWidget(QLabel(''))
@@ -305,11 +307,13 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 		self.cumulated_presence_btn = QCheckBox('cumulated presence')
 		self.cumulated_presence_btn.setToolTip("Compute the cumulated presence time of each neighbor around a reference cell.")
+		self.cumulated_presence_btn.setIcon(icon(MDI6.timer_outline, color='black'))
+
 		layout.addWidget(self.cumulated_presence_btn)
 
-		self.symmetrize_btn = QCheckBox('symmetrize')
-		self.symmetrize_btn.setToolTip("Write the neighborhood of the neighbor cells with respect to the reference cells.")
-		layout.addWidget(self.symmetrize_btn)
+		# self.symmetrize_btn = QCheckBox('symmetrize')
+		# self.symmetrize_btn.setToolTip("Write the neighborhood of the neighbor cells with respect to the reference cells.")
+		# layout.addWidget(self.symmetrize_btn)
 		
 		self.fill_cbs_of_neighbor_population()
 		self.neighbor_population_cb.currentIndexChanged.connect(self.fill_cbs_of_neighbor_population)
@@ -424,7 +428,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		neighborhood_options.update({'event_time_col': event_time_col})		
 
 		neighborhood_kwargs = {'mode': mode, 'status': status_options, 'not_status_option': [self.not_status_reference, self.not_status_neighbor], 
-							  'compute_cum_sum': self.cumulated_presence_btn.isChecked(), 'attention_weight': True, 'symmetrize': self.symmetrize_btn.isChecked(),
+							  'compute_cum_sum': self.cumulated_presence_btn.isChecked(), 'attention_weight': True, 'symmetrize': False,
 							  'include_dead_weight': True}
 
 		neighborhood_options.update({'neighborhood_kwargs': neighborhood_kwargs})

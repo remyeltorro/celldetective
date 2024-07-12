@@ -978,6 +978,22 @@ class NeighPanel(QFrame, Styles):
 		self.grid_contents.setContentsMargins(0,0,0,0)
 		self.grid_contents.setSpacing(0)
 
+		neigh_hbox = QHBoxLayout()
+
+		# Button to compute the neighborhoods
+		self.neigh_action = QCheckBox()
+		self.neigh_action.setStyleSheet("""
+					font-size: 10px;
+					padding-left: 10px;
+					padding-top: 5px;
+					""")
+		#self.neigh_action.setIcon(icon(MDI6.eyedropper, color="black"))
+		#self.neigh_action.setIconSize(QSize(20, 20))
+		self.neigh_action.setToolTip(
+			"Compute neighborhoods in list below.")
+		neigh_hbox.addWidget(self.neigh_action,5)
+
+		neigh_options_vbox = QVBoxLayout()
 
 		# DISTANCE NEIGHBORHOOD
 		dist_neigh_hbox = QHBoxLayout()
@@ -1000,81 +1016,9 @@ class NeighPanel(QFrame, Styles):
 		self.config_distance_neigh_btn.clicked.connect(self.open_config_distance_threshold_neighborhood)
 		dist_neigh_hbox.addWidget(self.config_distance_neigh_btn,5)
 		dist_neigh_hbox.addWidget(self.dist_neigh_action, 95)
-		self.dist_neigh_btn = QCheckBox()
-		self.dist_neigh_btn.setStyleSheet("""
-					font-size: 10px;
-					padding-left: 10px;
-					padding-top: 5px;
-					""")
-		self.dist_neigh_btn.setIcon(icon(MDI6.eyedropper, color="black"))
-		self.dist_neigh_btn.setIconSize(QSize(20, 20))
-		self.dist_neigh_btn.setToolTip(
-			"Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
-		dist_neigh_hbox.addWidget(self.dist_neigh_btn,95)
-		self.grid_contents.addLayout(dist_neigh_hbox, 0,0,1,4)
+		neigh_options_vbox.addLayout(dist_neigh_hbox)
 
-		# def generate_signal_analysis_options(self):
-		# 	signal_layout = QVBoxLayout()
-		# 	signal_hlayout = QHBoxLayout()
-		# 	self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
-		# 	self.signal_analysis_action.setStyleSheet("""
-		# 		font-size: 10px;
-		# 		padding-left: 10px;
-		# 		padding-top: 5px;
-		# 		""")
-		# 	self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
-		# 	self.signal_analysis_action.setIconSize(QSize(20, 20))
-		# 	self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
-		# 	self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
-		# 	signal_hlayout.addWidget(self.signal_analysis_action, 90)
-		#
-		# 	self.check_signals_btn = QPushButton()
-		# 	self.check_signals_btn.setIcon(icon(MDI6.eye_check_outline, color="black"))
-		# 	self.check_signals_btn.setIconSize(QSize(20, 20))
-		# 	self.check_signals_btn.clicked.connect(self.check_signals)
-		# 	self.check_signals_btn.setToolTip("Open signal annotator.")
-		# 	self.check_signals_btn.setStyleSheet(self.parent.parent.button_select_all)
-		# 	signal_hlayout.addWidget(self.check_signals_btn, 6)
-		#
-		# 	self.config_signal_annotator_btn = QPushButton()
-		# 	self.config_signal_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
-		# 	self.config_signal_annotator_btn.setIconSize(QSize(20, 20))
-		# 	self.config_signal_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
-		# 	self.config_signal_annotator_btn.setStyleSheet(self.parent.parent.button_select_all)
-		# 	self.config_signal_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-		# 	signal_hlayout.addWidget(self.config_signal_annotator_btn, 6)
-		#
-		# 	# self.to_disable.append(self.measure_action_tc)
-		# 	signal_layout.addLayout(signal_hlayout)
-		#
-		# 	signal_model_vbox = QVBoxLayout()
-		# 	signal_model_vbox.setContentsMargins(25, 0, 25, 0)
-		#
-		# 	model_zoo_layout = QHBoxLayout()
-		# 	model_zoo_layout.addWidget(QLabel("Model zoo:"), 90)
-		#
-		# 	self.signal_models_list = QComboBox()
-		# 	self.signal_models_list.setEnabled(False)
-		# 	self.refresh_signal_models()
-		# 	# self.to_disable.append(self.cell_models_list)
-		#
-		# 	self.train_signal_model_btn = QPushButton("TRAIN")
-		# 	self.train_signal_model_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
-		# 	self.train_signal_model_btn.setIcon(icon(MDI6.redo_variant, color='black'))
-		# 	self.train_signal_model_btn.setIconSize(QSize(20, 20))
-		# 	self.train_signal_model_btn.setStyleSheet(self.parent.parent.button_style_sheet_3)
-		# 	model_zoo_layout.addWidget(self.train_signal_model_btn, 5)
-		# 	self.train_signal_model_btn.clicked.connect(self.open_signal_model_config_ui)
-		#
-		# 	signal_model_vbox.addLayout(model_zoo_layout)
-		# 	signal_model_vbox.addWidget(self.signal_models_list)
-		#
-		# 	signal_layout.addLayout(signal_model_vbox)
-		#
-		# 	self.grid_contents.addLayout(signal_layout, 6, 0, 1, 4)
-
-
-		# DISTANCE NEIGHBORHOOD
+		# CONTACT NEIGHBORHOOD
 		contact_neighborhood_layout = QHBoxLayout()
 		contact_neighborhood_layout.setContentsMargins(0,0,0,0)
 		contact_neighborhood_layout.setSpacing(0)
@@ -1093,8 +1037,14 @@ class NeighPanel(QFrame, Styles):
 		self.config_contact_neigh_btn.clicked.connect(self.open_config_contact_neighborhood)
 		contact_neighborhood_layout.addWidget(self.config_contact_neigh_btn,5)
 		contact_neighborhood_layout.addWidget(self.contact_neigh_action, 95)
+		neigh_options_vbox.addLayout(contact_neighborhood_layout)
+		neigh_hbox.addLayout(neigh_options_vbox, 95)
 
-		self.grid_contents.addLayout(contact_neighborhood_layout, 1,0,1,4)
+		self.neigh_action.toggled.connect(self.activate_neigh_options)
+		self.neigh_action.setChecked(True)
+		self.neigh_action.setChecked(False)
+
+		self.grid_contents.addLayout(neigh_hbox, 1,0,1,4)
 
 		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
 
@@ -1209,6 +1159,18 @@ class NeighPanel(QFrame, Styles):
 		self.submit_btn.clicked.connect(self.process_neighborhood)
 		self.grid_contents.addWidget(self.submit_btn, 11, 0, 1, 4)
 
+	def activate_neigh_options(self):
+
+		if self.neigh_action.isChecked():
+			self.dist_neigh_action.setEnabled(True)
+			self.contact_neigh_action.setEnabled(True)
+			self.config_distance_neigh_btn.setEnabled(True)
+			self.config_contact_neigh_btn.setEnabled(True)
+		else:
+			self.dist_neigh_action.setEnabled(False)
+			self.contact_neigh_action.setEnabled(False)
+			self.config_distance_neigh_btn.setEnabled(False)
+			self.config_contact_neigh_btn.setEnabled(False)
 
 	def refresh_signal_models(self):
 		signal_models = get_pair_signal_models_list()
@@ -1322,7 +1284,7 @@ class NeighPanel(QFrame, Styles):
 				#                                      event_time_col=config['event_time_col'],
 				#                                      neighborhood_kwargs=config['neighborhood_kwargs'],
 				#                                     )
-				if self.dist_neigh_btn.isChecked():
+				if self.neigh_action.isChecked():
 					for protocol in self.protocols:
 
 						if protocol['neighborhood_type']=='distance_threshold':

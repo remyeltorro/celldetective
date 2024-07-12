@@ -8,7 +8,7 @@ abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)
 import random
 from tqdm import tqdm
 
-def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_dist, description, target_lysis_class='class_custom',
+def measure_pair_signals_at_position(pos, reference, neighbor,target_classes, neigh_dist, description, target_lysis_class='class_custom',
 								 target_lysis_time='t_custom', pre_lysis_time_window=5,
 								 velocity_kwargs={'window': 1, 'mode': 'bi'},):
 	"""
@@ -23,274 +23,444 @@ def relative_quantities_per_pos2(pos, reference, neighbor,target_classes, neigh_
 	neighborhood_kwargs: params for neigh
 	"""
 
-	df_rel = []
-	pts = []
+	relative_measurements = []
 
-	# Load tables
-	tab_tc = pos + os.sep.join(['output', 'tables', f'trajectories_{reference}.csv'])
-	print(tab_tc)
-	if not os.path.exists(tab_tc):
-		print('tab does not exist. Return None.')
-		return None
-	neigh_trajectories_path = pos + f'output/tables/trajectories_{reference}.pkl'
-	df_reference = pd.read_csv(tab_tc)
-	if reference != neighbor:
-		df_neighbor = pd.read_csv(tab_tc.replace(f'{reference}', f'{neighbor}'))
+	tab_ref = pos + os.sep.join(['output', 'tables', f'trajectories_{reference}.pkl'])
+	if os.path.exists(tab_ref):
+		df_reference = np.load(tab_ref, allow_pickle=True)
 	else:
-		df_neighbor = df_reference
-	#df_effectors = pd.read_csv(tab_tc.replace('targets', 'effectors'))
-	reference_pickle = pd.read_pickle(neigh_trajectories_path)
-	#try:
-	df_reference.loc[:, f'{description}'] = reference_pickle[f'{description}']
-	neigh_col=reference_pickle[f'{description}']
-	#for tid, group in df_reference.loc[df_reference[f'{description}'].apply(lambda x: x != [])].groupby('TRACK_ID'):
+		df_reference = None
+
+	if os.path.exists(tab_ref.replace(reference, neighbor)):
+		df_neighbor = np.load(tab_ref.replace(reference, neighbor), allow_pickle=True)
+	else:
+		df_neighbor = None
+
+	if df_reference is None:
+		return None
+
+	assert str(description) in list(df_reference.columns)
+	neighborhood = df_reference.loc[:,f'{description}'].to_numpy()
+
+	if 'TRACK_ID' in df_reference:
+		df_reference = df_reference.sort_values(by=['TRACK_ID','FRAME'])
+	else:
+		print('TRACK_ID not found in the reference population... Abort...')
+		return None
+
+	if 'TRACK_ID' in list(df_neighbor.columns):
+		neigh_id_col = 'TRACK_ID'
+		compute_velocity = True
+	elif 'ID' in list(df_neighbor.columns):
+		neigh_id_col = 'ID'
+		compute_velocity = False
+	else:
+		print('ID or TRACK ID column could not be found in neighbor table. Abort.')
+		return None
 
 	try:
 		for tid, group in df_reference.groupby('TRACK_ID'):
-			# loop over targets in lysis class of interest
-			# t0 = ceil(group[target_lysis_time].to_numpy()[0])
-			# if t0<=0:
-			#     t0 = 5
-			t0=0
-			# print(type(group))
-			# print(group)
-			neighbours = group.loc[group['FRAME'] >=t0 , f'{description}'].values  # all neighbours
 
-			#timeline_til_lysis = group.loc[group['FRAME'] <= t0, 'FRAME'].to_numpy()
-			timeline = group['FRAME'].to_numpy()
+			neighbor_dicts = group.loc[: , f'{description}'].values
+			timeline_reference = group['FRAME'].to_numpy()
+			coords_reference = group[['POSITION_X', 'POSITION_Y']].to_numpy()
 
-	#
-	#     pi = group['dead_nuclei_channel_mean'].to_numpy()
-			coords = group[['POSITION_X', 'POSITION_Y']].to_numpy()
-	#     target_class = group[target_lysis_class].values[0]
-	#
-	#     # all NK neighbours until target death
-			neigh_ids = []
-			t0_arrival={}
+			neighbor_ids = []
+			time_of_first_entrance_in_neighborhood = {}
 			t_departure={}
-			for t in range(len(timeline)):
-				n = neighbours[t]
-				all_ids_at_t=[]
-				if isinstance(n, float):
-						pass
+
+			for t in range(len(timeline_reference)):
+
+				neighbors_at_t = neighbor_dicts[t]
+				if isinstance(neighbors_at_t, float) or neighbors_at_t!=neighbors_at_t:
+					pass
 				else:
-					for nn in n:
-						if nn['id'] not in neigh_ids:
-							t0_arrival[nn['id']]=t
-						neigh_ids.append(nn['id'])
-						all_ids_at_t.append(nn['id'])
-					# for id in neigh_ids:
-					#     if id not in all_ids_at_t:
-					#         if id not in t_departure.keys():
-					#             t_departure[id]=t
+					for neigh in neighbors_at_t:
+						if neigh['id'] not in neighbor_ids:
+							time_of_first_entrance_in_neighborhood[neigh['id']]=t
+						neighbor_ids.append(neigh['id'])
 
-				#print(neigh_ids)
-				#for n in neighbours:
-				# if isinstance(n, float):
-				#     pass
-				#     else:
-				#         for i in range(0,len(n)):
-				#             print(n[i]['id'])
-				#             neigh_ids.append(n[i]['id'])
-	#     for t in range(len(timeline_til_lysis)):
-	#         n = neighbours[t]
-	#         if not n:
-	#             pass
-	#         if isinstance(n, float):
-	#             pass
-	#         elif t > t0:
-	#             continue
-	#         else:
-	#             for nn in n:
-	#                 nk_ids.append(nn['id'])
-	#
-			unique_neigh = list(np.unique(neigh_ids))
-			print(f'reference cell {tid} : found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
-			try:
-				cells_neighs = df_neighbor.query(f"TRACK_ID.isin({unique_neigh})")  # locate the NKs of interest in NK table
-			except:
-				cells_neighs = df_neighbor.query(f"ID.isin({unique_neigh})")
-			if 'TRACK_ID' in cells_neighs.columns:
-				id_type='TRACK_ID'
-			else:
-				id_type='ID'
+			unique_neigh = list(np.unique(neighbor_ids))
+			print(f'Reference cell {tid}: found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
 
-			for nc, group_nc in cells_neighs.groupby(id_type):
-				coords_nc = group_nc[['POSITION_X', 'POSITION_Y']].to_numpy()
-				# lamp = group_nk['fluo_channel_1_mean'].to_numpy()
-				timeline_nc = group_nc['FRAME'].to_numpy()
-				#
+			neighbor_properties = df_neighbor.loc[df_neighbor[neigh_id_col].isin(unique_neigh)]
+
+			for nc, group_neigh in neighbor_properties.groupby(neigh_id_col):
+				
+				coords_neighbor = group_neigh[['POSITION_X', 'POSITION_Y']].to_numpy()
+				timeline_neighbor = group_neigh['FRAME'].to_numpy()
+
 				# # Perform timeline matching to have same start-end points and no gaps
-				full_timeline, index_tc, index_nk = timeline_matching(timeline, timeline_nc)
+				full_timeline, index_reference, index_neighbor = timeline_matching(timeline_reference, timeline_neighbor)
+
 				relative_distance = np.zeros(len(full_timeline))
 				relative_distance[:] = np.nan
+
 				relative_distance_xy1 = np.zeros((len(full_timeline), 2))
 				relative_distance_xy1[:, :] = np.nan
+
 				relative_angle1 = np.zeros(len(full_timeline))
 				relative_angle1[:] = np.nan
+
 				relative_distance_xy2 = np.zeros((len(full_timeline), 2))
 				relative_distance_xy2[:, :] = np.nan
+
 				relative_angle2 = np.zeros(len(full_timeline))
 				relative_angle2[:] = np.nan
-	#         # Relative distance
-				for t in range(len(relative_distance)):
 
-					if t in timeline and t in timeline_nc:
-						idx1 = np.where(timeline == t)[0][0]
-						idx2 = np.where(timeline_nc == t)[0][0]
-						relative_distance[t] = np.sqrt(
-							(coords[idx1, 0] - coords_nc[idx2, 0]) ** 2 + (coords[idx1, 1] - coords_nc[idx2, 1]) ** 2)
+				# Relative distance
+				for t in range(len(full_timeline)):
 
-						relative_distance_xy1[t, 0] = coords[idx1, 0] - coords_nc[idx2, 0]
-						relative_distance_xy1[t, 1] = coords[idx1, 1] - coords_nc[idx2, 1]
+					if t in timeline_reference and t in timeline_neighbor: # meaning position exists on both sides
+
+						idx_reference = index_reference[list(full_timeline).index(t)]
+						idx_neighbor = index_neighbor[list(full_timeline).index(t)]
+
+						relative_distance_xy1[t, 0] = coords_reference[idx_reference, 0] - coords_neighbor[idx_neighbor, 0]
+						relative_distance_xy1[t, 1] = coords_reference[idx_reference, 1] - coords_neighbor[idx_neighbor, 1]
+						relative_distance[t] = np.sqrt((relative_distance_xy1[t, 0])** 2 + (relative_distance_xy1[t, 1])** 2)
+
+						# TO CHECK CAREFULLY
 						angle1 = np.arctan2(relative_distance_xy1[t, 1], relative_distance_xy1[t, 0]) * 180 / np.pi
 						if angle1 < 0:
 							angle1 += 360
 						relative_angle1[t] = angle1
-						relative_distance_xy2[t, 0] = coords_nc[idx2, 0] - coords[idx1, 0]
-						relative_distance_xy2[t, 1] = coords_nc[idx2, 1] - coords[idx1, 1]
+
+						relative_distance_xy2[t, 0] = coords_neighbor[idx_neighbor, 0] - coords_reference[idx_reference, 0]
+						relative_distance_xy2[t, 1] = coords_neighbor[idx_neighbor, 1] - coords_reference[idx_reference, 1]
 						angle2 = np.arctan2(relative_distance_xy2[t, 1], relative_distance_xy2[t, 0]) * 180 / np.pi
 						if angle2 < 0:
 							angle2 += 360
 						relative_angle2[t] = angle2
-				dddt = derivative(relative_distance, full_timeline, **velocity_kwargs)
-				dddt = np.insert(dddt, 0, np.nan)[:-1]
-				angular_velocity = np.zeros(len(full_timeline))
-				angular_velocity[:] = np.nan
 
-				for t in range(1, len(relative_angle1)):
-					if not np.isnan(relative_angle1[t]) and not np.isnan(relative_angle1[t - 1]):
-						delta_angle = relative_angle1[t] - relative_angle1[t - 1]
-						delta_time = full_timeline[t] - full_timeline[t - 1]
-						if delta_time != 0:
-							angular_velocity[t] = delta_angle / delta_time
-	#         nk_synapse = group_nk.loc[group_nk['FRAME'] <= ceil(t0), 'live_status'].to_numpy()
-	#         if len(nk_synapse) > 0:
-	#             nk_synapse = int(np.any(nk_synapse.astype(bool)))
-	#         else:
-	#             nk_synapse = 0
-	#
-				neighb_dist=float(neigh_dist.split('_')[0])
-				rel_dist_til_lysis = relative_distance[:ceil(t0) + 1]
-				duration_in_neigh = len(rel_dist_til_lysis[rel_dist_til_lysis <= neighb_dist]) / (ceil(t0) + 1)
-	#         if target_classes[0] != 1.:
-	#
-				t_low = max(ceil(t0) - pre_lysis_time_window, 0)
-				t_high = ceil(t0) + 1
-	#
-				rel_dist_crop = relative_distance[t_low:t_high]
-				rel_v_crop = dddt[t_low:t_high]
-	#
-	#             t_high_lamp = min(ceil(t0) + 1 + pre_lysis_time_window, df_targets['FRAME'].max())
-	#             nk_lamp_crop = lamp[t_low:t_high_lamp]
+				if compute_velocity:
+					dddt = derivative(relative_distance, full_timeline, **velocity_kwargs)
+					dddt = np.insert(dddt, 0, np.nan)[:-1]
+					angular_velocity = np.zeros(len(full_timeline))
+					angular_velocity[:] = np.nan
 
-				if len(rel_dist_crop[rel_dist_crop == rel_dist_crop]) > 0:
-					pre_lysis_d_rel = np.nanmean(rel_dist_crop)
-				else:
-					pre_lysis_d_rel = np.nanmean(relative_distance[:])
-				if len(rel_v_crop[rel_v_crop == rel_v_crop]) > 0:
-					pre_lysis_v_rel = np.nanmean(rel_v_crop)
-				else:
-					pre_lysis_v_rel = np.nanmean(dddt[:])
-	#
-	#             if len(nk_lamp_crop[nk_lamp_crop == nk_lamp_crop]) > 0:
-	#                 nk_lamp = np.nanmean(nk_lamp_crop)
-	#             else:
-	#                 nk_lamp=np.nanmean(lamp[:])
-	#
-	#             syn_class = nk_synapse
-	#
-			# else:
-			#     pre_lysis_d_rel = np.nanmean(relative_distance[:])
-			#     pre_lysis_v_rel = np.nanmean(dddt[:])
-			#     #syn_class = np.amax(nk_synapse[:])
-			#     #nk_lamp = np.nanmean(lamp[:])
-				pts.append({'rc': tid, 'lysis_time': t0, 'nc': nc, 'drel': pre_lysis_d_rel, 'vrel': pre_lysis_v_rel,
-						 'relxy': relative_distance_xy1,
-						't_residence_rel': duration_in_neigh})
-		# pts.append({'rc': tid, 'lysis_time': t0, 'nc': nc, 'drel': pre_lysis_d_rel, 'vrel': pre_lysis_v_rel,
-		#             'syn_class': syn_class, 'lamp1': nk_lamp, 'relxy': relative_distance_xy1,
-		#             't_residence_rel': duration_in_neigh})
-				for t in range(len(relative_distance)):
-					if t >= t0_arrival[nc]:
-						df_rel.append(
+					for t in range(1, len(relative_angle1)):
+						if not np.isnan(relative_angle1[t]) and not np.isnan(relative_angle1[t - 1]):
+							delta_angle = relative_angle1[t] - relative_angle1[t - 1]
+							delta_time = full_timeline[t] - full_timeline[t - 1]
+							if delta_time != 0:
+								angular_velocity[t] = delta_angle / delta_time
+
+				neighb_dist = float(neigh_dist)
+				duration_in_neigh = len(relative_distance[relative_distance <= neighb_dist])
+
+				for t in range(len(full_timeline)):
+					if t >= time_of_first_entrance_in_neighborhood[nc]: #rework in to real belonging to neighborhood
+						relative_measurements.append(
 								{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-								 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+								 'velocity': dddt[t], f't0_{description}': time_of_first_entrance_in_neighborhood[nc],
 								 'angle_tc-eff': relative_angle1[t],
 								 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
 								 f'status_{description}': 1,f'class_{description}': 0})
 					else:
-						df_rel.append(
+						relative_measurements.append(
 								{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-								 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+								 'velocity': dddt[t], f't0_{description}': time_of_first_entrance_in_neighborhood[nc],
 								 'angle_tc-eff': relative_angle1[t],
 								 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
 								 f'status_{description}': 0,f'class_{description}': 0})
 
-					# if nc in t_departure:
-					#     if t_departure[nc] > t >= t0_arrival[nc]:
-					#         df_rel.append(
-					#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-					#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-					#              f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
-					#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-					#              f'status_{description}': 1})
-					#     else:
-					#
-					#         df_rel.append(
-					#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-					#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-					#              f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
-					#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-					#              f'status_{description}': 0})
-					# else:
-					#     if t >= t0_arrival[nc]:
-					#
-					#         df_rel.append(
-					#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-					#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-					#              f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
-					#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-					#              f'status_{description}': 1})
-					#     else:
-					#         df_rel.append(
-					#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-					#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
-					#              f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
-					#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-					#              f'status_{description}': 0})
+		df_pairs = pd.DataFrame(relative_measurements)
 
-				# for t in range(len(relative_distance)):
-				#     df_rel.append({'TARGET_ID': tid, 'EFFECTOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-				#                    'velocity': dddt[t], 't0_lysis': t0, 'angle_tc-eff': relative_angle1[t],
-				#                    'angle-eff-tc': relative_angle2[t],'probability':0,'angular_velocity': angular_velocity[t]})
-		pts = pd.DataFrame(pts)
-	# #probs = probabilities(pts)
-
-		df_rel = pd.DataFrame(df_rel)
-		# for index,row in pts.iterrows():
-		#     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'distance_mean'] = row[
-		#         'drel']
-		#     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'velocity_mean'] = row[
-		#         'vrel']
-		#     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 't_residence_rel'] = row[
-		#         't_residence_rel']
-	# #for prob in probs:
-	#     #for index,row in prob.iterrows():
-	#         #df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']),'probability']=row['total_prob']
-	#
-	#
-		return df_rel
+		return df_pairs
+	
 	except KeyError:
 		print(f"Neighborhood {description} not found in data frame. Measurements for this neighborhood will not be calculated")
 
 
+	# try:
+	# 	for tid, group in df_reference.groupby('TRACK_ID'):
+	# 		# loop over targets in lysis class of interest
+	# 		# t0 = ceil(group[target_lysis_time].to_numpy()[0])
+	# 		# if t0<=0:
+	# 		#     t0 = 5
+	# 		t0=0
+	# 		# print(type(group))
+	# 		# print(group)
+	# 		neighbours = group.loc[group['FRAME'] >=t0 , f'{description}'].values  # all neighbours
+
+	# 		#timeline_til_lysis = group.loc[group['FRAME'] <= t0, 'FRAME'].to_numpy()
+	# 		timeline = group['FRAME'].to_numpy()
+
+	# #
+	# #     pi = group['dead_nuclei_channel_mean'].to_numpy()
+	# 		coords = group[['POSITION_X', 'POSITION_Y']].to_numpy()
+	# #     target_class = group[target_lysis_class].values[0]
+	# #
+	# #     # all NK neighbours until target death
+	# 		neigh_ids = []
+	# 		t0_arrival={}
+	# 		t_departure={}
+	# 		for t in range(len(timeline)):
+	# 			n = neighbours[t]
+	# 			all_ids_at_t=[]
+	# 			if isinstance(n, float):
+	# 					pass
+	# 			else:
+	# 				for nn in n:
+	# 					if nn['id'] not in neigh_ids:
+	# 						t0_arrival[nn['id']]=t
+	# 					neigh_ids.append(nn['id'])
+	# 					all_ids_at_t.append(nn['id'])
+	# 				# for id in neigh_ids:
+	# 				#     if id not in all_ids_at_t:
+	# 				#         if id not in t_departure.keys():
+	# 				#             t_departure[id]=t
+
+	# 			#print(neigh_ids)
+	# 			#for n in neighbours:
+	# 			# if isinstance(n, float):
+	# 			#     pass
+	# 			#     else:
+	# 			#         for i in range(0,len(n)):
+	# 			#             print(n[i]['id'])
+	# 			#             neigh_ids.append(n[i]['id'])
+	# #     for t in range(len(timeline_til_lysis)):
+	# #         n = neighbours[t]
+	# #         if not n:
+	# #             pass
+	# #         if isinstance(n, float):
+	# #             pass
+	# #         elif t > t0:
+	# #             continue
+	# #         else:
+	# #             for nn in n:
+	# #                 nk_ids.append(nn['id'])
+	# #
+	# 		unique_neigh = list(np.unique(neigh_ids))
+	# 		print(f'reference cell {tid} : found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
+	# 		try:
+	# 			cells_neighs = df_neighbor.query(f"TRACK_ID.isin({unique_neigh})")  # locate the NKs of interest in NK table
+	# 		except:
+	# 			cells_neighs = df_neighbor.query(f"ID.isin({unique_neigh})")
+	# 		if 'TRACK_ID' in cells_neighs.columns:
+	# 			id_type='TRACK_ID'
+	# 		else:
+	# 			id_type='ID'
+
+	# 		for nc, group_nc in cells_neighs.groupby(id_type):
+	# 			coords_nc = group_nc[['POSITION_X', 'POSITION_Y']].to_numpy()
+	# 			# lamp = group_nk['fluo_channel_1_mean'].to_numpy()
+	# 			timeline_nc = group_nc['FRAME'].to_numpy()
+	# 			#
+	# 			# # Perform timeline matching to have same start-end points and no gaps
+	# 			full_timeline, index_tc, index_nk = timeline_matching(timeline, timeline_nc)
+	# 			relative_distance = np.zeros(len(full_timeline))
+	# 			relative_distance[:] = np.nan
+	# 			relative_distance_xy1 = np.zeros((len(full_timeline), 2))
+	# 			relative_distance_xy1[:, :] = np.nan
+	# 			relative_angle1 = np.zeros(len(full_timeline))
+	# 			relative_angle1[:] = np.nan
+	# 			relative_distance_xy2 = np.zeros((len(full_timeline), 2))
+	# 			relative_distance_xy2[:, :] = np.nan
+	# 			relative_angle2 = np.zeros(len(full_timeline))
+	# 			relative_angle2[:] = np.nan
+	# #         # Relative distance
+	# 			for t in range(len(relative_distance)):
+
+	# 				if t in timeline and t in timeline_nc:
+	# 					idx1 = np.where(timeline == t)[0][0]
+	# 					idx2 = np.where(timeline_nc == t)[0][0]
+	# 					relative_distance[t] = np.sqrt(
+	# 						(coords[idx1, 0] - coords_nc[idx2, 0]) ** 2 + (coords[idx1, 1] - coords_nc[idx2, 1]) ** 2)
+
+	# 					relative_distance_xy1[t, 0] = coords[idx1, 0] - coords_nc[idx2, 0]
+	# 					relative_distance_xy1[t, 1] = coords[idx1, 1] - coords_nc[idx2, 1]
+	# 					angle1 = np.arctan2(relative_distance_xy1[t, 1], relative_distance_xy1[t, 0]) * 180 / np.pi
+	# 					if angle1 < 0:
+	# 						angle1 += 360
+	# 					relative_angle1[t] = angle1
+	# 					relative_distance_xy2[t, 0] = coords_nc[idx2, 0] - coords[idx1, 0]
+	# 					relative_distance_xy2[t, 1] = coords_nc[idx2, 1] - coords[idx1, 1]
+	# 					angle2 = np.arctan2(relative_distance_xy2[t, 1], relative_distance_xy2[t, 0]) * 180 / np.pi
+	# 					if angle2 < 0:
+	# 						angle2 += 360
+	# 					relative_angle2[t] = angle2
+	# 			dddt = derivative(relative_distance, full_timeline, **velocity_kwargs)
+	# 			dddt = np.insert(dddt, 0, np.nan)[:-1]
+	# 			angular_velocity = np.zeros(len(full_timeline))
+	# 			angular_velocity[:] = np.nan
+
+	# 			for t in range(1, len(relative_angle1)):
+	# 				if not np.isnan(relative_angle1[t]) and not np.isnan(relative_angle1[t - 1]):
+	# 					delta_angle = relative_angle1[t] - relative_angle1[t - 1]
+	# 					delta_time = full_timeline[t] - full_timeline[t - 1]
+	# 					if delta_time != 0:
+	# 						angular_velocity[t] = delta_angle / delta_time
+	# #         nk_synapse = group_nk.loc[group_nk['FRAME'] <= ceil(t0), 'live_status'].to_numpy()
+	# #         if len(nk_synapse) > 0:
+	# #             nk_synapse = int(np.any(nk_synapse.astype(bool)))
+	# #         else:
+	# #             nk_synapse = 0
+	# #
+	# 			neighb_dist=float(neigh_dist)
+	# 			rel_dist_til_lysis = relative_distance[:ceil(t0) + 1]
+	# 			duration_in_neigh = len(rel_dist_til_lysis[rel_dist_til_lysis <= neighb_dist]) / (ceil(t0) + 1)
+	# #         if target_classes[0] != 1.:
+	# #
+	# 			t_low = max(ceil(t0) - pre_lysis_time_window, 0)
+	# 			t_high = ceil(t0) + 1
+	# #
+	# 			rel_dist_crop = relative_distance[t_low:t_high]
+	# 			rel_v_crop = dddt[t_low:t_high]
+	# #
+	# #             t_high_lamp = min(ceil(t0) + 1 + pre_lysis_time_window, df_targets['FRAME'].max())
+	# #             nk_lamp_crop = lamp[t_low:t_high_lamp]
+
+	# 			if len(rel_dist_crop[rel_dist_crop == rel_dist_crop]) > 0:
+	# 				pre_lysis_d_rel = np.nanmean(rel_dist_crop)
+	# 			else:
+	# 				pre_lysis_d_rel = np.nanmean(relative_distance[:])
+	# 			if len(rel_v_crop[rel_v_crop == rel_v_crop]) > 0:
+	# 				pre_lysis_v_rel = np.nanmean(rel_v_crop)
+	# 			else:
+	# 				pre_lysis_v_rel = np.nanmean(dddt[:])
+	# #
+	# #             if len(nk_lamp_crop[nk_lamp_crop == nk_lamp_crop]) > 0:
+	# #                 nk_lamp = np.nanmean(nk_lamp_crop)
+	# #             else:
+	# #                 nk_lamp=np.nanmean(lamp[:])
+	# #
+	# #             syn_class = nk_synapse
+	# #
+	# 		# else:
+	# 		#     pre_lysis_d_rel = np.nanmean(relative_distance[:])
+	# 		#     pre_lysis_v_rel = np.nanmean(dddt[:])
+	# 		#     #syn_class = np.amax(nk_synapse[:])
+	# 		#     #nk_lamp = np.nanmean(lamp[:])
+	# 			pts.append({'rc': tid, 'lysis_time': t0, 'nc': nc, 'drel': pre_lysis_d_rel, 'vrel': pre_lysis_v_rel,
+	# 					 'relxy': relative_distance_xy1,
+	# 					't_residence_rel': duration_in_neigh})
+	# 	# pts.append({'rc': tid, 'lysis_time': t0, 'nc': nc, 'drel': pre_lysis_d_rel, 'vrel': pre_lysis_v_rel,
+	# 	#             'syn_class': syn_class, 'lamp1': nk_lamp, 'relxy': relative_distance_xy1,
+	# 	#             't_residence_rel': duration_in_neigh})
+	# 			for t in range(len(relative_distance)):
+	# 				if t >= t0_arrival[nc]:
+	# 					df_rel.append(
+	# 							{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+	# 							 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+	# 							 'angle_tc-eff': relative_angle1[t],
+	# 							 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+	# 							 f'status_{description}': 1,f'class_{description}': 0})
+	# 				else:
+	# 					df_rel.append(
+	# 							{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+	# 							 'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+	# 							 'angle_tc-eff': relative_angle1[t],
+	# 							 'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+	# 							 f'status_{description}': 0,f'class_{description}': 0})
+
+	# 				# if nc in t_departure:
+	# 				#     if t_departure[nc] > t >= t0_arrival[nc]:
+	# 				#         df_rel.append(
+	# 				#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+	# 				#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+	# 				#              f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
+	# 				#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+	# 				#              f'status_{description}': 1})
+	# 				#     else:
+	# 				#
+	# 				#         df_rel.append(
+	# 				#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+	# 				#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+	# 				#              f't1_{description}': t_departure[nc], 'angle_tc-eff': relative_angle1[t],
+	# 				#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+	# 				#              f'status_{description}': 0})
+	# 				# else:
+	# 				#     if t >= t0_arrival[nc]:
+	# 				#
+	# 				#         df_rel.append(
+	# 				#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+	# 				#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+	# 				#              f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
+	# 				#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+	# 				#              f'status_{description}': 1})
+	# 				#     else:
+	# 				#         df_rel.append(
+	# 				#             {'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+	# 				#              'velocity': dddt[t], f't0_{description}': t0_arrival[nc],
+	# 				#              f't1_{description}': -1, 'angle_tc-eff': relative_angle1[t],
+	# 				#              'angle-eff-tc': relative_angle2[t], 'angular_velocity': angular_velocity[t],
+	# 				#              f'status_{description}': 0})
+
+	# 			# for t in range(len(relative_distance)):
+	# 			#     df_rel.append({'TARGET_ID': tid, 'EFFECTOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
+	# 			#                    'velocity': dddt[t], 't0_lysis': t0, 'angle_tc-eff': relative_angle1[t],
+	# 			#                    'angle-eff-tc': relative_angle2[t],'probability':0,'angular_velocity': angular_velocity[t]})
+	# 	pts = pd.DataFrame(pts)
+	# # #probs = probabilities(pts)
+
+	# 	df_rel = pd.DataFrame(df_rel)
+	# 	# for index,row in pts.iterrows():
+	# 	#     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'distance_mean'] = row[
+	# 	#         'drel']
+	# 	#     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 'velocity_mean'] = row[
+	# 	#         'vrel']
+	# 	#     df_rel.loc[(df_rel['REFERENCE_ID'] == row['rc']) & (df_rel['NEIGHBOR_ID'] == row['nc']), 't_residence_rel'] = row[
+	# 	#         't_residence_rel']
+	# # #for prob in probs:
+	# #     #for index,row in prob.iterrows():
+	# #         #df_rel.loc[(df_rel['TARGET_ID'] == row['tc']) & (df_rel['EFFECTOR_ID'] == row['nk']),'probability']=row['total_prob']
+	# #
+	# #
+	# 	return df_rel
+	# except KeyError:
+	# 	print(f"Neighborhood {description} not found in data frame. Measurements for this neighborhood will not be calculated")
+
+
 def timeline_matching(timeline1, timeline2):
+
+	"""
+	Match two timelines and create a unified timeline with corresponding indices.
+
+	Parameters
+	----------
+	timeline1 : array-like
+		The first timeline to be matched.
+	timeline2 : array-like
+		The second timeline to be matched.
+
+	Returns
+	-------
+	tuple
+		A tuple containing:
+		- full_timeline : numpy.ndarray
+			The unified timeline spanning from the minimum to the maximum time point in the input timelines.
+		- index1 : list of int
+			The indices of `timeline1` in the `full_timeline`.
+		- index2 : list of int
+			The indices of `timeline2` in the `full_timeline`.
+
+	Examples
+	--------
+	>>> timeline1 = [1, 2, 5, 6]
+	>>> timeline2 = [2, 3, 4, 6]
+	>>> full_timeline, index1, index2 = timeline_matching(timeline1, timeline2)
+	>>> print(full_timeline)
+	[1 2 3 4 5 6]
+	>>> print(index1)
+	[0, 1, 4, 5]
+	>>> print(index2)
+	[1, 2, 3, 5]
+
+	Notes
+	-----
+	- The function combines the two timelines and generates a continuous range from the minimum to the maximum time point.
+	- It then finds the indices of the original timelines in this unified timeline.
+	- The function assumes that the input timelines consist of integer values.
+	"""
+
 	min_t = np.amin(np.concatenate((timeline1, timeline2)))
 	max_t = np.amax(np.concatenate((timeline1, timeline2)))
 	full_timeline = np.arange(min_t, max_t + 1)
 	index1 = [list(np.where(full_timeline == int(t))[0])[0] for t in timeline1]
 	index2 = [list(np.where(full_timeline == int(t))[0])[0] for t in timeline2]
+
 	return full_timeline, index1, index2
 
 
@@ -312,6 +482,8 @@ def sigmoid(x,x0,k):
 	return 1/(1 + np.exp(-(x-x0)/k))
 def velocity_law(x):
 	return np.piecewise(x, [x<=-10, x > -10],[lambda x: 0., lambda x: (1*x+10)*(1-sigmoid(x, 1,1))/10])
+
+
 def probabilities(pairs,radius_critical=80,radius_max=150):
 	scores = []
 	pair_dico=[]
@@ -370,72 +542,143 @@ def update_effector_table(df_relative, df_effector):
 			df_effector.loc[df_effector['ID'] == effector, 'group_neighborhood'] = 0
 	return df_effector
 
-def check_tables(pos):
-	
-	tab_tc = pos + os.sep.join(['output', 'tables', 'trajectories_targets.csv'])
+def extract_neighborhoods_from_pickles(pos):
+
+	"""
+	Extract neighborhood protocols from pickle files located at a given position.
+
+	Parameters
+	----------
+	pos : str
+		The base directory path where the pickle files are located.
+
+	Returns
+	-------
+	list of dict
+		A list of dictionaries, each containing a neighborhood protocol. Each dictionary has the keys:
+		- 'reference' : str
+			The reference population ('targets' or 'effectors').
+		- 'neighbor' : str
+			The neighbor population.
+		- 'type' : str
+			The type of neighborhood ('circle' or 'contact').
+		- 'distance' : float
+			The distance parameter for the neighborhood.
+		- 'description' : str
+			The original neighborhood string.
+
+	Notes
+	-----
+	- The function checks for the existence of pickle files containing target and effector trajectory data.
+	- If the files exist, it loads the data and extracts columns that start with 'neighborhood'.
+	- The neighborhood settings are extracted using the `extract_neighborhood_settings` function.
+	- The function assumes the presence of subdirectories 'output/tables' under the provided `pos`.
+
+	Examples
+	--------
+	>>> protocols = extract_neighborhoods_from_pickles('/path/to/data')
+	>>> for protocol in protocols:
+	>>>     print(protocol)
+	{'reference': 'targets', 'neighbor': 'targets', 'type': 'contact', 'distance': 5.0, 'description': 'neighborhood_self_contact_5_px'}
+	"""
+
+	tab_tc = pos + os.sep.join(['output', 'tables', 'trajectories_targets.pkl'])
 	if os.path.exists(tab_tc):
-		df_targets = pd.read_csv(tab_tc)
+		df_targets = np.load(tab_tc, allow_pickle=True)
 	else:
 		df_targets = None
 	if os.path.exists(tab_tc.replace('targets','effectors')):
-		df_effectors = pd.read_csv(tab_tc.replace('targets','effectors'))
+		df_effectors = np.load(tab_tc.replace('targets','effectors'), allow_pickle=True)
 	else:
 		df_effectors = None
 
-	neighborhood_columns=[]
+	neighborhood_protocols=[]
 
 	if df_targets is not None:
 		for column in list(df_targets.columns):
-			if column.startswith('inclusive_count_neighborhood'):
-				if 'self' in column:
-					if 'circle' in column:
-						distance=column.split('circle_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'targets','neighbor':'targets','type':'circle','distance':distance,'description':description}
-						check=column.split('circle_')[1]
-					else:
-						distance=column.split('contact_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'targets','neighbor':'targets','type':'contact','distance':distance,'description':description}
-						check=column.split('contact_')[1]
-				else:
-					if 'circle' in column:
-						distance=column.split('circle_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'targets','neighbor':'effectors','type':'circle','distance':distance,'description':description}
-						check=column.split('circle_')[1]
-					else:
-						distance=column.split('contact_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'targets','neighbor':'effectors','type':'contact','distance':distance,'description':description}
-						check=column.split('contact_')[1]
-				neighborhood_columns.append(neigh)
+			if column.startswith('neighborhood'):
+				neigh_protocol = extract_neighborhood_settings(column, population='targets')
+				neighborhood_protocols.append(neigh_protocol)
 
 	if df_effectors is not None:
 		for column in list(df_effectors.columns):
-			if column.startswith('inclusive_count_neighborhood'):
-				if 'self' in column:
-					if 'circle' in column:
-						distance=column.split('circle_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'effectors','neighbor':'effectors','type':'circle','distance':distance,'description':description}
-						check=column.split('circle_')[1]
-					else:
-						distance=column.split('contact_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'effectors','neighbor':'effectors','type':'contact','distance':distance,'description':description}
-						check=column.split('contact_')[1]
-				else:
-					if 'circle' in column:
-						distance=column.split('circle_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'effectors','neighbor':'targets','type':'circle','distance':distance,'description':description}
-						check=column.split('circle_')[1]
-					else:
-						distance=column.split('contact_')[1]
-						description=column.split('inclusive_count_')[1]
-						neigh={'reference':'effectors','neighbor':'targets','type':'contact','distance':distance,'description':description}
-						check=column.split('contact_')[1]
-				neighborhood_columns.append(neigh)
+			if column.startswith('neighborhood'):
+				neigh_protocol = extract_neighborhood_settings(column, population='effectors')
+				neighborhood_protocols.append(neigh_protocol)
 
-	return neighborhood_columns
+	return neighborhood_protocols
+
+def extract_neighborhood_settings(neigh_string, population='targets'):
+	
+	"""
+	Extract neighborhood settings from a given string.
+
+	Parameters
+	----------
+	neigh_string : str
+		The string describing the neighborhood settings. Must start with 'neighborhood'.
+	population : str, optional
+		The population type ('targets' by default). Can be either 'targets' or 'effectors'.
+
+	Returns
+	-------
+	dict
+		A dictionary containing the neighborhood protocol with keys:
+		- 'reference' : str
+			The reference population.
+		- 'neighbor' : str
+			The neighbor population.
+		- 'type' : str
+			The type of neighborhood ('circle' or 'contact').
+		- 'distance' : float
+			The distance parameter for the neighborhood.
+		- 'description' : str
+			The original neighborhood string.
+
+	Raises
+	------
+	AssertionError
+		If the `neigh_string` does not start with 'neighborhood'.
+
+	Notes
+	-----
+	- The function determines the neighbor population based on the given population.
+	- The neighborhood type and distance are extracted from the `neigh_string`.
+	- The description field in the returned dictionary contains the original neighborhood string.
+
+	Examples
+	--------
+	>>> extract_neighborhood_settings('neighborhood_self_contact_5_px', 'targets')
+	{'reference': 'targets', 'neighbor': 'targets', 'type': 'contact', 'distance': 5.0, 'description': 'neighborhood_self_contact_5_px'}
+	"""
+
+	assert neigh_string.startswith('neighborhood')
+	if population=='targets':
+		neighbor_population = 'effectors'
+	elif population=='effectors':
+		neighbor_population = 'targets'
+
+	if 'self' in neigh_string:
+		
+		if 'circle' in neigh_string:
+			
+			distance = float(neigh_string.split('circle_')[1].replace('_px',''))
+			neigh_protocol = {'reference': population,'neighbor': population,'type':'circle','distance':distance,'description': neigh_string}
+		elif 'contact' in neigh_string:
+			distance=float(neigh_string.split('contact_')[1].replace('_px',''))
+			neigh_protocol = {'reference': population,'neighbor': population,'type':'contact','distance':distance,'description': neigh_string}
+	else:
+
+		if 'circle' in neigh_string:
+
+			distance=float(neigh_string.split('circle_')[1].replace('_px',''))
+			neigh_protocol = {'reference': population,'neighbor': neighbor_population,'type':'circle','distance':distance,'description': neigh_string}
+		elif 'contact' in neigh_string:
+			
+			distance=float(neigh_string.split('contact_')[1].replace('_px',''))
+			neigh_protocol = {'reference': population,'neighbor': neighbor_population,'type':'contact','distance':distance,'description': neigh_string}
+
+	return neigh_protocol
+
+
+

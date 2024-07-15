@@ -497,8 +497,6 @@ class ConfigNeighborhoods(QWidget, Styles):
 						neighborhood_kwargs = neigh_instructions['neighborhood_kwargs']
 						if 'compute_cum_sum' in neighborhood_kwargs:
 							self.cumulated_presence_btn.setChecked(neighborhood_kwargs['compute_cum_sum'])
-						if 'symmetrize' in neighborhood_kwargs:
-							self.symmetrize_btn.setChecked(neighborhood_kwargs['symmetrize'])
 						if 'status' in neighborhood_kwargs:
 							status_options = neighborhood_kwargs['status']
 							status_options = ['--' if s is None else s for s in status_options]

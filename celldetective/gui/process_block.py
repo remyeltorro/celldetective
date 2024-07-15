@@ -8,7 +8,7 @@ from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 
 #from celldetective.gui.retrain_signal_model_options import ConfigPairSignalModelTraining
 from celldetective.gui.signal_annotator import MeasureAnnotator
-from celldetective.gui.signal_annotator2 import MeasureAnnotator2, SignalAnnotator2
+from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
 	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list
 from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
@@ -1065,17 +1065,17 @@ class NeighPanel(QFrame, Styles):
 		self.grid_contents.addLayout(list_header_layout, 3, 0, 1, 4)
 		self.grid_contents.addWidget(self.protocol_list, 4, 0, 1, 4)
 		rel_layout = QHBoxLayout()
-		self.measure_rel = QCheckBox("MEASURE")
-		self.measure_rel.setStyleSheet("""
+		self.measure_pairs_action = QCheckBox("MEASURE")
+		self.measure_pairs_action.setStyleSheet("""
 					font-size: 10px;
 					padding-left: 10px;
 					padding-top: 5px;
 					""")
-		self.measure_rel.setIcon(icon(MDI6.eyedropper, color="black"))
-		self.measure_rel.setIconSize(QSize(20, 20))
-		self.measure_rel.setToolTip(
+		self.measure_pairs_action.setIcon(icon(MDI6.eyedropper, color="black"))
+		self.measure_pairs_action.setIconSize(QSize(20, 20))
+		self.measure_pairs_action.setToolTip(
 			"Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
-		rel_layout.addWidget(self.measure_rel, 90)
+		rel_layout.addWidget(self.measure_pairs_action, 90)
 
 		# self.visu_btn = QPushButton()
 		# self.visu_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
@@ -1257,33 +1257,6 @@ class NeighPanel(QFrame, Styles):
 				if not os.path.exists(self.pos + os.sep.join(['output','tables'])+os.sep):
 					os.mkdir(self.pos + os.sep.join(['output','tables'])+os.sep)
 
-				# if self.dist_neigh_action.isChecked():
-				#
-				#     config = self.exp_dir + os.sep.join(["configs", "neighborhood_instructions.json"])
-				#
-				#     if not os.path.exists(config):
-				#         print('config could not be found', config)
-				#         msgBox = QMessageBox()
-				#         msgBox.setIcon(QMessageBox.Warning)
-				#         msgBox.setText("Please define a neighborhood first.")
-				#         msgBox.setWindowTitle("Info")
-				#         msgBox.setStandardButtons(QMessageBox.Ok)
-				#         returnValue = msgBox.exec()
-				#         return None
-				#
-				#     with open(config, 'r') as f:
-				#         config = json.load(f)
-				#
-				#     compute_neighborhood_at_position(self.pos,
-				#                                      config['distance'],
-				#                                      population=config['population'],
-				#                                      theta_dist=None,
-				#                                      img_shape=(self.parent.shape_x, self.parent.shape_y),
-				#                                      return_tables=False,
-				#                                      clear_neigh=config['clear_neigh'],
-				#                                      event_time_col=config['event_time_col'],
-				#                                      neighborhood_kwargs=config['neighborhood_kwargs'],
-				#                                     )
 				if self.neigh_action.isChecked():
 					for protocol in self.protocols:
 
@@ -1312,7 +1285,7 @@ class NeighPanel(QFrame, Styles):
 														event_time_col=protocol['event_time_col'],
 														neighborhood_kwargs=protocol['neighborhood_kwargs'],
 														)
-				if self.measure_rel.isChecked():
+				if self.measure_pairs_action.isChecked():
 					rel_measure_at_position(self.pos)
 
 				if self.signal_analysis_action.isChecked():

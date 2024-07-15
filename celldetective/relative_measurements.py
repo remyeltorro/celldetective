@@ -8,39 +8,40 @@ abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)
 import random
 from tqdm import tqdm
 
-def measure_pair_signals_at_position(pos, reference, neighbor,target_classes, neigh_dist, description, target_lysis_class='class_custom',
-								 target_lysis_time='t_custom', pre_lysis_time_window=5,
-								 velocity_kwargs={'window': 1, 'mode': 'bi'},):
+def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs={'window': 3, 'mode': 'bi'}):
 	"""
 	pos: position to process
 	target_classes [list]: target classes to keep
 	neigh_dist: neighborhood cut distance
 	theta_dist: distance to edge threshold
-	target_lysis_class: name of class to filter targets on
-	target_lysis_time: name of time col to find lysis times
-	pre_lysis_time_window: number of frames before lysis time to average relative quantities
 	velocity_kwargs: params for derivative of relative position
 	neighborhood_kwargs: params for neigh
 	"""
 
+	reference_population = neighborhood_protocol['reference']
+	neighbor_population = neighborhood_protocol['neighbor']
+	neighborhood_type = neighborhood_protocol['type']
+	neighborhood_distance = neighborhood_protocol['distance']
+	neighborhood_description = neighborhood_protocol['description']
+
 	relative_measurements = []
 
-	tab_ref = pos + os.sep.join(['output', 'tables', f'trajectories_{reference}.pkl'])
+	tab_ref = pos + os.sep.join(['output', 'tables', f'trajectories_{reference_population}.pkl'])
 	if os.path.exists(tab_ref):
 		df_reference = np.load(tab_ref, allow_pickle=True)
 	else:
 		df_reference = None
 
-	if os.path.exists(tab_ref.replace(reference, neighbor)):
-		df_neighbor = np.load(tab_ref.replace(reference, neighbor), allow_pickle=True)
+	if os.path.exists(tab_ref.replace(reference_population, neighbor_population)):
+		df_neighbor = np.load(tab_ref.replace(reference_population, neighbor_population), allow_pickle=True)
 	else:
 		df_neighbor = None
 
 	if df_reference is None:
 		return None
 
-	assert str(description) in list(df_reference.columns)
-	neighborhood = df_reference.loc[:,f'{description}'].to_numpy()
+	assert str(neighborhood_description) in list(df_reference.columns)
+	neighborhood = df_reference.loc[:,f'{neighborhood_description}'].to_numpy()
 
 	if 'TRACK_ID' in df_reference:
 		df_reference = df_reference.sort_values(by=['TRACK_ID','FRAME'])
@@ -61,17 +62,20 @@ def measure_pair_signals_at_position(pos, reference, neighbor,target_classes, ne
 	try:
 		for tid, group in df_reference.groupby('TRACK_ID'):
 
-			neighbor_dicts = group.loc[: , f'{description}'].values
+			neighbor_dicts = group.loc[: , f'{neighborhood_description}'].values
 			timeline_reference = group['FRAME'].to_numpy()
 			coords_reference = group[['POSITION_X', 'POSITION_Y']].to_numpy()
 
 			neighbor_ids = []
+			neighbor_ids_per_t = []
+
 			time_of_first_entrance_in_neighborhood = {}
 			t_departure={}
 
 			for t in range(len(timeline_reference)):
 
 				neighbors_at_t = neighbor_dicts[t]
+				neighs_t = []
 				if isinstance(neighbors_at_t, float) or neighbors_at_t!=neighbors_at_t:
 					pass
 				else:
@@ -79,7 +83,10 @@ def measure_pair_signals_at_position(pos, reference, neighbor,target_classes, ne
 						if neigh['id'] not in neighbor_ids:
 							time_of_first_entrance_in_neighborhood[neigh['id']]=t
 						neighbor_ids.append(neigh['id'])
+						neighs_t.append(neigh['id'])
+				neighbor_ids_per_t.append(neighs_t)
 
+			print(neighbor_ids_per_t)
 			unique_neigh = list(np.unique(neighbor_ids))
 			print(f'Reference cell {tid}: found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
 
@@ -93,20 +100,20 @@ def measure_pair_signals_at_position(pos, reference, neighbor,target_classes, ne
 				# # Perform timeline matching to have same start-end points and no gaps
 				full_timeline, index_reference, index_neighbor = timeline_matching(timeline_reference, timeline_neighbor)
 
-				relative_distance = np.zeros(len(full_timeline))
-				relative_distance[:] = np.nan
+				neighbor_vector = np.zeros((len(full_timeline), 2))
+				neighbor_vector[:,:] = np.nan
 
-				relative_distance_xy1 = np.zeros((len(full_timeline), 2))
-				relative_distance_xy1[:, :] = np.nan
+				# relative_distance_xy1 = np.zeros((len(full_timeline), 2))
+				# relative_distance_xy1[:, :] = np.nan
 
-				relative_angle1 = np.zeros(len(full_timeline))
-				relative_angle1[:] = np.nan
+				# relative_angle1 = np.zeros(len(full_timeline))
+				# relative_angle1[:] = np.nan
 
-				relative_distance_xy2 = np.zeros((len(full_timeline), 2))
-				relative_distance_xy2[:, :] = np.nan
+				# relative_distance_xy2 = np.zeros((len(full_timeline), 2))
+				# relative_distance_xy2[:, :] = np.nan
 
-				relative_angle2 = np.zeros(len(full_timeline))
-				relative_angle2[:] = np.nan
+				# relative_angle2 = np.zeros(len(full_timeline))
+				# relative_angle2[:] = np.nan
 
 				# Relative distance
 				for t in range(len(full_timeline)):
@@ -116,54 +123,92 @@ def measure_pair_signals_at_position(pos, reference, neighbor,target_classes, ne
 						idx_reference = index_reference[list(full_timeline).index(t)]
 						idx_neighbor = index_neighbor[list(full_timeline).index(t)]
 
-						relative_distance_xy1[t, 0] = coords_reference[idx_reference, 0] - coords_neighbor[idx_neighbor, 0]
-						relative_distance_xy1[t, 1] = coords_reference[idx_reference, 1] - coords_neighbor[idx_neighbor, 1]
-						relative_distance[t] = np.sqrt((relative_distance_xy1[t, 0])** 2 + (relative_distance_xy1[t, 1])** 2)
+						neighbor_vector[t, 0] = coords_neighbor[idx_neighbor, 0] - coords_reference[idx_reference, 0]
+						neighbor_vector[t, 1] = coords_neighbor[idx_neighbor, 1] - coords_reference[idx_reference, 1]
 
-						# TO CHECK CAREFULLY
-						angle1 = np.arctan2(relative_distance_xy1[t, 1], relative_distance_xy1[t, 0]) * 180 / np.pi
-						if angle1 < 0:
-							angle1 += 360
-						relative_angle1[t] = angle1
+						# relative_distance_xy1[t, 0] = coords_reference[idx_reference, 0] - coords_neighbor[idx_neighbor, 0]
+						# relative_distance_xy1[t, 1] = coords_reference[idx_reference, 1] - coords_neighbor[idx_neighbor, 1]
+						# relative_distance[t] = np.sqrt((relative_distance_xy1[t, 0])** 2 + (relative_distance_xy1[t, 1])** 2)
 
-						relative_distance_xy2[t, 0] = coords_neighbor[idx_neighbor, 0] - coords_reference[idx_reference, 0]
-						relative_distance_xy2[t, 1] = coords_neighbor[idx_neighbor, 1] - coords_reference[idx_reference, 1]
-						angle2 = np.arctan2(relative_distance_xy2[t, 1], relative_distance_xy2[t, 0]) * 180 / np.pi
-						if angle2 < 0:
-							angle2 += 360
-						relative_angle2[t] = angle2
+						# # TO CHECK CAREFULLY
+						# angle1 = np.arctan2(relative_distance_xy1[t, 1], relative_distance_xy1[t, 0]) * 180 / np.pi
+						# if angle1 < 0:
+						# 	angle1 += 360
+						# relative_angle1[t] = angle1
+
+						# relative_distance_xy2[t, 0] = coords_neighbor[idx_neighbor, 0] - coords_reference[idx_reference, 0]
+						# relative_distance_xy2[t, 1] = coords_neighbor[idx_neighbor, 1] - coords_reference[idx_reference, 1]
+						# angle2 = np.arctan2(relative_distance_xy2[t, 1], relative_distance_xy2[t, 0]) * 180 / np.pi
+						# if angle2 < 0:
+						# 	angle2 += 360
+						# relative_angle2[t] = angle2
+
+				angle = np.arctan2(neighbor_vector[:, 1], neighbor_vector[:, 0])
+				print(f'Angle before unwrap: {angle}')
+				angle = np.unwrap(angle)
+				print(f'Angle after unwrap: {angle}')
+				relative_distance = np.sqrt(neighbor_vector[:,0]**2 + neighbor_vector[:, 1]**2)
+				print(f'Timeline: {full_timeline}; Distance: {relative_distance}')
 
 				if compute_velocity:
-					dddt = derivative(relative_distance, full_timeline, **velocity_kwargs)
-					dddt = np.insert(dddt, 0, np.nan)[:-1]
-					angular_velocity = np.zeros(len(full_timeline))
-					angular_velocity[:] = np.nan
+					rel_velocity = derivative(relative_distance, full_timeline, **velocity_kwargs)
+					rel_velocity = np.insert(rel_velocity, 0, np.nan)[:-1]
 
-					for t in range(1, len(relative_angle1)):
-						if not np.isnan(relative_angle1[t]) and not np.isnan(relative_angle1[t - 1]):
-							delta_angle = relative_angle1[t] - relative_angle1[t - 1]
-							delta_time = full_timeline[t] - full_timeline[t - 1]
-							if delta_time != 0:
-								angular_velocity[t] = delta_angle / delta_time
+					angular_velocity = derivative(angle, full_timeline, **velocity_kwargs)
 
-				neighb_dist = float(neigh_dist)
-				duration_in_neigh = len(relative_distance[relative_distance <= neighb_dist])
 
+				# 	angular_velocity = np.zeros(len(full_timeline))
+				# 	angular_velocity[:] = np.nan
+
+				# 	for t in range(1, len(relative_angle1)):
+				# 		if not np.isnan(relative_angle1[t]) and not np.isnan(relative_angle1[t - 1]):
+				# 			delta_angle = relative_angle1[t] - relative_angle1[t - 1]
+				# 			delta_time = full_timeline[t] - full_timeline[t - 1]
+				# 			if delta_time != 0:
+				# 				angular_velocity[t] = delta_angle / delta_time
+
+				duration_in_neigh = list(neighbor_ids).count(nc)
+				print(nc, duration_in_neigh, ' frames')
+
+				cum_sum = 0
 				for t in range(len(full_timeline)):
-					if t >= time_of_first_entrance_in_neighborhood[nc]: #rework in to real belonging to neighborhood
-						relative_measurements.append(
-								{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-								 'velocity': dddt[t], f't0_{description}': time_of_first_entrance_in_neighborhood[nc],
-								 'angle_ref-neigh': relative_angle1[t],
-								 'angle-neigh-ref': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-								 f'status_{description}': 1,f'class_{description}': 0})
-					else:
-						relative_measurements.append(
-								{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc, 'FRAME': t, 'distance': relative_distance[t],
-								 'velocity': dddt[t], f't0_{description}': time_of_first_entrance_in_neighborhood[nc],
-								 'angle_ref-neigh': relative_angle1[t],
-								 'angle-neigh-ref': relative_angle2[t], 'angular_velocity': angular_velocity[t],
-								 f'status_{description}': 0,f'class_{description}': 0})
+
+					if t in timeline_reference: # meaning position exists on both sides
+
+						idx_reference = index_reference[list(full_timeline).index(t)]
+
+						if nc in neighbor_ids_per_t[idx_reference]:
+
+							cum_sum+=1
+							relative_measurements.append(
+									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
+									'reference_population': reference_population,
+									'neighbor_population': neighbor_population,
+									'FRAME': t, 'distance': relative_distance[t],
+									'velocity': rel_velocity[t], 
+									'angle': angle[t] * 180 / np.pi,
+									#'angle-neigh-ref': angle[t] * 180 / np.pi, 
+									'angular_velocity': angular_velocity[t],
+									f'status_{neighborhood_description}': 1,
+									f'residence_time_in_{neighborhood_description}': cum_sum,
+									f'class_{neighborhood_description}': 0,
+									f't0_{neighborhood_description}': time_of_first_entrance_in_neighborhood[nc],
+									 })
+						else:
+							relative_measurements.append(
+									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
+									'reference_population': reference_population,
+									'neighbor_population': neighbor_population,
+									'FRAME': t, 'distance': relative_distance[t],
+									'velocity': rel_velocity[t], 
+									'angle': angle[t] * 180 / np.pi,
+									#'angle-neigh-ref': angle[t] * 180 / np.pi, 
+									'angular_velocity': angular_velocity[t],
+									f'status_{neighborhood_description}': 0,
+									f'residence_time_in_{neighborhood_description}': cum_sum,
+									f'class_{neighborhood_description}': 0,
+									f't0_{neighborhood_description}': time_of_first_entrance_in_neighborhood[nc],
+									 })
 
 		df_pairs = pd.DataFrame(relative_measurements)
 

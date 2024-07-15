@@ -51,7 +51,6 @@ if os.path.exists(instr_path):
 	else:
 		distance = None
 
-
 else:
 	print('No measurement instructions found')
 	os.abort()
@@ -65,36 +64,21 @@ else:
 	all_df_pairs = []
 	for k,neigh_protocol in enumerate(neighborhoods_to_measure):
 
-		df_pairs = measure_pair_signals_at_position(pos,reference=neigh_protocol['reference'],neighbor=neigh_protocol['neighbor'],neigh_dist=neigh_protocol['distance'], target_classes=[0,1,2],description=neigh_protocol['description'])
-		df_pairs['reference_population']=neigh_protocol['reference']
-		df_pairs[f"{neigh_protocol['description']}"] = 1
+		df_pairs = measure_pair_signals_at_position(pos, neigh_protocol)
+		df_pairs.to_csv('test_pair.csv')
 		all_df_pairs.append(df_pairs)
 
-		# Figure this out
-		# # Check if REFERENCE_ID, NEIGHBOR_ID, and POPULATION are the same
-		# if neigh_protocol['reference']!=neigh_protocol['neighbor']:
-		# 	common_cols = ['REFERENCE_ID', 'NEIGHBOR_ID', 'ref_population']
-		# 	matching_rows = df_test.merge(rel[common_cols], on=common_cols, how='inner')
-		# 	if not matching_rows.empty:
-		# 		# Update description columns for matching rows
-		# 		for desc_col in [col for col in rel.columns if col.startswith('neighborhood') or col.startswith('status') or col.startswith('class')]:
+print(f'{len(all_df_pairs)} neighborhood measurements sets were computed...')
+if len(all_df_pairs)>1:
+	print('Merging...')
+	df_pairs = all_df_pairs[0]
+	for i in range(1,len(all_df_pairs)):
+		df_pairs = pd.merge(df_pairs, all_df_pairs[i], how="outer", on=['REFERENCE_ID','NEIGHBOR_ID','reference_population', 'neighbor_population', 'FRAME', 'distance', 'velocity', 'angle', 'angular_velocity'])
+elif len(all_df_pairs)==1:
+	df_pairs = all_df_pairs[0]
 
-		# 			df_test.loc[df_test.set_index(common_cols).index.isin(
-		# 				matching_rows.set_index(common_cols).index), desc_col] = 1
-		# 	else:
-		# 		# Append rel to df_test to add new information
-		# 		df_test = pd.concat([df_test, rel], ignore_index=True)
-		# else:
-		# 	df_test = pd.concat([df_test, rel], ignore_index=True)
-
-		# # Fill NaN values in description columns with 'No'
-		# description_cols = [col for col in df_test.columns if col.startswith('neighborhood')]
-		# for col in description_cols:
-		# 	#df_test[col].fillna(0, inplace=True)
-		# 	df_test.fillna({col: 0}, inplace=True)
-
-	path = pos + os.sep.join(['output', 'tables', 'cell_pair_measurements.csv']) 
-	df_test.to_csv(path, index=False)
-
+print('Writing table...')
+path = pos + os.sep.join(['output', 'tables', 'cell_pair_measurements.csv']) 
+df_pairs.to_csv(path, index=False)
 print('Done.')
 

@@ -196,20 +196,20 @@ class SignalAnnotator2(QMainWindow,Styles):
 		else:
 			self.reference_event_choice_cb.addItems(self.effector_class_cols)
 			self.reference_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
-		self.cell_events_hbox.addWidget(self.reference_event_choice_cb, 70)
-		if 'self' not in self.neighborhood_choice_cb.currentText():
-			self.neigh_lab=QLabel('neighbor event: ')
-			self.cell_events_hbox.addWidget(self.neigh_lab, 25)
-			self.neighbor_event_choice_cb = QComboBox()
-			if self.neighbor_population=='targets':
-				self.neighbor_event_choice_cb.addItems(self.target_class_cols)
-				self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
-			else:
-				self.neighbor_event_choice_cb.addItems(self.effector_class_cols)
-				self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
-
-
-			self.cell_events_hbox.addWidget(self.neighbor_event_choice_cb, 70)
+		self.cell_events_hbox.addWidget(self.reference_event_choice_cb, 75)
+		
+		#if 'self' not in self.neighborhood_choice_cb.currentText():
+		self.neigh_cell_events_hbox = QHBoxLayout()
+		self.neigh_lab=QLabel('neighbor event: ')
+		self.neigh_cell_events_hbox.addWidget(self.neigh_lab, 25)
+		self.neighbor_event_choice_cb = QComboBox()
+		if self.neighbor_population=='targets':
+			self.neighbor_event_choice_cb.addItems(self.target_class_cols)
+			self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_targets)
+		else:
+			self.neighbor_event_choice_cb.addItems(self.effector_class_cols)
+			self.neighbor_event_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_effectors)
+		self.neigh_cell_events_hbox.addWidget(self.neighbor_event_choice_cb, 75)
 
 		#self.left_panel.addLayout(self.cell_events_hbox)
 
@@ -221,9 +221,13 @@ class SignalAnnotator2(QMainWindow,Styles):
 		reference_layout.addWidget(self.reference_cell_info)
 		reference_layout.addLayout(self.cell_events_hbox)
 
+		neighbor_layout = QVBoxLayout()
+		neighbor_layout.addWidget(self.neighbor_cell_info)
+		neighbor_layout.addLayout(self.neigh_cell_events_hbox)
+
 		self.cell_info_hbox.addLayout(reference_layout, 33)
 		self.cell_info_hbox.addWidget(self.pair_info, 33, alignment=Qt.AlignCenter)
-		self.cell_info_hbox.addWidget(self.neighbor_cell_info, 33, alignment=Qt.AlignCenter)
+		self.cell_info_hbox.addLayout(neighbor_layout, 33)
 
 		self.left_panel.addLayout(self.cell_info_hbox)
 
@@ -1039,6 +1043,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		population = 'targets'
 		self.target_trajectories_path = self.pos + os.sep.join(['output','tables', f'trajectories_{population}.pkl'])
+		if not os.path.exists(self.target_trajectories_path):
+			self.target_trajectories_path = self.target_trajectories_path.replace('.pkl','.csv')
 
 		if not os.path.exists(self.target_trajectories_path):
 
@@ -1053,7 +1059,11 @@ class SignalAnnotator2(QMainWindow,Styles):
 		else:
 
 			# Load and prep tracks
-			self.df_targets = np.load(self.target_trajectories_path, allow_pickle=True)
+			if self.target_trajectories_path.endswith('.pkl'):
+				self.df_targets = np.load(self.target_trajectories_path, allow_pickle=True)
+			else:
+				self.df_targets = pd.read_csv(self.target_trajectories_path)
+
 			self.df_targets = self.df_targets.sort_values(by=['TRACK_ID', 'FRAME'])
 
 			cols = np.array(self.df_targets.columns)
@@ -1143,6 +1153,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		population = 'effectors'
 		self.effector_trajectories_path =  self.pos + os.sep.join(['output','tables',f'trajectories_{population}.pkl'])
+		if not os.path.exists(self.effector_trajectories_path):
+			self.effector_trajectories_path = self.effector_trajectories_path.replace('.pkl','.csv')
 
 		if not os.path.exists(self.effector_trajectories_path):
 
@@ -1154,9 +1166,12 @@ class SignalAnnotator2(QMainWindow,Styles):
 			returnValue = msgBox.exec()
 			self.df_effectors = None
 		else:
-
 			# Load and prep tracks
-			self.df_effectors = np.load(self.effector_trajectories_path, allow_pickle=True)
+			if self.effector_trajectories_path.endswith('.pkl'):
+				self.df_effectors = np.load(self.effector_trajectories_path, allow_pickle=True)
+			else:
+				self.df_effectors = pd.read_csv(self.effector_trajectories_path)
+
 			try:
 				self.df_effectors = self.df_effectors.sort_values(by=['TRACK_ID', 'FRAME'])
 			except:

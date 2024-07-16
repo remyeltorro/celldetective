@@ -1591,6 +1591,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.lines_colors_class.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), ['REFERENCE_ID', 'NEIGHBOR_ID','class_color']].to_numpy())
 
 	def extract_scatter_from_target_trajectories(self):
+		print('extracting scatter from target trajectories...')
 
 		self.target_positions = []
 		self.target_colors = []
@@ -1604,7 +1605,12 @@ class SignalAnnotator2(QMainWindow,Styles):
 				self.target_colors.append(self.df_targets.loc[self.df_targets['FRAME']==t,['class_color', 'status_color']].to_numpy())
 				self.initial_target_colors.append(
 					self.df_targets.loc[self.df_targets['FRAME'] == t, ['class_color', 'status_color']].to_numpy())
-				self.target_tracks.append(self.df_targets.loc[self.df_targets['FRAME']==t, 'TRACK_ID'].to_numpy())
+				try:
+					self.target_tracks.append(self.df_targets.loc[self.df_targets['FRAME']==t, 'TRACK_ID'].to_numpy())
+				except:
+					self.target_tracks.append(
+						self.df_targets.loc[self.df_targets['FRAME'] == t, 'ID'].to_numpy())
+		print(self.target_positions)
 
 
 	def extract_scatter_from_effector_trajectories(self):
@@ -2214,53 +2220,26 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.frame_lbl.setText(f'frame: {self.framedata}')
 		self.im.set_array(self.stack[self.framedata])
 		#if self.reference_population=='targets':
-		if self.df_targets is not None:
-			self.target_status_scatter.set_visible(True)
-			self.target_class_scatter.set_visible(True)
-			# self.target_status_scatter.set_alpha(1)
-			self.target_status_scatter.set_picker(True)
-			# self.target_class_scatter.set_alpha(1)
-			self.target_status_scatter.set_offsets(self.target_positions[self.framedata])
-			self.target_status_scatter.set_color(self.target_colors[self.framedata][:,1])
-			self.target_class_scatter.set_offsets(self.target_positions[self.framedata])
-			self.target_class_scatter.set_edgecolor(self.target_colors[self.framedata][:,0])
-		#if self.reference_population!=self.neighbor_population:
-		if self.df_effectors is not None:
-			self.effector_status_scatter.set_visible(True)
-			self.effector_class_scatter.set_visible(True)
-			# self.effector_status_scatter.set_alpha(1)
-			self.effector_status_scatter.set_picker(True)
-			# self.effector_class_scatter.set_alpha(1)
-			self.effector_status_scatter.set_offsets(self.effector_positions[self.framedata])
-			self.effector_status_scatter.set_color(self.effector_colors[self.framedata][:,1])
-
-			self.effector_class_scatter.set_offsets(self.effector_positions[self.framedata])
-			self.effector_class_scatter.set_edgecolor(self.effector_colors[self.framedata][:,0])
 
 		if self.df_effectors is not None:
+
 			self.effector_status_scatter.set_visible(True)
 			self.effector_status_scatter.set_picker(True)
 			self.effector_class_scatter.set_visible(True)
 			self.effector_status_scatter.set_offsets(self.effector_positions[self.framedata])
 			self.effector_status_scatter.set_color(self.effector_colors[self.framedata][:, 1])
-
 			self.effector_class_scatter.set_offsets(self.effector_positions[self.framedata])
 			self.effector_class_scatter.set_edgecolor(self.effector_colors[self.framedata][:, 0])
-		#if self.reference_population != self.neighbor_population:
+
 		if self.df_targets is not None:
 			self.target_status_scatter.set_visible(True)
 			self.target_status_scatter.set_picker(True)
 			self.target_class_scatter.set_visible(True)
 			self.target_status_scatter.set_offsets(self.target_positions[self.framedata])
 			self.target_status_scatter.set_color(self.target_colors[self.framedata][:, 1])
-
 			self.target_class_scatter.set_offsets(self.target_positions[self.framedata])
 			self.target_class_scatter.set_edgecolor(self.target_colors[self.framedata][:, 0])
-		#else:
-		if self.df_targets is not None:
-			self.target_status_scatter.set_visible(False)
-			self.target_status_scatter.set_picker(None)
-			self.target_class_scatter.set_visible(False)
+
 		self.lines_list=[]
 
 		for key in self.lines_data:

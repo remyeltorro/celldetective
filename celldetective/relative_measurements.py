@@ -35,7 +35,10 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 	if os.path.exists(tab_ref.replace(reference_population, neighbor_population)):
 		df_neighbor = np.load(tab_ref.replace(reference_population, neighbor_population), allow_pickle=True)
 	else:
-		df_neighbor = None
+		if os.path.exists(tab_ref.replace(reference_population, neighbor_population).replace('.pkl','.csv')):
+			df_neighbor = pd.read_csv(tab_ref.replace(reference_population, neighbor_population).replace('.pkl','.csv'))
+		else:
+			df_neighbor = None
 
 	if df_reference is None:
 		return None
@@ -86,9 +89,9 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 						neighs_t.append(neigh['id'])
 				neighbor_ids_per_t.append(neighs_t)
 
-			print(neighbor_ids_per_t)
+			#print(neighbor_ids_per_t)
 			unique_neigh = list(np.unique(neighbor_ids))
-			print(f'Reference cell {tid}: found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
+			#print(f'Reference cell {tid}: found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
 
 			neighbor_properties = df_neighbor.loc[df_neighbor[neigh_id_col].isin(unique_neigh)]
 
@@ -98,7 +101,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				timeline_neighbor = group_neigh['FRAME'].to_numpy()
 
 				# # Perform timeline matching to have same start-end points and no gaps
-				full_timeline, index_reference, index_neighbor = timeline_matching(timeline_reference, timeline_neighbor)
+				full_timeline, _, _ = timeline_matching(timeline_reference, timeline_neighbor)
 
 				neighbor_vector = np.zeros((len(full_timeline), 2))
 				neighbor_vector[:,:] = np.nan
@@ -120,8 +123,8 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 
 					if t in timeline_reference and t in timeline_neighbor: # meaning position exists on both sides
 
-						idx_reference = index_reference[list(full_timeline).index(t)]
-						idx_neighbor = index_neighbor[list(full_timeline).index(t)]
+						idx_reference = list(timeline_reference).index(t) #index_reference[list(full_timeline).index(t)]
+						idx_neighbor = list(timeline_neighbor).index(t) #index_neighbor[list(full_timeline).index(t)]
 
 						neighbor_vector[t, 0] = coords_neighbor[idx_neighbor, 0] - coords_reference[idx_reference, 0]
 						neighbor_vector[t, 1] = coords_neighbor[idx_neighbor, 1] - coords_reference[idx_reference, 1]
@@ -144,15 +147,15 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 						# relative_angle2[t] = angle2
 
 				angle = np.arctan2(neighbor_vector[:, 1], neighbor_vector[:, 0])
-				print(f'Angle before unwrap: {angle}')
+				#print(f'Angle before unwrap: {angle}')
 				angle = np.unwrap(angle)
-				print(f'Angle after unwrap: {angle}')
+				#print(f'Angle after unwrap: {angle}')
 				relative_distance = np.sqrt(neighbor_vector[:,0]**2 + neighbor_vector[:, 1]**2)
-				print(f'Timeline: {full_timeline}; Distance: {relative_distance}')
+				#print(f'Timeline: {full_timeline}; Distance: {relative_distance}')
 
 				if compute_velocity:
 					rel_velocity = derivative(relative_distance, full_timeline, **velocity_kwargs)
-					rel_velocity = np.insert(rel_velocity, 0, np.nan)[:-1]
+					#rel_velocity = np.insert(rel_velocity, 0, np.nan)[:-1]
 
 					angular_velocity = derivative(angle, full_timeline, **velocity_kwargs)
 
@@ -168,14 +171,14 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				# 				angular_velocity[t] = delta_angle / delta_time
 
 				duration_in_neigh = list(neighbor_ids).count(nc)
-				print(nc, duration_in_neigh, ' frames')
+				#print(nc, duration_in_neigh, ' frames')
 
 				cum_sum = 0
 				for t in range(len(full_timeline)):
 
 					if t in timeline_reference: # meaning position exists on both sides
 
-						idx_reference = index_reference[list(full_timeline).index(t)]
+						idx_reference = list(timeline_reference).index(t) 
 
 						if nc in neighbor_ids_per_t[idx_reference]:
 
@@ -503,6 +506,7 @@ def timeline_matching(timeline1, timeline2):
 	min_t = np.amin(np.concatenate((timeline1, timeline2)))
 	max_t = np.amax(np.concatenate((timeline1, timeline2)))
 	full_timeline = np.arange(min_t, max_t + 1)
+
 	index1 = [list(np.where(full_timeline == int(t))[0])[0] for t in timeline1]
 	index2 = [list(np.where(full_timeline == int(t))[0])[0] for t in timeline2]
 

@@ -65,8 +65,8 @@ else:
 	for k,neigh_protocol in enumerate(neighborhoods_to_measure):
 
 		df_pairs = measure_pair_signals_at_position(pos, neigh_protocol)
-		df_pairs.to_csv('test_pair.csv')
-		all_df_pairs.append(df_pairs)
+		if 'REFERENCE_ID' in list(df_pairs.columns):
+			all_df_pairs.append(df_pairs)
 
 print(f'{len(all_df_pairs)} neighborhood measurements sets were computed...')
 if len(all_df_pairs)>1:

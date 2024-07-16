@@ -119,6 +119,9 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
 		self.setMinimumWidth(int(0.8*self.screen_width))
 		self.setMinimumHeight(int(0.8*self.screen_height))
+
+		#self.cell_fcanvas.setMinimumHeight(int(0.3*self.screen_height))
+
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def populate_widget(self):
@@ -1770,7 +1773,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.effector_status_scatter = self.ax.scatter([], [], marker="x", s=50, picker=True, pickradius=10)
 			self.effector_class_scatter = self.ax.scatter([],[], marker='^', facecolors='none', s=200)
 
-		self.points=self.ax.scatter([], [], marker="x", picker=True, pickradius=10, zorder=10) #picker=True, pickradius=10
+		self.points=self.ax.scatter([], [], marker="$\Join$", s=100, picker=True, pickradius=10, zorder=10) #picker=True, pickradius=10
 
 		self.ax.set_xticks([])
 		self.ax.set_yticks([])
@@ -1794,7 +1797,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 	def create_cell_signal_canvas(self):
 
 		self.cell_fig, self.cell_ax = plt.subplots()
-		self.cell_fcanvas = FigureCanvas(self.cell_fig, interactive=False)
+		self.cell_fcanvas = FigureCanvas(self.cell_fig, interactive=True)
 		self.cell_ax.clear()
 
 		spacing = 0.5

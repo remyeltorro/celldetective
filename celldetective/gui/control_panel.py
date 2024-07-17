@@ -414,25 +414,36 @@ class ControlPanel(QMainWindow, Styles):
 		self.pos = self.position_list.currentText()
 		panels = [self.ProcessEffectors, self.ProcessTargets]
 		if self.position_list.currentText()=="*":
+			
 			for p in panels:
 				p.check_seg_btn.setEnabled(False)
 				p.check_tracking_result_btn.setEnabled(False)
+
 			self.ProcessTargets.view_tab_btn.setEnabled(True)
 			self.ProcessEffectors.view_tab_btn.setEnabled(True)
+			self.NeighPanel.view_tab_btn.setEnabled(True)
+
 			self.ProcessTargets.check_seg_btn.setEnabled(False)
 			self.ProcessEffectors.check_seg_btn.setEnabled(False)
+
 			self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
 			self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
+
 			self.ProcessEffectors.check_measurements_btn.setEnabled(False)
 			self.ProcessTargets.check_measurements_btn.setEnabled(False)
 			#self.ProcessTargets.signal_analysis_action.setEnabled(False)
 			#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
+
 			self.ProcessTargets.check_signals_btn.setEnabled(False)
 			self.ProcessEffectors.check_signals_btn.setEnabled(False)
+			self.NeighPanel.check_signals_btn.setEnabled(False)
+
 			self.view_stack_btn.setEnabled(False)
 		elif self.well_list.currentText()=='*':
+
 			self.ProcessTargets.view_tab_btn.setEnabled(True)
 			self.ProcessEffectors.view_tab_btn.setEnabled(True)	
+			self.NeighPanel.view_tab_btn.setEnabled(True)
 			self.view_stack_btn.setEnabled(False)	
 		else:
 			if not self.well_list.currentText()=="*":
@@ -481,4 +492,12 @@ class ControlPanel(QMainWindow, Styles):
 					#self.ProcessTargets.signal_analysis_action.setEnabled(False)
 					self.ProcessTargets.view_tab_btn.setEnabled(False)
 					self.ProcessTargets.classify_btn.setEnabled(False)
+
+				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_pairs.csv'])):
+					self.NeighPanel.view_tab_btn.setEnabled(True)
+					self.NeighPanel.check_signals_btn.setEnabled(True)
+				else:
+					self.NeighPanel.view_tab_btn.setEnabled(False)
+					self.NeighPanel.check_signals_btn.setEnabled(False)
+
 

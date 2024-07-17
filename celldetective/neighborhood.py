@@ -452,8 +452,8 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 
 		print('Count neighborhood...')
 		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
-		if neighborhood_kwargs['symmetrize']:
-			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
+		# if neighborhood_kwargs['symmetrize']:
+		# 	df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','exclusive','intermediate'], decompose_by_status=True)
 		print('Done...')
 
 		if 'TRACK_ID' in list(df_A.columns):
@@ -463,8 +463,15 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 			print('Done...')
 
 	df_A.to_pickle(path_A.replace('.csv', '.pkl'))
-	# if not population[0] == population[1]:
-	# 	df_B.to_pickle(path_B.replace('.csv', '.pkl'))
+	if not population[0] == population[1]:
+		# Remove neighborhood column
+		for td, d in zip(theta_dist, distance):
+			if neighborhood_kwargs['mode'] == 'two-pop':
+				neigh_col = f'neighborhood_2_circle_{d}_px'
+			elif neighborhood_kwargs['mode'] == 'self':
+				neigh_col = f'neighborhood_self_circle_{d}_px'
+			df_B = df_B.drop(columns=[neigh_col])
+		df_B.to_pickle(path_B.replace('.csv', '.pkl'))
 
 	unwanted = df_A.columns[df_A.columns.str.startswith('neighborhood_')]
 	df_A2 = df_A.drop(columns=unwanted)
@@ -1268,8 +1275,15 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 			df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col, metrics=['inclusive', 'intermediate'])
 
 	df_A.to_pickle(path_A.replace('.csv', '.pkl'))
-	# if not population[0] == population[1]:
-	# 	df_B.to_pickle(path_B.replace('.csv', '.pkl'))
+	if not population[0] == population[1]:
+		# Remove neighborhood column
+		for td, d in zip(theta_dist, distance):
+			if neighborhood_kwargs['mode'] == 'two-pop':
+				neigh_col = f'neighborhood_2_contact_{d}_px'
+			elif neighborhood_kwargs['mode'] == 'self':
+				neigh_col = f'neighborhood_self_contact_{d}_px'
+			df_B = df_B.drop(columns=[neigh_col])
+		df_B.to_pickle(path_B.replace('.csv', '.pkl'))
 
 	unwanted = df_A.columns[df_A.columns.str.startswith('neighborhood_')]
 	df_A2 = df_A.drop(columns=unwanted)

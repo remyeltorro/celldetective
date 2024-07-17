@@ -69,16 +69,22 @@ else:
 			all_df_pairs.append(df_pairs)
 
 print(f'{len(all_df_pairs)} neighborhood measurements sets were computed...')
+path = pos + os.sep.join(['output', 'tables', 'trajectories_pairs.csv']) 
+
+if os.path.exists(path):
+	df0 = pd.read_csv(path)
+	all_df_pairs.insert(0,df0)
+
 if len(all_df_pairs)>1:
 	print('Merging...')
 	df_pairs = all_df_pairs[0]
 	for i in range(1,len(all_df_pairs)):
-		df_pairs = pd.merge(df_pairs, all_df_pairs[i], how="outer", on=['REFERENCE_ID','NEIGHBOR_ID','reference_population', 'neighbor_population', 'FRAME', 'distance', 'velocity', 'angle', 'angular_velocity'])
+		cols = [c1 for c1,c2 in zip(list(df_pairs.columns), list(all_df_pairs[i].columns)) if c1==c2]
+		df_pairs = pd.merge(df_pairs, all_df_pairs[i], how="outer", on=cols)
 elif len(all_df_pairs)==1:
 	df_pairs = all_df_pairs[0]
 
 print('Writing table...')
-path = pos + os.sep.join(['output', 'tables', 'trajectories_pairs.csv']) 
 df_pairs.to_csv(path, index=False)
 print('Done.')
 

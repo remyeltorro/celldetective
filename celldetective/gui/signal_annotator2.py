@@ -58,6 +58,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.neighbor_loc_t = []; self.neighbor_loc_idx = [];
 		self.reference_loc_t = []; self.reference_loc_idx = [];
 		self.reference_loc_t_not_picked = []; self.reference_loc_idx_not_picked = [];
+		self.neigh_cell_loc_t = []; self.neigh_cell_loc_idx = [];
 
 		self.reference_track_of_interest = None
 		self.neighbor_track_of_interest = None
@@ -683,11 +684,11 @@ class SignalAnnotator2(QMainWindow,Styles):
 				pass
 
 		fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
-		self.df_relative.loc[:,self.relative_class] = fill_option
+		self.df_relative.loc[(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()),self.relative_class] = fill_option
 		if fill_option==0:
-			self.df_relative.loc[:,self.relative_time] = 0.1
+			self.df_relative.loc[(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()),self.relative_time] = 0.1
 		else:
-			self.df_relative.loc[:,self.relative_time] = -1
+			self.df_relative.loc[(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()),self.relative_time] = -1
 		self.relative_class_choice_cb.disconnect()
 		self.relative_class_choice_cb.clear()
 		cols = np.array(self.df_relative.columns)

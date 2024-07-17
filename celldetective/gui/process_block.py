@@ -114,7 +114,7 @@ class ProcessPanel(QFrame, Styles):
 			self.collapse_btn.setIconSize(QSize(20, 20))
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
-			self.parent_window.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent_window.screen_height)))
+			self.parent_window.scroll.setMinimumHeight(min(int(930), int(0.9*self.parent_window.screen_height)))
 			self.parent_window.scroll.setMinimumWidth(425)
 
 			#self.parent.scroll.adjustSize()
@@ -929,7 +929,7 @@ class NeighPanel(QFrame, Styles):
 
 		"""
 
-		panel_title = QLabel(f"NEIGHBORHOOD")
+		panel_title = QLabel(f"INTERACTIONS")
 		panel_title.setStyleSheet(self.block_title)
 
 		self.grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
@@ -967,7 +967,7 @@ class NeighPanel(QFrame, Styles):
 			self.collapse_btn.setIconSize(QSize(20, 20))
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
-			self.parent_window.scroll.setMinimumHeight(min(int(750), int(0.8*self.parent_window.screen_height)))
+			self.parent_window.scroll.setMinimumHeight(min(int(1000), int(0.9*self.parent_window.screen_height)))
 			self.parent_window.scroll.setMinimumWidth(425)
 
 
@@ -976,12 +976,11 @@ class NeighPanel(QFrame, Styles):
 		self.ContentsFrame = QFrame()
 		self.grid_contents = QGridLayout(self.ContentsFrame)
 		self.grid_contents.setContentsMargins(0,0,0,0)
-		self.grid_contents.setSpacing(0)
-
-		neigh_hbox = QHBoxLayout()
+		self.grid_contents.setSpacing(3)
 
 		# Button to compute the neighborhoods
-		self.neigh_action = QCheckBox()
+		neigh_option_hbox = QHBoxLayout()
+		self.neigh_action = QCheckBox('NEIGHBORHOODS')
 		self.neigh_action.setStyleSheet("""
 					font-size: 10px;
 					padding-left: 10px;
@@ -991,7 +990,10 @@ class NeighPanel(QFrame, Styles):
 		#self.neigh_action.setIconSize(QSize(20, 20))
 		self.neigh_action.setToolTip(
 			"Compute neighborhoods in list below.")
-		neigh_hbox.addWidget(self.neigh_action,5)
+		neigh_option_hbox.addWidget(self.neigh_action,90)
+		self.grid_contents.addLayout(neigh_option_hbox, 1,0,1,4)
+
+		neigh_options_layout = QVBoxLayout()
 
 		neigh_options_vbox = QVBoxLayout()
 
@@ -1038,15 +1040,9 @@ class NeighPanel(QFrame, Styles):
 		contact_neighborhood_layout.addWidget(self.config_contact_neigh_btn,5)
 		contact_neighborhood_layout.addWidget(self.contact_neigh_action, 95)
 		neigh_options_vbox.addLayout(contact_neighborhood_layout)
-		neigh_hbox.addLayout(neigh_options_vbox, 95)
+		#self.grid_contents.addLayout(neigh_options_vbox, 2,0,1,4)
 
-		self.neigh_action.toggled.connect(self.activate_neigh_options)
-		self.neigh_action.setChecked(True)
-		self.neigh_action.setChecked(False)
-
-		self.grid_contents.addLayout(neigh_hbox, 1,0,1,4)
-
-		self.grid_contents.addWidget(QHSeperationLine(), 2, 0, 1, 4)
+		#self.grid_contents.addWidget(QHSeperationLine(), 3, 0, 1, 4)
 
 		self.delete_protocol_btn = QPushButton('')
 		self.delete_protocol_btn.setStyleSheet(self.button_select_all)
@@ -1062,10 +1058,21 @@ class NeighPanel(QFrame, Styles):
 		list_header_layout = QHBoxLayout()
 		list_header_layout.addWidget(self.protocol_list_lbl)
 		list_header_layout.addWidget(self.delete_protocol_btn, alignment=Qt.AlignRight)
-		self.grid_contents.addLayout(list_header_layout, 3, 0, 1, 4)
-		self.grid_contents.addWidget(self.protocol_list, 4, 0, 1, 4)
+		#self.grid_contents.addLayout(list_header_layout, 4, 0, 1, 4)
+		#self.grid_contents.addWidget(self.protocol_list, 5, 0, 1, 4)
+
+		neigh_options_layout.addLayout(neigh_options_vbox)
+		neigh_options_layout.addWidget(QHSeperationLine())
+		neigh_options_layout.addLayout(list_header_layout)
+		neigh_options_layout.addWidget(self.protocol_list)
+
+		neigh_options_layout.setContentsMargins(30,5,30,5)
+		neigh_options_layout.setSpacing(0.5)
+		self.grid_contents.addLayout(neigh_options_layout, 5, 0, 1, 4)
+
+
 		rel_layout = QHBoxLayout()
-		self.measure_pairs_action = QCheckBox("MEASURE")
+		self.measure_pairs_action = QCheckBox("MEASURE PAIRS")
 		self.measure_pairs_action.setStyleSheet("""
 					font-size: 10px;
 					padding-left: 10px;
@@ -1073,8 +1080,7 @@ class NeighPanel(QFrame, Styles):
 					""")
 		self.measure_pairs_action.setIcon(icon(MDI6.eyedropper, color="black"))
 		self.measure_pairs_action.setIconSize(QSize(20, 20))
-		self.measure_pairs_action.setToolTip(
-			"Measure the intensity of the cells, \ndetect death events using the selected pre-trained model, \nformat the data for visualization, \nremove cells that are already dead and \nsave the result in a table.")
+		self.measure_pairs_action.setToolTip("Measure the relative quantities defined for the cell pairs, for all neighborhoods.")
 		rel_layout.addWidget(self.measure_pairs_action, 90)
 
 		# self.visu_btn = QPushButton()
@@ -1086,19 +1092,19 @@ class NeighPanel(QFrame, Styles):
 		# self.grid_contents.addWidget(self.visu_btn, 1,1,1,1,alignment=Qt.AlignRight)
 		# rel_layout.addWidget(self.visu_btn, 6)
 
-		self.config_rel_annotator_btn = QPushButton()
-		self.config_rel_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
-		self.config_rel_annotator_btn.setIconSize(QSize(20, 20))
-		self.config_rel_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
-		self.config_rel_annotator_btn.setStyleSheet(self.button_select_all)
-		self.config_rel_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-		# self.grid_contents.addWidget(self.config_rel_annotator_btn, 1,2,1,1, alignment=Qt.AlignRight)
-		rel_layout.addWidget(self.config_rel_annotator_btn, 6)
-		self.grid_contents.addLayout(rel_layout, 5, 0, 1, 4)
+		# self.config_rel_annotator_btn = QPushButton()
+		# self.config_rel_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
+		# self.config_rel_annotator_btn.setIconSize(QSize(20, 20))
+		# self.config_rel_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
+		# self.config_rel_annotator_btn.setStyleSheet(self.button_select_all)
+		# self.config_rel_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
+		# # self.grid_contents.addWidget(self.config_rel_annotator_btn, 1,2,1,1, alignment=Qt.AlignRight)
+		# rel_layout.addWidget(self.config_rel_annotator_btn, 6)
+		self.grid_contents.addLayout(rel_layout, 6, 0, 1, 4)
 
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
-		self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
+		self.signal_analysis_action = QCheckBox("PAIR SIGNAL ANALYSIS")
 		self.signal_analysis_action.setStyleSheet("""
 		font-size: 10px;
 		padding-left: 10px;
@@ -1106,7 +1112,7 @@ class NeighPanel(QFrame, Styles):
 
 		self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
 		self.signal_analysis_action.setIconSize(QSize(20, 20))
-		self.signal_analysis_action.setToolTip("Analyze cell signals using deep learning or a fit procedure.")
+		self.signal_analysis_action.setToolTip("Detect cell pair events using a DL model.")
 		self.signal_analysis_action.toggled.connect(self.enable_signal_model_list)
 		signal_hlayout.addWidget(self.signal_analysis_action, 90)
 
@@ -1114,7 +1120,7 @@ class NeighPanel(QFrame, Styles):
 		self.check_signals_btn.setIcon(icon(MDI6.eye_check_outline, color="black"))
 		self.check_signals_btn.setIconSize(QSize(20, 20))
 		self.check_signals_btn.clicked.connect(self.check_signals2)
-		self.check_signals_btn.setToolTip("Open signal annotator for two populations.")
+		self.check_signals_btn.setToolTip("Annotate dynamic cell pairs.")
 		self.check_signals_btn.setStyleSheet(self.button_select_all)
 		signal_hlayout.addWidget(self.check_signals_btn, 6)
 
@@ -1139,7 +1145,7 @@ class NeighPanel(QFrame, Styles):
 		# self.to_disable.append(self.cell_models_list)
 
 		self.pair_train_signal_model_btn = QPushButton("TRAIN")
-		self.pair_train_signal_model_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
+		self.pair_train_signal_model_btn.setToolTip("Train a cell pair event detection model.")
 		self.pair_train_signal_model_btn.setIcon(icon(MDI6.redo_variant, color='black'))
 		self.pair_train_signal_model_btn.setIconSize(QSize(20, 20))
 		self.pair_train_signal_model_btn.setStyleSheet(self.button_style_sheet_3)
@@ -1150,14 +1156,74 @@ class NeighPanel(QFrame, Styles):
 		pair_signal_model_vbox.addWidget(self.pair_signal_models_list)
 
 		signal_layout.addLayout(pair_signal_model_vbox)
+		self.grid_contents.addLayout(signal_layout, 7, 0, 1, 4)
+		self.grid_contents.addWidget(QHSeperationLine(), 11, 0, 1, 4)
 
-		self.grid_contents.addLayout(signal_layout, 6, 0, 1, 4)
-		self.grid_contents.addWidget(QHSeperationLine(), 10, 0, 1, 4)
+		self.view_tab_btn = QPushButton("View table")
+		self.view_tab_btn.setStyleSheet(self.button_style_sheet_2)
+		self.view_tab_btn.clicked.connect(self.view_table_ui)
+		self.view_tab_btn.setToolTip('View table')
+		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
+		self.view_tab_btn.setIconSize(QSize(20, 20))
+		#self.view_tab_btn.setEnabled(False)
+		self.grid_contents.addWidget(self.view_tab_btn, 12, 0, 1, 4)
+
+		#self.grid_contents.addWidget(QLabel(''), 12, 0, 1, 4)
+
 		self.submit_btn = QPushButton("Submit")
 		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
 		self.submit_btn.setToolTip("Compute the neighborhoods of the selected positions.")
 		self.submit_btn.clicked.connect(self.process_neighborhood)
-		self.grid_contents.addWidget(self.submit_btn, 11, 0, 1, 4)
+		self.grid_contents.addWidget(self.submit_btn, 14, 0, 1, 4)
+
+		self.neigh_action.toggled.connect(self.activate_neigh_options)
+		self.neigh_action.setChecked(True)
+		self.neigh_action.setChecked(False)
+
+
+	def load_available_tables(self):
+
+		"""
+		Load the tables of the selected wells/positions from the control Panel for the population of interest
+
+		"""
+
+		self.well_option = self.parent_window.well_list.currentIndex()
+		if self.well_option==len(self.wells):
+			wo = '*'
+		else:
+			wo = self.well_option
+		self.position_option = self.parent_window.position_list.currentIndex()
+		if self.position_option==0:
+			po = '*'
+		else:
+			po = self.position_option - 1
+
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population="pairs", return_pos_info=True)
+		if self.df is None:
+			print('No table could be found...')
+
+
+	def view_table_ui(self):
+
+		print('Load table...')
+		self.load_available_tables()
+
+		if self.df is not None:
+			plot_mode = 'static'
+			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population='pairs', plot_mode=plot_mode)
+			self.tab_ui.show()
+		else:
+			print('Table could not be loaded...')
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table could be loaded...")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+
 
 	def activate_neigh_options(self):
 
@@ -1166,11 +1232,17 @@ class NeighPanel(QFrame, Styles):
 			self.contact_neigh_action.setEnabled(True)
 			self.config_distance_neigh_btn.setEnabled(True)
 			self.config_contact_neigh_btn.setEnabled(True)
+			self.protocol_list_lbl.setEnabled(True)
+			self.protocol_list.setEnabled(True)
+			self.delete_protocol_btn.setEnabled(True)
 		else:
 			self.dist_neigh_action.setEnabled(False)
 			self.contact_neigh_action.setEnabled(False)
 			self.config_distance_neigh_btn.setEnabled(False)
 			self.config_contact_neigh_btn.setEnabled(False)
+			self.protocol_list_lbl.setEnabled(False)
+			self.protocol_list.setEnabled(False)
+			self.delete_protocol_btn.setEnabled(False)
 
 	def refresh_signal_models(self):
 		signal_models = get_pair_signal_models_list()
@@ -1448,7 +1520,7 @@ class PreprocessingPanel(QFrame, Styles):
 			self.collapse_btn.setIconSize(QSize(20, 20))
 			#self.parent.w.adjustSize()
 			#self.parent.adjustSize()
-			self.parent_window.scroll.setMinimumHeight(min(int(880), int(0.8*self.parent_window.screen_height)))
+			self.parent_window.scroll.setMinimumHeight(min(int(930), int(0.9*self.parent_window.screen_height)))
 			self.parent_window.scroll.setMinimumWidth(425)
 
 	def populate_contents(self):

@@ -78,7 +78,7 @@ elif len(all_df_pairs)==1:
 	df_pairs = all_df_pairs[0]
 
 print('Writing table...')
-path = pos + os.sep.join(['output', 'tables', 'cell_pair_measurements.csv']) 
+path = pos + os.sep.join(['output', 'tables', 'trajectories_pairs.csv']) 
 df_pairs.to_csv(path, index=False)
 print('Done.')
 

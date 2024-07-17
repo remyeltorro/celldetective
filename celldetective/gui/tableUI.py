@@ -236,7 +236,47 @@ class DifferentiateColWidget(QWidget, Styles):
 		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
 
+class AbsColWidget(QWidget, Styles):
 
+	def __init__(self, parent_window, column=None):
+
+		super().__init__()
+		self.parent_window = parent_window
+		self.column = column
+
+		self.setWindowTitle("abs(.)")
+		# Create the QComboBox and add some items
+		center_window(self)
+		
+		layout = QVBoxLayout(self)
+		layout.setContentsMargins(30,30,30,30)
+
+		self.measurements_cb = QComboBox()
+		self.measurements_cb.addItems(list(self.parent_window.data.columns))
+		if self.column is not None:
+			idx = self.measurements_cb.findText(self.column)
+			self.measurements_cb.setCurrentIndex(idx)
+
+		measurement_layout = QHBoxLayout()
+		measurement_layout.addWidget(QLabel('measurements: '), 25)
+		measurement_layout.addWidget(self.measurements_cb, 75)
+		layout.addLayout(measurement_layout)
+
+		self.submit_btn = QPushButton('Compute')
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
+		self.submit_btn.clicked.connect(self.compute_abs_and_add_new_column)
+		layout.addWidget(self.submit_btn, 30)
+
+		self.setAttribute(Qt.WA_DeleteOnClose)
+
+
+	def compute_abs_and_add_new_column(self):
+		
+
+		self.parent_window.data['|'+self.measurements_cb.currentText()+'|'] = self.parent_window.data[self.measurements_cb.currentText()].abs()
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
+		self.close()
 
 class RenameColWidget(QWidget):
 
@@ -275,6 +315,7 @@ class RenameColWidget(QWidget):
 
 
 class TableUI(QMainWindow, Styles):
+
 	def __init__(self, data, title, population='targets',plot_mode="plot_track_signals", *args, **kwargs):
 
 		QMainWindow.__init__(self, *args, **kwargs)
@@ -286,6 +327,9 @@ class TableUI(QMainWindow, Styles):
 		self.plot_mode = plot_mode
 		self.population = population
 		self.numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+		self.groupby_cols = ['position', 'TRACK_ID']
+		if self.population=='pairs':
+			self.groupby_cols = ['position', 'REFERENCE_ID', 'NEIGHBOR_ID', 'reference_population', 'neighbor_population']
 
 		self._createMenuBar()
 		self._createActions()
@@ -353,6 +397,11 @@ class TableUI(QMainWindow, Styles):
 			self.derivative_action.setShortcut("Ctrl+D")
 			self.mathMenu.addAction(self.derivative_action)
 
+			self.abs_action = QAction('&Absolute value...', self)
+			self.abs_action.triggered.connect(self.take_abs_of_selected_feature)
+			#self.derivative_action.setShortcut("Ctrl+D")
+			self.mathMenu.addAction(self.abs_action)			
+
 			self.onehot_action = QAction('&One hot to categorical...', self)
 			self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
 			#self.onehot_action.setShortcut("Ctrl+D")
@@ -407,8 +456,6 @@ class TableUI(QMainWindow, Styles):
 			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.population}.csv']), index=False)
 		print("Done...")
 
-
-
 	def differenciate_selected_feature(self):
 		
 		# check only one col selected and assert is numerical
@@ -425,6 +472,24 @@ class TableUI(QMainWindow, Styles):
 
 		self.diffWidget = DifferentiateColWidget(self, selected_col)
 		self.diffWidget.show()
+
+	def take_abs_of_selected_feature(self):
+		
+		# check only one col selected and assert is numerical
+		# open widget to select window parameters, directionality
+		# create new col
+		
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		if col_idx!=0:
+			cols = np.array(list(self.data.columns))
+			selected_col = str(cols[col_idx][0])
+		else:
+			selected_col = None
+
+		self.absWidget = AbsColWidget(self, selected_col)
+		self.absWidget.show()
+
 
 	def transform_one_hot_cols_to_categorical(self):
 
@@ -766,32 +831,38 @@ class TableUI(QMainWindow, Styles):
 
 	def set_proj_mode(self):
 		
-		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class','cell_type','concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position']
+		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class','cell_type','concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position', 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']
 
 		if self.projection_option.isChecked():
 
 			self.projection_mode = self.projection_op_cb.currentText()
-			op = getattr(self.data.groupby(['position', 'TRACK_ID']), self.projection_mode)
-			group_table = op(self.data.groupby(['position', 'TRACK_ID']))
+			op = getattr(self.data.groupby(self.groupby_cols), self.projection_mode)
+			group_table = op(self.data.groupby(self.groupby_cols))
 
 			for c in self.static_columns:
 				try:
-					group_table[c] = self.data.groupby(['position','TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+					group_table[c] = self.data.groupby(self.groupby_cols)[c].apply(lambda x: x.unique()[0])
 				except Exception as e:
 					print(e)
 					pass
 			
-			for col in ['TRACK_ID']:
-				first_column = group_table.pop(col) 
-				group_table.insert(0, col, first_column)
+			if self.population=='pairs':
+				for col in ['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']:
+					first_column = group_table.pop(col) 
+					group_table.insert(0, col, first_column)				
+			else:
+				for col in ['TRACK_ID']:
+					first_column = group_table.pop(col) 
+					group_table.insert(0, col, first_column)
 			group_table.pop('FRAME')
 
 
 		elif self.event_time_option.isChecked():
+
 			time_of_interest = self.event_times_cb.currentText()
 			self.projection_mode = f"measurements at {time_of_interest}"
 			new_table = []
-			for tid,group in self.data.groupby(['position','TRACK_ID']):
+			for tid,group in self.data.groupby(self.groupby_cols):
 				time = group[time_of_interest].values[0]
 				if time==time:
 					time = floor(time) # floor for onset
@@ -801,16 +872,21 @@ class TableUI(QMainWindow, Styles):
 				values = group.loc[group['FRAME']==time,:].to_numpy()
 				if len(values)>0:
 					values = dict(zip(list(self.data.columns), values[0]))
-					values.update({'TRACK_ID': tid[1]})
-					values.update({'position': tid[0]})
+					for k,c in enumerate(self.groupby_cols):
+						values.update({c: tid[k]})
 					new_table.append(values)
 			
 			group_table = pd.DataFrame(new_table)
-			for col in ['TRACK_ID']:
-				first_column = group_table.pop(col) 
-				group_table.insert(0, col, first_column)
-			
-			group_table = group_table.sort_values(by=['position','TRACK_ID','FRAME'],ignore_index=True)
+			if self.population=='pairs':
+				for col in ['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']:
+					first_column = group_table.pop(col) 
+					group_table.insert(0, col, first_column)				
+			else:
+				for col in ['TRACK_ID']:
+					first_column = group_table.pop(col) 
+					group_table.insert(0, col, first_column)
+				
+			group_table = group_table.sort_values(by=self.groupby_cols+['FRAME'],ignore_index=True)
 			group_table = group_table.reset_index(drop=True)
 
 
@@ -824,12 +900,12 @@ class TableUI(QMainWindow, Styles):
 			df_sections = []
 			for s in unique_statuses:
 				subtab = self.data.loc[self.data[status_of_interest]==s,:]
-				op = getattr(subtab.groupby(['position', 'TRACK_ID']), self.status_operation.currentText())
-				subtab_projected = op(subtab.groupby(['position', 'TRACK_ID']))
-				frame_duration = subtab.groupby(['position','TRACK_ID']).size().to_numpy()
+				op = getattr(subtab.groupby(self.groupby_cols), self.status_operation.currentText())
+				subtab_projected = op(subtab.groupby(self.groupby_cols))
+				frame_duration = subtab.groupby(self.groupby_cols).size().to_numpy()
 				for c in self.static_columns:
 					try:
-						subtab_projected[c] = subtab.groupby(['position', 'TRACK_ID'])[c].apply(lambda x: x.unique()[0])
+						subtab_projected[c] = subtab.groupby(self.groupby_cols)[c].apply(lambda x: x.unique()[0])
 					except Exception as e:
 						print(e)
 						pass
@@ -837,11 +913,18 @@ class TableUI(QMainWindow, Styles):
 				df_sections.append(subtab_projected)
 
 			group_table = pd.concat(df_sections,axis=0,ignore_index=True)
-			for col in ['duration_in_state',status_of_interest,'TRACK_ID']:
-				first_column = group_table.pop(col) 
-				group_table.insert(0, col, first_column)
+
+			if self.population=='pairs':
+				for col in ['duration_in_state',status_of_interest, 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']:
+					first_column = group_table.pop(col) 
+					group_table.insert(0, col, first_column)				
+			else:
+				for col in ['duration_in_state',status_of_interest,'TRACK_ID']:
+					first_column = group_table.pop(col) 
+					group_table.insert(0, col, first_column)
+
 			group_table.pop('FRAME')
-			group_table = group_table.sort_values(by=['position','TRACK_ID',status_of_interest],ignore_index=True)
+			group_table = group_table.sort_values(by=self.groupby_cols + [status_of_interest],ignore_index=True)
 			group_table = group_table.reset_index(drop=True)
 
 
@@ -972,7 +1055,7 @@ class TableUI(QMainWindow, Styles):
 					print(unique_cols[k])
 					for w,well_group in self.data.groupby('well_name'):
 						for pos,pos_group in well_group.groupby('pos_name'):
-							for tid,group_track in pos_group.groupby('TRACK_ID'):
+							for tid,group_track in pos_group.groupby(self.groupby_cols[1:]):
 								ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[k]]],label=column_names[unique_cols[k]])
 					#ax.plot(self.data["FRAME"][row_idx_i], y, label=column_names[unique_cols[k]])
 				ax.legend()
@@ -986,7 +1069,7 @@ class TableUI(QMainWindow, Styles):
 				self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
 				self.scatter_wdw = FigureCanvas(self.fig, title="scatter")
 				self.ax.clear()
-				for tid,group in self.data.groupby('TRACK_ID'):
+				for tid,group in self.data.groupby(self.groupby_cols[1:]):
 					self.ax.plot(group[column_names[unique_cols[0]]], group[column_names[unique_cols[1]]], marker="o")
 				self.ax.set_xlabel(column_names[unique_cols[0]])
 				self.ax.set_ylabel(column_names[unique_cols[1]])
@@ -1009,7 +1092,7 @@ class TableUI(QMainWindow, Styles):
 
 				for w,well_group in self.data.groupby('well_name'):
 					for pos,pos_group in well_group.groupby('pos_name'):
-						for tid,group_track in pos_group.groupby('TRACK_ID'):
+						for tid,group_track in pos_group.groupby(self.groupby_cols[1:]):
 							self.ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
 				self.ax.set_xlabel(r"$t$ [frame]")
 				self.ax.set_ylabel(column_names[unique_cols[0]])

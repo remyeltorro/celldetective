@@ -146,9 +146,13 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 						# 	angle2 += 360
 						# relative_angle2[t] = angle2
 
-				angle = np.arctan2(neighbor_vector[:, 1], neighbor_vector[:, 0])
+				angle = np.zeros(len(full_timeline))
+				angle[:] = np.nan
+
+				exclude = neighbor_vector[:,1]!=neighbor_vector[:,1]
+				angle[~exclude] = np.arctan2(neighbor_vector[:, 1][~exclude], neighbor_vector[:, 0][~exclude])
 				#print(f'Angle before unwrap: {angle}')
-				angle = np.unwrap(angle)
+				angle[~exclude] = np.unwrap(angle[~exclude])
 				#print(f'Angle after unwrap: {angle}')
 				relative_distance = np.sqrt(neighbor_vector[:,0]**2 + neighbor_vector[:, 1]**2)
 				#print(f'Timeline: {full_timeline}; Distance: {relative_distance}')
@@ -156,8 +160,11 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				if compute_velocity:
 					rel_velocity = derivative(relative_distance, full_timeline, **velocity_kwargs)
 					#rel_velocity = np.insert(rel_velocity, 0, np.nan)[:-1]
-
-					angular_velocity = derivative(angle, full_timeline, **velocity_kwargs)
+					
+					angular_velocity = np.zeros(len(full_timeline))
+					angular_velocity[:] = np.nan
+					
+					angular_velocity[~exclude] = derivative(angle[~exclude], full_timeline[~exclude], **velocity_kwargs)
 
 
 				# 	angular_velocity = np.zeros(len(full_timeline))

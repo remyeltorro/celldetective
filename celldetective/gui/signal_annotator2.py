@@ -1341,7 +1341,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 	def locate_relative_tracks(self):
 
 		population = 'relative'
-		self.relative_trajectories_path = self.pos + os.sep.join(['output','tables','cell_pair_measurements.csv'])
+		self.relative_trajectories_path = self.pos + os.sep.join(['output','tables','trajectories_pairs.csv'])
 
 		if not os.path.exists(self.relative_trajectories_path):
 

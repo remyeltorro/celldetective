@@ -73,7 +73,7 @@ class ChannelNormGenerator(QVBoxLayout, Styles):
 			for tab in tables:
 				cols = pd.read_csv(tab, nrows=1).columns.tolist()
 				all_measurements.extend(cols)
-			all_measurements = np.unique(all_measurements)		
+			all_measurements = np.unique(all_measurements)
 
 		if self.mode=='signals':
 			generic_measurements = ['brightfield_channel', 'live_nuclei_channel', 'dead_nuclei_channel', 

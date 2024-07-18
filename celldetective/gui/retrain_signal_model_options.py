@@ -32,7 +32,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 
 	"""
 
-	def __init__(self, parent_window=None):
+	def __init__(self, parent_window=None, mode='single-cells'):
 		
 		super().__init__()
 		self.parent_window = parent_window
@@ -43,7 +43,12 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.soft_path = get_software_location()
 		self.pretrained_model = None 
 		self.dataset_folder = None
-		self.signal_models_dir = self.soft_path+os.sep+os.sep.join(['celldetective','models','signal_detection'])
+		if mode=='single-cells':
+			self.signal_models_dir = self.soft_path+os.sep+os.sep.join(['celldetective','models','signal_detection'])
+		elif mode=='pairs':
+			self.signal_models_dir = self.soft_path+os.sep+os.sep.join(['celldetective','models','pair_signal_detection'])
+			self.mode = 'pairs'
+
 
 		self.onlyFloat = QDoubleValidator()
 		self.onlyInt = QIntValidator()

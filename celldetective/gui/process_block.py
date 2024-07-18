@@ -6,7 +6,6 @@ from fonticon_mdi6 import MDI6
 import gc
 from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 
-#from celldetective.gui.retrain_signal_model_options import ConfigPairSignalModelTraining
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
@@ -1252,10 +1251,11 @@ class NeighPanel(QFrame, Styles):
 	def open_signal_annotator_configuration_ui(self):
 		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
 		self.ConfigSignalAnnotator.show()
-	def open_signal_model_config_ui(self):
 
-		self.ConfigSignalTrain = ConfigPairSignalModelTraining(self)
+	def open_signal_model_config_ui(self):
+		self.ConfigSignalTrain = ConfigSignalModelTraining(self, mode='pairs')
 		self.ConfigSignalTrain.show()
+		
 	def remove_protocol_from_list(self):
 
 		current_item = self.protocol_list.currentRow()

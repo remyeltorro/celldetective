@@ -2562,54 +2562,36 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.normalize_features_btn.click()
 
 		training_set = []
-		cols_relative=self.df_relative.columns
-		relative_filtered=self.df_relative[self.df_relative[f'{self.neighborhood_choice_cb.currentText()}'] == 1]
-		tracks_reference=np.unique(relative_filtered["REFERENCE_ID"].to_numpy())
-		# if self.reference_population=='targets':
-		#     cols_reference= self.df_targets.columns
-		#     tracks_reference = np.unique(self.df_targets["TRACK_ID"].to_numpy())
-		# else:
-		#     cols_reference= self.df_effectors.columns
-		#     tracks_reference = np.unique(self.df_effectors["TRACK_ID"].to_numpy())
-		# if self.neighbor_population=='targets':
-		#     cols_neigh = self.df_targets.columns
-		#     tracks_neigh = np.unique(self.df_targets["TRACK_ID"].to_numpy())
-		# else:
-		#     cols_neigh = self.df_effectors.columns
-		#     tracks_neigh = np.unique(self.df_effectors["TRACK_ID"].to_numpy())
-		if self.reference_population == 'targets':
-			df_ref=self.df_targets
-			cols_ref = self.df_targets.columns
 
-		else:
-			df_ref=self.df_effectors
-			cols_ref = self.df_effectors.columns
-		if self.neighbor_population == 'targets':
-			df_neigh=self.df_targets
-			cols_neigh = self.df_targets.columns
-		else:
-			df_neigh=self.df_effectors
-			cols_neigh = self.df_effectors.columns
-		for track in tracks_reference:
-			# Add all signals at given track
+		pair_filter = (self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull())
+		
+		for pair, group in self.df_relative.loc[pair_filter, :].groupby(['REFERENCE_ID', 'NEIGHBOR_ID']):
+			
+			signals = {}
+			
+			# Pair signals
+			reference_cell = pair[0]; neighbor_cell = pair[1]
+			for col in list(group.columns):
+				signals.update({'pair_'+col: group[col].to_numpy()})
 
-			tracks_neigh = np.unique(relative_filtered.loc[relative_filtered["REFERENCE_ID"]==track,'NEIGHBOR_ID'].to_numpy())
-			for neigh in tracks_neigh:
-				signals = {}
-				for c in cols_relative:
-					signals.update({'relative_'+c: relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), c].to_numpy()})
-				time_of_interest = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"] == neigh), self.pair_time_name].to_numpy()[0]
-				cclass = relative_filtered.loc[(relative_filtered["REFERENCE_ID"] == track)&(relative_filtered["NEIGHBOR_ID"]==neigh), self.pair_class_name].to_numpy()[0]
-				signals.update({"time_of_interest": time_of_interest, "class": cclass})
-				for c in cols_ref:
-					signals.update({'reference_'+c: df_ref.loc[(df_ref["TRACK_ID"] == track), c].to_numpy()})
-				for c in cols_neigh:
-					signals.update({'neighbor_' + c: df_neigh.loc[(df_neigh["TRACK_ID"] == neigh), c].to_numpy()})
+			time_of_interest = group[self.pair_time_name].values[0]
+			cclass = group[self.pair_class_name].values[0]
+			neighborhood_of_interest = self.neighborhood_choice_cb.currentText()
+			signals.update({"time_of_interest": time_of_interest, "class": cclass, "neighborhood_of_interest": neighborhood_of_interest})
 
-			# Here auto add all available channels
-				training_set.append(signals)
+			# Reference signals
+			df_reference = self.dataframes[self.reference_population]
+			reference_filter = df_reference['TRACK_ID']==reference_cell
+			for col in list(df_reference.columns):
+				signals.update({'reference_'+col: df_reference.loc[reference_filter, col].to_numpy()})			
 
-		#print(training_set)
+			# Reference signals
+			df_neighbor = self.dataframes[self.neighbor_population]
+			neighbor_filter = df_neighbor['TRACK_ID']==neighbor_cell
+			for col in list(df_neighbor.columns):
+				signals.update({'neighbor_'+col: df_neighbor.loc[neighbor_filter, col].to_numpy()})	
+
+			training_set.append(signals)
 
 		pathsave = QFileDialog.getSaveFileName(self, "Select file name", self.exp_dir + auto_dataset_name, ".npy")[0]
 		if pathsave != '':
@@ -2620,99 +2602,6 @@ class SignalAnnotator2(QMainWindow,Styles):
 			   print(f'File successfully written in {pathsave}.')
 		   except Exception as e:
 			   print(f"Error {e}...")
-
-	# def update_effector_info(self):
-		
-	# 	# Clear existing labels
-	# 	self.eff_cls.clear()
-	# 	self.eff_tm.clear()
-	# 	#self.eff_prb.clear()
-	# 	self.effector_loc_t=[]
-	# 	self.effector_loc_idx=[]
-	# 	for t in range(len(self.effector_tracks)):
-	# 		indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
-	# 		if len(indices) > 0:
-	# 			self.effector_loc_t.append(t)
-	# 			self.effector_loc_idx.append(indices[0])
-
-	# 	self.effector_previous_color = []
-	# 	for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
-	# 		self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-	# 		self.effector_colors[t][idx] = 'salmon'
-	# 	# Get the selected effector cell
-	# 	self.effector_track_of_interest = float(self.neigh_eff_combo.currentText())
-
-	# 	# Get information for the selected effector cell
-	# 	try:
-	# 		effector_class = self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_class_name].to_numpy()[0]
-	# 	except:
-	# 		effector_class = 0
-	# 	try:
-	# 		effector_time = \
-	# 		self.df_effectors.loc[self.df_effectors['TRACK_ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
-	# 	except:
-	# 		effector_time = \
-	# 		self.df_effectors.loc[self.df_effectors['ID'] == self.effector_track_of_interest, self.effector_time_name].to_numpy()[0]
-
-	# 	# try:
-	# 	#     effector_probability = self.df_relative.loc[
-	# 	#         (self.df_relative['REFERENCE_ID'] == self.target_track_of_interest) & (
-	# 	#                     self.df_relative['NEIGHBOR_ID'] == self.effector_track_of_interest), 'probability'].to_numpy()[0]
-	# 	# except IndexError:
-	# 	#     effector_probability = 0
-
-	# 	# Update labels with new information
-	# 	self.eff_cls.setText(f"class: {effector_class}")
-	# 	self.eff_tm.setText(f"time of interest: {effector_time}")
-	# 	#self.eff_prb.setText(f"probability: {effector_probability}")
-	# 	self.effector_loc_t=[]
-	# 	self.effector_loc_idx=[]
-	# 	for t in range(len(self.effector_tracks)):
-	# 		indices = np.where(self.effector_tracks[t] == self.effector_track_of_interest)[0]
-	# 		if len(indices) > 0:
-	# 			self.effector_loc_t.append(t)
-	# 			self.effector_loc_idx.append(indices[0])
-
-	# 	self.effector_previous_color = []
-	# 	for t, idx in zip(self.effector_loc_t, self.effector_loc_idx):
-	# 		self.effector_previous_color.append(self.effector_colors[t][idx].copy())
-	# 		self.effector_colors[t][idx] = 'magenta'
-
-	# 	self.plot_signals()
-
-
-		# auto_dataset_name = self.pos.split(os.sep)[-4]+'_'+self.pos.split(os.sep)[-2]+'.npy'
-
-		# if self.normalized_signals:
-		# 	self.normalize_features_btn.click()
-
-		# training_set = []
-		# cols = self.df_tracks.columns
-		# tracks = np.unique(self.df_tracks["TRACK_ID"].to_numpy())
-
-		# for track in tracks:
-		# 	# Add all signals at given track
-		# 	signals = {}
-		# 	for c in cols:
-		# 		signals.update({c: self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, c].to_numpy()})
-		# 	time_of_interest = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, self.time_name].to_numpy()[0]
-		# 	cclass = self.df_tracks.loc[self.df_tracks["TRACK_ID"]==track, self.class_name].to_numpy()[0]
-		# 	signals.update({"time_of_interest": time_of_interest,"class": cclass})
-		# 	# Here auto add all available channels
-		# 	training_set.append(signals)
-
-		# print(training_set)
-
-		# pathsave = QFileDialog.getSaveFileName(self, "Select file name", self.exp_dir+auto_dataset_name, ".npy")[0]
-		# if pathsave!='':
-		# 	if not pathsave.endswith(".npy"):
-		# 		pathsave += ".npy"
-		# 	try:
-		# 		np.save(pathsave,training_set)
-		# 		print(f'File successfully written in {pathsave}.')
-		# 	except Exception as e:
-		# 		print(f"Error {e}...")
-
 
 	def normalize_features(self):
 

@@ -530,7 +530,7 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 	"""
 	"""
 
-	model_path = locate_pair_signal_model(model, path=model_path)
+	model_path = locate_pair_signal_model(model, path=model_path, pair=True)
 	print(f'Looking for model in {model_path}...')
 	complete_path = model_path
 	complete_path = rf"{complete_path}"

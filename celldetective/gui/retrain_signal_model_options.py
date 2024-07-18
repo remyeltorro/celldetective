@@ -559,7 +559,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		training_instructions = {'model_name': model_name,'pretrained': pretrained_model, 'channel_option': channels, 'normalization_percentile': normalization_mode,
 		'normalization_clip': clip_values,'normalization_values': norm_values, 'model_signal_length': signal_length,
 		'recompile_pretrained': recompile_op, 'ds': data_folders, 'augmentation_factor': aug_factor, 'validation_split': val_split,
-		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs, 'label': self.class_name_le.text()}
+		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs, 'label': self.class_name_le.text(), 'neighborhood_of_interest': self.neighborhood_choice_cb.currentText(), 'reference_population': self.reference_population, 'neighbor_population': self.neighbor_population}
 
 		model_folder = self.signal_models_dir +os.sep+ model_name + os.sep
 		if not os.path.exists(model_folder):

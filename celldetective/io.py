@@ -1034,9 +1034,12 @@ def get_pair_signal_models_list(return_path=False):
 		return available_models, modelpath
 
 
-def locate_signal_model(name, path=None):
+def locate_signal_model(name, path=None, pairs=False):
+
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], "celldetective"])
 	modelpath = os.sep.join([main_dir, "models", "signal_detection", os.sep])
+	if pairs:
+		modelpath = os.sep.join([main_dir, "models", "pair_signal_detection", os.sep])
 	print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath + f'*{os.sep}')
 	if path is not None:

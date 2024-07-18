@@ -3,11 +3,11 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QIcon
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
 from celldetective.gui.layouts import ChannelNormGenerator
-from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
+from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider, QLabeledSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location
-from celldetective.io import interpret_tracking_configuration, load_frames, locate_signal_dataset, get_signal_datasets_list
+from celldetective.io import interpret_tracking_configuration, load_frames, locate_signal_dataset, get_signal_datasets_list, load_experiment_tables
 from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
 from celldetective.signals import train_signal_model
 import numpy as np
@@ -32,7 +32,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 
 	"""
 
-	def __init__(self, parent_window=None, mode='single-cells'):
+	def __init__(self, parent_window=None, signal_mode='single-cells'):
 		
 		super().__init__()
 		self.parent_window = parent_window
@@ -43,12 +43,13 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.soft_path = get_software_location()
 		self.pretrained_model = None 
 		self.dataset_folder = None
-		if mode=='single-cells':
+		self.signal_mode = signal_mode
+
+		if self.signal_mode=='single-cells':
 			self.signal_models_dir = self.soft_path+os.sep+os.sep.join(['celldetective','models','signal_detection'])
-		elif mode=='pairs':
+		elif self.signal_mode=='pairs':
 			self.signal_models_dir = self.soft_path+os.sep+os.sep.join(['celldetective','models','pair_signal_detection'])
 			self.mode = 'pairs'
-
 
 		self.onlyFloat = QDoubleValidator()
 		self.onlyInt = QIntValidator()
@@ -277,6 +278,14 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		modelname_layout.addWidget(self.modelname_le, 70)
 		layout.addLayout(modelname_layout)
 
+		if self.signal_mode=='pairs':
+			neighborhood_layout = QHBoxLayout()
+			neighborhood_layout.addWidget(QLabel('neighborhood of interest: '), 30)
+			self.neighborhood_choice_cb = QSearchableComboBox()
+			self.fill_available_neighborhoods()
+			neighborhood_layout.addWidget(self.neighborhood_choice_cb, 70)
+			layout.addLayout(neighborhood_layout)			
+
 		classname_layout = QHBoxLayout()
 		classname_layout.addWidget(QLabel('event name: '), 30)
 		self.class_name_le = QLineEdit()
@@ -316,6 +325,10 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.ch_norm = ChannelNormGenerator(self, mode='signals')
 		layout.addLayout(self.ch_norm)
 
+		if self.signal_mode=='pairs':
+			self.neighborhood_choice_cb.currentIndexChanged.connect(self.neighborhood_changed)
+			self.neighborhood_changed()
+
 		model_length_layout = QHBoxLayout()
 		model_length_layout.addWidget(QLabel('Max signal length: '), 30)
 		self.model_length_slider = QLabeledSlider()
@@ -327,6 +340,66 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.model_length_slider.setValue(128)		
 		model_length_layout.addWidget(self.model_length_slider, 70)
 		layout.addLayout(model_length_layout)
+
+	def neighborhood_changed(self):
+
+		self.reference_population = self.reference_populations[self.neighborhood_cols.index(self.neighborhood_choice_cb.currentText())]
+		self.neighbor_population = self.neighbor_populations[self.neighborhood_cols.index(self.neighborhood_choice_cb.currentText())]
+		print(f'{self.reference_population=} {self.neighbor_population=}')
+
+		# reload reference signals / neighbor signals / pair signals
+		# fill the channel cbs
+		self.df_reference = self.dataframes[self.reference_population]
+		self.df_neighbor = self.dataframes[self.neighbor_population]
+		self.df_pairs = load_experiment_tables(self.parent_window.exp_dir, population='pairs', load_pickle=False)
+
+		self.df_reference = self.df_reference.rename(columns=lambda x: 'reference_' + x)
+		self.df_neighbor = self.df_neighbor.rename(columns=lambda x: 'neighbor_' + x)
+		self.df_pairs = self.df_pairs.rename(columns=lambda x: 'pair_' + x)
+
+		self.signals = ['--'] + list(self.df_reference.columns) + list(self.df_neighbor.columns) + list(self.df_pairs.columns)
+		for cb in self.ch_norm.channel_cbs:
+			try:
+				cb.disconnect()
+			except:
+				pass
+			cb.clear()
+			cb.addItems(self.signals)
+
+	def fill_available_neighborhoods(self):
+		
+		df_targets = load_experiment_tables(self.parent_window.exp_dir, population='targets', load_pickle=True)
+		df_effectors = load_experiment_tables(self.parent_window.exp_dir, population='effectors', load_pickle=True)
+
+		self.dataframes = {
+			'targets': df_targets,
+			'effectors': df_effectors,
+		}
+
+		self.neighborhood_cols = []
+		self.reference_populations = []
+		self.neighbor_populations = []
+		if df_targets is not None:
+			self.neighborhood_cols.extend([c for c in list(df_targets.columns) if c.startswith('neighborhood')])
+			self.reference_populations.extend(['targets' for c in list(df_targets.columns) if c.startswith('neighborhood')])
+			for c in list(df_targets.columns):
+				if c.startswith('neighborhood') and '_2_' in c:
+					self.neighbor_populations.append('effectors')
+				elif c.startswith('neighborhood') and 'self' in c:
+					self.neighbor_populations.append('targets')
+		
+		if df_effectors is not None:
+			self.neighborhood_cols.extend([c for c in list(df_effectors.columns) if c.startswith('neighborhood')])
+			self.reference_populations.extend(['effectors' for c in list(df_effectors.columns) if c.startswith('neighborhood')])
+			for c in list(df_effectors.columns):
+				if c.startswith('neighborhood') and '_2_' in c:
+					self.neighbor_populations.append('targets')
+				elif c.startswith('neighborhood') and 'self' in c:
+					self.neighbor_populations.append('effectors')
+
+		print(f"The following neighborhoods were detected: {self.neighborhood_cols=} {self.reference_populations=} {self.neighbor_populations=}")
+
+		self.neighborhood_choice_cb.addItems(self.neighborhood_cols)
 
 	def showDialog_pretrained(self):
 

@@ -1253,7 +1253,7 @@ class NeighPanel(QFrame, Styles):
 		self.ConfigSignalAnnotator.show()
 
 	def open_signal_model_config_ui(self):
-		self.ConfigSignalTrain = ConfigSignalModelTraining(self, mode='pairs')
+		self.ConfigSignalTrain = ConfigSignalModelTraining(self, signal_mode='pairs')
 		self.ConfigSignalTrain.show()
 		
 	def remove_protocol_from_list(self):

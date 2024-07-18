@@ -439,7 +439,7 @@ def get_position_movie_path(pos, prefix=''):
 
 
 def load_experiment_tables(experiment, population='targets', well_option='*', position_option='*',
-						   return_pos_info=False):
+						   return_pos_info=False, load_pickle=False):
 	"""
 	Loads and aggregates data tables for specified wells and positions within an experiment,
 	optionally returning position information alongside the aggregated data table.
@@ -540,7 +540,11 @@ def load_experiment_tables(experiment, population='targets', well_option='*', po
 
 			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
 
-			df_pos, table = get_position_table(pos_path, population=population, return_path=True)
+			if not load_pickle:
+				df_pos, table = get_position_table(pos_path, population=population, return_path=True)
+			else:
+				df_pos, table = get_position_pickle(pos_path, population=population, return_path=True)
+
 			if df_pos is not None:
 			
 				df_pos['position'] = pos_path

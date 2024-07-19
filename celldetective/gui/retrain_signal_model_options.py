@@ -24,6 +24,7 @@ from datetime import datetime
 import pandas as pd
 from functools import partial
 from celldetective.gui import Styles
+from pandas.api.types import is_numeric_dtype
 
 class ConfigSignalModelTraining(QMainWindow, Styles):
 	
@@ -343,9 +344,23 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 
 	def neighborhood_changed(self):
 
-		self.reference_population = self.reference_populations[self.neighborhood_cols.index(self.neighborhood_choice_cb.currentText())]
-		self.neighbor_population = self.neighbor_populations[self.neighborhood_cols.index(self.neighborhood_choice_cb.currentText())]
-		print(f'{self.reference_population=} {self.neighbor_population=}')
+		neigh = self.neighborhood_choice_cb.currentText()
+		self.current_neighborhood = neigh.replace('target_ref_','').replace('effector_ref_','')
+		self.reference_population = ['targets' if 'target' in neigh else 'effectors'][0]
+		if 'target' in neigh:
+			if 'self' in neigh:
+				self.neighbor_population = 'targets'
+			else:
+				self.neighbor_population = 'effectors'
+		else:
+			if 'self' in neigh:
+				self.neighbor_population = 'effectors'
+			else:
+				self.neighbor_population = 'targets'
+		
+		print(f'Current neighborhood: {self.current_neighborhood}')
+		print(f'New reference population: {self.reference_population}')
+		print(f'New neighbor population: {self.neighbor_population}')
 
 		# reload reference signals / neighbor signals / pair signals
 		# fill the channel cbs
@@ -354,15 +369,19 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.df_pairs = load_experiment_tables(self.parent_window.exp_dir, population='pairs', load_pickle=False)
 
 		self.df_reference = self.df_reference.rename(columns=lambda x: 'reference_' + x)
+		num_cols_reference = [c for c in list(self.df_reference.columns) if is_numeric_dtype(self.df_reference[c])]
 		self.df_neighbor = self.df_neighbor.rename(columns=lambda x: 'neighbor_' + x)
+		num_cols_neighbor = [c for c in list(self.df_neighbor.columns) if is_numeric_dtype(self.df_neighbor[c])]
 		self.df_pairs = self.df_pairs.rename(columns=lambda x: 'pair_' + x)
+		num_cols_pairs = [c for c in list(self.df_pairs.columns) if is_numeric_dtype(self.df_pairs[c])]
 
-		self.signals = ['--'] + list(self.df_reference.columns) + list(self.df_neighbor.columns) + list(self.df_pairs.columns)
+		self.signals = ['--'] + num_cols_pairs + num_cols_reference + num_cols_neighbor
+
 		for cb in self.ch_norm.channel_cbs:
-			try:
-				cb.disconnect()
-			except:
-				pass
+			# try:
+			# 	cb.disconnect()
+			# except:
+			# 	pass
 			cb.clear()
 			cb.addItems(self.signals)
 
@@ -380,7 +399,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.reference_populations = []
 		self.neighbor_populations = []
 		if df_targets is not None:
-			self.neighborhood_cols.extend([c for c in list(df_targets.columns) if c.startswith('neighborhood')])
+			self.neighborhood_cols.extend(['target_ref_'+c for c in list(df_targets.columns) if c.startswith('neighborhood')])
 			self.reference_populations.extend(['targets' for c in list(df_targets.columns) if c.startswith('neighborhood')])
 			for c in list(df_targets.columns):
 				if c.startswith('neighborhood') and '_2_' in c:
@@ -389,7 +408,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 					self.neighbor_populations.append('targets')
 		
 		if df_effectors is not None:
-			self.neighborhood_cols.extend([c for c in list(df_effectors.columns) if c.startswith('neighborhood')])
+			self.neighborhood_cols.extend(['effector_ref_'+c for c in list(df_effectors.columns) if c.startswith('neighborhood')])
 			self.reference_populations.extend(['effectors' for c in list(df_effectors.columns) if c.startswith('neighborhood')])
 			for c in list(df_effectors.columns):
 				if c.startswith('neighborhood') and '_2_' in c:
@@ -559,7 +578,7 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		training_instructions = {'model_name': model_name,'pretrained': pretrained_model, 'channel_option': channels, 'normalization_percentile': normalization_mode,
 		'normalization_clip': clip_values,'normalization_values': norm_values, 'model_signal_length': signal_length,
 		'recompile_pretrained': recompile_op, 'ds': data_folders, 'augmentation_factor': aug_factor, 'validation_split': val_split,
-		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs, 'label': self.class_name_le.text(), 'neighborhood_of_interest': self.neighborhood_choice_cb.currentText(), 'reference_population': self.reference_population, 'neighbor_population': self.neighbor_population}
+		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs, 'label': self.class_name_le.text(), 'neighborhood_of_interest': self.current_neighborhood, 'reference_population': self.reference_population, 'neighbor_population': self.neighbor_population}
 
 		model_folder = self.signal_models_dir +os.sep+ model_name + os.sep
 		if not os.path.exists(model_folder):

@@ -9,15 +9,15 @@ from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
-	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list
-from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
+	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list, get_position_pickle, get_position_table
+from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames, locate_signal_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.relative_measurements import rel_measure_at_position
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
 from celldetective.measure import measure_at_position
-from celldetective.signals import analyze_signals_at_position, analyze_pair_signals
+from celldetective.signals import analyze_signals_at_position, analyze_pair_signals, analyze_pair_signals_at_position
 from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
@@ -1284,6 +1284,7 @@ class NeighPanel(QFrame, Styles):
 			self.pair_signal_models_list.setEnabled(True)
 		else:
 			self.pair_signal_models_list.setEnabled(False)
+
 	def process_neighborhood(self):
 
 		if self.parent_window.well_list.currentText()=="*":
@@ -1362,29 +1363,34 @@ class NeighPanel(QFrame, Styles):
 
 				if self.signal_analysis_action.isChecked():
 					
-					df_targets = get_position_pickle(self.pos, population='targets')
-					df_effectors = get_position_pickle(self.pos, population='effectors')
-					self.dataframes = {
-						'targets': df_targets,
-						'effectors': df_effectors,
-					}
+					# df_targets = get_position_pickle(self.pos, population='targets')
+					# df_effectors = get_position_pickle(self.pos, population='effectors')
+					# self.dataframes = {
+					# 	'targets': df_targets,
+					# 	'effectors': df_effectors,
+					# }
 
-					df_pairs = get_position_table(self.pos, population='pairs')
+					# df_pairs = get_position_table(self.pos, population='pairs')
 
-					# Need to identify expected reference / neighbor tables
-					model_path = locate_pair_signal_model(model, path=model_path, pair=True)
-					print(f'Looking for model in {model_path}...')
-					complete_path = model_path
-					complete_path = rf"{complete_path}"
-					model_config_path = os.sep.join([complete_path, 'config_input.json'])
-					model_config_path = rf"{model_config_path}"
+					# # Need to identify expected reference / neighbor tables
+					# model_path = locate_signal_model(self.pair_signal_models_list.currentText(), pairs=True)
+					# print(f'Looking for model in {model_path}...')
+					# complete_path = model_path
+					# complete_path = rf"{complete_path}"
+					# model_config_path = os.sep.join([complete_path, 'config_input.json'])
+					# model_config_path = rf"{model_config_path}"
+					# f = open(model_config_path)
+					# model_config_path = json.load(f)
 
-					reference_population = model_config_path['reference_population']
-					neighbor_population = model_config_path['neighbor_population']
+					# reference_population = model_config_path['reference_population']
+					# neighbor_population = model_config_path['neighbor_population']
 
-					analyze_pair_signals(df_pairs, self.dataframes[reference_population], self.dataframes[neighbor_population], model=self.pair_signal_models_list.currentText())
+					# analyze_pair_signals(df_pairs, self.dataframes[reference_population], self.dataframes[neighbor_population], model=self.pair_signal_models_list.currentText())
+					analyze_pair_signals_at_position(self.pos, self.pair_signal_models_list.currentText(), use_gpu=self.parent_window.parent_window.use_gpu)
 
 		print('Done.')
+
+
 	def check_signals2(self):
 
 		test = self.parent_window.locate_selected_position()

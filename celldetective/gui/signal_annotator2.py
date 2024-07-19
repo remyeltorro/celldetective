@@ -28,6 +28,7 @@ from matplotlib.cm import tab10
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from functools import partial
+from pandas.api.types import is_numeric_dtype
 
 class SignalAnnotator2(QMainWindow,Styles):
 
@@ -97,10 +98,10 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		self.neighborhood_cols = []
 		if self.df_targets is not None:
-			self.neighborhood_cols.extend([c for c in list(self.df_targets.columns) if c.startswith('neighborhood')])
+			self.neighborhood_cols.extend(['target_ref_'+c for c in list(self.df_targets.columns) if c.startswith('neighborhood')])
 		if self.df_effectors is not None:
 			print(self.df_effectors.columns)
-			self.neighborhood_cols.extend([c for c in list(self.df_effectors.columns) if c.startswith('neighborhood')])
+			self.neighborhood_cols.extend(['effector_ref_'+c for c in list(self.df_effectors.columns) if c.startswith('neighborhood')])
 		print(f"The following neighborhoods were detected: {self.neighborhood_cols=}")
 		self.locate_relative_tracks()
 		
@@ -577,7 +578,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.relative_class_choice_cb.removeItem(item_idx)
 
 	def update_cell_events(self):
-		if 'self' in self.neighborhood_choice_cb.currentText():
+		if 'self' in self.current_neighborhood:
 			try:
 				self.neighbor_event_choice_cb.hide()
 				self.neigh_lab.hide()
@@ -684,11 +685,11 @@ class SignalAnnotator2(QMainWindow,Styles):
 				pass
 
 		fill_option = np.where([c.isChecked() for c in self.class_option_rb])[0][0]
-		self.df_relative.loc[(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()),self.relative_class] = fill_option
+		self.df_relative.loc[(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population),self.relative_class] = fill_option
 		if fill_option==0:
-			self.df_relative.loc[(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()),self.relative_time] = 0.1
+			self.df_relative.loc[(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population),self.relative_time] = 0.1
 		else:
-			self.df_relative.loc[(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()),self.relative_time] = -1
+			self.df_relative.loc[(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population),self.relative_time] = -1
 		self.relative_class_choice_cb.disconnect()
 		self.relative_class_choice_cb.clear()
 		cols = np.array(self.df_relative.columns)
@@ -705,6 +706,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.relative_class_choice_cb.setCurrentIndex(idx)
 
 		self.pair_class_name = self.relative_class
+
 		self.pair_time_name = self.relative_time
 		self.pair_status_name = self.relative_status
 
@@ -843,6 +845,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 	def compute_status_and_colors_pair(self):
 
 		self.pair_class_name = self.relative_class_choice_cb.currentText()
+		print(f'{self.pair_class_name=}')
+
 		self.pair_expected_status = 'status'
 		suffix = self.pair_class_name.replace('class','').replace('_','',1)
 		if suffix!='':
@@ -1033,7 +1037,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		elif self.suppr_btn.isChecked():
 			cclass = 42
 
-		pair_filter = (self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull())
+		pair_filter = (self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull())
 
 		self.df_relative.loc[pair_filter, self.pair_class_name] = cclass
 		self.df_relative.loc[pair_filter, self.pair_time_name] = t0
@@ -1400,12 +1404,15 @@ class SignalAnnotator2(QMainWindow,Styles):
 	def set_reference_and_neighbor_populations(self):
 
 		neigh = self.neighborhood_choice_cb.currentText()
-		self.reference_population = self.df_relative.loc[~self.df_relative['status_'+neigh].isnull(), 'reference_population'].values[0]
-		self.neighbor_population = self.df_relative.loc[~self.df_relative['status_'+neigh].isnull(), 'neighbor_population'].values[0]
+		self.current_neighborhood = neigh.replace('target_ref_','').replace('effector_ref_','')
+		self.reference_population = ['targets' if 'target' in neigh else 'effectors'][0]
+		self.neighbor_population = self.df_relative.loc[(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population), 'neighbor_population'].values[0]
+		
+		print(f'Current neighborhood: {self.current_neighborhood}')
 		print(f'New reference population: {self.reference_population}')
 		print(f'New neighbor population: {self.neighbor_population}')
 
-		idx = self.relative_class_choice_cb.findText('class_'+neigh)
+		idx = self.relative_class_choice_cb.findText('class_'+self.current_neighborhood)
 		if idx is not None:
 			self.relative_class_choice_cb.setCurrentIndex(idx)
 
@@ -1436,7 +1443,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 	def make_relative_status_column(self):
 
-		pair_filter = self.df_relative.loc[~(self.df_relative['status_'+f'{self.neighborhood_choice_cb.currentText()}'].isnull()), :]
+		pair_filter = self.df_relative.loc[~(self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population), :]
 		
 		for tid, group in pair_filter.groupby(['REFERENCE_ID','NEIGHBOR_ID','reference_population','neighbor_population']):
 
@@ -1656,11 +1663,11 @@ class SignalAnnotator2(QMainWindow,Styles):
 		for t in np.arange(self.len_movie):
 
 			# Append frame_positions to self.line_positions
-			self.lines_tracks.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), ['REFERENCE_ID', 'NEIGHBOR_ID']].to_numpy())
-			self.initial_lines_colors_status.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), ['REFERENCE_ID', 'NEIGHBOR_ID','status_color']].to_numpy())
-			self.lines_colors_status.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), ['REFERENCE_ID', 'NEIGHBOR_ID','status_color']].to_numpy())
-			self.initial_lines_colors_class.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), ['REFERENCE_ID', 'NEIGHBOR_ID','class_color']].to_numpy())
-			self.lines_colors_class.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), ['REFERENCE_ID', 'NEIGHBOR_ID','class_color']].to_numpy())
+			self.lines_tracks.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population), ['REFERENCE_ID', 'NEIGHBOR_ID']].to_numpy())
+			self.initial_lines_colors_status.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population), ['REFERENCE_ID', 'NEIGHBOR_ID','status_color']].to_numpy())
+			self.lines_colors_status.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population), ['REFERENCE_ID', 'NEIGHBOR_ID','status_color']].to_numpy())
+			self.initial_lines_colors_class.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population), ['REFERENCE_ID', 'NEIGHBOR_ID','class_color']].to_numpy())
+			self.lines_colors_class.append(self.df_relative.loc[(self.df_relative['FRAME'] == t)&(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population), ['REFERENCE_ID', 'NEIGHBOR_ID','class_color']].to_numpy())
 
 	def extract_scatter_from_target_trajectories(self):
 
@@ -1792,12 +1799,12 @@ class SignalAnnotator2(QMainWindow,Styles):
 		print(f'Load stack of shape: {self.stack.shape}.')
 
 	def neighborhood_changed(self):
-
+		
+		self.cancel_selection()
 		self.set_reference_and_neighbor_populations()
 		# Update reference classes and neighbor classes
 		self.fill_class_cbs()
 
-		self.cancel_selection()
 		self.update_cell_events()
 		self.extract_scatter_from_lines()
 		# self.draw_frame(self.framedata)
@@ -2107,7 +2114,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 				self.line_connections[(self.reference_x[t], neigh_x, self.reference_y[t], neigh_y)]=[(self.reference_track_of_interest, neigh)]
 
 				self.neighbor_previous_color.append(colors[t][idx].copy())
-				colors[t][idx] = 'salmon'
+				#colors[t][idx] = 'salmon'
 
 			# for t in range(len(colors)):
 			# 	for idx in range(len(colors[t])):
@@ -2156,7 +2163,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 	def get_neighbors_of_selected_cell(self, selected_cell):
 		
-		self.neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == selected_cell)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()),'NEIGHBOR_ID']
+		self.neighbors = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == selected_cell)&(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population),'NEIGHBOR_ID']
 		self.neighbors = np.unique(self.neighbors)
 		# if len(self.neighbors)>0:
 		# 	first_neighbor = np.min(self.neighbors)
@@ -2205,9 +2212,9 @@ class SignalAnnotator2(QMainWindow,Styles):
 			a.show()
 		
 		cclass = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&
-								  (self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+f'{self.neighborhood_choice_cb.currentText()}'].isnull()), self.pair_class_name].to_numpy()[0]
+								  (self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), self.pair_class_name].to_numpy()[0]
 		t0 = self.df_relative.loc[(self.df_relative['REFERENCE_ID'] == self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&
-								  (self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+f'{self.neighborhood_choice_cb.currentText()}'].isnull()), self.pair_time_name].to_numpy()[0]
+								  (self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), self.pair_time_name].to_numpy()[0]
 
 		if cclass == 0:
 			self.event_btn.setChecked(True)
@@ -2423,8 +2430,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 			pair_selected = f"(reference/neighbor) pair: ({self.reference_track_of_interest},{self.neighbor_track_of_interest})\n"
 			pair_populations = f"populations: ({self.reference_population}, {self.neighbor_population})\n"
 			current_class = self.relative_class_choice_cb.currentText()
-			pair_class = f"interaction event class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), current_class].values[0]}\n"
-			pair_time = f"time of interest: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull()), self.pair_time_name].values[0]}\n"
+			pair_class = f"interaction event class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), current_class].values[0]}\n"
+			pair_time = f"time of interest: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), self.pair_time_name].values[0]}\n"
 			self.pair_info.setText(pair_selected+pair_populations+pair_class+pair_time)
 		else:
 			pair_selected = f"(reference/neighbor) pair: None\n"
@@ -2563,33 +2570,35 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		training_set = []
 
-		pair_filter = (self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.neighborhood_choice_cb.currentText()].isnull())
+		pair_filter = (self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull())
 		
 		for pair, group in self.df_relative.loc[pair_filter, :].groupby(['REFERENCE_ID', 'NEIGHBOR_ID']):
 			
 			signals = {}
+
+			time_of_interest = group[self.pair_time_name].values[0]
+			cclass = group[self.pair_class_name].values[0]
+			signals.update({"time_of_interest": time_of_interest, "class": cclass, "neighborhood_of_interest": self.current_neighborhood, 'reference_population': self.reference_population, 'neighbor_population': self.neighbor_population})
 			
 			# Pair signals
 			reference_cell = pair[0]; neighbor_cell = pair[1]
 			for col in list(group.columns):
-				signals.update({'pair_'+col: group[col].to_numpy()})
-
-			time_of_interest = group[self.pair_time_name].values[0]
-			cclass = group[self.pair_class_name].values[0]
-			neighborhood_of_interest = self.neighborhood_choice_cb.currentText()
-			signals.update({"time_of_interest": time_of_interest, "class": cclass, "neighborhood_of_interest": neighborhood_of_interest})
+				if is_numeric_dtype(group[col]):
+					signals.update({'pair_'+col: group[col].to_numpy()})
 
 			# Reference signals
 			df_reference = self.dataframes[self.reference_population]
 			reference_filter = df_reference['TRACK_ID']==reference_cell
 			for col in list(df_reference.columns):
-				signals.update({'reference_'+col: df_reference.loc[reference_filter, col].to_numpy()})			
+				if not col.startswith('neighborhood') and is_numeric_dtype(df_reference.loc[reference_filter, col]):
+					signals.update({'reference_'+col: df_reference.loc[reference_filter, col].to_numpy()})			
 
 			# Reference signals
 			df_neighbor = self.dataframes[self.neighbor_population]
 			neighbor_filter = df_neighbor['TRACK_ID']==neighbor_cell
 			for col in list(df_neighbor.columns):
-				signals.update({'neighbor_'+col: df_neighbor.loc[neighbor_filter, col].to_numpy()})	
+				if not col.startswith('neighborhood') and is_numeric_dtype(df_neighbor.loc[neighbor_filter, col]):
+					signals.update({'neighbor_'+col: df_neighbor.loc[neighbor_filter, col].to_numpy()})	
 
 			training_set.append(signals)
 

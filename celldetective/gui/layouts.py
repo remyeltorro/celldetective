@@ -245,13 +245,14 @@ class ChannelNormGenerator(QVBoxLayout, Styles):
 
 	def check_valid_channels(self):
 
-		if np.all([cb.currentText()=='--' for cb in self.channel_cbs]):
-			self.parent_window.submit_btn.setEnabled(False)
+		if hasattr(self.parent_window, "submit_btn"):
+			if np.all([cb.currentText()=='--' for cb in self.channel_cbs]):
+				self.parent_window.submit_btn.setEnabled(False)
 
 		if hasattr(self.parent_window, "spatial_calib_le"):
 			if self.parent_window.spatial_calib_le.text()!='--':
 				self.parent_window.submit_btn.setEnabled(True)
-		else:
+		elif hasattr(self.parent_window, "submit_btn"):
 			self.parent_window.submit_btn.setEnabled(True)
 
 

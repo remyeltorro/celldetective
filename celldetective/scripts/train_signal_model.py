@@ -12,6 +12,7 @@ import numpy as np
 import gc
 from art import tprint
 from celldetective.signals import SignalDetectionModel
+from celldetective.io import locate_signal_model
 
 tprint("Train")
 

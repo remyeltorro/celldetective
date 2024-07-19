@@ -18,7 +18,7 @@ from sklearn.metrics import jaccard_score, balanced_accuracy_score, precision_sc
 from scipy.interpolate import interp1d
 from scipy.ndimage import shift
 
-from celldetective.io import get_signal_models_list, locate_signal_model, locate_pair_signal_model
+from celldetective.io import get_signal_models_list, locate_signal_model, get_position_pickle, get_position_table
 from celldetective.tracking import clean_trajectories, interpolate_nan_properties
 from celldetective.utils import regression_plot, train_test_split, compute_weights
 import matplotlib.pyplot as plt
@@ -32,6 +32,7 @@ from scipy.optimize import curve_fit
 import time
 import math
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
@@ -334,6 +335,46 @@ def analyze_signals_at_position(pos, model, mode, use_gpu=True, return_table=Fal
 	else:
 		return None		
 
+def analyze_pair_signals_at_position(pos, model, use_gpu=True):
+	
+	"""
+
+	"""
+
+	pos = pos.replace('\\','/')
+	pos = rf"{pos}"
+	assert os.path.exists(pos),f'Position {pos} is not a valid path.'
+	if not pos.endswith('/'):
+		pos += '/'
+					
+	df_targets = get_position_pickle(pos, population='targets')
+	df_effectors = get_position_pickle(pos, population='effectors')
+	dataframes = {
+		'targets': df_targets,
+		'effectors': df_effectors,
+	}
+	df_pairs = get_position_table(pos, population='pairs')
+
+	# Need to identify expected reference / neighbor tables
+	model_path = locate_signal_model(model, pairs=True)
+	print(f'Looking for model in {model_path}...')
+	complete_path = model_path
+	complete_path = rf"{complete_path}"
+	model_config_path = os.sep.join([complete_path, 'config_input.json'])
+	model_config_path = rf"{model_config_path}"
+	f = open(model_config_path)
+	model_config_path = json.load(f)
+
+	reference_population = model_config_path['reference_population']
+	neighbor_population = model_config_path['neighbor_population']
+
+	df = analyze_pair_signals(df_pairs, dataframes[reference_population], dataframes[neighbor_population], model=model)
+	
+	table = pos + os.sep.join(["output","tables",f"trajectories_pairs.csv"])
+	df.to_csv(table)
+
+	return None		
+
 
 def analyze_signals(trajectories, model, interpolate_na=True,
                     selected_signals=None,
@@ -526,11 +567,11 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 
 
 def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_neighbors, model, interpolate_na=True, selected_signals=None,
-						model_path=None, plot_outcome=False, output_dir=None):
+						model_path=None, plot_outcome=False, output_dir=None, column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
 	"""
 	"""
 
-	model_path = locate_pair_signal_model(model, path=model_path, pair=True)
+	model_path = locate_signal_model(model, path=model_path, pairs=True)
 	print(f'Looking for model in {model_path}...')
 	complete_path = model_path
 	complete_path = rf"{complete_path}"
@@ -540,10 +581,20 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 	assert os.path.exists(model_config_path), f'Model configuration could not be located in folder {model_path}... Abort.'
 
 	trajectories_pairs = trajectories_pairs.rename(columns=lambda x: 'pair_' + x)
-	trajectories_reference = trajectories_pairs.rename(columns=lambda x: 'reference_' + x)
-	trajectories_neighbors = trajectories_pairs.rename(columns=lambda x: 'neighbor_' + x)
+	trajectories_reference = trajectories_reference.rename(columns=lambda x: 'reference_' + x)
+	trajectories_neighbors = trajectories_neighbors.rename(columns=lambda x: 'neighbor_' + x)
 
-	available_signals = list(trajectories_pairs.columns) + list(trajectories_reference.columns) + list(trajectories_neighbors.columns)
+	available_signals = [] #list(trajectories_pairs.columns) + list(trajectories_reference.columns) + list(trajectories_neighbors.columns)
+	for col in list(trajectories_pairs.columns):
+		if is_numeric_dtype(trajectories_pairs[col]):
+			available_signals.append(col)
+	for col in list(trajectories_reference.columns):
+		if is_numeric_dtype(trajectories_reference[col]):
+			available_signals.append(col)
+	for col in list(trajectories_neighbors.columns):
+		if is_numeric_dtype(trajectories_neighbors[col]):
+			available_signals.append(col)		
+
 	print('The available signals are : ', available_signals)
 
 	f = open(model_config_path)
@@ -581,17 +632,17 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 		assert len(selected_signals)==len(required_signals),f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
 
 	print(f'The following channels will be passed to the model: {selected_signals}')
-	trajectories_reference_clean = clean_trajectories(trajectories_reference, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': 'reference_TRACK_ID'}))
-	trajectories_neighbors_clean = clean_trajectories(trajectories_neighbors, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': 'neighbor_TRACK_ID'}))
+	trajectories_reference_clean = trajectories_reference #clean_trajectories(trajectories_reference, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': 'reference_TRACK_ID'}))
+	trajectories_neighbors_clean = trajectories_neighbors #clean_trajectories(trajectories_neighbors, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': 'neighbor_TRACK_ID'}))
 	# FIND WAY TO DO THAT
 	#trajectories_pairs_clean = clean_trajectories(trajectories_pairs, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': ['REFERENCE_ID', 'NEIGHBOR_ID']}))
 	
-	max_signal_size = int(trajectories_clean[trajectories_pairs['pair_FRAME']].max()) + 2
+	max_signal_size = int(trajectories_pairs['pair_FRAME'].max()) + 2
 	pair_tracks =  trajectories_pairs.groupby(['pair_REFERENCE_ID','pair_NEIGHBOR_ID']).size()
 	signals = np.zeros((len(pair_tracks),max_signal_size, len(selected_signals)))
 	print(f'{max_signal_size=} {len(pair_tracks)=} {signals.shape=}')
 	
-	for k,(pair,group) in enumerate(trajectories_pairs.groupby(['pair_REFERENCE_ID', 'pair_NEIGHBOR_ID'])):
+	for i,(pair,group) in enumerate(trajectories_pairs.groupby(['pair_REFERENCE_ID', 'pair_NEIGHBOR_ID'])):
 		
 		reference_cell = pair[0]; neighbor_cell = pair[1]
 		reference_filter = trajectories_reference_clean['reference_TRACK_ID']==reference_cell
@@ -641,7 +692,7 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 		indices = group.index
 		t0 = group[time_col].to_numpy()[0]
 		cclass = group[class_col].to_numpy()[0]
-		timeline = group[column_labels['time']].to_numpy()
+		timeline = group['pair_FRAME'].to_numpy()
 		status = np.zeros_like(timeline)
 		if t0 > 0:
 			status[timeline>=t0] = 1.
@@ -661,7 +712,7 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 	trajectories_reference = trajectories_pairs.rename(columns=lambda x: x.replace('reference_',''))
 	trajectories_neighbors = trajectories_pairs.rename(columns=lambda x: x.replace('neighbor_',''))
 
-	# # return trajectories
+	return trajectories_pairs
 
 class SignalDetectionModel(object):
 

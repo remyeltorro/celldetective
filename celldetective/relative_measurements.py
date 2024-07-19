@@ -159,13 +159,16 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 
 				if compute_velocity:
 					rel_velocity = derivative(relative_distance, full_timeline, **velocity_kwargs)
+					rel_velocity_long_timescale = derivative(relative_distance, full_timeline, window = 7, mode='bi')
 					#rel_velocity = np.insert(rel_velocity, 0, np.nan)[:-1]
 					
 					angular_velocity = np.zeros(len(full_timeline))
 					angular_velocity[:] = np.nan
-					
-					angular_velocity[~exclude] = derivative(angle[~exclude], full_timeline[~exclude], **velocity_kwargs)
+					angular_velocity_long_timescale = np.zeros(len(full_timeline))
+					angular_velocity_long_timescale[:] = np.nan
 
+					angular_velocity[~exclude] = derivative(angle[~exclude], full_timeline[~exclude], **velocity_kwargs)
+					angular_velocity_long_timescale[~exclude] = derivative(angle[~exclude], full_timeline[~exclude], window = 7, mode='bi')
 
 				# 	angular_velocity = np.zeros(len(full_timeline))
 				# 	angular_velocity[:] = np.nan
@@ -195,10 +198,12 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									'reference_population': reference_population,
 									'neighbor_population': neighbor_population,
 									'FRAME': t, 'distance': relative_distance[t],
-									'velocity': rel_velocity[t], 
+									'velocity': rel_velocity[t],
+									'velocity_smooth': rel_velocity_long_timescale[t], 
 									'angle': angle[t] * 180 / np.pi,
 									#'angle-neigh-ref': angle[t] * 180 / np.pi, 
 									'angular_velocity': angular_velocity[t],
+									'angular_velocity_smooth': angular_velocity_long_timescale[t],
 									f'status_{neighborhood_description}': 1,
 									f'residence_time_in_{neighborhood_description}': cum_sum,
 									f'class_{neighborhood_description}': 0,
@@ -211,9 +216,11 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									'neighbor_population': neighbor_population,
 									'FRAME': t, 'distance': relative_distance[t],
 									'velocity': rel_velocity[t], 
+									'velocity_smooth': rel_velocity_long_timescale[t],
 									'angle': angle[t] * 180 / np.pi,
 									#'angle-neigh-ref': angle[t] * 180 / np.pi, 
 									'angular_velocity': angular_velocity[t],
+									'angular_velocity_smooth': angular_velocity_long_timescale[t],
 									f'status_{neighborhood_description}': 0,
 									f'residence_time_in_{neighborhood_description}': cum_sum,
 									f'class_{neighborhood_description}': 0,

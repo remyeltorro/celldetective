@@ -213,5 +213,8 @@ print(f"napari data successfully saved in {pos+os.sep.join(['output', 'tables'])
 trajectories.to_csv(pos+os.sep.join(['output', 'tables', table_name]), index=False)
 print(f"Table {table_name} successfully saved in {os.sep.join(['output', 'tables'])}")
 
+if os.path.exists(pos+os.sep.join(['output', 'tables', table_name.replace('.csv','.pkl')])):
+	os.remove(pos+os.sep.join(['output', 'tables', table_name.replace('.csv','.pkl')]))
+
 del trajectories; del napari_data;
 gc.collect()

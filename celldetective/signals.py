@@ -371,7 +371,7 @@ def analyze_pair_signals_at_position(pos, model, use_gpu=True):
 	df = analyze_pair_signals(df_pairs, dataframes[reference_population], dataframes[neighbor_population], model=model)
 	
 	table = pos + os.sep.join(["output","tables",f"trajectories_pairs.csv"])
-	df.to_csv(table)
+	df.to_csv(table, index=False)
 
 	return None		
 
@@ -584,6 +584,21 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 	trajectories_reference = trajectories_reference.rename(columns=lambda x: 'reference_' + x)
 	trajectories_neighbors = trajectories_neighbors.rename(columns=lambda x: 'neighbor_' + x)
 
+	if 'pair_position' in list(trajectories_pairs.columns):
+		pair_groupby_cols = ['pair_position', 'pair_REFERENCE_ID', 'pair_NEIGHBOR_ID']
+	else:
+		pair_groupby_cols = ['pair_REFERENCE_ID', 'pair_NEIGHBOR_ID']
+
+	if 'reference_position' in list(trajectories_reference.columns):
+		reference_groupby_cols = ['reference_position', 'reference_TRACK_ID']
+	else:
+		reference_groupby_cols = ['reference_TRACK_ID']
+
+	if 'neighbor_position' in list(trajectories_neighbors.columns):
+		neighbor_groupby_cols = ['neighbor_position', 'neighbor_TRACK_ID']
+	else:
+		neighbor_groupby_cols = ['neighbor_TRACK_ID']
+
 	available_signals = [] #list(trajectories_pairs.columns) + list(trajectories_reference.columns) + list(trajectories_neighbors.columns)
 	for col in list(trajectories_pairs.columns):
 		if is_numeric_dtype(trajectories_pairs[col]):
@@ -632,21 +647,32 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 		assert len(selected_signals)==len(required_signals),f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
 
 	print(f'The following channels will be passed to the model: {selected_signals}')
-	trajectories_reference_clean = trajectories_reference #clean_trajectories(trajectories_reference, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': 'reference_TRACK_ID'}))
-	trajectories_neighbors_clean = trajectories_neighbors #clean_trajectories(trajectories_neighbors, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': 'neighbor_TRACK_ID'}))
-	# FIND WAY TO DO THAT
-	#trajectories_pairs_clean = clean_trajectories(trajectories_pairs, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels.update({'track': ['REFERENCE_ID', 'NEIGHBOR_ID']}))
+	trajectories_reference_clean = interpolate_nan_properties(trajectories_reference, track_label=reference_groupby_cols)
+	trajectories_neighbors_clean = interpolate_nan_properties(trajectories_neighbors, track_label=neighbor_groupby_cols)
+	trajectories_pairs_clean = interpolate_nan_properties(trajectories_pairs, track_label=pair_groupby_cols)
+	print(f'{trajectories_pairs_clean.columns=}')
 	
-	max_signal_size = int(trajectories_pairs['pair_FRAME'].max()) + 2
-	pair_tracks =  trajectories_pairs.groupby(['pair_REFERENCE_ID','pair_NEIGHBOR_ID']).size()
+	max_signal_size = int(trajectories_pairs_clean['pair_FRAME'].max()) + 2
+	pair_tracks =  trajectories_pairs_clean.groupby(pair_groupby_cols).size()
 	signals = np.zeros((len(pair_tracks),max_signal_size, len(selected_signals)))
 	print(f'{max_signal_size=} {len(pair_tracks)=} {signals.shape=}')
 	
-	for i,(pair,group) in enumerate(trajectories_pairs.groupby(['pair_REFERENCE_ID', 'pair_NEIGHBOR_ID'])):
-		
-		reference_cell = pair[0]; neighbor_cell = pair[1]
-		reference_filter = trajectories_reference_clean['reference_TRACK_ID']==reference_cell
-		neighbor_filter = trajectories_neighbors_clean['neighbor_TRACK_ID']==neighbor_cell
+	for i,(pair,group) in enumerate(trajectories_pairs_clean.groupby(pair_groupby_cols)):
+
+		if 'pair_position' not in list(trajectories_pairs_clean.columns):
+			pos_mode = False
+			reference_cell = pair[0]; neighbor_cell = pair[1]
+		else:
+			pos_mode = True
+			reference_cell = pair[1]; neighbor_cell = pair[2]; pos = pair[0]
+
+		if pos_mode and 'reference_position' in list(trajectories_reference_clean.columns) and 'neighbor_position' in list(trajectories_neighbors_clean.columns):
+			reference_filter = (trajectories_reference_clean['reference_TRACK_ID']==reference_cell)&(trajectories_reference_clean['reference_position']==pos)
+			neighbor_filter = (trajectories_neighbors_clean['neighbor_TRACK_ID']==neighbor_cell)&(trajectories_neighbors_clean['neighbor_position']==pos)
+		else:
+			reference_filter = trajectories_reference_clean['reference_TRACK_ID']==reference_cell
+			neighbor_filter = trajectories_neighbors_clean['neighbor_TRACK_ID']==neighbor_cell
+
 		pair_frames = group['pair_FRAME'].to_numpy().astype(int)
 
 		for j,col in enumerate(selected_signals):
@@ -670,48 +696,33 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 	print('signal shape: ', signals.shape)
 
 	classes = model.predict_class(signals)
+	print(f'{classes=}')
 	times_recast = model.predict_time_of_interest(signals)
 
 	if label is None:
-		class_col = 'class'
-		time_col = 't0'
-		status_col = 'status'
+		class_col = 'pair_class'
+		time_col = 'pair_t0'
+		status_col = 'pair_status'
 	else:
-		class_col = 'class_'+label
-		time_col = 't_'+label
-		status_col = 'status_'+label
+		class_col = 'pair_class_'+label
+		time_col = 'pair_t_'+label
+		status_col = 'pair_status_'+label
 
-	for i,(pair,group) in enumerate(trajectories_pairs.groupby(['pair_REFERENCE_ID', 'pair_NEIGHBOR_ID'])):
+	for i,(pair,group) in enumerate(trajectories_pairs.groupby(pair_groupby_cols)):
 		indices = group.index
 		trajectories_pairs.loc[indices,class_col] = classes[i]
 		trajectories_pairs.loc[indices,time_col] = times_recast[i]
 	print('Done.')
 
-	for i,(pair,group) in enumerate(trajectories_pairs.groupby(['pair_REFERENCE_ID', 'pair_NEIGHBOR_ID'])):
-		
-		indices = group.index
-		t0 = group[time_col].to_numpy()[0]
-		cclass = group[class_col].to_numpy()[0]
-		timeline = group['pair_FRAME'].to_numpy()
-		status = np.zeros_like(timeline)
-		if t0 > 0:
-			status[timeline>=t0] = 1.
-		if cclass==2:
-			status[:] = 2
-		if cclass>2:
-			status[:] = 42
-		status_color = [color_from_status(s) for s in status]
-		class_color = [color_from_class(cclass) for i in range(len(status))]
-
-		trajectories_pairs.loc[indices, status_col] = status
-		trajectories_pairs.loc[indices, 'status_color'] = status_color
-		trajectories_pairs.loc[indices, 'class_color'] = class_color
-
 	# At the end rename cols again
 	trajectories_pairs = trajectories_pairs.rename(columns=lambda x: x.replace('pair_',''))
 	trajectories_reference = trajectories_pairs.rename(columns=lambda x: x.replace('reference_',''))
 	trajectories_neighbors = trajectories_pairs.rename(columns=lambda x: x.replace('neighbor_',''))
+	invalid_cols = [c for c in list(trajectories_pairs.columns) if c.startswith('Unnamed')]
+	trajectories_pairs = trajectories_pairs.drop(columns=invalid_cols)
 
+	print(trajectories_pairs.columns)
+	
 	return trajectories_pairs
 
 class SignalDetectionModel(object):

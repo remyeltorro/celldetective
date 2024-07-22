@@ -106,17 +106,22 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				neighbor_vector = np.zeros((len(full_timeline), 2))
 				neighbor_vector[:,:] = np.nan
 
-				# relative_distance_xy1 = np.zeros((len(full_timeline), 2))
-				# relative_distance_xy1[:, :] = np.nan
+				centre_of_mass_columns = [(c,c.replace('POSITION_X','POSITION_Y')) for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_Y')]
+				centre_of_mass_labels = [c.replace('_centre_of_mass_POSITION_Y','') for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_Y')]
+				print(f'{centre_of_mass_columns=} {centre_of_mass_labels=}')
 
-				# relative_angle1 = np.zeros(len(full_timeline))
-				# relative_angle1[:] = np.nan
+				mass_displacement_vector = np.zeros((len(centre_of_mass_columns), len(full_timeline), 2))
+				mass_displacement_vector[:,:,:] = np.nan
 
-				# relative_distance_xy2 = np.zeros((len(full_timeline), 2))
-				# relative_distance_xy2[:, :] = np.nan
+				dot_product_vector = np.zeros((len(centre_of_mass_columns), len(full_timeline)))
+				dot_product_vector[:,:] = np.nan
 
-				# relative_angle2 = np.zeros(len(full_timeline))
-				# relative_angle2[:] = np.nan
+				cosine_dot_vector = np.zeros((len(centre_of_mass_columns), len(full_timeline)))
+				cosine_dot_vector[:,:] = np.nan
+
+				coords_centre_of_mass = []
+				for col in centre_of_mass_columns:
+					coords_centre_of_mass.append(group_neigh[[col[0],col[1]]].to_numpy())
 
 				# Relative distance
 				for t in range(len(full_timeline)):
@@ -129,22 +134,15 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 						neighbor_vector[t, 0] = coords_neighbor[idx_neighbor, 0] - coords_reference[idx_reference, 0]
 						neighbor_vector[t, 1] = coords_neighbor[idx_neighbor, 1] - coords_reference[idx_reference, 1]
 
-						# relative_distance_xy1[t, 0] = coords_reference[idx_reference, 0] - coords_neighbor[idx_neighbor, 0]
-						# relative_distance_xy1[t, 1] = coords_reference[idx_reference, 1] - coords_neighbor[idx_neighbor, 1]
-						# relative_distance[t] = np.sqrt((relative_distance_xy1[t, 0])** 2 + (relative_distance_xy1[t, 1])** 2)
+						for z,cols in enumerate(centre_of_mass_columns):
 
-						# # TO CHECK CAREFULLY
-						# angle1 = np.arctan2(relative_distance_xy1[t, 1], relative_distance_xy1[t, 0]) * 180 / np.pi
-						# if angle1 < 0:
-						# 	angle1 += 360
-						# relative_angle1[t] = angle1
+							mass_displacement_vector[z,t,0] = coords_centre_of_mass[z][idx_neighbor, 0] - coords_neighbor[idx_neighbor, 0]
+							mass_displacement_vector[z,t,1] = coords_centre_of_mass[z][idx_neighbor, 1] - coords_neighbor[idx_neighbor, 1]
 
-						# relative_distance_xy2[t, 0] = coords_neighbor[idx_neighbor, 0] - coords_reference[idx_reference, 0]
-						# relative_distance_xy2[t, 1] = coords_neighbor[idx_neighbor, 1] - coords_reference[idx_reference, 1]
-						# angle2 = np.arctan2(relative_distance_xy2[t, 1], relative_distance_xy2[t, 0]) * 180 / np.pi
-						# if angle2 < 0:
-						# 	angle2 += 360
-						# relative_angle2[t] = angle2
+							dot_product_vector[z,t] = np.dot(mass_displacement_vector[z,t], -neighbor_vector[t])
+							cosine_dot_vector[z,t] = np.dot(mass_displacement_vector[z,t], -neighbor_vector[t]) / (np.linalg.norm(mass_displacement_vector[z,t])*np.linalg.norm(-neighbor_vector[t]))
+
+				print(f'{mass_displacement_vector=} {dot_product_vector=} {cosine_dot_vector=}')
 
 				angle = np.zeros(len(full_timeline))
 				angle[:] = np.nan
@@ -209,6 +207,9 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									f'class_{neighborhood_description}': 0,
 									f't0_{neighborhood_description}': time_of_first_entrance_in_neighborhood[nc],
 									 })
+							for z,lbl in enumerate(centre_of_mass_labels):
+								relative_measurements[-1].update({lbl+'_centre_of_mass_dot_product': dot_product_vector[z,t], lbl+'_centre_of_mass_dot_cosine': cosine_dot_vector[z,t]})
+
 						else:
 							relative_measurements.append(
 									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
@@ -226,6 +227,8 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									f'class_{neighborhood_description}': 0,
 									f't0_{neighborhood_description}': time_of_first_entrance_in_neighborhood[nc],
 									 })
+							for z,lbl in enumerate(centre_of_mass_labels):
+								relative_measurements[-1].update({lbl+'_centre_of_mass_dot_product': dot_product_vector[z,t], lbl+'_centre_of_mass_dot_cosine': cosine_dot_vector[z,t]})
 
 		df_pairs = pd.DataFrame(relative_measurements)
 

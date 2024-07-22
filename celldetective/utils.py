@@ -590,6 +590,22 @@ def rename_intensity_column(df, channels):
 						else:
 							new_name = new_name.replace('centre_of_mass', "centre_of_mass_orientation")
 						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
+					elif sections[-2] == "2":
+						new_name = np.delete(measure, -1)
+						new_name = '_'.join(list(new_name))
+						if 'edge' in intensity_columns[k]:
+							new_name = new_name.replace('centre_of_mass_displacement', "edge_centre_of_mass_x")
+						else:
+							new_name = new_name.replace('centre_of_mass', "centre_of_mass_x")
+						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
+					elif sections[-2] == "3":
+						new_name = np.delete(measure, -1)
+						new_name = '_'.join(list(new_name))
+						if 'edge' in intensity_columns[k]:
+							new_name = new_name.replace('centre_of_mass_displacement', "edge_centre_of_mass_y")
+						else:
+							new_name = new_name.replace('centre_of_mass', "centre_of_mass_y")
+						to_rename.update({intensity_columns[k]: new_name.replace('-', '_')})
 				if 'radial_gradient' in intensity_columns[k]:
 					# sections = np.array(re.split('-|_', intensity_columns[k]))
 					measure = np.array(re.split('-|_', new_name))

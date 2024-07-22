@@ -141,8 +141,8 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 	if data.shape[1]==4:
 		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])
 	elif data.shape[1]==5:
-		print(data)
-		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],"z",column_labels['y'],column_labels['x']])		
+		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],"z",column_labels['y'],column_labels['x']])
+		df = df.drop(columns=['z'])	
 	df[column_labels['x']+'_um'] = df[column_labels['x']]*spatial_calibration
 	df[column_labels['y']+'_um'] = df[column_labels['y']]*spatial_calibration
 

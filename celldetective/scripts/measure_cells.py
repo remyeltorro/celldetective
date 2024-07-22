@@ -237,7 +237,7 @@ def measure_index(indices):
 				column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'],
 								 'y': column_labels['y']}
 			feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
-
+		
 		if do_iso_intensities:
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
@@ -249,10 +249,19 @@ def measure_index(indices):
 		elif do_features:
 			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
 			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
-			
+	
+		center_of_mass_x_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_x')]
+		center_of_mass_y_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_y')]
+		for c in center_of_mass_x_cols:
+			measurements_at_t.loc[:,c.replace('_x','_POSITION_X')] = measurements_at_t[c] + measurements_at_t['POSITION_X']
+		for c in center_of_mass_y_cols:
+			measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
+		measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
+		
 		if measurements_at_t is not None:
 			measurements_at_t[column_labels['time']] = t
 			timestep_dataframes.append(measurements_at_t)
+
 
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))

@@ -1175,7 +1175,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 			if self.target_time_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns and not self.target_status_name in self.df_targets.columns:
 				# only create the status column if it does not exist to not erase static classification results
-				self.make_target_status_column()
+				pass
+				#self.make_target_status_column()
 			elif self.target_time_name in self.df_targets.columns and self.target_class_name in self.df_targets.columns:
 				# all good, do nothing
 				pass
@@ -1190,8 +1191,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 			if not self.target_time_name in self.df_targets.columns:
 				self.df_targets[self.target_time_name] = -1
 
-			self.df_targets['status_color'] = [color_from_status(i) for i in self.df_targets[self.target_status_name].to_numpy()]
-			self.df_targets['class_color'] = [color_from_class(i) for i in self.df_targets[self.target_class_name].to_numpy()]
+			self.df_targets['status_color'] = color_from_status(2) #[color_from_status(i) for i in self.df_targets[self.target_status_name].to_numpy()]
+			self.df_targets['class_color'] = color_from_status(2) #[color_from_class(i) for i in self.df_targets[self.target_class_name].to_numpy()]
 
 			self.df_targets = self.df_targets.dropna(subset=['POSITION_X', 'POSITION_Y'])
 			self.df_targets['x_anim'] = self.df_targets['POSITION_X'] * self.fraction
@@ -1285,7 +1286,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 			if self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
 				# only create the status column if it does not exist to not erase static classification results
-				self.make_effector_status_column()
+				pass
+				#self.make_effector_status_column()
 			elif self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns:
 				# all good, do nothing
 				pass
@@ -1300,8 +1302,8 @@ class SignalAnnotator2(QMainWindow,Styles):
 			if not self.effector_time_name in self.df_effectors.columns:
 				self.df_effectors[self.effector_time_name] = -1
 
-			self.df_effectors['status_color'] = [color_from_status(i) for i in self.df_effectors[self.effector_status_name].to_numpy()]
-			self.df_effectors['class_color'] = [color_from_class(i) for i in self.df_effectors[self.effector_class_name].to_numpy()]
+			self.df_effectors['status_color'] = color_from_status(2) #[color_from_status(i) for i in self.df_effectors[self.effector_status_name].to_numpy()]
+			self.df_effectors['class_color'] = color_from_status(2) #[color_from_class(i) for i in self.df_effectors[self.effector_class_name].to_numpy()]
 
 
 			self.df_effectors = self.df_effectors.dropna(subset=['POSITION_X', 'POSITION_Y'])
@@ -1342,6 +1344,31 @@ class SignalAnnotator2(QMainWindow,Styles):
 			x = self.df_effectors[self.effector_columns].to_numpy()
 			print(self.effector_columns, x, x.shape)
 			self.MinMaxScaler_effectors.fit(x)
+
+
+	# def make_effector_status_column(self):
+	# 	print('remaking the status column for the effectors')
+	# 	for tid, group in self.df_effectors.groupby('TRACK_ID'):
+
+	# 		indices = group.index
+	# 		t0 = group[self.].to_numpy()[0]
+	# 		cclass = group[self.class_name].to_numpy()[0]
+	# 		timeline = group['FRAME'].to_numpy()
+	# 		status = np.zeros_like(timeline)
+	# 		if t0 > 0:
+	# 			status[timeline >= t0] = 1.
+	# 		if cclass == 2:
+	# 			status[:] = 2
+	# 		if cclass > 2:
+	# 			status[:] = 42
+	# 		status_color = [color_from_status(s) for s in status]
+	# 		class_color = [color_from_class(cclass) for i in range(len(status))]
+
+	# 		self.df_tracks.loc[indices, self.status_name] = status
+	# 		self.df_tracks.loc[indices, 'status_color'] = status_color
+	# 		self.df_tracks.loc[indices, 'class_color'] = class_color
+
+
 
 	def locate_relative_tracks(self):
 

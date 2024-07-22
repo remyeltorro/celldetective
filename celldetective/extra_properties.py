@@ -9,7 +9,7 @@ import warnings
 import numpy as np
 from scipy.ndimage import distance_transform_edt, center_of_mass
 from scipy.spatial.distance import euclidean
-
+from celldetective.utils import interpolate_nan
 
 # Percentiles
 
@@ -44,6 +44,9 @@ def intensity_nanmean(regionmask, intensity_image):
 	return np.nanmean(intensity_image[regionmask])
 
 def intensity_centre_of_mass_displacement(regionmask, intensity_image):
+
+	intensity_image = interpolate_nan(intensity_image.copy())
+
 	y, x = np.mgrid[:regionmask.shape[0], :regionmask.shape[1]]
 	xtemp = x.copy()
 	ytemp = y.copy()
@@ -51,16 +54,21 @@ def intensity_centre_of_mass_displacement(regionmask, intensity_image):
 	centroid_x = intensity_weighted_center[1]
 	centroid_y = intensity_weighted_center[0]
 
-	centroid_x = np.sum(xtemp * intensity_image) / np.sum(intensity_image)
+	#centroid_x = np.sum(xtemp * intensity_image) / np.sum(intensity_image)
 	geometric_centroid_x = np.sum(xtemp * regionmask) / np.sum(regionmask)
 	geometric_centroid_y = np.sum(ytemp * regionmask) / np.sum(regionmask)
-	distance = euclidean(np.array((geometric_centroid_y, geometric_centroid_x)), np.array((centroid_y, centroid_x)))
+	try:
+		distance = euclidean(np.array((geometric_centroid_y, geometric_centroid_x)), np.array((centroid_y, centroid_x)))
+	except:
+		distance = np.nan
+
 	delta_x = geometric_centroid_x - centroid_x
 	delta_y = geometric_centroid_y - centroid_y
 	direction_arctan = np.arctan2(delta_y, delta_x) * 180 / np.pi
 	if direction_arctan < 0:
 		direction_arctan += 360
-	return distance, direction_arctan
+
+	return distance, direction_arctan, centroid_x - geometric_centroid_x, centroid_y - geometric_centroid_y
 
 def intensity_radial_gradient(regionmask, intensity_image):
 	warnings.filterwarnings('ignore', message="Polyfit may be poorly conditioned")

@@ -6,7 +6,7 @@ from PyQt5.QtGui import QIcon, QDoubleValidator
 from sklearn.preprocessing import MinMaxScaler
 
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
-from superqt import QLabeledSlider
+from superqt import QLabeledSlider, QColormapComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location, _extract_labels_from_config
@@ -33,6 +33,7 @@ from matplotlib.cm import viridis, tab10
 import math
 from celldetective.gui import Styles
 from matplotlib import colormaps
+import matplotlib.cm as mcm
 
 
 
@@ -117,9 +118,11 @@ class ConfigSignalPlot(QWidget, Styles):
 			""")
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
-		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: ')]
-		self.cb_options = [['targets','effectors'],['class'], ['t0']]
+		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: '), QLabel('cmap: ')]
+		self.cb_options = [['targets','effectors'],['class'], ['t0'], list(plt.colormaps())]
 		self.cbs = [QComboBox() for i in range(len(labels))]
+		self.cbs[-1] = QColormapComboBox()
+		
 		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 
 		choice_layout = QVBoxLayout()
@@ -128,9 +131,15 @@ class ConfigSignalPlot(QWidget, Styles):
 			hbox = QHBoxLayout()
 			hbox.addWidget(labels[i], 33)
 			hbox.addWidget(self.cbs[i],66)
-			self.cbs[i].addItems(self.cb_options[i])
+			if i < len(labels)-1:
+				self.cbs[i].addItems(self.cb_options[i])
 			choice_layout.addLayout(hbox)
-
+		
+		for cm in list(colormaps):
+			try:
+				self.cbs[-1].addColormap(cm)
+			except:
+				pass
 
 		self.cbs[0].setCurrentIndex(1)
 		self.cbs[0].setCurrentIndex(0)
@@ -150,6 +159,11 @@ class ConfigSignalPlot(QWidget, Styles):
 
 		self.abs_time_checkbox.stateChanged.connect(self.switch_ref_time_mode)
 
+		select_layout = QHBoxLayout()
+		select_layout.addWidget(QLabel('select cells\nwith query: '), 33)
+		self.query_le = QLineEdit()
+		select_layout.addWidget(self.query_le, 66)
+		main_layout.addLayout(select_layout)
 
 		time_calib_layout = QHBoxLayout()
 		time_calib_layout.setContentsMargins(20,20,20,20)
@@ -266,9 +280,18 @@ class ConfigSignalPlot(QWidget, Styles):
 			self.feature_two_cb.setEnabled(True)
 		else:
 			self.feature_two_cb.setEnabled(False)
+	
 	def compute_signals(self):
 
 		if self.df is not None:
+
+			try:
+				query_text = self.query_le.text()
+				if query_text != '':
+					self.df = self.df.query(query_text)
+			except Exception as e:
+				print(e, ' The query is misunderstood and will not be applied...')
+
 			self.feature_selected = self.feature_cb.currentText()
 			if self.checkBox_feature.isChecked():
 				self.second_feature_selected=self.feature_two_cb.currentText()
@@ -334,6 +357,10 @@ class ConfigSignalPlot(QWidget, Styles):
 				self.initialize_axis()
 			plt.tight_layout()
 
+			cmap_lbl = self.cbs[-1].currentText()
+			self.cmap = getattr(mcm, cmap_lbl)
+			self.ax.set_prop_cycle('color',[self.cmap(i) for i in np.linspace(0, 1, len(self.well_indices))])
+
 
 			self.fig.set_facecolor('none')  # or 'None'
 			self.fig.canvas.setStyleSheet("background-color: transparent;")
@@ -353,7 +380,6 @@ class ConfigSignalPlot(QWidget, Styles):
 				radio_hbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
 			self.plot_btn_group.buttonClicked[int].connect(self.plot_survivals)
 
-			print(self.well_indices, self.position_indices)
 			if self.position_indices is not None:
 				if len(self.well_indices)>1 and len(self.position_indices)==1:
 					self.plot_btn_group.buttons()[0].click()
@@ -725,10 +751,10 @@ class ConfigSignalPlot(QWidget, Styles):
 				second_matrix='second_matrix_no_event'
 
 
-		colors = np.array([tab10(i / len(self.df_pos_info)) for i in range(len(self.df_pos_info))])
+		colors = np.array([self.cmap(i / len(self.df_pos_info)) for i in range(len(self.df_pos_info))])
 		if self.checkBox_feature.isChecked():
-			second_colors = tab10(np.linspace(0.5, 1.5, len(self.df_pos_info)))
-		well_color = [tab10(i / len(self.df_well_info)) for i in range(len(self.df_well_info))]
+			second_colors = self.cmap(np.linspace(0.5, 1.5, len(self.df_pos_info)))
+		well_color = [self.cmap(i / len(self.df_well_info)) for i in range(len(self.df_well_info))]
 
 		if self.plot_mode=='pos':
 			self.initialize_axis()
@@ -801,6 +827,8 @@ class ConfigSignalPlot(QWidget, Styles):
 		self.survival_window.canvas.draw()
 
 	def plot_line(self, line, color, label, mean_signal, ci_option=True, cell_lines_option=False, alpha_ci=0.5, alpha_cell_lines=0.5, std_signal=None, matrix=None):
+		
+
 		try:
 			if 'second' in str(mean_signal):
 				self.ax2.plot(line['timeline'] * self.FrameToMin, line[mean_signal], color=color, label=label)
@@ -1005,10 +1033,10 @@ class ConfigSignalPlot(QWidget, Styles):
 	def switch_ref_time_mode(self):
 		if self.abs_time_checkbox.isChecked():
 			self.frame_slider.setEnabled(True)
-			self.cbs[-1].setEnabled(False)
+			self.cbs[-2].setEnabled(False)
 		else:
 			self.frame_slider.setEnabled(False)
-			self.cbs[-1].setEnabled(True)
+			self.cbs[-2].setEnabled(True)
 
 	def switch_ci(self):
 		

@@ -109,9 +109,10 @@ class ConfigSurvival(QWidget, Styles):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 
-		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('exclude\nclass: '), QLabel('cmap: ')] #QLabel('class: '), 
-		self.cb_options = [['targets','effectors'], ['0','t_firstdetection'], ['t0'], ['--'], list(plt.colormaps())] #['class'], 
+		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('cmap: ')] #QLabel('class: '), 
+		self.cb_options = [['targets','effectors'], ['0','t_firstdetection'], ['t0'], list(plt.colormaps())] #['class'], 
 		self.cbs = [QComboBox() for i in range(len(labels))]
+
 		self.cbs[-1] = QColormapComboBox()
 		self.cbs[0].currentIndexChanged.connect(self.set_classes_and_times)
 
@@ -132,6 +133,12 @@ class ConfigSurvival(QWidget, Styles):
 				pass
 
 		main_layout.addLayout(choice_layout)
+
+		select_layout = QHBoxLayout()
+		select_layout.addWidget(QLabel('select cells\nwith query: '), 33)
+		self.query_le = QLineEdit()
+		select_layout.addWidget(self.query_le, 66)
+		main_layout.addLayout(select_layout)
 
 		self.cbs[0].setCurrentIndex(0)
 		self.cbs[1].setCurrentText('t_firstdetection')
@@ -218,10 +225,12 @@ class ConfigSurvival(QWidget, Styles):
 
 		if self.df is not None:
 			
-			excluded_class = self.cbs[3].currentText()
-			if excluded_class!='--':
-				print(f"Excluding {excluded_class}...")
-				self.df = self.df.loc[~(self.df[excluded_class].isin([0,2])),:]
+			try:
+				query_text = self.query_le.text()
+				if query_text != '':
+					self.df = self.df.query(query_text)
+			except Exception as e:
+				print(e, ' The query is misunderstood and will not be applied...')
 
 			self.compute_survival_functions()
 			# prepare survival

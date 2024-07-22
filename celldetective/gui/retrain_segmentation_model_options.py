@@ -423,7 +423,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 						)
 		if self.dataset_folder is not None:
 
-			subfiles = glob(self.dataset_folder+"/*.tif")
+			subfiles = glob(self.dataset_folder+os.sep+"*.tif")
 			if len(subfiles)>0:
 				print(f'found {len(subfiles)} files in folder')
 				self.data_folder_label.setText(self.dataset_folder[:16]+'...')
@@ -465,8 +465,8 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		f = open(os.sep.join([self.pretrained_model,"config_input.json"]))
 		data = json.load(f)
 		channels = data["channels"]
-		self.seg_folder = self.pretrained_model.split('/')[-2]
-		self.model_name = self.pretrained_model.split('/')[-1]
+		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
+		self.model_name = self.pretrained_model.split(os.sep)[-1]
 		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
 			channels = ['brightfield_channel', 'live_nuclei_channel']
 			if self.model_name=="CP_nuclei":
@@ -593,7 +593,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 
 		print(training_instructions)
 
-		model_folder = '/'.join([self.software_models_dir,model_name, ''])
+		model_folder = os.sep.join([self.software_models_dir,model_name, ''])
 		print(model_folder)
 		if not os.path.exists(model_folder):
 			os.mkdir(model_folder)

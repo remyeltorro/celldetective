@@ -8,6 +8,131 @@ abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)
 import random
 from tqdm import tqdm
 
+def measure_pairs(pos, neighborhood_protocol):
+	
+	reference_population = neighborhood_protocol['reference']
+	neighbor_population = neighborhood_protocol['neighbor']
+	neighborhood_type = neighborhood_protocol['type']
+	neighborhood_distance = neighborhood_protocol['distance']
+	neighborhood_description = neighborhood_protocol['description']
+
+	relative_measurements = []
+
+	tab_ref = pos + os.sep.join(['output', 'tables', f'trajectories_{reference_population}.pkl'])
+	if os.path.exists(tab_ref):
+		df_reference = np.load(tab_ref, allow_pickle=True)
+	else:
+		df_reference = None
+
+	if os.path.exists(tab_ref.replace(reference_population, neighbor_population)):
+		df_neighbor = np.load(tab_ref.replace(reference_population, neighbor_population), allow_pickle=True)
+	else:
+		if os.path.exists(tab_ref.replace(reference_population, neighbor_population).replace('.pkl','.csv')):
+			df_neighbor = pd.read_csv(tab_ref.replace(reference_population, neighbor_population).replace('.pkl','.csv'))
+		else:
+			df_neighbor = None
+
+	if df_reference is None:
+		return None
+
+	assert str(neighborhood_description) in list(df_reference.columns)
+	neighborhood = df_reference.loc[:,f'{neighborhood_description}'].to_numpy()
+
+	if 'TRACK_ID' in list(df_reference.columns):
+		ref_id_col = 'TRACK_ID'
+	elif 'ID' in list(df_reference.columns):
+		ref_id_col = 'ID'
+	else:
+		print('ID or TRACK ID column could not be found in referebce table. Abort.')
+		return None
+
+	if 'TRACK_ID' in list(df_neighbor.columns):
+		neigh_id_col = 'TRACK_ID'
+	elif 'ID' in list(df_neighbor.columns):
+		neigh_id_col = 'ID'
+	else:
+		print('ID or TRACK ID column could not be found in neighbor table. Abort.')
+		return None
+	
+	centre_of_mass_columns = [(c,c.replace('POSITION_X','POSITION_Y')) for c in list(df_neighbor.columns) if c.endswith('centre_of_mass_POSITION_X')]
+	centre_of_mass_labels = [c.replace('_centre_of_mass_POSITION_X','') for c in list(df_neighbor.columns) if c.endswith('centre_of_mass_POSITION_X')]
+
+	for t in np.unique(list(df_reference['FRAME'].unique())+list(df_neighbor['FRAME'])):
+		
+		group_reference = df_reference.loc[df_reference['FRAME']==t,:]
+		group_neighbors = df_neighbor.loc[df_neighbor['FRAME']==t, :]
+		
+		for tid, group in group_reference.groupby(ref_id_col):
+
+			neighborhood = group.loc[: , f'{neighborhood_description}'].to_numpy()[0]
+			coords_reference = group[['POSITION_X', 'POSITION_Y']].to_numpy()[0]
+
+			neighbors = []
+			if isinstance(neighborhood, float) or neighborhood!=neighborhood:
+				pass
+			else:
+				for neigh in neighborhood:
+					neighbors.append(neigh['id'])
+
+			unique_neigh = list(np.unique(neighbors))
+			print(f'{unique_neigh=}')
+
+			neighbor_properties = group_neighbors.loc[group_neighbors[neigh_id_col].isin(unique_neigh)]
+			
+			for nc, group_neigh in neighbor_properties.groupby(neigh_id_col):
+				
+				neighbor_vector = np.zeros((2))
+				neighbor_vector[:] = np.nan
+				mass_displacement_vector = np.zeros((len(centre_of_mass_columns), 2))
+
+				coords_centre_of_mass = []
+				for col in centre_of_mass_columns:
+					coords_centre_of_mass.append(group_neigh[[col[0],col[1]]].to_numpy()[0])
+
+				dot_product_vector = np.zeros((len(centre_of_mass_columns)))
+				dot_product_vector[:] = np.nan
+
+				cosine_dot_vector = np.zeros((len(centre_of_mass_columns)))
+				cosine_dot_vector[:] = np.nan
+
+				coords_neighbor = group_neigh[['POSITION_X', 'POSITION_Y']].to_numpy()[0]
+				neighbor_vector[0] = coords_neighbor[0] - coords_reference[0]
+				neighbor_vector[1] = coords_neighbor[1] - coords_reference[1]
+
+				if neighbor_vector[0]==neighbor_vector[0] and neighbor_vector[1]==neighbor_vector[1]:
+					angle = np.arctan2(neighbor_vector[1], neighbor_vector[0])
+					relative_distance = np.sqrt(neighbor_vector[0]**2 + neighbor_vector[1]**2)
+					
+					for z,cols in enumerate(centre_of_mass_columns):
+
+							mass_displacement_vector[z,0] = coords_centre_of_mass[z][0] - coords_neighbor[0]
+							mass_displacement_vector[z,1] = coords_centre_of_mass[z][1] - coords_neighbor[1]
+
+							dot_product_vector[z] = np.dot(mass_displacement_vector[z], -neighbor_vector)
+							cosine_dot_vector[z] = np.dot(mass_displacement_vector[z], -neighbor_vector) / (np.linalg.norm(mass_displacement_vector[z])*np.linalg.norm(-neighbor_vector))
+
+					relative_measurements.append(
+							{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
+							'reference_population': reference_population,
+							'neighbor_population': neighbor_population,
+							'FRAME': t, 'distance': relative_distance,
+							'angle': angle * 180 / np.pi,
+							f'status_{neighborhood_description}': 1,
+							f'class_{neighborhood_description}': 0,
+							 })
+					for z,lbl in enumerate(centre_of_mass_labels):
+						relative_measurements[-1].update({lbl+'_centre_of_mass_dot_product': dot_product_vector[z], lbl+'_centre_of_mass_dot_cosine': cosine_dot_vector[z]})
+	
+	df_pairs = pd.DataFrame(relative_measurements)
+	
+	return df_pairs
+
+
+
+
+
+
+
 def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs={'window': 3, 'mode': 'bi'}):
 	"""
 	pos: position to process
@@ -57,7 +182,8 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 		compute_velocity = True
 	elif 'ID' in list(df_neighbor.columns):
 		neigh_id_col = 'ID'
-		compute_velocity = False
+		df_pairs = measure_pairs(pos, neighborhood_protocol)
+		return df_pairs
 	else:
 		print('ID or TRACK ID column could not be found in neighbor table. Abort.')
 		return None
@@ -106,9 +232,8 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				neighbor_vector = np.zeros((len(full_timeline), 2))
 				neighbor_vector[:,:] = np.nan
 
-				centre_of_mass_columns = [(c,c.replace('POSITION_X','POSITION_Y')) for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_Y')]
-				centre_of_mass_labels = [c.replace('_centre_of_mass_POSITION_Y','') for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_Y')]
-				print(f'{centre_of_mass_columns=} {centre_of_mass_labels=}')
+				centre_of_mass_columns = [(c,c.replace('POSITION_X','POSITION_Y')) for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_X')]
+				centre_of_mass_labels = [c.replace('_centre_of_mass_POSITION_X','') for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_X')]
 
 				mass_displacement_vector = np.zeros((len(centre_of_mass_columns), len(full_timeline), 2))
 				mass_displacement_vector[:,:,:] = np.nan
@@ -141,8 +266,9 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 
 							dot_product_vector[z,t] = np.dot(mass_displacement_vector[z,t], -neighbor_vector[t])
 							cosine_dot_vector[z,t] = np.dot(mass_displacement_vector[z,t], -neighbor_vector[t]) / (np.linalg.norm(mass_displacement_vector[z,t])*np.linalg.norm(-neighbor_vector[t]))
-
-				print(f'{mass_displacement_vector=} {dot_product_vector=} {cosine_dot_vector=}')
+							if tid==44.0 and nc==173.0:
+								print(f'{centre_of_mass_columns[z]=} {mass_displacement_vector[z,t]=} {-neighbor_vector[t]=} {dot_product_vector[z,t]=} {cosine_dot_vector[z,t]=}')
+							
 
 				angle = np.zeros(len(full_timeline))
 				angle[:] = np.nan

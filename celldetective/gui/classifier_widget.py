@@ -375,13 +375,14 @@ class ClassifierWidget(QWidget, Styles):
 						frames = track['FRAME'].to_numpy()
 						t_first = track['t_firstdetection'].to_numpy()[0]
 						median_status = np.nanmedian(status_values[frames>=t_first])
-						c = ceil(median_status)
-						if c==0:
-							self.df.loc[indices, self.class_name_user] = 1
-							self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
-						elif c==1:
-							self.df.loc[indices, self.class_name_user] = 2
-							self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+						if median_status==median_status:
+							c = ceil(median_status)
+							if c==0:
+								self.df.loc[indices, self.class_name_user] = 1
+								self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+							elif c==1:
+								self.df.loc[indices, self.class_name_user] = 2
+								self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
 				if self.irreversible_event_btn.isChecked():
 					self.estimate_time()
 		else:

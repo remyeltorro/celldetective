@@ -1066,7 +1066,7 @@ class NeighPanel(QFrame, Styles):
 		neigh_options_layout.addWidget(self.protocol_list)
 
 		neigh_options_layout.setContentsMargins(30,5,30,5)
-		neigh_options_layout.setSpacing(0.5)
+		neigh_options_layout.setSpacing(1)
 		self.grid_contents.addLayout(neigh_options_layout, 5, 0, 1, 4)
 
 

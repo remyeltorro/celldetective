@@ -180,6 +180,7 @@ elif model_type=='stardist':
 		train_epochs = epochs,
 		train_reduce_lr = {'factor': 0.1, 'patience': 30, 'min_delta': 0},
 		train_batch_size = batch_size,
+		train_steps_per_epoch = int(augmentation_factor*len(X_trn)),
 	)
 	
 	if use_gpu:

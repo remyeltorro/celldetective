@@ -1258,10 +1258,10 @@ class SignalDetectionModel(object):
 			csv_logger = CSVLogger(os.sep.join([self.model_folder,'log_classifier.csv']), append=True, separator=';')
 			self.cb.append(csv_logger)
 			checkpoint_path = os.sep.join([self.model_folder,"classifier.h5"])
-			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_iou",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
+			cp_callback = ModelCheckpoint(checkpoint_path, monitor="val_iou",mode="max",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
-			callback_stop = EarlyStopping(monitor='val_iou', patience=100)
+			callback_stop = EarlyStopping(monitor='val_iou',mode='max',patience=100)
 			self.cb.append(callback_stop)
 			
 		elif mode=="regressor":
@@ -1278,7 +1278,7 @@ class SignalDetectionModel(object):
 			cp_callback = ModelCheckpoint(checkpoint_path,monitor="val_loss",mode="min",verbose=1,save_best_only=True,save_weights_only=False,save_freq="epoch")
 			self.cb.append(cp_callback)
 			
-			callback_stop = EarlyStopping(monitor='val_loss', patience=200)
+			callback_stop = EarlyStopping(monitor='val_loss', mode='min', patience=200)
 			self.cb.append(callback_stop)            
 		
 		log_dir = self.model_folder+os.sep

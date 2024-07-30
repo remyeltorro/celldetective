@@ -459,6 +459,18 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		self.data_folder_label.setToolTip('')
 		self.cancel_dataset.setVisible(False)
 
+	def load_stardist_train_config(self):
+		
+		config = os.sep.join([self.pretrained_model,"config.json"])
+		if os.path.exists(config):
+			with open(config, 'r') as f:
+				config = json.load(f)
+				if 'train_batch_size' in config:
+					bs = config['train_batch_size']
+					self.bs_le.setText(str(bs).replace('.',','))
+				if 'train_learning_rate' in config:
+					lr = config['train_learning_rate']
+					self.lr_le.setText(str(lr).replace('.',','))
 
 	def load_pretrained_config(self):
 
@@ -484,6 +496,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		if model_type=='stardist':
 			self.stardist_model.setChecked(True)
 			self.cellpose_model.setChecked(False)
+			self.load_stardist_train_config()
 		else:
 			self.stardist_model.setChecked(False)
 			self.cellpose_model.setChecked(True)			
@@ -593,7 +606,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 
 		print(training_instructions)
 
-		model_folder = '/'.join([self.software_models_dir,model_name, ''])
+		model_folder = os.sep.join([self.software_models_dir,model_name, ''])
 		print(model_folder)
 		if not os.path.exists(model_folder):
 			os.mkdir(model_folder)

@@ -841,7 +841,14 @@ def auto_load_number_of_frames(stack_path):
 		del img_desc;
 	except:
 		pass
+
+	if 'len_movie' not in locals():
+		stack = imread(stack_path)
+		len_movie = len(stack)
+		del stack
 	gc.collect()
+
+	print(f'Automatically detected stack length: {len_movie}...')
 
 	return len_movie if 'len_movie' in locals() else None
 

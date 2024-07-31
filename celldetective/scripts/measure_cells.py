@@ -145,14 +145,19 @@ except IndexError:
 # Load trajectories, add centroid if not in trajectory
 trajectories = pos+os.sep.join(['output','tables', table_name])
 if os.path.exists(trajectories):
+	print('trajectory exists...')
 	trajectories = pd.read_csv(trajectories)
 	if 'TRACK_ID' not in list(trajectories.columns):
 		do_iso_intensities = False
 		intensity_measurement_radii = None
 		if clear_previous:
-			trajectories = remove_trajectory_measurements(trajectories, column_labels)
+			print('No TRACK_ID... Clear previous measurements...')
+			trajectories = None #remove_trajectory_measurements(trajectories, column_labels)
+			do_features = True
+			features += ['centroid']
 	else:
 		if clear_previous:
+			print('TRACK_ID found... Clear previous measurements...')
 			trajectories = remove_trajectory_measurements(trajectories, column_labels)
 else:
 	trajectories = None
@@ -161,11 +166,11 @@ else:
 	do_iso_intensities = False
 
 
-if (features is not None) and (trajectories is not None):
-	features = remove_redundant_features(features, 
-										trajectories.columns,
-										channel_names=channel_names
-										)
+# if (features is not None) and (trajectories is not None):
+# 	features = remove_redundant_features(features, 
+# 										trajectories.columns,
+# 										channel_names=channel_names
+# 										)
 
 len_movie_auto = auto_load_number_of_frames(file)
 if len_movie_auto is not None:
@@ -187,6 +192,7 @@ if label_path is None:
 else:
 	do_features = True
 
+
 #######################################
 # Loop over all frames and find objects
 #######################################
@@ -196,6 +202,9 @@ if trajectories is None:
 	print('Use features as a substitute for the trajectory table.')
 	if 'label' not in features:
 		features.append('label')
+
+
+
 features_log=f'features: {features}'
 border_distances_log=f'border_distances: {border_distances}'
 haralick_options_log=f'haralick_options: {haralick_options}'

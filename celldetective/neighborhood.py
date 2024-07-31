@@ -397,8 +397,12 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
 		if 'TRACK_ID' in list(pkl_columns):
-			cols.append('TRACK_ID')
-			on_cols = ['TRACK_ID','FRAME']
+			if not np.all(df_A_pkl['TRACK_ID'].isnull()):
+				cols.append('TRACK_ID')
+				on_cols = ['TRACK_ID','FRAME']
+			else:
+				cols.append('ID')
+				on_cols = ['ID','FRAME']
 		else:
 			cols.append('ID')
 			on_cols = ['ID','FRAME']
@@ -416,8 +420,14 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
 		if 'TRACK_ID' in list(pkl_columns):
-			cols.append('TRACK_ID')
-			on_cols = ['TRACK_ID','FRAME']
+
+			if not np.all(df_B_pkl['TRACK_ID'].isnull()):
+
+				cols.append('TRACK_ID')
+				on_cols = ['TRACK_ID','FRAME']
+			else:
+				cols.append('ID')
+				on_cols = ['ID','FRAME']
 		else:
 			cols.append('ID')
 			on_cols = ['ID','FRAME']
@@ -457,10 +467,11 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		print('Done...')
 
 		if 'TRACK_ID' in list(df_A.columns):
-			print('Estimate average neighborhood before/after event...')
-			df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col)
-			df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col)
-			print('Done...')
+			if not np.all(df_A['TRACK_ID'].isnull()):
+				print('Estimate average neighborhood before/after event...')
+				df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col)
+				df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col)
+				print('Done...')
 
 	df_A.to_pickle(path_A.replace('.csv', '.pkl'))
 	if not population[0] == population[1]:
@@ -538,7 +549,12 @@ def compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive','e
 	else:
 		groupbycols = []
 	if 'TRACK_ID' in list(neigh_table.columns):
-		groupbycols.append('TRACK_ID')
+		
+		if not np.all(neigh_table['TRACK_ID'].isnull()):
+
+			groupbycols.append('TRACK_ID')
+		else:
+			groupbycols.append('ID')
 	else:
 		groupbycols.append('ID')
 
@@ -670,7 +686,10 @@ def mean_neighborhood_before_event(neigh_table, neigh_col, event_time_col,
 	else:
 		groupbycols = []
 	if 'TRACK_ID' in list(neigh_table.columns):
-		groupbycols.append('TRACK_ID')
+		if not np.all(neigh_table['TRACK_ID'].isnull()):
+			groupbycols.append('TRACK_ID')
+		else:
+			groupbycols.append('ID')
 	else:
 		groupbycols.append('ID')
 
@@ -756,8 +775,13 @@ def mean_neighborhood_after_event(neigh_table, neigh_col, event_time_col,
 		groupbycols = ['position']
 	else:
 		groupbycols = []
+
 	if 'TRACK_ID' in list(neigh_table.columns):
-		groupbycols.append('TRACK_ID')
+
+		if not np.all(neigh_table['TRACK_ID'].isnull()):
+			groupbycols.append('TRACK_ID')
+		else:
+			groupbycols.append('ID')
 	else:
 		groupbycols.append('ID')
 
@@ -1203,8 +1227,13 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 		
 		if 'TRACK_ID' in list(pkl_columns):
-			cols.append('TRACK_ID')
-			on_cols = ['TRACK_ID','FRAME']
+
+			if not np.all(df_A_pkl['TRACK_ID'].isnull()):
+				cols.append('TRACK_ID')
+				on_cols = ['TRACK_ID','FRAME']
+			else:
+				cols.append('ID')
+				on_cols = ['ID','FRAME']				
 		else:
 			cols.append('ID')
 			on_cols = ['ID','FRAME']
@@ -1222,8 +1251,12 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
 		if 'TRACK_ID' in list(pkl_columns):
-			cols.append('TRACK_ID')
-			on_cols = ['TRACK_ID','FRAME']
+			if not np.all(df_B_pkl['TRACK_ID'].isnull()):
+				cols.append('TRACK_ID')
+				on_cols = ['TRACK_ID','FRAME']
+			else:
+				cols.append('ID')
+				on_cols = ['ID','FRAME']				
 		else:
 			cols.append('ID')
 			on_cols = ['ID','FRAME']

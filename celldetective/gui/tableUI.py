@@ -20,6 +20,10 @@ from matplotlib import colormaps
 
 class PandasModel(QAbstractTableModel):
 
+	"""
+	from https://stackoverflow.com/questions/31475965/fastest-way-to-populate-qtableview-from-pandas-data-frame
+	"""
+
 	def __init__(self, data):
 		QAbstractTableModel.__init__(self)
 		self._data = data
@@ -67,7 +71,7 @@ class QueryWidget(QWidget):
 		try:
 			query_text = self.query_le.text() #.replace('class', '`class`')
 			tab = self.parent_window.data.query(query_text)
-			self.subtable = TableUI(tab, query_text, plot_mode="static")
+			self.subtable = TableUI(tab, query_text, plot_mode="static", population=self.parent_window.population)
 			self.subtable.show()
 			self.close()
 		except Exception as e:
@@ -392,6 +396,12 @@ class TableUI(QMainWindow, Styles):
 			#self.rename_col_action.setShortcut(Qt.Key_Delete)
 			self.editMenu.addAction(self.rename_col_action)
 
+			if self.population=='pairs':
+				self.merge_action = QAction('&Merge...', self)
+				self.merge_action.triggered.connect(self.merge_tables)
+				#self.rename_col_action.setShortcut(Qt.Key_Delete)
+				self.editMenu.addAction(self.merge_action)
+
 			self.derivative_action = QAction('&Differentiate...', self)
 			self.derivative_action.triggered.connect(self.differenciate_selected_feature)
 			self.derivative_action.setShortcut("Ctrl+D")
@@ -406,6 +416,55 @@ class TableUI(QMainWindow, Styles):
 			self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
 			#self.onehot_action.setShortcut("Ctrl+D")
 			self.mathMenu.addAction(self.onehot_action)		
+
+	def merge_tables(self):
+
+		expanded_table = []
+		
+		for neigh, group in self.data.groupby(['reference_population','neighbor_population']):
+			print(f'{neigh=}')
+			ref_pop = neigh[0]; neigh_pop = neigh[1];
+			for pos,pos_group in group.groupby('position'):
+				print(f'{pos=}')
+				
+				ref_tab = os.sep.join([pos,'output','tables',f'trajectories_{ref_pop}.csv'])
+				neigh_tab = os.sep.join([pos,'output','tables',f'trajectories_{neigh_pop}.csv'])
+				if os.path.exists(ref_tab):
+					df_ref = pd.read_csv(ref_tab)
+					if 'TRACK_ID' in df_ref.columns:
+						if not np.all(df_ref['TRACK_ID'].isnull()):
+							ref_merge_cols = ['TRACK_ID','FRAME']
+						else:
+							ref_merge_cols = ['ID','FRAME']
+					else:
+						ref_merge_cols = ['ID','FRAME']
+				if os.path.exists(neigh_tab):
+					df_neigh = pd.read_csv(neigh_tab)
+					if 'TRACK_ID' in df_neigh.columns:
+						if not np.all(df_neigh['TRACK_ID'].isnull()):
+							neigh_merge_cols = ['TRACK_ID','FRAME']
+						else:
+							neigh_merge_cols = ['ID','FRAME']
+					else:
+						neigh_merge_cols = ['ID','FRAME']
+
+				df_ref = df_ref.add_prefix('reference_',axis=1)
+				df_neigh = df_neigh.add_prefix('neighbor_',axis=1)
+				ref_merge_cols = ['reference_'+c for c in ref_merge_cols]
+				neigh_merge_cols = ['neighbor_'+c for c in neigh_merge_cols]
+
+				merge_ref = pos_group.merge(df_ref, how='outer', left_on=['REFERENCE_ID','FRAME'], right_on=ref_merge_cols, suffixes=('', '_reference'))
+				print(f'{merge_ref.columns=}')
+				merge_neigh = merge_ref.merge(df_neigh, how='outer', left_on=['NEIGHBOR_ID','FRAME'], right_on=neigh_merge_cols, suffixes=('_reference', '_neighbor'))
+				print(f'{merge_neigh.columns=}')
+				expanded_table.append(merge_neigh)
+
+		df_expanded = pd.concat(expanded_table, axis=0, ignore_index = True)
+		df_expanded = df_expanded.sort_values(by=['position', 'reference_population','neighbor_population','REFERENCE_ID','NEIGHBOR_ID','FRAME'])
+		df_expanded = df_expanded.dropna(axis=0, subset=['REFERENCE_ID','NEIGHBOR_ID','reference_population','neighbor_population'])
+		self.subtable = TableUI(df_expanded, 'merge', plot_mode = "static", population='pairs')
+		self.subtable.show()	
+
 
 	def delete_columns(self):
 
@@ -515,7 +574,7 @@ class TableUI(QMainWindow, Styles):
 
 		num_df = self.data.select_dtypes(include=self.numerics)
 
-		timeseries = num_df.groupby("FRAME").mean().copy()
+		timeseries = num_df.groupby("FRAME").sum().copy()
 		timeseries["timeline"] = timeseries.index
 		self.subtable = TableUI(timeseries,"Group by frames", plot_mode="plot_timeseries")
 		self.subtable.show()
@@ -792,7 +851,7 @@ class TableUI(QMainWindow, Styles):
 
 		if self.violin_check.isChecked():
 			if self.x_option:
-				sns.stripplot(data=self.data,x=self.x, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				sns.violinplot(data=self.data,x=self.x, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
 				legend = False
 			else:
 				sns.violinplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
@@ -831,7 +890,10 @@ class TableUI(QMainWindow, Styles):
 
 	def set_proj_mode(self):
 		
-		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class','cell_type','concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position', 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']
+		if self.population=='pairs':
+			self.groupby_cols = ['position','neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'FRAME']
+
+		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class','cell_type','concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position', 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID', 'FRAME']
 
 		if self.projection_option.isChecked():
 
@@ -847,14 +909,15 @@ class TableUI(QMainWindow, Styles):
 					pass
 			
 			if self.population=='pairs':
-				for col in ['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']:
-					first_column = group_table.pop(col) 
-					group_table.insert(0, col, first_column)				
+				for col in ['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'FRAME']: #['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']
+					if col in group_table:
+						first_column = group_table.pop(col)
+						group_table.insert(0, col, first_column)				
 			else:
 				for col in ['TRACK_ID']:
 					first_column = group_table.pop(col) 
 					group_table.insert(0, col, first_column)
-			group_table.pop('FRAME')
+				group_table.pop('FRAME')
 
 
 		elif self.event_time_option.isChecked():

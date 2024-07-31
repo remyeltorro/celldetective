@@ -538,6 +538,27 @@ class ProcessPanel(QFrame, Styles):
 		elif self.mode=="effectors":
 			self.threshold_config = self.threshold_config_effectors
 
+		self.load_available_tables()
+
+		if self.df is not None and self.segment_action.isChecked():
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Question)
+			msgBox.setText("Measurement tables have been found... Re-segmenting may create mismatches between\nthe cell labels and the associated measurements. Do you want\nto erase the tables post-segmentation?")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.No:
+				pass
+			elif returnValue == QMessageBox.Cancel:
+				return None
+			else:
+				print('erase tabs!')
+				tabs = self.df_pos_info['pos_path'].unique()
+				for t in tabs:
+					if os.path.exists(t.replace('.csv','.pkl')):
+						os.remove(t.replace('.csv','.pkl'))
+					os.remove(t)
+
 		loop_iter=0
 
 		if self.parent_window.position_list.currentText()=="*":

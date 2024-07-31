@@ -173,9 +173,22 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 
 	if 'TRACK_ID' in df_reference:
 		df_reference = df_reference.sort_values(by=['TRACK_ID','FRAME'])
+	elif 'ID' in df_reference:
+		df_reference = df_reference.sort_values(by=['ID','FRAME'])
+		print('TRACK_ID not found in the reference population...')
+		#return None
+
+	if 'TRACK_ID' in list(df_reference.columns):
+		ref_id_col = 'TRACK_ID'
+		compute_velocity = True
+	elif 'ID' in list(df_reference.columns):
+		ref_id_col = 'ID'
+		df_pairs = measure_pairs(pos, neighborhood_protocol)
+		return df_pairs
 	else:
-		print('TRACK_ID not found in the reference population... Abort...')
+		print('ID or TRACK ID column could not be found in neighbor table. Abort.')
 		return None
+
 
 	if 'TRACK_ID' in list(df_neighbor.columns):
 		neigh_id_col = 'TRACK_ID'
@@ -189,7 +202,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 		return None
 
 	try:
-		for tid, group in df_reference.groupby('TRACK_ID'):
+		for tid, group in df_reference.groupby(ref_id_col):
 
 			neighbor_dicts = group.loc[: , f'{neighborhood_description}'].values
 			timeline_reference = group['FRAME'].to_numpy()

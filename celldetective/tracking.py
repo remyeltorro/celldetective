@@ -164,6 +164,8 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 	if clean_trajectories_kwargs is not None:
 		df = clean_trajectories(df.copy(),**clean_trajectories_kwargs)
 
+	df['ID'] = np.arange(len(df)).astype(int)
+
 	if view_on_napari:
 		view_on_napari_btrack(data,properties,graph,stack=stack,labels=labels,relabel=True)
 

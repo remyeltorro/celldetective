@@ -332,8 +332,15 @@ class TableUI(QMainWindow, Styles):
 		self.population = population
 		self.numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
 		self.groupby_cols = ['position', 'TRACK_ID']
+		self.tracks = False
+
 		if self.population=='pairs':
-			self.groupby_cols = ['position', 'REFERENCE_ID', 'NEIGHBOR_ID', 'reference_population', 'neighbor_population']
+			self.groupby_cols = ['position','reference_population', 'neighbor_population','REFERENCE_ID', 'NEIGHBOR_ID', 'FRAME']
+			self.tracks = True # for now
+		else:
+			if 'TRACK_ID' in data.columns:
+				if not np.all(data['TRACK_ID'].isnull()):
+					self.tracks = True
 
 		self._createMenuBar()
 		self._createActions()
@@ -376,6 +383,18 @@ class TableUI(QMainWindow, Styles):
 			self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
 			self.groupby_action.setShortcut("Ctrl+g")
 			self.fileMenu.addAction(self.groupby_action)
+			if not self.tracks:
+				self.groupby_action.setEnabled(False)
+
+			if self.population=='pairs':
+				self.groupby_neigh_action = QAction("&Group by neighbors...", self)
+				self.groupby_neigh_action.triggered.connect(self.set_projection_mode_neigh)
+				self.fileMenu.addAction(self.groupby_neigh_action)	
+
+				self.groupby_ref_action = QAction("&Group by reference...", self)
+				self.groupby_ref_action.triggered.connect(self.set_projection_mode_ref)
+				self.fileMenu.addAction(self.groupby_ref_action)	
+
 
 			self.groupby_time_action = QAction("&Group by frames...", self)
 			self.groupby_time_action.triggered.connect(self.groupby_time_table)
@@ -596,6 +615,16 @@ class TableUI(QMainWindow, Styles):
 		# self.subtable = TableUI(timeseries,"Group by frames", plot_mode="plot_timeseries")
 		# self.subtable.show()
 
+	def set_projection_mode_neigh(self):
+
+		self.groupby_cols = ['position', 'reference_population', 'neighbor_population', 'NEIGHBOR_ID', 'FRAME']
+		self.set_projection_mode_tracks()
+
+	def set_projection_mode_ref(self):
+		
+		self.groupby_cols = ['position', 'reference_population', 'neighbor_population', 'REFERENCE_ID', 'FRAME']
+		self.set_projection_mode_tracks()
+
 	def set_projection_mode_tracks(self):
 
 		self.projectionWidget = QWidget()
@@ -607,6 +636,7 @@ class TableUI(QMainWindow, Styles):
 
 		self.projection_option = QRadioButton('global operation: ')
 		self.projection_option.setToolTip('Collapse the cell track measurements with an operation over each track.')
+		self.projection_option.setChecked(True)
 		self.projection_option.toggled.connect(self.enable_projection_options)
 		self.projection_op_cb = QComboBox()
 		self.projection_op_cb.addItems(['mean','median','min','max', 'prod', 'sum'])
@@ -890,9 +920,6 @@ class TableUI(QMainWindow, Styles):
 
 	def set_proj_mode(self):
 		
-		if self.population=='pairs':
-			self.groupby_cols = ['position','neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'FRAME']
-
 		self.static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class','cell_type','concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position', 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID', 'FRAME']
 
 		if self.projection_option.isChecked():
@@ -909,7 +936,7 @@ class TableUI(QMainWindow, Styles):
 					pass
 			
 			if self.population=='pairs':
-				for col in ['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'FRAME']: #['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']
+				for col in self.groupby_cols[1:]: #['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']
 					if col in group_table:
 						first_column = group_table.pop(col)
 						group_table.insert(0, col, first_column)				
@@ -941,7 +968,7 @@ class TableUI(QMainWindow, Styles):
 			
 			group_table = pd.DataFrame(new_table)
 			if self.population=='pairs':
-				for col in ['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']:
+				for col in self.groupby_cols[1:]:
 					first_column = group_table.pop(col) 
 					group_table.insert(0, col, first_column)				
 			else:

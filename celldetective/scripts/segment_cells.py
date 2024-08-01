@@ -129,10 +129,10 @@ img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr
 
 # If everything OK, prepare output, load models
 print('Erasing previous segmentation folder.')
-if os.path.exists(os.sep.join([pos,label_folder])):
-	rmtree(os.sep.join([pos,label_folder]))
-os.mkdir(os.sep.join([pos,label_folder]))
-print(f'Folder {os.sep.join([pos,label_folder])} successfully generated.')
+if os.path.exists(pos+label_folder):
+	rmtree(pos+label_folder)
+os.mkdir(pos+label_folder)
+print(f'Folder {pos+label_folder} successfully generated.')
 log=f'segmentation model: {modelname}\n'
 with open(pos+f'log_{mode}.json', 'a') as f:
 	f.write(f'{datetime.datetime.now()} SEGMENT \n')
@@ -203,7 +203,7 @@ def segment_index(indices):
 		if Y_pred.shape != template.shape[:2]:
 			Y_pred = resize(Y_pred, template.shape[:2], order=0)
 
-		save_tiff_imagej_compatible(os.sep.join([pos,label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
+		save_tiff_imagej_compatible(pos+os.sep.join([label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
 
 		del f;
 		del template;

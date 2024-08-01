@@ -323,6 +323,8 @@ class ProcessPanel(QFrame, Styles):
 				os.remove(os.sep.join([self.parent_window.pos,'output','tables',f'trajectories_{self.mode}.pkl']))
 			if os.path.exists(os.sep.join([self.parent_window.pos,'output','tables',f'napari_{self.mode[:-1]}_trajectories.npy'])):
 				os.remove(os.sep.join([self.parent_window.pos,'output','tables',f'napari_{self.mode[:-1]}_trajectories.npy']))
+			if os.path.exists(os.sep.join([self.parent_window.pos,'output','tables',f'trajectories_pairs.csv'])):
+				os.remove(os.sep.join([self.parent_window.pos,'output','tables',f'trajectories_pairs.csv']))
 			self.parent_window.update_position_options()
 		else:
 			return None

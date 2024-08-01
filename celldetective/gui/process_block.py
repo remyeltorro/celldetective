@@ -543,7 +543,7 @@ class ProcessPanel(QFrame, Styles):
 		if self.df is not None and self.segment_action.isChecked():
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
-			msgBox.setText("Measurement tables have been found... Re-segmenting may create mismatches between\nthe cell labels and the associated measurements. Do you want\nto erase the tables post-segmentation?")
+			msgBox.setText("Measurement tables have been found... Re-segmenting may create mismatches between the cell labels and the associated measurements. Do you want to erase the tables post-segmentation?")
 			msgBox.setWindowTitle("Info")
 			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
 			returnValue = msgBox.exec()
@@ -553,11 +553,11 @@ class ProcessPanel(QFrame, Styles):
 				return None
 			else:
 				print('erase tabs!')
-				tabs = self.df_pos_info['pos_path'].unique()
+				tabs = [pos+os.sep.join(['output', 'tables', f'trajectories_{self.mode}.csv']) for pos in self.df_pos_info['pos_path'].unique()]
 				for t in tabs:
 					if os.path.exists(t.replace('.csv','.pkl')):
 						os.remove(t.replace('.csv','.pkl'))
-					os.remove(t)
+					os.remove(t)				
 
 		loop_iter=0
 

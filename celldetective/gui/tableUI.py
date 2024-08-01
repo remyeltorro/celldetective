@@ -850,19 +850,42 @@ class TableUI(QMainWindow, Styles):
 			self.x = self.x_cb.currentText()
 
 		legend=True
+		
 		if self.hist_check.isChecked():
-			sns.histplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
-			legend = False
+			if self.x is not None:
+				sns.histplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
+				legend = False
+			elif self.x is None and self.y is not None:
+				sns.histplot(data=self.data, x=self.y, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
+				legend = False
+			else:
+				pass
+
 		if self.kde_check.isChecked():
-			sns.kdeplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
-			legend = False
+			if self.x is not None:
+				sns.kdeplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
+				legend = False
+			elif self.x is None and self.y is not None:
+				sns.kdeplot(data=self.data, x=self.y, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
+				legend = False	
+			else:
+				pass
+
 		if self.count_check.isChecked():
 			sns.countplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
 			legend = False
+
+
 		if self.ecdf_check.isChecked():
-			sns.ecdfplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
-			legend = False
-		
+			if self.x is not None:
+				sns.ecdfplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+				legend = False
+			elif self.x is None and self.y is not None:
+				sns.ecdfplot(data=self.data, x=self.y, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+				legend = False
+			else:
+				pass
+						
 		if self.scat_check.isChecked():
 			if self.x_option:
 				sns.scatterplot(data=self.data, x=self.x,y=self.y, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)

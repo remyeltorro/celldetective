@@ -455,7 +455,7 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		df_B = df_B.drop(columns=unwanted)
 
 	df_A, df_B = distance_cut_neighborhood(df_A, df_B, distance, **neighborhood_kwargs)
-	if df_A is None or df_B is None:
+	if df_A is None or df_B is None or len(df_A)==0:
 		return None
 
 	for td, d in zip(theta_dist, distance):
@@ -480,7 +480,8 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 			if not np.all(df_A['TRACK_ID'].isnull()):
 				print('Estimate average neighborhood before/after event...')
 				df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col)
-				df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col)
+				if event_time_col is not None:
+					df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col)
 				print('Done...')
 
 	df_A.to_pickle(path_A.replace('.csv', '.pkl'))
@@ -1233,6 +1234,9 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 			os.remove(path_A.replace('.csv','.pkl'))
 		if os.path.exists(path_B.replace('.csv','.pkl')):
 			os.remove(path_B.replace('.csv','.pkl'))
+		df_pair, pair_path = get_position_table(pos, population='pairs', return_path=True)
+		if df_pair is not None:
+			os.remove(pair_path)
 
 	df_A_pkl = get_position_pickle(pos, population=population[0], return_path=False)
 	df_B_pkl = get_position_pickle(pos, population=population[1], return_path=False)
@@ -1297,7 +1301,7 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 
 	print(f"Distance: {distance} for mask contact")
 	df_A, df_B = mask_contact_neighborhood(df_A, df_B, labelsA, labelsB, distance, **neighborhood_kwargs)
-	if df_A is None or df_B is None:
+	if df_A is None or df_B is None or len(df_A)==0:
 		return None
 
 	for td, d in zip(theta_dist, distance):
@@ -1316,13 +1320,13 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 
 		df_A = compute_neighborhood_metrics(df_A, neigh_col, metrics=['inclusive', 'intermediate'],
 											decompose_by_status=True)
-		if neighborhood_kwargs['symmetrize']:
-			df_B = compute_neighborhood_metrics(df_B, neigh_col, metrics=['inclusive','intermediate'], decompose_by_status=True)
-		
-		df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col, metrics=['inclusive','intermediate'])
-		if event_time_col is not None:
-			df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col, metrics=['inclusive', 'intermediate'])
-
+		if 'TRACK_ID' in list(df_A.columns):
+			if not np.all(df_A['TRACK_ID'].isnull()):
+				df_A = mean_neighborhood_before_event(df_A, neigh_col, event_time_col, metrics=['inclusive','intermediate'])
+				if event_time_col is not None:
+					df_A = mean_neighborhood_after_event(df_A, neigh_col, event_time_col, metrics=['inclusive', 'intermediate'])
+				print('Done...')
+				
 	df_A.to_pickle(path_A.replace('.csv', '.pkl'))
 	if not population[0] == population[1]:
 		# Remove neighborhood column

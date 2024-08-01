@@ -277,6 +277,16 @@ class ProcessPanel(QFrame, Styles):
 		# self.show_track_table_btn.setEnabled(False)
 		# grid_track.addWidget(self.show_track_table_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
 
+		self.delete_tracks_btn = QPushButton()
+		self.delete_tracks_btn.setIcon(icon(MDI6.trash_can,color="black"))
+		self.delete_tracks_btn.setIconSize(QSize(20, 20))
+		self.delete_tracks_btn.setToolTip("Delete existing tracks.")
+		self.delete_tracks_btn.setStyleSheet(self.button_select_all)
+		self.delete_tracks_btn.clicked.connect(self.delete_tracks)
+		self.delete_tracks_btn.setEnabled(True)
+		self.delete_tracks_btn.hide()
+		grid_track.addWidget(self.delete_tracks_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
+
 		self.check_tracking_result_btn = QPushButton()
 		self.check_tracking_result_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
 		self.check_tracking_result_btn.setIconSize(QSize(20, 20))
@@ -296,6 +306,25 @@ class ProcessPanel(QFrame, Styles):
 
 		self.grid_contents.addLayout(grid_track, 4, 0, 1,4)
 
+	def delete_tracks(self):
+
+		msgBox = QMessageBox()
+		msgBox.setIcon(QMessageBox.Question)
+		msgBox.setText("Do you want to erase the tracks? All subsequent annotations will be erased...")
+		msgBox.setWindowTitle("Info")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		returnValue = msgBox.exec()
+		if returnValue == QMessageBox.No:
+			return None
+		elif returnValue == QMessageBox.Yes:
+			if os.path.exists(os.sep.join([self.parent_window.pos,'output','tables',f'trajectories_{self.mode}.csv'])):
+				os.remove(os.sep.join([self.parent_window.pos,'output','tables',f'trajectories_{self.mode}.csv']))
+			if os.path.exists(os.sep.join([self.parent_window.pos,'output','tables',f'trajectories_{self.mode}.pkl'])):
+				os.remove(os.sep.join([self.parent_window.pos,'output','tables',f'trajectories_{self.mode}.pkl']))
+			if os.path.exists(os.sep.join([self.parent_window.pos,'output','tables',f'napari_{self.mode[:-1]}_trajectories.npy'])):
+				os.remove(os.sep.join([self.parent_window.pos,'output','tables',f'napari_{self.mode[:-1]}_trajectories.npy']))
+		else:
+			return None
 
 	def generate_segmentation_options(self):
 

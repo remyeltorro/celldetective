@@ -437,14 +437,18 @@ class ControlPanel(QMainWindow, Styles):
 			self.ProcessTargets.check_signals_btn.setEnabled(False)
 			self.ProcessEffectors.check_signals_btn.setEnabled(False)
 			self.NeighPanel.check_signals_btn.setEnabled(False)
+			self.ProcessTargets.delete_tracks_btn.hide()
+			self.ProcessEffectors.delete_tracks_btn.hide()
 
 			self.view_stack_btn.setEnabled(False)
 		elif self.well_list.currentText()=='*':
-
 			self.ProcessTargets.view_tab_btn.setEnabled(True)
 			self.ProcessEffectors.view_tab_btn.setEnabled(True)	
 			self.NeighPanel.view_tab_btn.setEnabled(True)
-			self.view_stack_btn.setEnabled(False)	
+			self.view_stack_btn.setEnabled(False)
+			self.delete_tracks_btn.hide()
+			self.ProcessTargets.delete_tracks_btn.hide()
+			self.ProcessEffectors.delete_tracks_btn.hide()
 		else:
 			if not self.well_list.currentText()=="*":
 				self.locate_selected_position()
@@ -468,6 +472,7 @@ class ControlPanel(QMainWindow, Styles):
 					self.ProcessEffectors.check_measurements_btn.setEnabled(True)
 					if 'TRACK_ID' in cols:
 						self.ProcessEffectors.check_signals_btn.setEnabled(True)
+						self.ProcessEffectors.delete_tracks_btn.show()
 					#self.ProcessEffectors.signal_analysis_action.setEnabled(True)
 					self.ProcessEffectors.view_tab_btn.setEnabled(True)
 					self.ProcessEffectors.classify_btn.setEnabled(True)
@@ -477,12 +482,14 @@ class ControlPanel(QMainWindow, Styles):
 					#self.ProcessEffectors.signal_analysis_action.setEnabled(False)
 					self.ProcessEffectors.view_tab_btn.setEnabled(False)
 					self.ProcessEffectors.classify_btn.setEnabled(False)
+					self.ProcessEffectors.delete_tracks_btn.hide()
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_targets.csv'])):
 					cols = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_targets.csv']), nrows=1).columns.tolist()
 					self.ProcessTargets.check_measurements_btn.setEnabled(True)
 					if 'TRACK_ID' in cols:
 						self.ProcessTargets.check_signals_btn.setEnabled(True)
+						self.ProcessTargets.delete_tracks_btn.show()
 					#self.ProcessTargets.signal_analysis_action.setEnabled(True)
 					self.ProcessTargets.view_tab_btn.setEnabled(True)
 					self.ProcessTargets.classify_btn.setEnabled(True)
@@ -492,6 +499,7 @@ class ControlPanel(QMainWindow, Styles):
 					#self.ProcessTargets.signal_analysis_action.setEnabled(False)
 					self.ProcessTargets.view_tab_btn.setEnabled(False)
 					self.ProcessTargets.classify_btn.setEnabled(False)
+					self.ProcessTargets.delete_tracks_btn.hide()
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_pairs.csv'])):
 					self.NeighPanel.view_tab_btn.setEnabled(True)

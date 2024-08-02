@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QHBoxLayout, QL
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
-from celldetective.utils import _extract_labels_from_config, ConfigSectionMap, extract_experiment_channels
+from celldetective.utils import _extract_labels_from_config, ConfigSectionMap, extract_experiment_channels, extract_identity_col
 from celldetective.gui import ConfigEditor, ProcessPanel, PreprocessingPanel, AnalysisPanel, NeighPanel
 from natsort import natsorted
 from glob import glob
@@ -473,9 +473,10 @@ class ControlPanel(QMainWindow, Styles):
 					self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv'])):
-					cols = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv']), nrows=1).columns.tolist()
+					df = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv']), nrows=1)
+					id_col = extract_identity_col(df)
 					self.ProcessEffectors.check_measurements_btn.setEnabled(True)
-					if 'TRACK_ID' in cols:
+					if id_col=='TRACK_ID':
 						self.ProcessEffectors.check_signals_btn.setEnabled(True)
 						self.ProcessEffectors.delete_tracks_btn.show()
 						self.ProcessEffectors.signal_analysis_action.setEnabled(True)
@@ -495,9 +496,10 @@ class ControlPanel(QMainWindow, Styles):
 					self.ProcessEffectors.signal_analysis_action.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_targets.csv'])):
-					cols = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_targets.csv']), nrows=1).columns.tolist()
+					df = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_targets.csv']), nrows=1)
+					id_col = extract_identity_col(df)
 					self.ProcessTargets.check_measurements_btn.setEnabled(True)
-					if 'TRACK_ID' in cols:
+					if id_col=='TRACK_ID':
 						self.ProcessTargets.check_signals_btn.setEnabled(True)
 						self.ProcessTargets.signal_analysis_action.setEnabled(True)
 						self.ProcessTargets.delete_tracks_btn.show()

@@ -8,7 +8,7 @@ from mahotas.features import haralick
 from scipy.ndimage import zoom
 import os
 import subprocess
-from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features
+from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, extract_identity_col
 from scipy.spatial.distance import cdist
 from celldetective.measure import contour_of_instance_segmentation
 from celldetective.io import locate_labels, get_position_pickle, get_position_table
@@ -193,8 +193,9 @@ def distance_cut_neighborhood(setA, setB, distance, mode='two-pop', status=None,
 			# Check whether data can be tracked
 			temp_column_labels = column_labels.copy()
 
-			if not 'TRACK_ID' in list(s.columns):
-				temp_column_labels.update({'track': 'ID'})
+			id_col = extract_identity_col(s)
+			temp_column_labels.update({'track': id_col})
+			if id_col=='ID':
 				compute_cum_sum = False  # if no tracking data then cum_sum is not relevant
 			cl.append(temp_column_labels)
 
@@ -406,16 +407,9 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
-		if 'TRACK_ID' in list(pkl_columns):
-			if not np.all(df_A_pkl['TRACK_ID'].isnull()):
-				cols.append('TRACK_ID')
-				on_cols = ['TRACK_ID','FRAME']
-			else:
-				cols.append('ID')
-				on_cols = ['ID','FRAME']
-		else:
-			cols.append('ID')
-			on_cols = ['ID','FRAME']
+		id_col = extract_identity_col(df_A_pkl)
+		cols.append(id_col)
+		on_cols = [id_col, 'FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
 		try:
@@ -429,18 +423,9 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
-		if 'TRACK_ID' in list(pkl_columns):
-
-			if not np.all(df_B_pkl['TRACK_ID'].isnull()):
-
-				cols.append('TRACK_ID')
-				on_cols = ['TRACK_ID','FRAME']
-			else:
-				cols.append('ID')
-				on_cols = ['ID','FRAME']
-		else:
-			cols.append('ID')
-			on_cols = ['ID','FRAME']
+		id_col = extract_identity_col(df_B_pkl)
+		cols.append(id_col)
+		on_cols = [id_col, 'FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
 		try:
@@ -559,15 +544,9 @@ def compute_neighborhood_metrics(neigh_table, neigh_col, metrics=['inclusive','e
 		groupbycols = ['position']
 	else:
 		groupbycols = []
-	if 'TRACK_ID' in list(neigh_table.columns):
-		
-		if not np.all(neigh_table['TRACK_ID'].isnull()):
 
-			groupbycols.append('TRACK_ID')
-		else:
-			groupbycols.append('ID')
-	else:
-		groupbycols.append('ID')
+	id_col = extract_identity_col(neigh_table)
+	groupbycols.append(id_col)
 
 	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
 
@@ -696,13 +675,9 @@ def mean_neighborhood_before_event(neigh_table, neigh_col, event_time_col,
 		groupbycols = ['position']
 	else:
 		groupbycols = []
-	if 'TRACK_ID' in list(neigh_table.columns):
-		if not np.all(neigh_table['TRACK_ID'].isnull()):
-			groupbycols.append('TRACK_ID')
-		else:
-			groupbycols.append('ID')
-	else:
-		groupbycols.append('ID')
+
+	id_col = extract_identity_col(neigh_table)
+	groupbycols.append(id_col)
 
 	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
 	suffix = '_before_event'
@@ -787,14 +762,8 @@ def mean_neighborhood_after_event(neigh_table, neigh_col, event_time_col,
 	else:
 		groupbycols = []
 
-	if 'TRACK_ID' in list(neigh_table.columns):
-
-		if not np.all(neigh_table['TRACK_ID'].isnull()):
-			groupbycols.append('TRACK_ID')
-		else:
-			groupbycols.append('ID')
-	else:
-		groupbycols.append('ID')
+	id_col = extract_identity_col(neigh_table)
+	groupbycols.append(id_col)
 
 	neigh_table.sort_values(by=groupbycols+['FRAME'],inplace=True)
 	suffix = '_after_event'
@@ -965,8 +934,9 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 			# Check whether data can be tracked
 			temp_column_labels = column_labels.copy()
 
-			if not 'TRACK_ID' in list(s.columns):
-				temp_column_labels.update({'track': 'ID'})
+			id_col = extract_identity_col(s)
+			temp_column_labels.update({'track': 'ID'})
+			if id_col=='ID':
 				compute_cum_sum = False  # if no tracking data then cum_sum is not relevant
 			cl.append(temp_column_labels)
 
@@ -1250,15 +1220,9 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		
 		if 'TRACK_ID' in list(pkl_columns):
 
-			if not np.all(df_A_pkl['TRACK_ID'].isnull()):
-				cols.append('TRACK_ID')
-				on_cols = ['TRACK_ID','FRAME']
-			else:
-				cols.append('ID')
-				on_cols = ['ID','FRAME']				
-		else:
-			cols.append('ID')
-			on_cols = ['ID','FRAME']
+		id_col = extract_identity_col(df_A_pkl)
+		cols.append(id_col)
+		on_cols = [id_col, 'FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
 		try:
@@ -1272,16 +1236,9 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 
-		if 'TRACK_ID' in list(pkl_columns):
-			if not np.all(df_B_pkl['TRACK_ID'].isnull()):
-				cols.append('TRACK_ID')
-				on_cols = ['TRACK_ID','FRAME']
-			else:
-				cols.append('ID')
-				on_cols = ['ID','FRAME']				
-		else:
-			cols.append('ID')
-			on_cols = ['ID','FRAME']
+		id_col = extract_identity_col(df_B_pkl)
+		cols.append(id_col)
+		on_cols = [id_col, 'FRAME']
 
 		print(f'Recover {cols} from the pickle file...')
 		try:

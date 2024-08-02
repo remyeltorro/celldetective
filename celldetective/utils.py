@@ -25,6 +25,22 @@ import tempfile
 from scipy.interpolate import griddata
 import re
 
+def extract_identity_col(trajectories):
+
+	if 'TRACK_ID' in list(trajectories.columns):
+		if not np.all(trajectories['TRACK_ID'].isnull()):
+			id_col = 'TRACK_ID'
+		else:
+			if 'ID' in list(trajectories.columns):
+				id_col = 'ID'
+	elif 'ID' in list(trajectories.columns):
+		
+		id_col = 'ID'
+	else:
+		print('ID or TRACK ID column could not be found in the table...')
+		id_col = None
+
+	return id_col
 
 def derivative(x, timeline, window, mode='bi'):
 	

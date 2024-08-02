@@ -1,5 +1,5 @@
 """
-Copright © 2022 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
+Copyright © 2022 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
 """
 
 import argparse

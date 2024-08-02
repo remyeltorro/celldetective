@@ -72,6 +72,8 @@ if os.path.exists(instr_path):
 		print("Reading the following instructions: ", instructions)
 	if 'background_correction' in instructions:
 		background_correction = instructions['background_correction']
+	else:
+		background_correction = None
 
 	if 'features' in instructions:
 		features = instructions['features']

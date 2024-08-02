@@ -16,7 +16,8 @@ from celldetective.io import normalize_multichannel
 from stardist import fill_label_holes
 from art import tprint
 import matplotlib.pyplot as plt
-
+from distutils.dir_util import copy_tree
+from csbdeep.utils import save_json
 
 tprint("Train")
 
@@ -169,22 +170,17 @@ elif model_type=='stardist':
 	
 	# Predict on subsampled grid for increased efficiency and larger field of view
 	grid = (2,2)
-	conf = Config2D (
+	conf = Config2D(
 		n_rays       = n_rays,
 		grid         = grid,
 		use_gpu      = use_gpu,
 		n_channel_in = n_channel,
-		unet_dropout = 0.0,
-		unet_batch_norm = False,
-		unet_n_conv_per_depth=2,
 		train_learning_rate = learning_rate,
 		train_patch_size = (256,256),
 		train_epochs = epochs,
-		#train_foreground_only=0.9,
-		train_loss_weights=(1,0.2),
 		train_reduce_lr = {'factor': 0.1, 'patience': 30, 'min_delta': 0},
-		unet_n_depth = 3,
 		train_batch_size = batch_size,
+		train_steps_per_epoch = int(augmentation_factor*len(X_trn)),
 	)
 	
 	if use_gpu:
@@ -194,19 +190,28 @@ elif model_type=='stardist':
 	if pretrained is None:
 		model = StarDist2D(conf, name=model_name, basedir=target_directory)
 	else:
-		# files_to_copy = glob(os.sep.join([pretrained, '*']))
-		# for f in files_to_copy:
-		# 	shutil.copy(f, os.sep.join([target_directory, model_name, os.path.split(f)[-1]]))
-		idx=1
-		while os.path.exists(os.sep.join([target_directory, model_name])):
-			model_name =  model_name+f'_{idx}'
-			idx+=1
 
-		shutil.copytree(pretrained, os.sep.join([target_directory, model_name]))
+		os.rename(instructions, os.sep.join([target_directory, model_name, 'temp.json']))
+		copy_tree(pretrained, os.sep.join([target_directory, model_name]))
+		
+		if os.path.exists(os.sep.join([target_directory, model_name, 'training_instructions.json'])):
+			os.remove(os.sep.join([target_directory, model_name, 'training_instructions.json']))
+		if os.path.exists(os.sep.join([target_directory, model_name, 'config_input.json'])):
+			os.remove(os.sep.join([target_directory, model_name, 'config_input.json']))
+		if os.path.exists(os.sep.join([target_directory, model_name, 'logs'+os.sep])):
+			shutil.rmtree(os.sep.join([target_directory, model_name, 'logs']))
+		os.rename(os.sep.join([target_directory, model_name, 'temp.json']),os.sep.join([target_directory, model_name, 'training_instructions.json']))
+
+		#shutil.copytree(pretrained, os.sep.join([target_directory, model_name]))
 		model = StarDist2D(None, name=model_name, basedir=target_directory)
 		model.config.train_epochs = epochs
 		model.config.train_batch_size = min(len(X_trn),batch_size)
-		model.config.train_learning_rate = learning_rate
+		model.config.train_learning_rate = learning_rate # perf seems bad if lr is changed in transfer
+		model.config.use_gpu = use_gpu
+		model.config.train_reduce_lr = {'factor': 0.1, 'patience': 10, 'min_delta': 0}
+		print(f'{model.config=}')
+
+		save_json(vars(model.config), os.sep.join([target_directory, model_name, 'config.json']))
 
 	median_size = calculate_extents(list(Y_trn), np.mean)
 	fov = np.array(model._axes_tile_overlap('YX'))

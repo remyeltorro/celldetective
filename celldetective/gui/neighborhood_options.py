@@ -507,6 +507,6 @@ class ConfigNeighborhoods(QWidget, Styles):
 						if 'not_status_option' in neighborhood_kwargs:
 							not_status_option = neighborhood_kwargs['not_status_option']
 							if not_status_option[0]:
-								self.switch_not_reference.click()
+								self.reference_switch_status_btn.click()
 							if not_status_option[1]:
-								self.switch_not_neigh.click()
+								self.neighbor_switch_status_btn.click()

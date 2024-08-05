@@ -57,6 +57,7 @@ class SignalAnnotator(QMainWindow, Styles):
 
 		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
+		self.value_magnitude = 1
 
 		# default params
 		self.class_name = 'class'
@@ -826,6 +827,8 @@ class SignalAnnotator(QMainWindow, Styles):
 
 	def plot_signals(self):
 
+		range_values = []
+
 		try:
 			yvalues = []
 			for i in range(len(self.signal_choice_cb)):
@@ -841,6 +844,8 @@ class SignalAnnotator(QMainWindow, Styles):
 					xdata = self.df_tracks.loc[self.df_tracks['TRACK_ID'] == self.track_of_interest, 'FRAME'].to_numpy()
 					ydata = self.df_tracks.loc[
 						self.df_tracks['TRACK_ID'] == self.track_of_interest, signal_choice].to_numpy()
+					
+					range_values.extend(ydata)
 
 					xdata = xdata[ydata == ydata]  # remove nan
 					ydata = ydata[ydata == ydata]
@@ -863,6 +868,20 @@ class SignalAnnotator(QMainWindow, Styles):
 			self.cell_fcanvas.canvas.draw()
 		except Exception as e:
 			print(f"Plot signals: {e=}")
+		
+		if len(range_values)>0:
+			range_values = np.array(range_values)
+			if len(range_values[range_values==range_values])>0:
+				if len(range_values[range_values>0])>0:
+					self.value_magnitude = np.nanpercentile(range_values, 1)
+				else:
+					self.value_magnitude = 1
+				self.non_log_ymin = 0.98*np.nanmin(range_values)
+				self.non_log_ymax = np.nanmax(range_values)*1.02
+				if self.cell_ax.get_yscale()=='linear':
+					self.cell_ax.set_ylim(self.non_log_ymin, self.non_log_ymax)
+				else:
+					self.cell_ax.set_ylim(self.value_magnitude, self.non_log_ymax)					
 
 	def extract_scatter_from_trajectories(self):
 
@@ -1294,18 +1313,19 @@ class SignalAnnotator(QMainWindow, Styles):
 		"""
 
 		try:
-			if self.cell_ax.get_yscale() == 'linear':
+			if self.cell_ax.get_yscale()=='linear':
+				ymin,ymax = self.cell_ax.get_ylim()
 				self.cell_ax.set_yscale('log')
-				self.log_btn.setIcon(icon(MDI6.math_log, color="#1565c0"))
+				self.log_btn.setIcon(icon(MDI6.math_log,color="#1565c0"))
+				self.cell_ax.set_ylim(self.value_magnitude, ymax)
 			else:
 				self.cell_ax.set_yscale('linear')
-				self.log_btn.setIcon(icon(MDI6.math_log, color="black"))
+				self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
 		except Exception as e:
 			print(e)
 
-		# self.cell_ax.autoscale()
+		#self.cell_ax.autoscale()
 		self.cell_fcanvas.canvas.draw_idle()
-
 
 class MeasureAnnotator(SignalAnnotator):
 

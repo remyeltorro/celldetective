@@ -42,47 +42,48 @@ nbr_channels = len(channel_names)
 instr_path = PurePath(expfolder, Path(f"{instruction_file}"))
 previous_pair_table_path = pos + os.sep.join(['output', 'tables', 'trajectories_pairs.csv'])
 
-if os.path.exists(instr_path):
-	print(f"Neighborhood instructions has been successfully located.")
-	with open(instr_path, 'r') as f:
-		instructions = json.load(f)
-		print("Reading the following instructions: ", instructions)
+# if os.path.exists(instr_path):
+# 	print(f"Neighborhood instructions has been successfully located.")
+# 	with open(instr_path, 'r') as f:
+# 		instructions = json.load(f)
+# 		print("Reading the following instructions: ", instructions)
 
-	if 'distance' in instructions:
-		distance = instructions['distance'][0]
-	else:
-		distance = None
-else:
-	print('No measurement instructions found')
-	os.abort()
+# 	if 'distance' in instructions:
+# 		distance = instructions['distance'][0]
+# 	else:
+# 		distance = None
+# else:
+# 	print('No measurement instructions found')
+# 	os.abort()
 
 previous_neighborhoods = []
 associated_reference_population = []
 
-if distance is None:
-	print('No measurement could be performed. Check your inputs.')
-	print('Done.')
-	os.abort()
-	#distance = 0
-else:
-	neighborhoods_to_measure = extract_neighborhoods_from_pickles(pos)
-	all_df_pairs = []
-	if os.path.exists(previous_pair_table_path):
-		df_0 = pd.read_csv(previous_pair_table_path)
-		previous_neighborhoods = [c.replace('status_','') for c in list(df_0.columns) if c.startswith('status_neighborhood')]
-		for n in previous_neighborhoods:
-			associated_reference_population.append(df_0.loc[~df_0['status_'+n].isnull(),'reference_population'].values[0])
-		print(f'{previous_neighborhoods=} {associated_reference_population=}')
-		all_df_pairs.append(df_0)
-	for k,neigh_protocol in enumerate(neighborhoods_to_measure):
-		if neigh_protocol['description'] not in previous_neighborhoods:
-			df_pairs = measure_pair_signals_at_position(pos, neigh_protocol)
-			if 'REFERENCE_ID' in list(df_pairs.columns):
-				all_df_pairs.append(df_pairs)
-		elif neigh_protocol['description'] in previous_neighborhoods and neigh_protocol['reference'] != associated_reference_population[previous_neighborhoods.index(neigh_protocol['description'])]:
-			df_pairs = measure_pair_signals_at_position(pos, neigh_protocol)
-			if 'REFERENCE_ID' in list(df_pairs.columns):
-				all_df_pairs.append(df_pairs)			
+# if distance is None:
+# 	print('No measurement could be performed. Check your inputs.')
+# 	print('Done.')
+# 	os.abort()
+# 	#distance = 0
+# else:
+neighborhoods_to_measure = extract_neighborhoods_from_pickles(pos)
+all_df_pairs = []
+if os.path.exists(previous_pair_table_path):
+	df_0 = pd.read_csv(previous_pair_table_path)
+	previous_neighborhoods = [c.replace('status_','') for c in list(df_0.columns) if c.startswith('status_neighborhood')]
+	for n in previous_neighborhoods:
+		associated_reference_population.append(df_0.loc[~df_0['status_'+n].isnull(),'reference_population'].values[0])
+	print(f'{previous_neighborhoods=} {associated_reference_population=}')
+	all_df_pairs.append(df_0)
+for k,neigh_protocol in enumerate(neighborhoods_to_measure):
+	if neigh_protocol['description'] not in previous_neighborhoods:
+		df_pairs = measure_pair_signals_at_position(pos, neigh_protocol)
+		print(f'{df_pairs=}')
+		if 'REFERENCE_ID' in list(df_pairs.columns):
+			all_df_pairs.append(df_pairs)
+	elif neigh_protocol['description'] in previous_neighborhoods and neigh_protocol['reference'] != associated_reference_population[previous_neighborhoods.index(neigh_protocol['description'])]:
+		df_pairs = measure_pair_signals_at_position(pos, neigh_protocol)
+		if 'REFERENCE_ID' in list(df_pairs.columns):
+			all_df_pairs.append(df_pairs)			
 
 print(f'{len(all_df_pairs)} neighborhood measurements sets were computed...')
 

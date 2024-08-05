@@ -696,7 +696,6 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 	print('signal shape: ', signals.shape)
 
 	classes = model.predict_class(signals)
-	print(f'{classes=}')
 	times_recast = model.predict_time_of_interest(signals)
 
 	if label is None:
@@ -720,8 +719,6 @@ def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_
 	trajectories_neighbors = trajectories_pairs.rename(columns=lambda x: x.replace('neighbor_',''))
 	invalid_cols = [c for c in list(trajectories_pairs.columns) if c.startswith('Unnamed')]
 	trajectories_pairs = trajectories_pairs.drop(columns=invalid_cols)
-
-	print(trajectories_pairs.columns)
 	
 	return trajectories_pairs
 
@@ -1704,7 +1701,6 @@ class SignalDetectionModel(object):
 			for s in self.list_of_sets:
 
 				signal_dataset = self.load_set(s)
-				print(signal_dataset)
 				selected_signals, max_length = self.find_best_signal_match(signal_dataset)
 				signals_recast, classes, times_of_interest = self.cast_signals_into_training_data(signal_dataset, selected_signals, max_length)
 				signals_recast, times_of_interest = self.normalize_signals(signals_recast, times_of_interest)
@@ -1807,7 +1803,6 @@ class SignalDetectionModel(object):
 			x_train_aug.append(aug[0])
 			y_time_train_aug.append(aug[1])
 			y_class_train_aug.append(aug[2])
-		print('per class counts ',counts)
 
 		# Save augmented training set
 		self.x_train = np.array(x_train_aug)
@@ -1874,7 +1869,6 @@ class SignalDetectionModel(object):
 					print(f"Attribute {selected_signals[i]} matched to {self.channel_option[i]} not found in annotation...")
 					pass
 
-			print(signal_dataset[k]["class"])
 			classes[k] = signal_dataset[k]["class"]
 			times_of_interest[k] = signal_dataset[k]["time_of_interest"]
 

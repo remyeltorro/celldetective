@@ -64,18 +64,19 @@ model.fit_from_directory(threshold_instructions['ds'], **train_params)
 
 # if neighborhood of interest in training instructions, write it in config!
 if 'neighborhood_of_interest' in threshold_instructions:
-	
-	model_path = locate_signal_model(threshold_instructions['model_name'], path=None, pairs=True)
-	complete_path = model_path #+model
-	complete_path = rf"{complete_path}"
-	model_config_path = os.sep.join([complete_path,'config_input.json'])
-	model_config_path = rf"{model_config_path}"
+	if threshold_instructions['neighborhood_of_interest'] is not None:
+		
+		model_path = locate_signal_model(threshold_instructions['model_name'], path=None, pairs=True)
+		complete_path = model_path #+model
+		complete_path = rf"{complete_path}"
+		model_config_path = os.sep.join([complete_path,'config_input.json'])
+		model_config_path = rf"{model_config_path}"
 
-	f = open(model_config_path)
-	config = json.load(f)
-	config.update({'neighborhood_of_interest': threshold_instructions['neighborhood_of_interest'], 'reference_population': threshold_instructions['reference_population'], 'neighbor_population': threshold_instructions['neighbor_population']})
-	json_string = json.dumps(config)
-	with open(model_config_path, 'w') as outfile:
-		outfile.write(json_string)
+		f = open(model_config_path)
+		config = json.load(f)
+		config.update({'neighborhood_of_interest': threshold_instructions['neighborhood_of_interest'], 'reference_population': threshold_instructions['reference_population'], 'neighbor_population': threshold_instructions['neighbor_population']})
+		json_string = json.dumps(config)
+		with open(model_config_path, 'w') as outfile:
+			outfile.write(json_string)
 
 print('Done.')

@@ -110,7 +110,7 @@ class ConfigSurvival(QWidget, Styles):
 
 
 		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('cmap: ')] #QLabel('class: '), 
-		self.cb_options = [['targets','effectors'], ['0','t_firstdetection'], ['t0'], list(plt.colormaps())] #['class'], 
+		self.cb_options = [['targets','effectors'], ['0'], [], list(plt.colormaps())] #['class'], 
 		self.cbs = [QComboBox() for i in range(len(labels))]
 
 		self.cbs[-1] = QColormapComboBox()

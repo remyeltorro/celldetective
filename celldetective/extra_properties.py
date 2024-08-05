@@ -25,8 +25,7 @@ import warnings
 import numpy as np
 from scipy.ndimage import distance_transform_edt, center_of_mass
 from scipy.spatial.distance import euclidean
-from celldetective.utils import interpolate_nan
-from celldetective.measure import contour_of_instance_segmentation
+from celldetective.utils import interpolate_nan, contour_of_instance_segmentation
 
 # Percentiles
 

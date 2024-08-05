@@ -8,9 +8,8 @@ from mahotas.features import haralick
 from scipy.ndimage import zoom
 import os
 import subprocess
-from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, extract_identity_col
+from celldetective.utils import contour_of_instance_segmentation, rename_intensity_column, create_patch_mask, remove_redundant_features, extract_identity_col
 from scipy.spatial.distance import cdist
-from celldetective.measure import contour_of_instance_segmentation
 from celldetective.io import locate_labels, get_position_pickle, get_position_table
 import re
 

@@ -24,6 +24,66 @@ import shutil
 import tempfile
 from scipy.interpolate import griddata
 import re
+from scipy.ndimage.morphology import distance_transform_edt
+from scipy import ndimage
+
+def contour_of_instance_segmentation(label, distance):
+
+	"""
+
+	Generate an instance mask containing the contour of the segmented objects.
+
+	Parameters
+	----------
+	label : ndarray
+		The instance segmentation labels.
+	distance : int, float, list, or tuple
+		The distance or range of distances from the edge of each instance to include in the contour.
+		If a single value is provided, it represents the maximum distance. If a tuple or list is provided,
+		it represents the minimum and maximum distances.
+
+	Returns
+	-------
+	border_label : ndarray
+		An instance mask containing the contour of the segmented objects.
+
+	Notes
+	-----
+	This function generates an instance mask representing the contour of the segmented instances in the label image.
+	It use the distance_transform_edt function from the scipy.ndimage module to compute the Euclidean distance transform.
+	The contour is defined based on the specified distance(s) from the edge of each instance.
+	The resulting mask, `border_label`, contains the contour regions, while the interior regions are set to zero.
+
+	Examples
+	--------
+	>>> border_label = contour_of_instance_segmentation(label, distance=3)
+	# Generate a binary mask containing the contour of the segmented instances with a maximum distance of 3 pixels.
+
+	"""
+	if isinstance(distance,(list,tuple)) or distance >= 0 :
+
+		edt = distance_transform_edt(label)
+
+		if isinstance(distance, list) or isinstance(distance, tuple):
+			min_distance = distance[0]; max_distance = distance[1]
+
+		elif isinstance(distance, (int, float)):
+			min_distance = 0
+			max_distance = distance
+
+		thresholded = (edt <= max_distance) * (edt > min_distance)
+		border_label = np.copy(label)
+		border_label[np.where(thresholded == 0)] = 0
+
+	else:
+		size = (2*abs(int(distance))+1, 2*abs(int(distance))+1)
+		dilated_image = ndimage.grey_dilation(label, footprint=disk(int(abs(distance)))) #size=size,
+		border_label=np.copy(dilated_image)
+		matching_cells = np.logical_and(dilated_image != 0, label == dilated_image)
+		border_label[np.where(matching_cells == True)] = 0
+		border_label[label!=0] = 0.
+
+	return border_label
 
 def extract_identity_col(trajectories):
 

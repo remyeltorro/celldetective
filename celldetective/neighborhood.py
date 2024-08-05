@@ -934,7 +934,7 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 			temp_column_labels = column_labels.copy()
 
 			id_col = extract_identity_col(s)
-			temp_column_labels.update({'track': 'ID'})
+			temp_column_labels.update({'track': id_col})
 			if id_col=='ID':
 				compute_cum_sum = False  # if no tracking data then cum_sum is not relevant
 			cl.append(temp_column_labels)

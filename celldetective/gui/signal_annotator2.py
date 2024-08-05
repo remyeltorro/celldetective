@@ -2125,22 +2125,27 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.neighbor_previous_color = []
 			for t, idx in zip(self.neighbor_loc_t, self.neighbor_loc_idx):
 
-				neigh_x = positions[t][idx, 0]
-				neigh_y = positions[t][idx, 1]
-				x_m_point = (self.reference_x[t] + neigh_x) / 2
-				y_m_point = (self.reference_y[t] + neigh_y) / 2
+				try:
 
-				if t not in self.lines_data.keys():
-					self.lines_data[t]=[([self.reference_x[t], neigh_x], [self.reference_y[t], neigh_y])]
-					self.points_data[t]=[(x_m_point, y_m_point)]
-				else:
-					self.lines_data[t].append(([self.reference_x[t], neigh_x], [self.reference_y[t], neigh_y]))
-					self.points_data[t].append((x_m_point, y_m_point))
+					neigh_x = positions[t][idx, 0]
+					neigh_y = positions[t][idx, 1]
+					x_m_point = (self.reference_x[t] + neigh_x) / 2
+					y_m_point = (self.reference_y[t] + neigh_y) / 2
 
-				self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, neigh)]
-				self.line_connections[(self.reference_x[t], neigh_x, self.reference_y[t], neigh_y)]=[(self.reference_track_of_interest, neigh)]
+					if t not in self.lines_data.keys():
+						self.lines_data[t]=[([self.reference_x[t], neigh_x], [self.reference_y[t], neigh_y])]
+						self.points_data[t]=[(x_m_point, y_m_point)]
+					else:
+						self.lines_data[t].append(([self.reference_x[t], neigh_x], [self.reference_y[t], neigh_y]))
+						self.points_data[t].append((x_m_point, y_m_point))
 
-				self.neighbor_previous_color.append(colors[t][idx].copy())
+					self.connections[(x_m_point, y_m_point)] = [(self.reference_track_of_interest, neigh)]
+					self.line_connections[(self.reference_x[t], neigh_x, self.reference_y[t], neigh_y)]=[(self.reference_track_of_interest, neigh)]
+
+					self.neighbor_previous_color.append(colors[t][idx].copy())
+				except Exception as e:
+					print(e)
+					pass
 				#colors[t][idx] = 'salmon'
 
 			# for t in range(len(colors)):
@@ -2380,15 +2385,21 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 					this_frame=self.lines_colors_class[self.framedata]
 
-					this_pair=this_frame[(this_frame[:, 0] == pair[0][0]) & (this_frame[:, 1] == pair[0][1])]
-					self.lines_plot=self.ax.plot(x_coords, y_coords, alpha=1, linewidth=2,color=this_pair[0][2])
-					self.lines_list.append(self.lines_plot[0])
-
+					try:
+						this_pair=this_frame[(this_frame[:, 0] == pair[0][0]) & (this_frame[:, 1] == pair[0][1])]
+						self.lines_plot=self.ax.plot(x_coords, y_coords, alpha=1, linewidth=2,color=this_pair[0][2])
+						self.lines_list.append(self.lines_plot[0])
+					except Exception as e:
+						print(e)
+						pass
 				# Plot points
-				self.points.set_offsets(self.points_data[key])
-				colors_at_this_frame = self.lines_colors_status[self.framedata]
-				colors = [colors_at_this_frame[(colors_at_this_frame[:, 0] == self.connections[point[0],point[1]][0][0]) & (colors_at_this_frame[:, 1] == self.connections[point[0],point[1]][0][1])][0][2] for point in self.points_data[key]]
-				self.points.set_color(colors)
+				try:
+					self.points.set_offsets(self.points_data[key])
+					colors_at_this_frame = self.lines_colors_status[self.framedata]
+					colors = [colors_at_this_frame[(colors_at_this_frame[:, 0] == self.connections[point[0],point[1]][0][0]) & (colors_at_this_frame[:, 1] == self.connections[point[0],point[1]][0][1])][0][2] for point in self.points_data[key]]
+					self.points.set_color(colors)
+				except Exception as e:
+					print(e)
 
 		if self.lines_list!=[]:
 			return [self.im,self.target_status_scatter,self.target_class_scatter,self.effector_status_scatter,self.effector_class_scatter] +self.lines_list + [self.points]

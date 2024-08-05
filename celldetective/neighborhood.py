@@ -1218,8 +1218,6 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		neigh_columns = np.array([c.startswith('neighborhood') for c in pkl_columns])
 		cols = list(pkl_columns[neigh_columns]) + ['FRAME']
 		
-		if 'TRACK_ID' in list(pkl_columns):
-
 		id_col = extract_identity_col(df_A_pkl)
 		cols.append(id_col)
 		on_cols = [id_col, 'FRAME']

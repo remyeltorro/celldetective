@@ -44,6 +44,9 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		self.soft_path = get_software_location()
 		self.pretrained_model = None 
 		self.dataset_folder = None
+		self.current_neighborhood = None
+		self.reference_population = None
+		self.neighbor_population = None
 		self.signal_mode = signal_mode
 
 		if self.signal_mode=='single-cells':

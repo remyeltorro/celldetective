@@ -15,8 +15,8 @@ project = 'celldetective'
 copyright = '2024, Rémy Torro'
 author = 'Rémy Torro'
 
-release = '1.1'
-version = '1.1.1.post4'
+release = '1.2'
+version = '1.2.0'
 
 # -- General configuration
 

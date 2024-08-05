@@ -39,11 +39,17 @@ def measure_pairs(pos, neighborhood_protocol):
 	neighborhood = df_reference.loc[:,f'{neighborhood_description}'].to_numpy()
 
 	ref_id_col = extract_identity_col(df_reference)
+	ref_tracked = False
 	if ref_id_col is None:
 		return None
+	elif ref_id_col=='TRACK_ID':
+		ref_tracked = True
 	neigh_id_col = extract_identity_col(df_neighbor)
+	neigh_tracked = False
 	if neigh_id_col is None:
 		return None
+	elif neigh_id_col=='TRACK_ID':
+		neigh_tracked = True
 	
 	centre_of_mass_columns = [(c,c.replace('POSITION_X','POSITION_Y')) for c in list(df_neighbor.columns) if c.endswith('centre_of_mass_POSITION_X')]
 	centre_of_mass_labels = [c.replace('_centre_of_mass_POSITION_X','') for c in list(df_neighbor.columns) if c.endswith('centre_of_mass_POSITION_X')]
@@ -110,6 +116,7 @@ def measure_pairs(pos, neighborhood_protocol):
 							'angle': angle * 180 / np.pi,
 							f'status_{neighborhood_description}': 1,
 							f'class_{neighborhood_description}': 0,
+							'reference_tracked': ref_tracked, 'neighbors_tracked': neigh_tracked,
 							 })
 					for z,lbl in enumerate(centre_of_mass_labels):
 						relative_measurements[-1].update({lbl+'_centre_of_mass_dot_product': dot_product_vector[z], lbl+'_centre_of_mass_dot_cosine': cosine_dot_vector[z]})
@@ -166,8 +173,10 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 	if ref_id_col is not None:
 		df_reference = df_reference.sort_values(by=[ref_id_col, 'FRAME'])
 
+	ref_tracked = False
 	if ref_id_col=='TRACK_ID':
 		compute_velocity = True
+		ref_tracked = True
 	elif ref_id_col=='ID':
 		df_pairs = measure_pairs(pos, neighborhood_protocol)
 		return df_pairs
@@ -175,9 +184,13 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 		print('ID or TRACK ID column could not be found in neighbor table. Abort.')
 		return None
 
+	print(f'Measuring pair signals...')
+
 	neigh_id_col = extract_identity_col(df_neighbor)
+	neigh_tracked = False
 	if neigh_id_col=='TRACK_ID':
 		compute_velocity = True
+		neigh_tracked = True
 	elif neigh_id_col=='ID':
 		df_pairs = measure_pairs(pos, neighborhood_protocol)
 		return df_pairs
@@ -214,7 +227,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 
 			#print(neighbor_ids_per_t)
 			unique_neigh = list(np.unique(neighbor_ids))
-			#print(f'Reference cell {tid}: found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
+			print(f'Reference cell {tid}: found {len(unique_neigh)} neighbour cells: {unique_neigh}...')
 
 			neighbor_properties = df_neighbor.loc[df_neighbor[neigh_id_col].isin(unique_neigh)]
 
@@ -329,6 +342,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									f'residence_time_in_{neighborhood_description}': cum_sum,
 									f'class_{neighborhood_description}': 0,
 									f't0_{neighborhood_description}': time_of_first_entrance_in_neighborhood[nc],
+									'reference_tracked': ref_tracked, 'neighbors_tracked': neigh_tracked,
 									 })
 							for z,lbl in enumerate(centre_of_mass_labels):
 								relative_measurements[-1].update({lbl+'_centre_of_mass_dot_product': dot_product_vector[z,t], lbl+'_centre_of_mass_dot_cosine': cosine_dot_vector[z,t]})
@@ -349,6 +363,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									f'residence_time_in_{neighborhood_description}': cum_sum,
 									f'class_{neighborhood_description}': 0,
 									f't0_{neighborhood_description}': time_of_first_entrance_in_neighborhood[nc],
+									'reference_tracked': ref_tracked, 'neighbors_tracked': neigh_tracked,
 									 })
 							for z,lbl in enumerate(centre_of_mass_labels):
 								relative_measurements[-1].update({lbl+'_centre_of_mass_dot_product': dot_product_vector[z,t], lbl+'_centre_of_mass_dot_cosine': cosine_dot_vector[z,t]})

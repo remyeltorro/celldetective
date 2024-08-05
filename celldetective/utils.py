@@ -26,6 +26,7 @@ from scipy.interpolate import griddata
 import re
 from scipy.ndimage.morphology import distance_transform_edt
 from scipy import ndimage
+from skimage.morphology import disk
 
 def contour_of_instance_segmentation(label, distance):
 

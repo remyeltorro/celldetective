@@ -27,7 +27,7 @@ Contents
    track
    measure
    signals-and-events
-   neighborhood
+   interactions
    analysis
 
 
@@ -42,6 +42,11 @@ Contents
    
    example_notebook
    adcc-example
+
+.. toctree::
+   :caption: Help:
+
+   troubleshooting
    
    
 .. toctree::

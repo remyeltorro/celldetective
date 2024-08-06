@@ -16,12 +16,13 @@
       intensity_centre_of_mass_displacement
       intensity_centre_of_mass_displacement_edge
       intensity_median
-      intensity_percentile_25
-      intensity_percentile_50
-      intensity_percentile_75
-      intensity_percentile_90
-      intensity_percentile_95
-      intensity_percentile_99
+      intensity_nanmean
+      intensity_percentile_fifty
+      intensity_percentile_ninety
+      intensity_percentile_ninety_five
+      intensity_percentile_ninety_nine
+      intensity_percentile_seventy_five
+      intensity_percentile_twenty_five
       intensity_radial_gradient
       intensity_std
    

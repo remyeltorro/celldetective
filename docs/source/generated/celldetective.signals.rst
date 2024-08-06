@@ -17,18 +17,17 @@
       ResNetModelCurrent
       T_MSD
       alpha_msd
+      analyze_pair_signals
+      analyze_pair_signals_at_position
       analyze_signals
       analyze_signals_at_position
       augmenter
       columnwise_mean
-      derivative
       drift_msd
       gauss_noise
       linear_msd
-      magnitude_velocity
       mean_signal
       normalize_signal_set
-      orientation
       pad_to_model_length
       random_intensity_change
       random_time_shift
@@ -36,7 +35,6 @@
       sliding_msd
       sliding_msd_drift
       train_signal_model
-      velocity
    
    
 

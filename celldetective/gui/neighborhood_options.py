@@ -230,11 +230,12 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 		status_layout = QHBoxLayout()
 
-		status_layout.addWidget(QLabel('status: '), 30)
+		#status_layout.addWidget(QLabel('status: '), 30)
 
 		status_sublayout = QHBoxLayout()
 		self.reference_population_status_cb = QComboBox()
 		self.reference_population_status_cb.setToolTip('Status of the reference population.')
+		self.reference_population_status_cb.hide()
 		status_sublayout.addWidget(self.reference_population_status_cb,95)
 
 		self.reference_switch_status_btn = QPushButton("")
@@ -243,6 +244,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		self.reference_switch_status_btn.setIconSize(QSize(20, 20))
 		self.reference_switch_status_btn.clicked.connect(self.switch_not_reference)
 		self.reference_switch_status_btn.setToolTip('Invert status values.')
+		self.reference_switch_status_btn.hide()
 
 		status_sublayout.addWidget(self.reference_switch_status_btn, 5)
 

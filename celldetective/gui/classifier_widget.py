@@ -384,6 +384,7 @@ class ClassifierWidget(QWidget, Styles):
 								self.df.loc[indices, self.class_name_user] = 2
 								self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
 				if self.irreversible_event_btn.isChecked():
+					self.df.loc[self.df[self.class_name_user]!=2, self.class_name_user.replace('class', 't')] = -1
 					self.estimate_time()
 		else:
 			self.group_name_user = 'group_' + self.name_le.text()
@@ -415,6 +416,7 @@ class ClassifierWidget(QWidget, Styles):
 		# reset
 		#self.init_class()
 		#self.update_props_scatter()
+		self.parent_window.parent_window.update_position_options()
 		self.close()
 
 	def switch_to_log(self, i):

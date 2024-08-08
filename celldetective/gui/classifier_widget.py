@@ -279,9 +279,12 @@ class ClassifierWidget(QWidget, Styles):
 			try:
 				if cols_in_df:
 					self.selection = self.df.dropna(subset=cols).query(query).index
+					null_selection = self.df[self.df.loc[:,cols].isna().any(axis=1)].index
+					self.df.loc[null_selection, self.class_name] = np.nan
+					self.df.loc[self.selection, self.class_name] = 0
 				else:
-					self.selection = self.df.query(query).index
-				self.df.loc[self.selection, self.class_name] = 0
+					self.df.loc[:, self.class_name] = np.nan
+
 			except Exception as e:
 				print(e)
 				print(self.df.columns)

@@ -1361,10 +1361,10 @@ class MeasureAnnotator(SignalAnnotator):
 		self.locate_stack()
 
 		data, properties, graph, labels, _ = load_napari_data(self.pos, prefix=None, population=self.mode,return_stack=False)
-		if data is not None:
-			self.labels = relabel_segmentation(labels,data,properties)
-		else:
-			self.labels = labels
+		# if data is not None:
+		# 	self.labels = relabel_segmentation(labels,data,properties)
+		# else:
+		self.labels = labels
 
 		self.current_channel = 0
 

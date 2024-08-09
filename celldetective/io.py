@@ -628,7 +628,7 @@ def locate_stack(position, prefix='Aligned'):
 
 	stack_path = glob(position + os.sep.join(['movie', f'{prefix}*.tif']))
 	assert len(stack_path) > 0, f"No movie with prefix {prefix} found..."
-	stack = imread(stack_path[0].replace('\\', '/'), is_mmstack=False)
+	stack = imread(stack_path[0].replace('\\', '/'))
 	if stack.ndim == 4:
 		stack = np.moveaxis(stack, 1, -1)
 	elif stack.ndim == 3:
@@ -1616,7 +1616,7 @@ def correct_annotation(filename):
 	def save_widget():
 		return export_labels()
 
-	img = imread(filename.replace('\\','/'),is_mmstack=False)
+	img = imread(filename.replace('\\','/'))
 	if img.ndim==3:
 		img = np.moveaxis(img, 0, -1)
 	elif img.ndim==2:

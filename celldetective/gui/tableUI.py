@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import viridis
 plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window
-from celldetective.utils import differentiate_per_track
+from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status
 import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
@@ -335,7 +335,7 @@ class TableUI(QMainWindow, Styles):
 		self.tracks = False
 
 		if self.population=='pairs':
-			self.groupby_cols = ['position','reference_population', 'neighbor_population','REFERENCE_ID', 'NEIGHBOR_ID', 'FRAME']
+			self.groupby_cols = ['position','reference_population', 'neighbor_population','REFERENCE_ID', 'NEIGHBOR_ID']
 			self.tracks = True # for now
 		else:
 			if 'TRACK_ID' in data.columns:
@@ -959,7 +959,7 @@ class TableUI(QMainWindow, Styles):
 					pass
 			
 			if self.population=='pairs':
-				for col in self.groupby_cols[1:]: #['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']
+				for col in reversed(self.groupby_cols): #['neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']
 					if col in group_table:
 						first_column = group_table.pop(col)
 						group_table.insert(0, col, first_column)				
@@ -1005,41 +1005,7 @@ class TableUI(QMainWindow, Styles):
 
 		elif self.per_status_option.isChecked():
 
-			status_of_interest = self.per_status_cb.currentText()
-			self.projection_mode = f'{self.status_operation.currentText()} per {status_of_interest}'
-			self.data = self.data.dropna(subset=status_of_interest,ignore_index=True)
-			unique_statuses = np.unique(self.data[status_of_interest].to_numpy())
-
-			df_sections = []
-			for s in unique_statuses:
-				subtab = self.data.loc[self.data[status_of_interest]==s,:]
-				op = getattr(subtab.groupby(self.groupby_cols), self.status_operation.currentText())
-				subtab_projected = op(subtab.groupby(self.groupby_cols))
-				frame_duration = subtab.groupby(self.groupby_cols).size().to_numpy()
-				for c in self.static_columns:
-					try:
-						subtab_projected[c] = subtab.groupby(self.groupby_cols)[c].apply(lambda x: x.unique()[0])
-					except Exception as e:
-						print(e)
-						pass
-				subtab_projected['duration_in_state'] = frame_duration
-				df_sections.append(subtab_projected)
-
-			group_table = pd.concat(df_sections,axis=0,ignore_index=True)
-
-			if self.population=='pairs':
-				for col in ['duration_in_state',status_of_interest, 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']:
-					first_column = group_table.pop(col) 
-					group_table.insert(0, col, first_column)				
-			else:
-				for col in ['duration_in_state',status_of_interest,'TRACK_ID']:
-					first_column = group_table.pop(col) 
-					group_table.insert(0, col, first_column)
-
-			group_table.pop('FRAME')
-			group_table = group_table.sort_values(by=self.groupby_cols + [status_of_interest],ignore_index=True)
-			group_table = group_table.reset_index(drop=True)
-
+			group_table = collapse_trajectories_by_status(self.data, status=self.per_status_cb.currentText(),population=self.population, projection=self.status_operation.currentText(), groupby_columns=self.groupby_cols)
 
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
 		self.subtable.show()

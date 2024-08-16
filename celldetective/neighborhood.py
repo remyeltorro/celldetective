@@ -387,6 +387,8 @@ def compute_neighborhood_at_position(pos, distance, population=['targets', 'effe
 
 	df_A, path_A = get_position_table(pos, population=population[0], return_path=True)
 	df_B, path_B = get_position_table(pos, population=population[1], return_path=True)
+	if df_A is None or df_B is None:
+		return None
 
 	if clear_neigh:
 		if os.path.exists(path_A.replace('.csv','.pkl')):

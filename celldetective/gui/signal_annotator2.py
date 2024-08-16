@@ -1869,15 +1869,15 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 
 		if self.df_targets is not None:
-			self.target_status_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker="x", c=self.target_colors[0][:,1], s=50, picker=True, pickradius=10)
-			self.target_class_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker='o', facecolors='none',edgecolors=self.target_colors[0][:,0], s=200)
+			self.target_status_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker="x", c=self.target_colors[0][:,1], s=50, picker=True, pickradius=10, zorder=10)
+			self.target_class_scatter = self.ax.scatter(self.target_positions[0][:,0], self.target_positions[0][:,1], marker='o', facecolors='none',edgecolors=self.target_colors[0][:,0], s=200, zorder=10)
 		else:
 			self.target_status_scatter = self.ax.scatter([],[], marker="x", s=50, picker=True, pickradius=10)
 			self.target_class_scatter = self.ax.scatter([],[], marker='o', facecolors='none', s=200)
 
 		if self.df_effectors is not None:
-			self.effector_status_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker="x", c=self.effector_colors[0][:,1], s=50, picker=True, pickradius=10)
-			self.effector_class_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker='^', facecolors='none',edgecolors=self.effector_colors[0][:,0], s=200)
+			self.effector_status_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker="x", c=self.effector_colors[0][:,1], s=50, picker=True, pickradius=10, zorder=10)
+			self.effector_class_scatter = self.ax.scatter(self.effector_positions[0][:,0], self.effector_positions[0][:,1], marker='^', facecolors='none',edgecolors=self.effector_colors[0][:,0], s=200, zorder=10)
 		else:
 			self.effector_status_scatter = self.ax.scatter([], [], marker="x", s=50, picker=True, pickradius=10)
 			self.effector_class_scatter = self.ax.scatter([],[], marker='^', facecolors='none', s=200)

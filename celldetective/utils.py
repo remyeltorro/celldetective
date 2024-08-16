@@ -2368,3 +2368,45 @@ def interpolate_nan(img, method='nearest'):
 		return interp_grid
 	else:
 		return img
+
+def collapse_trajectories_by_status(df, status=None, projection='mean', population='effectors', groupby_columns=['position','TRACK_ID']):
+	
+	static_columns = ['well_index', 'well_name', 'pos_name', 'position', 'well', 'status', 't0', 'class','cell_type','concentration', 'antibody', 'pharmaceutical_agent','TRACK_ID','position', 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID', 'FRAME']
+
+	if status is None or status not in list(df.columns):
+		print('invalid status selection...')
+		return None
+
+	df = df.dropna(subset=status,ignore_index=True)
+	unique_statuses = np.unique(df[status].to_numpy())
+
+	df_sections = []
+	for s in unique_statuses:
+		subtab = df.loc[df[status]==s,:]
+		op = getattr(subtab.groupby(groupby_columns), projection)
+		subtab_projected = op(subtab.groupby(groupby_columns))
+		frame_duration = subtab.groupby(groupby_columns).size().to_numpy()
+		for c in static_columns:
+			try:
+				subtab_projected[c] = subtab.groupby(groupby_columns)[c].apply(lambda x: x.unique()[0])
+			except Exception as e:
+				print(e)
+				pass
+		subtab_projected['duration_in_state'] = frame_duration
+		df_sections.append(subtab_projected)
+
+	group_table = pd.concat(df_sections,axis=0,ignore_index=True)
+	if population=='pairs':
+		for col in ['duration_in_state',status, 'neighbor_population', 'reference_population', 'NEIGHBOR_ID', 'REFERENCE_ID']:
+			first_column = group_table.pop(col) 
+			group_table.insert(0, col, first_column)				
+	else:
+		for col in ['duration_in_state',status,'TRACK_ID']:
+			first_column = group_table.pop(col) 
+			group_table.insert(0, col, first_column)
+
+	group_table.pop('FRAME')
+	group_table = group_table.sort_values(by=groupby_columns + [status],ignore_index=True)
+	group_table = group_table.reset_index(drop=True)
+
+	return group_table

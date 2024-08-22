@@ -1289,16 +1289,27 @@ def _extract_channel_indices_from_config(config, channels_to_extract):
 	# V2
 	channels = []
 	for c in channels_to_extract:
-		if c!='None' and c is not None:
-			try:
-				c1 = int(ConfigSectionMap(config,"Channels")[c])
-				channels.append(c1)
-			except Exception as e:
-				print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
-				channels = None
-				break
-		else:
+		try:
+			c1 = int(ConfigSectionMap(config,"Channels")[c])
+			channels.append(c1)
+		except Exception as e:
+			print(f"Warning... The channel {c} required by the model is not available in your data...")
 			channels.append(None)
+	if np.all([c is None for c in channels]):
+		channels = None
+
+	# channels = []
+	# for c in channels_to_extract:
+	# 	if c!='None' and c is not None:
+	# 		try:
+	# 			c1 = int(ConfigSectionMap(config,"Channels")[c])
+	# 			channels.append(c1)
+	# 		except Exception as e:
+	# 			print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
+	# 			channels = None
+	# 			break
+	# 	else:
+	# 		channels.append(None)
 
 	# LEGACY
 	if channels is None:
@@ -2202,24 +2213,29 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 					# Load config
 					with open(config_path, 'r') as f:
 						config = json.load(f)
-					try:
+
+					existing_channels = config['channels']
+					intersection = list(set(list(channels)) & set(list(existing_channels)))
+					print(f'{existing_channels=} {intersection=}')
+					if len(intersection)==0:
+						print(e,' channels could not be found in the config... Skipping image.')
+						continue
+					else:
 						ch_idx = []
 						for c in channels:
-							if c!='None':
-								idx = config['channels'].index(c)
+							if c in existing_channels:
+								idx = existing_channels.index(c)
 								ch_idx.append(idx)
 							else:
+								# For None or missing channel pass black frame
 								ch_idx.append(np.nan)
 						im_calib = config['spatial_calibration']
-					except Exception as e:
-						print(e,' channels and/or spatial calibration could not be found in the config... Skipping image.')
-						continue
 				
 				ch_idx = np.array(ch_idx)
 				ch_idx_safe = np.copy(ch_idx)
 				ch_idx_safe[ch_idx_safe!=ch_idx_safe] = 0
 				ch_idx_safe = ch_idx_safe.astype(int)
-				print(ch_idx_safe)
+				
 				image = image[ch_idx_safe]
 				image[np.where(ch_idx!=ch_idx)[0],:,:] = 0
 
@@ -2233,6 +2249,14 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 					
 			X.append(image)
 			Y.append(mask)
+
+			fig,ax = plt.subplots(1,image.shape[-1]+1)
+			for k in range(image.shape[-1]):
+				ax[k].imshow(image[:,:,k],cmap='gray')
+			ax[image.shape[-1]].imshow(mask)
+			plt.pause(2)
+			plt.close()
+
 			files.append(im)
 
 	assert len(X)==len(Y),'The number of images does not match with the number of masks... Abort.'

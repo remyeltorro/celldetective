@@ -155,6 +155,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	f = open(model_config_path)
 	config = json.load(f)
 	required_signals = config["channels"]
+	model_signal_length = config['model_signal_length']
 
 	try:
 		label = config['label']
@@ -190,6 +191,8 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	trajectories_clean = clean_trajectories(trajectories, interpolate_na=interpolate_na, interpolate_position_gaps=interpolate_na, column_labels=column_labels)
 
 	max_signal_size = int(trajectories_clean[column_labels['time']].max()) + 2
+	assert max_signal_size <= model_signal_length,f'The current signals are longer ({max_signal_size}) than the maximum expected input ({model_signal_length}) for this signal analysis model. Abort...'
+
 	tracks = trajectories_clean[column_labels['track']].unique()
 	signals = np.zeros((len(tracks),max_signal_size, len(selected_signals)))
 

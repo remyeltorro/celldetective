@@ -5,6 +5,7 @@ from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
 from celldetective.utils import _extract_labels_from_config, ConfigSectionMap, extract_experiment_channels, extract_identity_col
 from celldetective.gui import ConfigEditor, ProcessPanel, PreprocessingPanel, AnalysisPanel, NeighPanel
+from celldetective.io import get_experiment_wells, get_config, get_spatial_calibration, get_temporal_calibration, get_experiment_concentrations, get_experiment_cell_types, get_experiment_antibodies, get_experiment_pharmaceutical_agents
 from natsort import natsorted
 from glob import glob
 import os
@@ -98,7 +99,7 @@ class ControlPanel(QMainWindow, Styles):
 		Detect the wells in the experiment folder and the associated positions.
 		"""
 		
-		self.wells = natsorted(glob(self.exp_dir + "W*" + os.sep))
+		self.wells = get_experiment_wells(self.exp_dir) #natsorted(glob(self.exp_dir + "W*" + os.sep))
 		self.positions = []
 		for w in self.wells:
 			w = os.path.split(w[:-1])
@@ -247,9 +248,12 @@ class ControlPanel(QMainWindow, Styles):
 		This methods load the configuration read in the config.ini file of the experiment.
 		'''
 
-		self.exp_config = self.exp_dir + "config.ini"
-		self.PxToUm = float(ConfigSectionMap(self.exp_config,"MovieSettings")["pxtoum"])
-		self.FrameToMin = float(ConfigSectionMap(self.exp_config,"MovieSettings")["frametomin"])
+		print('Reading experiment configuration...')
+		self.exp_config = get_config(self.exp_dir)
+
+		self.PxToUm = get_spatial_calibration(self.exp_dir)
+		self.FrameToMin = get_temporal_calibration(self.exp_dir)
+
 		self.len_movie = int(ConfigSectionMap(self.exp_config,"MovieSettings")["len_movie"])
 		self.shape_x = int(ConfigSectionMap(self.exp_config,"MovieSettings")["shape_x"])
 		self.shape_y = int(ConfigSectionMap(self.exp_config,"MovieSettings")["shape_y"])
@@ -262,31 +266,12 @@ class ControlPanel(QMainWindow, Styles):
 		number_of_wells = len(self.wells)
 		self.well_labels = _extract_labels_from_config(self.exp_config,number_of_wells)
 
-		self.concentrations = ConfigSectionMap(self.exp_config,"Labels")["concentrations"].split(",")
-		if number_of_wells != len(self.concentrations):
-			self.concentrations = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]		
+		self.concentrations = get_experiment_concentrations(self.exp_dir)
+		self.cell_types = get_experiment_cell_types(self.exp_dir)
+		self.antibodies = get_experiment_antibodies(self.exp_dir)
+		self.pharmaceutical_agents = get_experiment_pharmaceutical_agents(self.exp_dir)
 
-		#self.antibodies = extract_labels_from_config(config, number_of_wells)
-
-		self.cell_types = ConfigSectionMap(self.exp_config,"Labels")["cell_types"].split(",")
-		if number_of_wells != len(self.cell_types):
-			self.cell_types = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]		
-
-		try:
-			self.antibodies = ConfigSectionMap(self.exp_config,"Labels")["antibodies"].split(",")
-			if number_of_wells != len(self.antibodies):
-				self.antibodies = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]
-		except:
-			print("Warning... antibodies not found...")
-			self.antibodies = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]
-
-		try:
-			self.pharmaceutical_agents = ConfigSectionMap(self.exp_config,"Labels")["pharmaceutical_agents"].split(",")
-			if number_of_wells != len(self.pharmaceutical_agents):
-				self.pharmaceutical_agents = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]
-		except:
-			print("Warning... pharmaceutical agents not found...")
-			self.pharmaceutical_agents = [str(s) for s in np.linspace(0,number_of_wells-1,number_of_wells)]
+		print('Experiment configuration successfully read...')
 
 	def closeEvent(self, event):
 

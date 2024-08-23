@@ -2250,12 +2250,12 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 			X.append(image)
 			Y.append(mask)
 
-			fig,ax = plt.subplots(1,image.shape[-1]+1)
-			for k in range(image.shape[-1]):
-				ax[k].imshow(image[:,:,k],cmap='gray')
-			ax[image.shape[-1]].imshow(mask)
-			plt.pause(2)
-			plt.close()
+			# fig,ax = plt.subplots(1,image.shape[-1]+1)
+			# for k in range(image.shape[-1]):
+			# 	ax[k].imshow(image[:,:,k],cmap='gray')
+			# ax[image.shape[-1]].imshow(mask)
+			# plt.pause(1)
+			# plt.close()
 
 			files.append(im)
 

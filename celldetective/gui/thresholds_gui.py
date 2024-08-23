@@ -412,7 +412,6 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 
 		"""
 
-		print("this is the loaded position: ", self.pos)
 		if isinstance(self.pos, str):
 			movies = glob(self.pos + f"movie/{self.parent_window.parent_window.parent_window.movie_prefix}*.tif")
 
@@ -438,6 +437,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 			self.close()
 		else:
 			self.stack_path = movies[0]
+			print(f'Attempt to read stack {os.path.split(self.stack_path)[-1]}')
 			self.len_movie = self.parent_window.parent_window.parent_window.len_movie
 			len_movie_auto = auto_load_number_of_frames(self.stack_path)
 			if len_movie_auto is not None:
@@ -449,8 +449,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 			self.nbr_channels = len(self.channels)
 			self.current_channel = 0
 			self.img = load_frames(0, self.stack_path, normalize_input=False)
-			print(self.img.shape)
-			print(f'{self.stack_path} successfully located.')
+			print(f'Detected image shape: {self.img.shape}...')
 
 	def show_image(self):
 

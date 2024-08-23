@@ -44,6 +44,8 @@ class ChannelNormGenerator(QVBoxLayout, Styles):
 	def generate_widgets(self):
 		
 		self.channel_cbs = [QSearchableComboBox() for i in range(self.init_n_channels)]
+		self.channel_labels = [QLabel() for i in range(self.init_n_channels)]
+
 		self.normalization_mode_btns = [QPushButton('') for i in range(self.init_n_channels)]
 		self.normalization_mode = [True for i in range(self.init_n_channels)]
 		self.normalization_clip_btns = [QPushButton('') for i in range(self.init_n_channels)]
@@ -127,8 +129,10 @@ class ChannelNormGenerator(QVBoxLayout, Styles):
 	def add_channel(self):
 
 		self.channel_cbs.append(QSearchableComboBox())
+		self.channel_labels.append(QLabel())
 		self.channel_cbs[-1].addItems(self.channel_items)
 		self.channel_cbs[-1].currentIndexChanged.connect(self.check_valid_channels)
+		self.channel_labels[-1].setText(f'channel {len(self.channel_cbs)-1}: ')
 
 		self.normalization_mode_btns.append(QPushButton(''))
 		self.normalization_mode.append(True)
@@ -153,18 +157,21 @@ class ChannelNormGenerator(QVBoxLayout, Styles):
 		self.normalization_max_value_le.append(QLineEdit('99.99'))
 
 		ch_layout = QHBoxLayout()
-		ch_layout.addWidget(QLabel(f'channel {len(self.channel_cbs)-1}: '), 30)
+		ch_layout.addWidget(self.channel_labels[-1], 30)
 		ch_layout.addWidget(self.channel_cbs[-1], 70)
 		self.channels_vb.addLayout(ch_layout)
 
 		channel_norm_options_layout = QHBoxLayout()
-		channel_norm_options_layout.setContentsMargins(130,0,0,0)
-		channel_norm_options_layout.addWidget(self.normalization_min_value_lbl[-1])			
-		channel_norm_options_layout.addWidget(self.normalization_min_value_le[-1])
-		channel_norm_options_layout.addWidget(self.normalization_max_value_lbl[-1])
-		channel_norm_options_layout.addWidget(self.normalization_max_value_le[-1])
-		channel_norm_options_layout.addWidget(self.normalization_clip_btns[-1])
-		channel_norm_options_layout.addWidget(self.normalization_mode_btns[-1])
+		channel_norm_options_layout.addWidget(QLabel(''),30)
+		ch_norm_sublayout = QHBoxLayout()
+		ch_norm_sublayout.addWidget(self.normalization_min_value_lbl[-1])
+		ch_norm_sublayout.addWidget(self.normalization_min_value_le[-1])
+		ch_norm_sublayout.addWidget(self.normalization_max_value_lbl[-1])
+		ch_norm_sublayout.addWidget(self.normalization_max_value_le[-1])
+		ch_norm_sublayout.addWidget(self.normalization_clip_btns[-1])
+		ch_norm_sublayout.addWidget(self.normalization_mode_btns[-1])
+		channel_norm_options_layout.addLayout(ch_norm_sublayout, 70)
+
 		self.channels_vb.addLayout(channel_norm_options_layout)
 
 
@@ -175,20 +182,24 @@ class ChannelNormGenerator(QVBoxLayout, Styles):
 		for i in range(len(self.channel_cbs)):
 			
 			ch_layout = QHBoxLayout()
-			ch_layout.addWidget(QLabel(f'channel {i}: '), 30)
+			self.channel_labels[i].setText(f'channel {i}: ')
+			ch_layout.addWidget(self.channel_labels[i], 30)
 			self.channel_cbs[i].addItems(self.channel_items)
 			self.channel_cbs[i].currentIndexChanged.connect(self.check_valid_channels)
 			ch_layout.addWidget(self.channel_cbs[i], 70)
 			self.channels_vb.addLayout(ch_layout)
 
 			channel_norm_options_layout = QHBoxLayout()
-			channel_norm_options_layout.setContentsMargins(130,0,0,0)
-			channel_norm_options_layout.addWidget(self.normalization_min_value_lbl[i])			
-			channel_norm_options_layout.addWidget(self.normalization_min_value_le[i])
-			channel_norm_options_layout.addWidget(self.normalization_max_value_lbl[i])
-			channel_norm_options_layout.addWidget(self.normalization_max_value_le[i])
-			channel_norm_options_layout.addWidget(self.normalization_clip_btns[i])
-			channel_norm_options_layout.addWidget(self.normalization_mode_btns[i])
+			#channel_norm_options_layout.setContentsMargins(130,0,0,0)
+			channel_norm_options_layout.addWidget(QLabel(''),30)
+			ch_norm_sublayout = QHBoxLayout()
+			ch_norm_sublayout.addWidget(self.normalization_min_value_lbl[i])			
+			ch_norm_sublayout.addWidget(self.normalization_min_value_le[i])
+			ch_norm_sublayout.addWidget(self.normalization_max_value_lbl[i])
+			ch_norm_sublayout.addWidget(self.normalization_max_value_le[i])
+			ch_norm_sublayout.addWidget(self.normalization_clip_btns[i])
+			ch_norm_sublayout.addWidget(self.normalization_mode_btns[i])
+			channel_norm_options_layout.addLayout(ch_norm_sublayout, 70)
 			self.channels_vb.addLayout(channel_norm_options_layout)
 
 		self.addLayout(self.channels_vb)
@@ -249,7 +260,7 @@ class ChannelNormGenerator(QVBoxLayout, Styles):
 			if np.all([cb.currentText()=='--' for cb in self.channel_cbs]):
 				self.parent_window.submit_btn.setEnabled(False)
 
-		if hasattr(self.parent_window, "spatial_calib_le"):
+		if hasattr(self.parent_window, "spatial_calib_le") and hasattr(self.parent_window, "submit_btn"):
 			if self.parent_window.spatial_calib_le.text()!='--':
 				self.parent_window.submit_btn.setEnabled(True)
 		elif hasattr(self.parent_window, "submit_btn"):
@@ -619,7 +630,6 @@ class ProtocolDesignerLayout(QVBoxLayout, Styles):
 		
 		for k in range(len(self.tab_layouts)):
 			wg = QWidget()
-			print('almost there',self.channel_names)
 			self.tab_layouts[k].parent_window = self
 			wg.setLayout(self.tab_layouts[k])
 			self.tabs.addTab(wg, self.tab_names[k])
@@ -692,7 +702,6 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 		from PyQt5.QtWidgets import QSlider
 		from superqt import QRangeSlider
 		self.frame_range_slider = QLabeledRangeSlider(parent=None)
-		print('here ok')
 
 		self.timeseries_rb.toggled.connect(self.activate_time_range)
 		self.tiles_rb.toggled.connect(self.activate_time_range)

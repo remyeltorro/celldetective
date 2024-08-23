@@ -18,7 +18,7 @@ except:
     requirements = [str(ir.requirement) for ir in requirements]
 
 setup(name='celldetective',
-			version='1.2.0',
+			version='1.2.1',
 			description='description',
 			long_description=(this_directory / "README.md").read_text(),
 			#long_description=open('README.rst',encoding="utf8").read(),

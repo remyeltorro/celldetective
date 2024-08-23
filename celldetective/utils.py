@@ -2175,6 +2175,8 @@ def load_image_dataset(datasets, channels, train_spatial_calibration=None, mask_
 	- Spatial calibration adjustment involves rescaling the images and masks to match the `train_spatial_calibration`.
 	- Only images with a corresponding mask and a valid configuration file specifying channel indices and
 	  spatial calibration are loaded.
+	- The image samples must have at least one channel in common with the required channels to be accepted. The missing
+	  channels are passed as black frames.
 
 	Examples
 	--------

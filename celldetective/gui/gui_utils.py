@@ -472,7 +472,6 @@ class ThresholdLineEdit(QLineEdit):
 
 		if self.connected_buttons is not None:
 			self.textChanged.connect(self.enable_btn)
-		print("init value of ",self.init_value," for threshold LE")
 		self.set_threshold(self.init_value)
 
 	def enable_btn(self):

@@ -832,7 +832,6 @@ def auto_load_number_of_frames(stack_path):
 			nslices = int(attr[np.argmax([s.startswith("frames") for s in attr])].split("=")[-1])
 			if nslices > 1:
 				len_movie = nslices
-				print(f"Auto-detected movie length movie: {len_movie}")
 			else:
 				break_the_code()
 		except:
@@ -840,7 +839,6 @@ def auto_load_number_of_frames(stack_path):
 				# try nslices
 				frames = int(attr[np.argmax([s.startswith("slices") for s in attr])].split("=")[-1])
 				len_movie = frames
-				print(f"Auto-detected movie length movie: {len_movie}")
 			except:
 				pass
 

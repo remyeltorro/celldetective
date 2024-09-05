@@ -347,6 +347,7 @@ class ListWidget(QWidget):
 		main_layout = QVBoxLayout()
 		main_layout.addWidget(self.list_widget)
 		self.setLayout(main_layout)
+		center_window(self)
 
 	def addItem(self):
 

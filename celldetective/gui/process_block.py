@@ -37,10 +37,11 @@ from celldetective.filters import std_filter, median_filter, gauss_filter
 from stardist import fill_label_holes
 from celldetective.preprocessing import correct_background_model_free, estimate_background_per_condition, correct_background_model
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
-from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
+from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout, help_generic
 from celldetective.gui.viewers import StackVisualizer, CellSizeViewer, ThresholdedStackVisualizer
 from celldetective.gui.layouts import BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout, OperationLayout
 from celldetective.gui import Styles
+from celldetective.utils import get_software_location
 
 class ProcessPanel(QFrame, Styles):
 	def __init__(self, parent_window, mode):
@@ -355,7 +356,7 @@ class ProcessPanel(QFrame, Styles):
 		grid_segment.addWidget(self.check_seg_btn, 5)
 
 		self.help_btn = QPushButton()
-		self.help_btn.setIcon(icon(MDI6.help_circle,color="black"))
+		self.help_btn.setIcon(icon(MDI6.help_circle,color=self.celldetective_blue))
 		self.help_btn.setIconSize(QSize(20, 20))
 		self.help_btn.clicked.connect(self.help_segmentation)
 		self.help_btn.setStyleSheet(self.button_select_all)
@@ -399,39 +400,67 @@ class ProcessPanel(QFrame, Styles):
 
 	def help_segmentation(self):
 
-		print('help!')
-		with open(r'C:\Users\remy1\Documents\GitHub\celldetective\celldetective\gui\help\DL-segmentation.json') as f:
+		self.help_w = QWidget()
+		self.help_w.setWindowTitle('Helper')
+		layout = QVBoxLayout()
+		seg_strategy_btn = QPushButton('A guide to choose a segmentation strategy.')
+		seg_strategy_btn.setIcon(icon(MDI6.help_circle,color=self.celldetective_blue))
+		seg_strategy_btn.setIconSize(QSize(40, 40))
+		seg_strategy_btn.setStyleSheet(self.button_style_sheet_5)
+		seg_strategy_btn.clicked.connect(self.help_seg_strategy)
+
+		dl_strategy_btn = QPushButton('A guide to choose your Deep learning segmentation strategy.')
+		dl_strategy_btn.setIcon(icon(MDI6.help_circle,color=self.celldetective_blue))
+		dl_strategy_btn.setIconSize(QSize(40, 40))
+		dl_strategy_btn.setStyleSheet(self.button_style_sheet_5)
+		dl_strategy_btn.clicked.connect(self.help_seg_dl_strategy)
+
+		layout.addWidget(seg_strategy_btn)
+		layout.addWidget(dl_strategy_btn)
+
+		self.help_w.setLayout(layout)
+		center_window(self.help_w)
+		self.help_w.show()
+
+		return None
+
+	def help_seg_strategy(self):
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','Threshold-vs-DL.json'])
+
+		with open(dict_path) as f:
 			d = json.load(f)
-			print(d)
 
-		self.help_generic(d)
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setText(f"The suggested technique is {suggestion}.")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
 
-	def help_generic(self, d):
+	def help_seg_dl_strategy(self):
+		
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','DL-segmentation-strategy.json'])
 
-		output = self.generic_msg(list(d.keys())[0])
-		while output is not None:
-			d = d[list(d.keys())[0]][output]
-			if isinstance(d,dict):
-				test = self.generic_msg(list(d.keys())[0])
-			else:
-				# return the final suggestion
-				return d
+		with open(dict_path) as f:
+			d = json.load(f)
 
-	def generic_msg(self, text):
-
-		msgBox = QMessageBox()
-		msgBox.setIcon(QMessageBox.Question)
-		msgBox.setText(text)
-		msgBox.setWindowTitle("Info")
-		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
-		returnValue = msgBox.exec()
-		if returnValue == QMessageBox.Yes:
-			return "yes"
-		elif returnValue == QMessageBox.No:
-			return "no"
-		else:
-			return None
-
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setText(f"The suggested technique is {suggestion}.")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
 
 	def check_segmentation(self):
 

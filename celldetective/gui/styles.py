@@ -65,6 +65,30 @@ class Styles(object):
 
 		'''
 
+		self.button_style_sheet_5 = '''
+			QPushButton {
+				background-color: transparent;
+				border: 3px solid #1565c0;
+				color: #000000;
+				border-radius: 15px;
+				padding: 7px;
+				font-size: 12px;
+			}
+			QPushButton:hover {
+				background-color: #ecf0f1;
+			}
+			QPushButton:pressed {
+				background-color: #ff8a00;
+			}
+
+			QPushButton:disabled {
+				border: 3px solid rgba(21, 101, 192, 0.50);
+				color: rgba(21, 101, 192, 0.50);
+			}
+
+		'''
+
+
 		self.button_style_sheet_2_not_done = '''
 			QPushButton {
 				background-color: transparent;

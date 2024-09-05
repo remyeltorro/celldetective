@@ -771,3 +771,30 @@ class ChannelChoice(QWidget):
 		filtername = self.combo_box.currentText()
 		self.parent_window.list_widget.addItems([filtername])
 		self.close()
+
+def help_generic(tree):
+
+	output = generic_msg(list(tree.keys())[0])
+	while output is not None:
+		tree = tree[list(tree.keys())[0]][output]
+		if isinstance(tree,dict):
+			output = generic_msg(list(tree.keys())[0])
+		else:
+			# return the final suggestion
+			output = None
+	return tree
+
+def generic_msg(text):
+
+	msgBox = QMessageBox()
+	msgBox.setIcon(QMessageBox.Question)
+	msgBox.setText(text)
+	msgBox.setWindowTitle("Question")
+	msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+	returnValue = msgBox.exec()
+	if returnValue == QMessageBox.Yes:
+		return "yes"
+	elif returnValue == QMessageBox.No:
+		return "no"
+	else:
+		return None

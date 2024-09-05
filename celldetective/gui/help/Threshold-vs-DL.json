@@ -1,0 +1,26 @@
+{
+  "Cell masks can be extracted from a single channel": {
+    "yes": {
+      "Rare cell-cell contacts": {
+        "yes": {
+          "Non-cell objects easily separable": {
+            "yes": {
+              "Background heterogeneities": {
+                "yes": {
+                  "Correction possible": {
+                    "yes": "Threshold pipeline",
+                    "no" : "DL"
+                  }
+                },
+                "no": "Threshold pipeline"
+              }
+            },
+            "no": "DL"
+          }
+        },
+        "no": "DL"
+      }
+    },
+    "no": "DL"
+  }
+}

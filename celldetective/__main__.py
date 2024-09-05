@@ -27,10 +27,10 @@ class AppInitWindow(QMainWindow):
 
 		try:
 			subprocess.check_output('nvidia-smi')
-			print('Nvidia GPU detected')
+			print('NVIDIA GPU detected (activate or disable in Memory & Threads)...')
 			self.use_gpu = True
 		except Exception: # this command not being found can raise quite a few different errors depending on the configuration
-			print('No Nvidia GPU in system!')
+			print('No NVIDIA GPU detected...')
 			self.use_gpu = False
 			
 		self.soft_path = get_software_location()
@@ -170,13 +170,16 @@ class AppInitWindow(QMainWindow):
 
 		self.recentFileActs = []
 		self.threads_config_path = os.sep.join([self.soft_path,'celldetective','threads.json'])
+		print('Reading previous Memory & Threads settings...')
 		if os.path.exists(self.threads_config_path):
 			with open(self.threads_config_path, 'r') as f:
 				self.threads_config = json.load(f)
 			if 'use_gpu' in self.threads_config:
 				self.use_gpu = bool(self.threads_config['use_gpu'])
+				print(f'Use GPU: {self.use_gpu}...')
 			if 'n_threads' in self.threads_config:
 				self.n_threads = int(self.threads_config['n_threads'])
+				print(f'Number of threads: {self.n_threads}...')
 
 
 	def reload_previous_experiments(self):
@@ -250,9 +253,9 @@ class AppInitWindow(QMainWindow):
 			self.open_directory()
 
 	def load_recent_exp(self, path):
-		print('loading?')
-		print('you selected path ', path)
+		
 		self.experiment_path_selection.setText(path)
+		print(f'Attempt to load experiment folder: {path}...')
 		self.open_directory()
 
 	def open_about_window(self):
@@ -393,6 +396,7 @@ if __name__ == "__main__":
 	# myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
 	# ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 	splash=True
+	print('Loading the libraries...')
 
 	App = QApplication(sys.argv)
 	#App.setWindowIcon(QIcon(os.sep.join([get_software_location(),'celldetective','icons','mexican-hat.png'])))
@@ -426,6 +430,7 @@ if __name__ == "__main__":
 	import subprocess
 	import json
 
+	print('Libraries successfully loaded...')
 
 	window = AppInitWindow(App)
 

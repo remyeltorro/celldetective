@@ -1,0 +1,41 @@
+{
+  "Blob-like cell": {
+    "yes": {
+      "Fluorescence image": {
+        "yes": {
+          "Mixture of population": {
+            "yes": "train custom StarDist model",
+            "no": {
+              "Cells can be identified from a single channel": {
+                "yes": "Use StarDist versatile fluorescence",
+                "no" : "train custom StarDist model"
+              }
+            }
+          }
+        },
+        "no": "train custom StarDist model"
+      }
+    },
+    "no": {
+      "Mixture of population": {
+        "yes": "train custom cellpose model",
+        "no": {
+          "Heterogeneity in cell sizes": {
+            "yes": "train custom cellpose model",
+            "no": {
+              "Cells can be identified from at most 2-channels (one cyto-like and one nucleus-like)": {
+                "yes": {
+                  "cyto-like channel is brightfield": {
+                    "yes": "cellpose livecell",
+                    "no" : "cellpose cyto3"
+                  }
+                },
+                "no": "train custom cellpose model"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

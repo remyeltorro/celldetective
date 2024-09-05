@@ -352,9 +352,15 @@ class ProcessPanel(QFrame, Styles):
 		self.check_seg_btn.clicked.connect(self.check_segmentation)
 		self.check_seg_btn.setStyleSheet(self.button_select_all)
 		self.check_seg_btn.setToolTip("View segmentation output in napari.")
-		#self.check_seg_btn.setEnabled(False)
-		#self.to_disable.append(self.control_target_seg)
-		grid_segment.addWidget(self.check_seg_btn, 10)
+		grid_segment.addWidget(self.check_seg_btn, 5)
+
+		self.help_btn = QPushButton()
+		self.help_btn.setIcon(icon(MDI6.help_circle,color="black"))
+		self.help_btn.setIconSize(QSize(20, 20))
+		self.help_btn.clicked.connect(self.help_segmentation)
+		self.help_btn.setStyleSheet(self.button_select_all)
+		self.help_btn.setToolTip("Help.")
+		grid_segment.addWidget(self.help_btn, 5)
 		self.grid_contents.addLayout(grid_segment, 0,0,1,4)
 
 		seg_option_vbox = QVBoxLayout()
@@ -390,6 +396,42 @@ class ProcessPanel(QFrame, Styles):
 		seg_option_vbox.addWidget(self.seg_model_list)
 		self.seg_model_list.setEnabled(False)
 		self.grid_contents.addLayout(seg_option_vbox, 2, 0, 1, 4)
+
+	def help_segmentation(self):
+
+		print('help!')
+		with open(r'C:\Users\remy1\Documents\GitHub\celldetective\celldetective\gui\help\DL-segmentation.json') as f:
+			d = json.load(f)
+			print(d)
+
+		self.help_generic(d)
+
+	def help_generic(self, d):
+
+		output = self.generic_msg(list(d.keys())[0])
+		while output is not None:
+			d = d[list(d.keys())[0]][output]
+			if isinstance(d,dict):
+				test = self.generic_msg(list(d.keys())[0])
+			else:
+				# return the final suggestion
+				return d
+
+	def generic_msg(self, text):
+
+		msgBox = QMessageBox()
+		msgBox.setIcon(QMessageBox.Question)
+		msgBox.setText(text)
+		msgBox.setWindowTitle("Info")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+		returnValue = msgBox.exec()
+		if returnValue == QMessageBox.Yes:
+			return "yes"
+		elif returnValue == QMessageBox.No:
+			return "no"
+		else:
+			return None
+
 
 	def check_segmentation(self):
 

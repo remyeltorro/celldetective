@@ -1,0 +1,16 @@
+{
+  "Cells are either brighter or darker than background": {
+    "yes": {
+      "Background is heterogeneous": {
+        "yes": "prefilter"         ,
+        "no" : "threshold directly"
+      }
+    },
+    "no": {
+      "Background is perfectly homogeneous (same value everywhere on the image)": {
+        "yes": "subtract the background value (subtract_filter) and take the absolute value (abs_filter) for all the pixels of the image. You may add a slight Gaussian blur after these operations",
+        "no": "use a Gaussian blur and apply a standard-deviation filter (or variance filter)"
+      }
+    }
+  }
+}

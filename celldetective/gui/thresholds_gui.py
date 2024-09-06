@@ -11,7 +11,7 @@ from scipy import ndimage
 from skimage.morphology import disk
 
 from celldetective.filters import std_filter, gauss_filter
-from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class
+from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class, help_generic
 from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column, estimate_unreliable_edge
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.segmentation import threshold_image, identify_markers_from_binary, apply_watershed, \
@@ -174,9 +174,17 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.add_filter.setIconSize(QSize(20, 20))
 		self.add_filter.clicked.connect(self.filters_qlist.addItem)
 
+		self.help_prefilter_btn = QPushButton()
+		self.help_prefilter_btn.setIcon(icon(MDI6.help_circle,color=self.celldetective_blue))
+		self.help_prefilter_btn.setIconSize(QSize(20, 20))
+		self.help_prefilter_btn.clicked.connect(self.help_prefilter)
+		self.help_prefilter_btn.setStyleSheet(self.button_select_all)
+		self.help_prefilter_btn.setToolTip("Help.")
+
 		# filter_list_option_grid.addWidget(QLabel(""),90)
 		filter_list_option_grid.addWidget(self.delete_filter, 5)
 		filter_list_option_grid.addWidget(self.add_filter, 5)
+		filter_list_option_grid.addWidget(self.help_prefilter_btn, 5)
 
 		grid_preprocess.addLayout(filter_list_option_grid, 0, 0, 1, 3)
 		grid_preprocess.addWidget(self.filters_qlist, 1, 0, 1, 3)
@@ -258,6 +266,30 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 									   self.property_query_le, self.submit_query_btn, self.save_btn]
 		for p in self.properties_box_widgets:
 			p.setEnabled(False)
+
+	def help_prefilter(self):
+
+		"""
+		Helper for prefiltering strategy
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','prefilter-for-segmentation.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(f"The suggested technique is to {suggestion}.\nSee a tutorial <a href='https://celldetective.readthedocs.io/en/latest/segment.html'>here</a>.")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None		
 
 	def generate_marker_contents(self):
 

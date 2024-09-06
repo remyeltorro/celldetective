@@ -400,6 +400,10 @@ class ProcessPanel(QFrame, Styles):
 
 	def help_segmentation(self):
 
+		"""
+		Widget with different decision helper decision trees.
+		"""
+
 		self.help_w = QWidget()
 		self.help_w.setWindowTitle('Helper')
 		layout = QVBoxLayout()
@@ -426,6 +430,10 @@ class ProcessPanel(QFrame, Styles):
 
 	def help_seg_strategy(self):
 
+		"""
+		Helper for segmentation strategy between threshold-based and Deep learning.
+		"""
+
 		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','Threshold-vs-DL.json'])
 
 		with open(dict_path) as f:
@@ -436,7 +444,8 @@ class ProcessPanel(QFrame, Styles):
 			print(f"{suggestion=}")
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Information)
-			msgBox.setText(f"The suggested technique is {suggestion}.")
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(f"The suggested technique is {suggestion}.\nSee a tutorial <a href='https://celldetective.readthedocs.io/en/latest/segment.html'>here</a>.")
 			msgBox.setWindowTitle("Info")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
@@ -445,6 +454,10 @@ class ProcessPanel(QFrame, Styles):
 
 	def help_seg_dl_strategy(self):
 		
+		"""
+		Helper for DL segmentation strategy, between pretrained models and custom models.
+		"""
+
 		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','DL-segmentation-strategy.json'])
 
 		with open(dict_path) as f:

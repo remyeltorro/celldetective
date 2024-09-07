@@ -71,13 +71,23 @@ class ProcessPanel(QFrame, Styles):
 
 		"""
 
-		panel_title = QLabel(f"PROCESS {self.mode.upper()}")
+		panel_title = QLabel(f"PROCESS {self.mode.upper()}   ")
 		panel_title.setStyleSheet("""
 			font-weight: bold;
 			padding: 0px;
 			""")
 
+		title_hbox = QHBoxLayout()
 		self.grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
+
+		self.help_pop_btn = QPushButton()
+		self.help_pop_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_pop_btn.setIconSize(QSize(20, 20))
+		self.help_pop_btn.clicked.connect(self.help_population)
+		self.help_pop_btn.setStyleSheet(self.button_select_all)
+		self.help_pop_btn.setToolTip("Help.")
+		#self.grid.addWidget(self.help_pop_btn, 0, 0, 1, 3, alignment=Qt.AlignRight)
+
 
 		self.select_all_btn = QPushButton()
 		self.select_all_btn.setIcon(icon(MDI6.checkbox_blank_outline,color="black"))
@@ -85,15 +95,21 @@ class ProcessPanel(QFrame, Styles):
 		self.all_ticked = False
 		self.select_all_btn.clicked.connect(self.tick_all_actions)
 		self.select_all_btn.setStyleSheet(self.button_select_all)
-		self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
+		#self.grid.addWidget(self.select_all_btn, 0, 0, 1, 4, alignment=Qt.AlignLeft)
 		#self.to_disable.append(self.all_tc_actions)
 
 		self.collapse_btn = QPushButton()
 		self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_btn.setIconSize(QSize(25, 25))
 		self.collapse_btn.setStyleSheet(self.button_select_all)
-		self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
+		#self.grid.addWidget(self.collapse_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
 
+		title_hbox.addWidget(self.select_all_btn, 5)
+		title_hbox.addWidget(QLabel(), 85, alignment=Qt.AlignCenter)
+		title_hbox.addWidget(self.help_pop_btn, 5)
+		title_hbox.addWidget(self.collapse_btn, 5)
+
+		self.grid.addLayout(title_hbox, 0,0,1,4)
 		self.populate_contents()
 
 		self.grid.addWidget(self.ContentsFrame, 1, 0, 1, 4, alignment=Qt.AlignTop)
@@ -118,6 +134,30 @@ class ProcessPanel(QFrame, Styles):
 			self.parent_window.scroll.setMinimumWidth(425)
 
 			#self.parent.scroll.adjustSize()
+
+	def help_population(self):
+
+		"""
+		Helper to choose a proper cell population structure.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','cell-populations.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(suggestion)
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None			
 
 	def populate_contents(self):
 		self.ContentsFrame = QFrame()

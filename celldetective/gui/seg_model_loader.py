@@ -33,6 +33,7 @@ class SegmentationModelLoader(QWidget, Styles):
 			self.target_folder = "segmentation_effectors"
 		self.setWindowTitle('Upload model')
 		self.generate_content()
+		self.setWindowIcon(self.celldetective_icon)
 		center_window(self)
 		self.setAttribute(Qt.WA_DeleteOnClose)
 

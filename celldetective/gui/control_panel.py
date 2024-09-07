@@ -29,7 +29,7 @@ class ControlPanel(QMainWindow, Styles):
 		if not self.exp_dir.endswith(os.sep):
 			self.exp_dir = self.exp_dir+os.sep
 		self.setWindowTitle("celldetective")
-		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','logo.png'])))
+		self.setWindowIcon(self.celldetective_icon)
 		self.parent_window = parent_window
 		center_window(self)
 

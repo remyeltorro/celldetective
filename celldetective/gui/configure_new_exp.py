@@ -1,7 +1,10 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QDialog, QHBoxLayout, QFileDialog, QVBoxLayout, QScrollArea, QCheckBox, QSlider, QGridLayout, QLabel, QLineEdit, QPushButton, QWidget
 from PyQt5.QtGui import QIntValidator, QDoubleValidator
-from celldetective.gui.gui_utils import center_window
+from celldetective.gui.gui_utils import center_window, help_generic
 from celldetective.gui.styles import Styles
+from celldetective.utils import get_software_location
+import json
+
 from superqt import QLabeledSlider
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
@@ -119,6 +122,15 @@ class ConfigNewExperiment(QMainWindow, Styles):
 		self.number_of_wells = QLabel("Number of wells:")
 		self.ms_grid.addWidget(self.number_of_wells, 1, 0, 1, 3)
 
+		self.help_btn = QPushButton()
+		self.help_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_btn.setIconSize(QSize(20, 20))
+		self.help_btn.clicked.connect(self.help_structure)
+		self.help_btn.setStyleSheet(self.button_select_all)
+		self.help_btn.setToolTip("Help.")
+		self.ms_grid.addWidget(self.help_btn, 1, 0, 1, 3, alignment=Qt.AlignRight)
+
+
 		self.SliderWells = QLabeledSlider(Qt.Horizontal, self)
 		self.SliderWells.setMinimum(1)
 		self.SliderWells.setMaximum(32)
@@ -189,6 +201,29 @@ class ConfigNewExperiment(QMainWindow, Styles):
 		self.shape_y_field.setText("2048")
 		self.ms_grid.addWidget(self.shape_y_field, 16, 0, 1, 3)
 
+	def help_structure(self):
+
+		"""
+		Helper to choose an experiment structure.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','exp-structure.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(suggestion+"\nSee <a href='https://celldetective.readthedocs.io/en/latest/get-started.html#data-organization'>the docs</a> for more information.")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None		
 
 	def generate_channel_params_box(self):
 

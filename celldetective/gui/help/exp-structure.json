@@ -1,0 +1,36 @@
+{
+  "Did you test different biological conditions?": {
+    "yes": {
+      "Did you image several positions (tiles) per biological condition?": {
+        "yes": {
+          "Did you record a time-lapse?": {
+            "yes": "Set N wells for the N biological conditions. Set M positions per well. Put the respective time-lapse stack in each generated position folder.",
+            "no": "Set N wells for the N biological conditions. Set a single position per well. Assemble all the tiles into a single stack per condition."
+          }
+        },
+        "no": {
+          "Did you record a time-lapse?": {
+            "yes": "Set N wells for the N biological conditions. Set a single position per well. Put the respective time-lapse stack in each generated position folder.",
+            "no": "There is not enough data to create a valid stack. Consider merging different experiments to generate several positions."
+          }
+        }
+      }
+    },
+    "no": {
+      "Did you image several positions (tiles)?": {
+        "yes": {
+          "Did you record a time-lapse?": {
+            "yes": "Set a single well. Set N positions. Put the respective time-lapse stack in each generated position folder.",
+            "no": "Set a single well. Set a single position. Assemble all the tiles into a single stack and put it in this position folder."
+          }
+        },
+        "no": {
+          "Did you record a time-lapse?": {
+            "yes": "Set a single well and a single position. Put the time-lapse stack in the generated position folder.",
+            "no": "There is not enough data to create a valid stack. Consider merging different experiments to generate several positions."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "Do you have more than one cell population of interest in the images?": {
+    "yes": {
+      "Do you have more than two cell populations of interest?": {
+        "yes": "The study of interactions between more than two cell populations is not currently supported in celldetective. Either study the cell populations two-by-two or group several populations into one (e.g. all effector-like cells vs all target-like cells). You can use the classification tools of celldetective to decompose the responses per cell population at a later stage.",
+        "no": "Identify the effector-like population (effects some changes on the other population) and the target-like population. If this characterization is ill-defined, choose a convention and stick to it. Beware, the available non-generalist Deep-learning model differs slightly for the two populations."
+      }
+    },
+    "no": "Pass your cell population as either EFFECTORS or TARGETS and stick with the convention. Beware, the available non-generalist Deep-learning model differs slightly for the two populations."
+  }
+}

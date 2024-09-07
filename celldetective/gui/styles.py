@@ -1,3 +1,7 @@
+from celldetective.utils import get_software_location
+from PyQt5.QtGui import QIcon
+import os
+
 class Styles(object):
 
 	def __init__(self):
@@ -7,7 +11,10 @@ class Styles(object):
 		self.init_label_styles()
 
 		self.help_color = "#1958b7" 
+
+		
 		self.celldetective_blue = "#1565c0"
+		self.celldetective_icon = QIcon(os.sep.join([get_software_location(),'celldetective','icons','logo.png']))
 
 		self.action_lbl_style_sheet = """
 			font-size: 10px;

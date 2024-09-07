@@ -50,6 +50,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.setMinimumHeight(int(0.8 * self.screen_height))
 		self.setWindowTitle("Threshold configuration wizard")
 		center_window(self)
+		self.setWindowIcon(self.celldetective_icon)
 		self._createActions()
 		self._createMenuBar()
 

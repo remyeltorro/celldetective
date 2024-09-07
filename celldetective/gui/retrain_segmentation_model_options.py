@@ -367,12 +367,12 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 			subfiles = [s.replace('\\','/') for s in subfiles]
 			subfiles = [rf"{s}" for s in subfiles]
 
-			if os.sep.join([self.pretrained_model,"config_input.json"]) in subfiles:
+			if "/".join([self.pretrained_model,"config_input.json"]) in subfiles:
 				self.load_pretrained_config()
 				self.pretrained_lbl.setText(self.pretrained_model.split("/")[-1])
 				self.cancel_pretrained.setVisible(True)
 				#self.recompile_option.setEnabled(True)
-				self.modelname_le.setText(f"{self.pretrained_model.split(os.sep)[-1]}_{datetime.today().strftime('%Y-%m-%d')}")
+				self.modelname_le.setText(f"{self.pretrained_model.split('/')[-1]}_{datetime.today().strftime('%Y-%m-%d')}")
 			else:
 				self.pretrained_model = None
 				self.pretrained_lbl.setText('No folder chosen')	
@@ -382,8 +382,8 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 
 		print(self.pretrained_model)
 
-		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
-		self.model_name = self.pretrained_model.split(os.sep)[-1]
+		self.seg_folder = self.pretrained_model.split('/')[-2]
+		self.model_name = self.pretrained_model.split('/')[-1]
 		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
 
 			self.diamWidget = QWidget()
@@ -477,8 +477,8 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		f = open(os.sep.join([self.pretrained_model,"config_input.json"]))
 		data = json.load(f)
 		channels = data["channels"]
-		self.seg_folder = self.pretrained_model.split(os.sep)[-2]
-		self.model_name = self.pretrained_model.split(os.sep)[-1]
+		self.seg_folder = self.pretrained_model.split('/')[-2]
+		self.model_name = self.pretrained_model.split('/')[-1]
 		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
 			channels = ['brightfield_channel', 'live_nuclei_channel']
 			if self.model_name=="CP_nuclei":

@@ -354,7 +354,7 @@ class AppInitWindow(QMainWindow):
 				print(f"Found {self.number_of_wells} wells...")
 			number_pos = []
 			for w in wells:
-				position_folders = glob(os.sep.join([w,f"{w.split(os.sep)[-2][1]}*", os.sep]))
+				position_folders = glob(os.sep.join([w,f"{w.split(os.sep)[-1][1]}*", os.sep]))
 				number_pos.append(len(position_folders))
 			print(f"Number of positions per well: {number_pos}")
 			

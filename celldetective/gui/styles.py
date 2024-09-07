@@ -6,6 +6,7 @@ class Styles(object):
 		self.init_tab_styles()
 		self.init_label_styles()
 
+		self.help_color = "#1958b7" 
 		self.celldetective_blue = "#1565c0"
 
 		self.action_lbl_style_sheet = """

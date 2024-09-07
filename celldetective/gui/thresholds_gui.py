@@ -175,7 +175,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.add_filter.clicked.connect(self.filters_qlist.addItem)
 
 		self.help_prefilter_btn = QPushButton()
-		self.help_prefilter_btn.setIcon(icon(MDI6.help_circle,color=self.celldetective_blue))
+		self.help_prefilter_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
 		self.help_prefilter_btn.setIconSize(QSize(20, 20))
 		self.help_prefilter_btn.clicked.connect(self.help_prefilter)
 		self.help_prefilter_btn.setStyleSheet(self.button_select_all)

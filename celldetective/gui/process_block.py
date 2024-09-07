@@ -356,7 +356,7 @@ class ProcessPanel(QFrame, Styles):
 		grid_segment.addWidget(self.check_seg_btn, 5)
 
 		self.help_btn = QPushButton()
-		self.help_btn.setIcon(icon(MDI6.help_circle,color=self.celldetective_blue))
+		self.help_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
 		self.help_btn.setIconSize(QSize(20, 20))
 		self.help_btn.clicked.connect(self.help_segmentation)
 		self.help_btn.setStyleSheet(self.button_select_all)
@@ -591,27 +591,27 @@ class ProcessPanel(QFrame, Styles):
 			self.all_ticked = True
 
 	def upload_segmentation_model(self):
-
+		print('Load a segmentation model or pipeline...')
 		self.SegModelLoader = SegmentationModelLoader(self)
 		self.SegModelLoader.show()
 
 	def open_tracking_configuration_ui(self):
-
+		print('Set the tracking parameters...')
 		self.ConfigTracking = ConfigTracking(self)
 		self.ConfigTracking.show()
 
 	def open_signal_model_config_ui(self):
-
+		print('Set the training parameters for new signal models...')
 		self.ConfigSignalTrain = ConfigSignalModelTraining(self)
 		self.ConfigSignalTrain.show()
 
 	def open_segmentation_model_config_ui(self):
-
+		print('Set the training parameters for a new segmentation model...')
 		self.ConfigSegmentationTrain = ConfigSegmentationModelTraining(self)
 		self.ConfigSegmentationTrain.show()
 
 	def open_measurement_configuration_ui(self):
-
+		print('Set the measurements to be performed...')
 		self.ConfigMeasurements = ConfigMeasurements(self)
 		self.ConfigMeasurements.show()
 

@@ -1,0 +1,16 @@
+{
+  "Do you want to exploit the instantaneous classification to interpret cell tracks as a whole?": {
+    "yes": {
+      "Do the cells exhibit irreversible transitions between the negative and positive state?": {
+        "yes": "Tick the 'irreversible event' option. This will generate a class of either 0 (an observed transition), 1 (no observed transition) or 2 (a left-censored transition) for your cells. In case of doubt, transitioning cells (class 0) will be assigned to class 2. Lower the R² threshold if too many transitions are misidentified.",
+        "no": {
+          "Do the cells have a unique state from the beginning to the end of the movie?": {
+            "yes": "Tick the 'unique state' option. This will generate a class of either 1 (always negative) or 2 (always positive) for your cells.",
+            "no": "No model of propagation fit for your data is currently available in celldetective. Do not hesitate to formulate a <a href='https://github.com/remyeltorro/celldetective/issues/new?assignees=&labels=&projects=&template=%E2%AD%90-feature-request.md&title=%5BFEATURE%5D'>request</a>."
+          }
+        }
+      }
+    },
+    "no": "Then you do not need to tick the 'Time correlated' option. Each cell at each time point is classified independently."
+  }
+}

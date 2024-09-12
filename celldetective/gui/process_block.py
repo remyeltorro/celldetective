@@ -306,7 +306,7 @@ class ProcessPanel(QFrame, Styles):
 			padding-left: 10px;
 			padding-top: 5px;
 			""")
-		grid_track.addWidget(self.track_action, 80)
+		grid_track.addWidget(self.track_action, 75)
 		#self.to_disable.append(self.track_action_tc)
 
 		# self.show_track_table_btn = QPushButton()
@@ -344,6 +344,14 @@ class ProcessPanel(QFrame, Styles):
 		self.track_config_btn.setStyleSheet(self.button_select_all)
 		self.track_config_btn.clicked.connect(self.open_tracking_configuration_ui)
 		grid_track.addWidget(self.track_config_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
+
+		self.help_track_btn = QPushButton()
+		self.help_track_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_track_btn.setIconSize(QSize(20, 20))
+		self.help_track_btn.clicked.connect(self.help_tracking)
+		self.help_track_btn.setStyleSheet(self.button_select_all)
+		self.help_track_btn.setToolTip("Help.")
+		grid_track.addWidget(self.help_track_btn, 6) #4,2,1,1, alignment=Qt.AlignRight
 
 		self.grid_contents.addLayout(grid_track, 4, 0, 1,4)
 
@@ -395,13 +403,13 @@ class ProcessPanel(QFrame, Styles):
 		self.check_seg_btn.setToolTip("View segmentation output in napari.")
 		grid_segment.addWidget(self.check_seg_btn, 5)
 
-		self.help_btn = QPushButton()
-		self.help_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
-		self.help_btn.setIconSize(QSize(20, 20))
-		self.help_btn.clicked.connect(self.help_segmentation)
-		self.help_btn.setStyleSheet(self.button_select_all)
-		self.help_btn.setToolTip("Help.")
-		grid_segment.addWidget(self.help_btn, 5)
+		self.help_seg_btn = QPushButton()
+		self.help_seg_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_seg_btn.setIconSize(QSize(20, 20))
+		self.help_seg_btn.clicked.connect(self.help_segmentation)
+		self.help_seg_btn.setStyleSheet(self.button_select_all)
+		self.help_seg_btn.setToolTip("Help.")
+		grid_segment.addWidget(self.help_seg_btn, 5)
 		self.grid_contents.addLayout(grid_segment, 0,0,1,4)
 
 		seg_option_vbox = QVBoxLayout()
@@ -509,6 +517,30 @@ class ProcessPanel(QFrame, Styles):
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Information)
 			msgBox.setText(f"The suggested technique is {suggestion}.")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+
+	def help_tracking(self):
+
+		"""
+		Helper for segmentation strategy between threshold-based and Deep learning.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','tracking.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(f"{suggestion}")
 			msgBox.setWindowTitle("Info")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()

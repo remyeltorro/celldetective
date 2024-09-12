@@ -1,0 +1,11 @@
+{
+  "Is the time resolution high enough to unambiguously identify visually cells from one frame to the next?": {
+    "yes": {
+      "Did you successfully segment the vast majority of the cells of interest?": {
+        "yes": "You should be able to track your cells. Do not forget to tune the tracking parameters for your cell population for optimal performance.",
+        "no": "With a non-negligible segmentation miss rate, tracking can be much noisier. If possible, try to improve the segmentation by using a different model or performing manual corrections. Otherwise, consider skipping the tracking and signal analysis steps and measure directly the cells."
+      }
+    },
+    "no": "Skip the tracking and signal analysis steps. Proceed directly with measurements."
+  }
+}

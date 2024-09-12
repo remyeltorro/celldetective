@@ -1,0 +1,16 @@
+{
+  "Do you want to relate target and effector populations?": {
+    "yes": {
+      "Do you have the complete cell shape for both populations of interest?": {
+        "yes": "You may compute a mask-contact neighborhood. Set the reference and neighbor populations. Use the tolerance parameter to be more or less sensitive about the reference-cell / neighbor-cell contact.",
+        "no": "You may use an isotropic distance threshold. Set the reference and neighbor populations. Use a radius r > (R_ref + 1/2 * R_neigh) with R_ref the average reference cell radius and R_neigh the average neighbor cell radius."
+      }
+    },
+    "no": {
+      "Do you have the complete cell shape for the population of interest?": {
+        "yes": "You may compute a mask-contact neighborhood. Set the same reference and neighbor population. Use the tolerance parameter to be more or less sensitive about the cell-cell contact.",
+        "no": "You may use an isotropic distance threshold. Set the same reference and neighbor population. Use a radius r > 1.5*R with R the average cell radius."
+      }
+    }
+  }
+}

@@ -1166,8 +1166,20 @@ class NeighPanel(QFrame, Styles):
 		#self.neigh_action.setIconSize(QSize(20, 20))
 		self.neigh_action.setToolTip(
 			"Compute neighborhoods in list below.")
+
 		neigh_option_hbox.addWidget(self.neigh_action,90)
+
+
+		self.help_neigh_btn = QPushButton()
+		self.help_neigh_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_neigh_btn.setIconSize(QSize(20, 20))
+		self.help_neigh_btn.clicked.connect(self.help_neighborhood)
+		self.help_neigh_btn.setStyleSheet(self.button_select_all)
+		self.help_neigh_btn.setToolTip("Help.")
+		neigh_option_hbox.addWidget(self.help_neigh_btn,5,alignment=Qt.AlignRight)
+
 		self.grid_contents.addLayout(neigh_option_hbox, 1,0,1,4)
+
 
 		neigh_options_layout = QVBoxLayout()
 
@@ -1355,6 +1367,31 @@ class NeighPanel(QFrame, Styles):
 		self.neigh_action.toggled.connect(self.activate_neigh_options)
 		self.neigh_action.setChecked(True)
 		self.neigh_action.setChecked(False)
+
+
+	def help_neighborhood(self):
+
+		"""
+		Helper for neighborhood strategy.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','neighborhood.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(f"{suggestion}\nSee a tutorial <a href='https://celldetective.readthedocs.io/en/latest/interactions.html#neighborhood'>here</a>.")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
 
 
 	def load_available_tables(self):

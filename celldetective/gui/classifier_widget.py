@@ -1,18 +1,21 @@
 from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QComboBox, \
 	QCheckBox, QRadioButton, QButtonGroup
-from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class
-import numpy as np
-import matplotlib.pyplot as plt
+from PyQt5.QtCore import Qt, QSize
 from superqt import QLabeledSlider,QLabeledDoubleSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
-from PyQt5.QtCore import Qt, QSize
+
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit
-from celldetective.gui import Styles
 from math import ceil
-from celldetective.utils import extract_cols_from_query
+import json
+
+from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class, help_generic
+from celldetective.gui import Styles
+from celldetective.utils import extract_cols_from_query, get_software_location
 
 def step_function(t, t_shift, dt):
 	return 1/(1+np.exp(-(t-t_shift)/dt))
@@ -133,7 +136,19 @@ class ClassifierWidget(QWidget, Styles):
 			self.time_corr.setEnabled(True)
 		else:
 			self.time_corr.setEnabled(False)
-		layout.addWidget(self.time_corr,alignment=Qt.AlignCenter)
+
+		time_prop_hbox = QHBoxLayout()
+		time_prop_hbox.addWidget(self.time_corr,alignment=Qt.AlignCenter)
+
+		self.help_propagate_btn = QPushButton()
+		self.help_propagate_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_propagate_btn.setIconSize(QSize(20, 20))
+		self.help_propagate_btn.clicked.connect(self.help_propagate)
+		self.help_propagate_btn.setStyleSheet(self.button_select_all)
+		self.help_propagate_btn.setToolTip("Help.")
+		time_prop_hbox.addWidget(self.help_propagate_btn,5,alignment=Qt.AlignRight)
+
+		layout.addLayout(time_prop_hbox)
 
 		self.irreversible_event_btn = QRadioButton('irreversible event')
 		self.unique_state_btn = QRadioButton('unique state')
@@ -364,8 +379,13 @@ class ClassifierWidget(QWidget, Styles):
 				stat_col = self.class_name_user.replace('class','status')
 				self.df.loc[:,stat_col] = 1 - self.df[self.class_name_user].values
 				for tid,track in self.df.groupby(['position','TRACK_ID']):
+
+					track_valid = track.dropna(subset=stat_col)
+					indices_valid = track_valid[self.class_name_user].index
+
 					indices = track[self.class_name_user].index
-					status_values = track[stat_col].to_numpy()
+					status_values = track_valid[stat_col].to_numpy()
+
 					if self.irreversible_event_btn.isChecked():
 						if np.all([s==0 for s in status_values]):
 							self.df.loc[indices, self.class_name_user] = 1
@@ -374,8 +394,9 @@ class ClassifierWidget(QWidget, Styles):
 							self.df.loc[indices, self.class_name_user.replace('class','status')] = 2
 						else:
 							self.df.loc[indices, self.class_name_user] = 2
+
 					elif self.unique_state_btn.isChecked():
-						frames = track['FRAME'].to_numpy()
+						frames = track_valid['FRAME'].to_numpy()
 						t_first = track['t_firstdetection'].to_numpy()[0]
 						median_status = np.nanmedian(status_values[frames>=t_first])
 						if median_status==median_status:
@@ -422,6 +443,31 @@ class ClassifierWidget(QWidget, Styles):
 		self.parent_window.parent_window.update_position_options()
 		self.close()
 
+
+	def help_propagate(self):
+
+		"""
+		Helper for segmentation strategy between threshold-based and Deep learning.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','propagate-classification.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(rf"{suggestion}")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+
 	def switch_to_log(self, i):
 
 		"""
@@ -455,20 +501,45 @@ class ClassifierWidget(QWidget, Styles):
 	def estimate_time(self):
 
 		self.df = self.df.sort_values(by=['position','TRACK_ID'],ignore_index=True)
+		self.df = self.df.reset_index(drop=True)
+
 		for tid,group in self.df.loc[self.df[self.class_name_user]==2].groupby(['position','TRACK_ID']):
 			indices = group.index
 			status_col = self.class_name_user.replace('class','status')
-			status_signal = group[status_col].values
-			timeline = group['FRAME'].values
+
+			group_clean = group.dropna(subset=status_col)
+			status_signal = group_clean[status_col].values
+			timeline = group_clean['FRAME'].values
 			
+			frames = group_clean['FRAME'].to_numpy()
+			status_values = group_clean[status_col].to_numpy()
+			t_first = group['t_firstdetection'].to_numpy()[0]
+
 			try:
 				popt, pcov = curve_fit(step_function, timeline.astype(int), status_signal, p0=[self.df['FRAME'].max()//2, 0.8],maxfev=30000)
 				values = [step_function(t, *popt) for t in timeline]
 				r2 = r2_score(status_signal,values)
 			except Exception as e:
+				
 				print(e)
 				self.df.loc[indices, self.class_name_user] = 2.0
 				self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+
+				# print('Attempting rescue...')
+				# likely_status = np.nanpercentile(status_values[frames>=t_first], 90)
+				# print(f'{likely_status=}')
+				# if likely_status==likely_status:
+				# 	c = round(likely_status)
+				# 	print(f'{c=}')
+				# 	if c==0:
+				# 		s2 = 1
+				# 	elif c==1:
+				# 		s2 = 2
+				# 	else:
+				# 		continue
+				# 	self.df.loc[indices, self.class_name_user] = s2
+				# 	self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+					
 				continue
 
 			if r2 > float(self.r2_slider.value()):
@@ -478,7 +549,23 @@ class ClassifierWidget(QWidget, Styles):
 			else:
 				self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
 				self.df.loc[indices, self.class_name_user] = 2.0
+				
+				# print('Attempting rescue...')
+				# likely_status = np.nanmedian(status_values[frames>=t_first])
+				# print(f'{status_values[frames>=t_first]} {likely_status=}')
+				# if likely_status==likely_status:
+				# 	c = round(likely_status)
+				# 	print(f'{c=}')
+				# 	if c==0:
+				# 		s2 = 1
+				# 	elif c==1:
+				# 		s2 = 2
+				# 	else:
+				# 		continue
 
+				# 	self.df.loc[indices, self.class_name_user] = s2
+				# 	self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
+					
 		print('Done.')
 
 

@@ -120,17 +120,25 @@ def segment_index(indices):
 		del mask;
 		gc.collect()
 
+import concurrent.futures
+
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))
 chunks = np.array_split(indices, n_threads)
-threads = []
-for i in range(n_threads):
-	thread_i = threading.Thread(target=segment_index, args=[chunks[i]])
-	threads.append(thread_i)
-for th in threads:
-	th.start()
-for th in threads:
-	th.join()
+
+with concurrent.futures.ThreadPoolExecutor() as executor:
+	executor.map(segment_index, chunks)
+
+# indices = list(range(img_num_channels.shape[1]))
+# chunks = np.array_split(indices, n_threads)
+# threads = []
+# for i in range(n_threads):
+# 	thread_i = threading.Thread(target=segment_index, args=[chunks[i]])
+# 	threads.append(thread_i)
+# for th in threads:
+# 	th.start()
+# for th in threads:
+# 	th.join()
 
 print('Done.')
 gc.collect()

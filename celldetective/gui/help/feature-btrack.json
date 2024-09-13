@@ -1,0 +1,11 @@
+{
+  "Are morphological, tonal or textural features critical to follow the cells of interest?": {
+    "yes": {
+      "Are the values of these features constant or slowly changing?": {
+        "yes": "You may pass features to bTrack. Both motion and feature information will be combined to perform tracking.",
+        "no": "Abrupt transitions in the features may perturb bTrack's performance and truncate trajectories prematurely. Avoid passing features. "
+      }
+    },
+    "no": "No need to pass features. The tracking will rely exclusively on the cell positions. Skip this step."
+  }
+}

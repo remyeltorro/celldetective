@@ -119,6 +119,7 @@ class ClassifierWidget(QWidget, Styles):
 		hbox_classify.addWidget(QLabel('classify: '), 10)
 		self.property_query_le = QLineEdit()
 		self.property_query_le.setPlaceholderText('classify points using a query such as: area > 100 or eccentricity > 0.95')
+		self.property_query_le.setToolTip('Classify points using a query on measurements.\nYou can use "and" and "or" conditions to combine\nmeasurements (e.g. "area > 100 or eccentricity > 0.95").')
 		hbox_classify.addWidget(self.property_query_le, 70)
 		self.submit_query_btn = QPushButton('Submit...')
 		self.submit_query_btn.clicked.connect(self.apply_property_query)

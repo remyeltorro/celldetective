@@ -1,0 +1,46 @@
+{
+  "Are you interested in transient cells (existing on the image for only a short amount of time)?": {
+    "yes": {
+      "Are all the cells of interest visible (and segmented) on the last frame of the movie?": {
+        "yes": {
+          "Are the cells quasi-static?": {
+            "yes": "Set a low minimum tracklength to keep transient tracks. If you are confident that all the cells of interest are visible and properly segmented on the last image, you may tick the option to 'remove the tracks that do not end at the end'. With quasi-static cells, you may tick the option to 'sustain the first position from the beginning of the movie', to start measuring intensities before cell arrival, giving a contrast on the signals. Tick the option to 'interpolate missed detections within tracks'.",
+            "no": "Set a low minimum tracklength to keep transient tracks. If you are confident that all the cells of interest are visible and properly segmented on the last image, you may tick the option to 'remove the tracks that do not end at the end'. Tick the option to 'interpolate missed detections within tracks'."
+          }
+        },
+        "no": {
+          "Are the cells quasi-static?": {
+            "yes": "Set a low minimum tracklength to keep transient tracks. Tick the option to 'interpolate missed detections within tracks'.",
+            "no": "Set a low minimum tracklength to keep transient tracks. Tick the option to 'interpolate missed detections within tracks'."
+          }
+        }
+      }
+    },
+    "no": {
+      "Are all the cells of interest visible (and segmented) on the first frame of the movie?": {
+        "yes": {
+          "Are the cells quasi-static?": {
+            "yes": "Set a high minimum tracklength to filter out most false positive tracks. If you are confident that all the cells of interest are visible and properly segmented on the first frame, you may tick the option to 'remove the tracks that do not start at the beginning'. With quasi-static cells, you may tick the option to 'sustain the last position until the end of the movie', to continue measuring intensities locally when cell track is interrupted. Tick the option to 'interpolate missed detections within tracks'.",
+            "no": "Set a high minimum tracklength to filter out most false positive tracks. If you are confident that all the cells of interest are visible and properly segmented on the first frame, you may tick the option to 'remove the tracks that do not start at the beginning'. Tick the option to 'interpolate missed detections within tracks'."
+          }
+        },
+        "no": {
+          "Are all the cells of interest visible (and segmented) on the last frame of the movie?": {
+            "yes": {
+              "Are the cells quasi-static?": {
+                "yes": "Set a moderate minimum tracklength to filter out false positive tracks. If you are confident that all the cells of interest are visible and properly segmented on the last image, you may tick the option to 'remove the tracks that do not end at the end'. With quasi-static cells, you may tick the option to 'sustain the first position from the beginning of the movie', to start measuring intensities before cell arrival, giving a contrast on the signals. Tick the option to 'interpolate missed detections within tracks'.",
+                "no": "Set a moderate minimum tracklength to filter out false positive tracks. Tick the option to 'interpolate missed detections within tracks'."
+              }
+            },
+            "no": {
+              "Are the cells quasi-static?": {
+                "yes": "Set a moderate minimum tracklength to filter out false positive tracks. Tick the option to 'interpolate missed detections within tracks'.",
+                "no": "Set a moderate minimum tracklength to filter out false positive tracks. Tick the option to 'interpolate missed detections within tracks'."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

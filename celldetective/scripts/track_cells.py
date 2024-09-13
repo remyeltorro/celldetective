@@ -206,8 +206,6 @@ trajectories, napari_data = track(None,
 		  			clean_trajectories_kwargs=post_processing_options, 
 		  			volume=(shape_x, shape_y),
 		  			)
-print(trajectories)
-print(trajectories.columns)
 
 # out trajectory table, create POSITION_X_um, POSITION_Y_um, TIME_min (new ones)
 # Save napari data

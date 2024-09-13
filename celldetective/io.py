@@ -17,10 +17,10 @@ from pathlib import Path, PurePath
 from shutil import copyfile
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
 import json
-import threading
 from skimage.measure import regionprops_table
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.utils import interpolate_nan
+import concurrent.futures
 
 
 def get_experiment_wells(experiment):
@@ -1117,96 +1117,40 @@ def relabel_segmentation(labels, data, properties, column_labels={'track': "trac
 	else:
 		df = pd.DataFrame(data,columns=[column_labels['track'],column_labels['frame'],'z', column_labels['y'],column_labels['x']])
 		df = df.drop(columns=['z'])
+
 	df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
 	df = df.sort_values(by=[column_labels['track'],column_labels['frame']])
+	df.loc[df['dummy'],column_labels['label']] = np.nan
 
 	new_labels = np.zeros_like(labels)
 
 	def rewrite_labels(indices):
 
 		for t in tqdm(indices):
-			f = int(t)
-			tracks_at_t = df.loc[df[column_labels['frame']] == f, column_labels['track']].to_numpy()
-			identities = df.loc[df[column_labels['frame']] == f, column_labels['label']].to_numpy()
 
+			f = int(t)
+			cells = df.loc[df[column_labels['frame']] == f, [column_labels['track'], column_labels['label']]].to_numpy()
+			tracks_at_t = cells[:,0]
+			identities = cells[:,1]
+
+			# exclude NaN
 			tracks_at_t = tracks_at_t[identities == identities]
 			identities = identities[identities == identities]
 
 			for k in range(len(identities)):
 				loc_i, loc_j = np.where(labels[f] == identities[k])
-				new_labels[f, loc_i, loc_j] = int(tracks_at_t[k])
+				new_labels[f, loc_i, loc_j] = round(tracks_at_t[k])
 
 	# Multithreading
 	indices = list(df[column_labels['frame']].unique())
 	chunks = np.array_split(indices, n_threads)
-	threads = []
-	for i in range(n_threads):
-		thread_i = threading.Thread(target=rewrite_labels, args=[chunks[i]])
-		threads.append(thread_i)
-	for th in threads:
-		th.start()
-	for th in threads:
-		th.join()
+
+	with concurrent.futures.ThreadPoolExecutor() as executor:
+		executor.map(rewrite_labels, chunks)
+	print("Done.")
 
 	return new_labels
 
-# def relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}, threads=1):
-
-# 	"""
-
-# 	Relabel the segmentation labels based on the provided tracking data and properties.
-
-# 	Parameters
-# 	----------
-# 	labels : ndarray
-# 		The original segmentation labels.
-# 	data : ndarray
-# 		The tracking data containing information about tracks, frames, y-coordinates, and x-coordinates.
-# 	properties : ndarray
-# 		The properties associated with the tracking data.
-# 	column_labels : dict, optional
-# 		A dictionary specifying the column labels for the tracking data. The default is {'track': "track",
-# 		'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}.
-
-# 	Returns
-# 	-------
-# 	ndarray
-# 		The relabeled segmentation labels.
-
-# 	Notes
-# 	-----
-# 	This function relabels the segmentation labels based on the provided tracking data and properties.
-# 	It creates a DataFrame from the tracking data and properties, merges them based on the indices, and sorts them by track and frame.
-# 	Then, it iterates over unique frames in the DataFrame, retrieves the tracks and identities at each frame,
-# 	and updates the corresponding labels with the new track values.
-
-# 	Examples
-# 	--------
-# 	>>> relabeled = relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame',
-# 	...                                                                 'y': 'y', 'x': 'x', 'label': 'class_id'})
-# 	# Relabel the segmentation labels based on the provided tracking data and properties.
-	
-# 	"""
-
-# 	df = pd.DataFrame(data,columns=[column_labels['track'],column_labels['frame'],column_labels['y'],column_labels['x']])
-# 	df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
-# 	df = df.sort_values(by=[column_labels['track'],column_labels['frame']])
-
-# 	new_labels = np.zeros_like(labels)
-
-# 	for t in tqdm(df[column_labels['frame']].unique()):
-# 		f = int(t)
-# 		tracks_at_t = df.loc[df[column_labels['frame']]==f, column_labels['track']].to_numpy()
-# 		identities = df.loc[df[column_labels['frame']]==f, column_labels['label']].to_numpy()
-
-# 		tracks_at_t = tracks_at_t[identities==identities]
-# 		identities = identities[identities==identities]
-
-# 		for k in range(len(identities)):
-# 			loc_i,loc_j = np.where(labels[f]==identities[k])
-# 			new_labels[f,loc_i,loc_j] = int(tracks_at_t[k])
-
-# 	return new_labels
 
 def control_tracking_btrack(position, prefix="Aligned", population="target", relabel=True, flush_memory=True, threads=1):
 
@@ -1277,13 +1221,10 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 		print('Relabeling the cell masks with the track ID.')
 		labels = relabel_segmentation(labels, data, properties, threads=threads)
 
-	if data.shape[1]==4:
-		vertices = data[:, 1:]
-	else:
-		vertices = data[:, 2:]
+	vertices = data[:, [1,-2,-1]]
+
 	viewer = napari.Viewer()
 	if stack is not None:
-		print(f'{stack.shape=}')
 		viewer.add_image(stack, channel_axis=-1, colormap=["gray"] * stack.shape[-1])
 	if labels is not None:
 		viewer.add_labels(labels, name='segmentation', opacity=0.4)
@@ -1291,7 +1232,6 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 	if data.shape[1]==4:
 		viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
 	else:
-		print(data)
 		viewer.add_tracks(data[:,[0,1,3,4]], properties=properties, graph=graph, name='tracks')		
 	viewer.show(block=True)
 

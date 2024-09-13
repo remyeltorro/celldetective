@@ -152,6 +152,8 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 		df_temp = pd.DataFrame(x_scaled, columns=columns, index = df.index)
 		df[columns] = df_temp
 
+	# set dummy features to NaN
+	df.loc[df['dummy'],['class_id']+columns] = np.nan 
 	df = df.sort_values(by=[column_labels['track'],column_labels['time']])
 	df = velocity_per_track(df, window_size=3, mode='bi')
 

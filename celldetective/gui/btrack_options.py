@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
-from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas
+from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, help_generic
 from superqt import QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
@@ -116,7 +116,6 @@ class ConfigTracking(QMainWindow, Styles):
 		self.select_post_proc_btn = QPushButton()
 		self.select_post_proc_btn.clicked.connect(self.activate_post_proc_options)
 		self.select_post_proc_btn.setStyleSheet(self.button_select_all)
-		grid.addWidget(self.select_post_proc_btn, 0,0,1,4,alignment=Qt.AlignLeft)
 
 		self.post_proc_lbl = QLabel("POST-PROCESSING")
 		self.post_proc_lbl.setStyleSheet("""
@@ -125,11 +124,26 @@ class ConfigTracking(QMainWindow, Styles):
 			""")
 		grid.addWidget(self.post_proc_lbl, 0, 0, 1, 4, alignment=Qt.AlignCenter)
 
+		title_hbox = QHBoxLayout()
+
 		self.collapse_post_proc_btn = QPushButton()
 		self.collapse_post_proc_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_post_proc_btn.setIconSize(QSize(20, 20))
 		self.collapse_post_proc_btn.setStyleSheet(self.button_select_all)
-		grid.addWidget(self.collapse_post_proc_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
+		#grid.addWidget(self.collapse_post_proc_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
+
+		self.help_post_btn = QPushButton()
+		self.help_post_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_post_btn.setIconSize(QSize(20, 20))
+		self.help_post_btn.clicked.connect(self.help_post)
+		self.help_post_btn.setStyleSheet(self.button_select_all)
+		self.help_post_btn.setToolTip("Help.")
+
+		title_hbox.addWidget(self.select_post_proc_btn, 5)
+		title_hbox.addWidget(QLabel(), 85, alignment=Qt.AlignCenter)
+		title_hbox.addWidget(self.help_post_btn, 5)
+		title_hbox.addWidget(self.collapse_post_proc_btn, 5)
+		grid.addLayout(title_hbox, 0,0,1,4)
 
 		self.generate_post_proc_panel_contents()
 		grid.addWidget(self.ContentsPostProc, 1, 0, 1, 4, alignment=Qt.AlignTop)
@@ -138,6 +152,53 @@ class ConfigTracking(QMainWindow, Styles):
 		self.ContentsPostProc.hide()
 		self.uncheck_post_proc()
 
+	def help_post(self):
+		
+		"""
+		Helper for track post-processing strategy.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','track-postprocessing.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(rf"{suggestion}")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None		
+
+	def help_feature(self):
+		
+		"""
+		Helper for track post-processing strategy.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','feature-btrack.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(rf"{suggestion}")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
 
 	def populate_features_frame(self):
 
@@ -146,12 +207,11 @@ class ConfigTracking(QMainWindow, Styles):
 		"""
 
 		grid = QGridLayout(self.features_frame)
-
+		title_hbox = QHBoxLayout()
+		
 		self.select_features_btn = QPushButton()
 		self.select_features_btn.clicked.connect(self.activate_feature_options)
 		self.select_features_btn.setStyleSheet(self.button_select_all)
-		grid.addWidget(self.select_features_btn, 0,0,1,4,alignment=Qt.AlignLeft)
-
 
 		self.feature_lbl = QLabel("FEATURES")
 		self.feature_lbl.setStyleSheet("""
@@ -164,7 +224,19 @@ class ConfigTracking(QMainWindow, Styles):
 		self.collapse_features_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 		self.collapse_features_btn.setIconSize(QSize(20, 20))
 		self.collapse_features_btn.setStyleSheet(self.button_select_all)
-		grid.addWidget(self.collapse_features_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
+
+		self.help_feature_btn = QPushButton()
+		self.help_feature_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_feature_btn.setIconSize(QSize(20, 20))
+		self.help_feature_btn.clicked.connect(self.help_feature)
+		self.help_feature_btn.setStyleSheet(self.button_select_all)
+		self.help_feature_btn.setToolTip("Help.")
+
+		title_hbox.addWidget(self.select_features_btn, 5)
+		title_hbox.addWidget(QLabel(), 85, alignment=Qt.AlignCenter)
+		title_hbox.addWidget(self.help_feature_btn, 5)
+		title_hbox.addWidget(self.collapse_features_btn, 5)
+		grid.addLayout(title_hbox, 0,0,1,4)		
 
 		self.generate_feature_panel_contents()
 		grid.addWidget(self.ContentsFeatures, 1, 0, 1, 4, alignment=Qt.AlignTop)

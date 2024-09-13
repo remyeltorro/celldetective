@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QComboBox, \
+from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, \
 	QCheckBox, QRadioButton, QButtonGroup
 from PyQt5.QtCore import Qt, QSize
-from superqt import QLabeledSlider,QLabeledDoubleSlider
+from superqt import QLabeledSlider,QLabeledDoubleSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 
@@ -96,7 +96,7 @@ class ClassifierWidget(QWidget, Styles):
 
 
 
-		self.features_cb = [QComboBox() for i in range(2)]
+		self.features_cb = [QSearchableComboBox() for i in range(2)]
 		self.log_btns = [QPushButton() for i in range(2)]
 
 		for i in range(2):

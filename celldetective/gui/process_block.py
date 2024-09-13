@@ -996,6 +996,7 @@ class ProcessPanel(QFrame, Styles):
 
 
 	def open_napari_tracking(self):
+		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')
 		control_tracking_btrack(self.parent_window.pos, prefix=self.parent_window.movie_prefix, population=self.mode, threads=self.parent_window.parent_window.n_threads)
 
 	def view_table_ui(self):

@@ -22,7 +22,6 @@ from celldetective.utils import _estimate_scale_factor, _extract_channel_indices
 from celldetective.utils import interpolate_nan
 import concurrent.futures
 
-
 def get_experiment_wells(experiment):
 	
 	"""
@@ -1147,7 +1146,8 @@ def relabel_segmentation(labels, data, properties, column_labels={'track': "trac
 
 	with concurrent.futures.ThreadPoolExecutor() as executor:
 		executor.map(rewrite_labels, chunks)
-	print("Done.")
+	
+	print("\nDone.")
 
 	return new_labels
 
@@ -1218,7 +1218,7 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 	"""
 
 	if (labels is not None) * relabel:
-		print('Relabeling the cell masks with the track ID.')
+		print('Replacing the cell mask labels with the track ID...')
 		labels = relabel_segmentation(labels, data, properties, threads=threads)
 
 	vertices = data[:, [1,-2,-1]]

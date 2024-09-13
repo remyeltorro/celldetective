@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
-from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class, help_generic
+from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_status, help_generic
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location
 from celldetective.measure import classify_cells_from_query, interpret_track_classification
@@ -243,7 +243,7 @@ class ClassifierWidget(QWidget, Styles):
 
 		if not self.project_times:
 			self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-			colors = [color_from_class(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
+			colors = [color_from_status(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
 			self.scat_props.set_facecolor(colors)
 			self.scat_props.set_alpha(self.currentAlpha)
 			self.ax_props.set_xlabel(self.features_cb[1].currentText())
@@ -424,6 +424,7 @@ class ClassifierWidget(QWidget, Styles):
 		elif i==0:
 			try:
 				if self.ax_props.get_yscale()=='linear':
+					ymin,ymax = self.ax_props.get_ylim()
 					self.ax_props.set_yscale('log')
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="#1565c0"))
 				else:
@@ -436,8 +437,6 @@ class ClassifierWidget(QWidget, Styles):
 		self.propscanvas.canvas.draw_idle()
 
 		print('Done.')
-
-
 
 
 

@@ -6,16 +6,14 @@ import argparse
 import os
 import json
 from celldetective.io import auto_load_number_of_frames, load_frames
-from celldetective.utils import extract_experiment_channels, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, extract_experiment_channels
+from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
 from celldetective.utils import remove_redundant_features, remove_trajectory_measurements
 from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity
 from pathlib import Path, PurePath
 from glob import glob
-from shutil import rmtree
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-import gc
 from natsort import natsorted
 from art import tprint
 from tifffile import imread

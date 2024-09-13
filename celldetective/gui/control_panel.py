@@ -1,7 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, \
 	QTabWidget, QVBoxLayout, QMessageBox, QScrollArea, QDesktopWidget
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon
 from celldetective.gui.gui_utils import center_window, QHSeperationLine
 from celldetective.utils import _extract_labels_from_config, ConfigSectionMap, extract_experiment_channels, extract_identity_col
 from celldetective.gui import ConfigEditor, ProcessPanel, PreprocessingPanel, AnalysisPanel, NeighPanel

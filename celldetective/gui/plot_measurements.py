@@ -1,40 +1,27 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QButtonGroup, QComboBox, QFrame, \
-    QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, \
-    QRadioButton, QSpacerItem, QSizePolicy
-from PyQt5.QtCore import Qt, QSize, QRect
+from PyQt5.QtWidgets import QMessageBox, QScrollArea, QButtonGroup, QComboBox, \
+    QCheckBox, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, \
+    QRadioButton, QSizePolicy
+from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QIcon, QDoubleValidator
-from sklearn.preprocessing import MinMaxScaler
 
 from celldetective.gui import Styles
-from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, \
-    GeometryChoice, OperationChoice
-from superqt import QLabeledSlider
+from celldetective.gui.gui_utils import center_window, FigureCanvas
+
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
-from celldetective.utils import extract_experiment_channels, get_software_location, _extract_labels_from_config
-from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames, \
-    load_experiment_tables, get_experiment_antibodies, get_experiment_cell_types, get_experiment_concentrations, \
+from celldetective.utils import get_software_location, _extract_labels_from_config
+from celldetective.io import load_experiment_tables, get_experiment_antibodies, get_experiment_cell_types, get_experiment_concentrations, \
     get_positions_in_well, get_experiment_wells
-from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
-from celldetective.signals import columnwise_mean, mean_signal
+from celldetective.signals import mean_signal
 import numpy as np
-from tifffile import imread
 import json
-from shutil import copyfile
 import os
 import matplotlib.pyplot as plt
 
 plt.rcParams['svg.fonttype'] = 'none'
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
-from natsort import natsorted
-from tifffile import imread
-from pathlib import Path, PurePath
-import gc
 import pandas as pd
-from tqdm import tqdm
-from lifelines import KaplanMeierFitter
-from matplotlib.cm import viridis, tab10
+from matplotlib.cm import tab10
 import math
 import seaborn as sns
 

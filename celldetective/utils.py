@@ -17,7 +17,6 @@ import json
 from csbdeep.utils import normalize_mi_ma
 from glob import glob
 from urllib.request import urlopen
-from urllib.parse import urlparse
 import zipfile
 from tqdm import tqdm
 import shutil
@@ -2436,3 +2435,44 @@ def collapse_trajectories_by_status(df, status=None, projection='mean', populati
 	group_table = group_table.reset_index(drop=True)
 
 	return group_table
+
+def step_function(t, t_shift, dt):
+
+	"""
+	Computes a step function using the logistic sigmoid function.
+
+	This function calculates the value of a sigmoid function, which is often used to model
+	a step change or transition. The sigmoid function is defined as:
+	
+	.. math::
+		f(t) = \\frac{1}{1 + \\exp{\\left( -\\frac{t - t_{shift}}{dt} \\right)}}
+	
+	where `t` is the input variable, `t_shift` is the point of the transition, and `dt` controls
+	the steepness of the transition.
+
+	Parameters
+	----------
+	t : array_like
+		The input values for which the step function will be computed.
+	t_shift : float
+		The point in the `t` domain where the transition occurs.
+	dt : float
+		The parameter that controls the steepness of the transition. Smaller values make the
+		transition steeper, while larger values make it smoother.
+
+	Returns
+	-------
+	array_like
+		The computed values of the step function for each value in `t`.
+
+	Examples
+	--------
+	>>> import numpy as np
+	>>> t = np.array([0, 1, 2, 3, 4, 5])
+	>>> t_shift = 2
+	>>> dt = 1
+	>>> step_function(t, t_shift, dt)
+	array([0.26894142, 0.37754067, 0.5       , 0.62245933, 0.73105858, 0.81757448])
+	"""
+
+	return 1/(1+np.exp(-(t-t_shift)/dt))

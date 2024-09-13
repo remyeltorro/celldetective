@@ -3,7 +3,7 @@ Segmentation module
 """
 import json
 import os
-from .io import locate_segmentation_model, get_stack_normalization_values, normalize_multichannel
+from .io import locate_segmentation_model, normalize_multichannel
 from .utils import _estimate_scale_factor, _extract_channel_indices
 from pathlib import Path
 from tqdm import tqdm

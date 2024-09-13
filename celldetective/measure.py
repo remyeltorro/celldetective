@@ -1,39 +1,26 @@
 import math
-import sys
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-from lmfit import Parameters, Model
-import skimage.exposure
-import tifffile
-from lmfit import Parameters, Model, models
 from sklearn.metrics import r2_score
 from scipy.optimize import curve_fit
-# import lmfit
 from scipy import ndimage
-from stardist import fill_label_holes
 from tqdm import tqdm
 from skimage.measure import regionprops_table
-from scipy.ndimage.morphology import distance_transform_edt
 from functools import reduce
 from mahotas.features import haralick
-from scipy.ndimage import zoom, binary_fill_holes
+from scipy.ndimage import zoom
 import os
 import subprocess
 from math import ceil
 
-from celldetective.filters import std_filter, gauss_filter
-import datetime
 from skimage.draw import disk as dsk
 
-from celldetective.filters import std_filter, gauss_filter
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, \
-	remove_trajectory_measurements, contour_of_instance_segmentation, extract_cols_from_query
+	remove_trajectory_measurements, contour_of_instance_segmentation, extract_cols_from_query, step_function
 from celldetective.preprocessing import field_correction
 import celldetective.extra_properties as extra_properties
 from celldetective.extra_properties import *
-import cv2
 from inspect import getmembers, isfunction
 from skimage.morphology import disk
 
@@ -991,10 +978,42 @@ def blob_detection(image, label, threshold, diameter):
 
 ### Classification ####
 
-def step_function(t, t_shift, dt):
-	return 1/(1+np.exp(-(t-t_shift)/dt))
 
 def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], r2_threshold=0.5):
+
+	"""
+	Estimate the timing of an event for cells based on classification status and fit a model to the observed status signal.
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		DataFrame containing tracked data with classification and status columns.
+	class_attr : str
+		Column name for the classification attribute (e.g., 'class_event').
+	model : str, optional
+		Name of the model function used to fit the status signal (default is 'step_function').
+	class_of_interest : list, optional
+		List of class values that define the cells of interest for analysis (default is [2]).
+	r2_threshold : float, optional
+		R-squared threshold for determining if the model fit is acceptable (default is 0.5).
+
+	Returns
+	-------
+	pandas.DataFrame
+		Updated DataFrame with estimated event timing added in a column replacing 'class' with 't', 
+		and reclassification of cells based on the model fit.
+
+	Notes
+	-----
+	- The function assumes that cells are grouped by a unique identifier ('TRACK_ID') and sorted by time ('FRAME').
+	- If the model provides a poor fit (R² < r2_threshold), the class of interest is set to 2.0 and timing (-1).
+	- The function supports different models that can be passed as the `model` parameter, which are evaluated using `eval()`.
+
+	Example
+	-------
+	>>> df = estimate_time(df, 'class', model='step_function', class_of_interest=[2], r2_threshold=0.6)
+
+	"""
 
 	cols = list(df.columns)
 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
@@ -1045,18 +1064,60 @@ def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], 
 
 def interpret_track_classification(df, class_attr, irreversible_event=False, unique_state=False,r2_threshold=0.5):
 
+	"""
+	Interpret and classify tracked cells based on their status signals.
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		DataFrame containing tracked cell data, including a classification attribute column and other necessary columns.
+	class_attr : str
+		Column name for the classification attribute (e.g., 'class') used to determine the state of cells.
+	irreversible_event : bool, optional
+		If True, classifies irreversible events in the dataset (default is False).
+		When set to True, `unique_state` is ignored.
+	unique_state : bool, optional
+		If True, classifies unique states of cells in the dataset based on a percentile threshold (default is False).
+		This option is ignored if `irreversible_event` is set to True.
+	r2_threshold : float, optional
+		R-squared threshold used when fitting the model during the classification of irreversible events (default is 0.5).
+
+	Returns
+	-------
+	pandas.DataFrame
+		DataFrame with updated classifications for cell trajectories:
+		- If `irreversible_event` is True, it classifies irreversible events using the `classify_irreversible_events` function.
+		- If `unique_state` is True, it classifies unique states using the `classify_unique_states` function.
+	
+	Raises
+	------
+	AssertionError
+		If the 'TRACK_ID' column is missing in the input DataFrame.
+	
+	Notes
+	-----
+	- The function assumes that the input DataFrame contains a column for tracking cells (`TRACK_ID`) and possibly a 'position' column.
+	- The classification behavior depends on the `irreversible_event` and `unique_state` flags:
+		- When `irreversible_event` is True, the function classifies events that are considered irreversible.
+		- When `unique_state` is True (and `irreversible_event` is False), it classifies unique states using a 50th percentile threshold.
+	
+	Example
+	-------
+	>>> df = interpret_track_classification(df, 'class', irreversible_event=True, r2_threshold=0.7)
+	"""
+
 	cols = list(df.columns)
+
 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
 	if 'position' in cols:
 		sort_cols = ['position', 'TRACK_ID']
 	else:
 		sort_cols = ['TRACK_ID']
+	if class_attr.replace('class','status') not in cols:
+		df.loc[:,class_attr.replace('class','status')] = df.loc[:,class_attr]
 
 	if irreversible_event:
 		unique_state = False
-
-	stat_col = class_attr.replace('class','status')
-	df.loc[:,stat_col] = 1 - df[class_attr].values
 
 	if irreversible_event:
 
@@ -1068,7 +1129,43 @@ def interpret_track_classification(df, class_attr, irreversible_event=False, uni
 
 	return df
 
-def classify_irreversible_events(df, class_attr, r2_threshold=0.5):
+def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_recovery=95):
+
+	"""
+	Classify irreversible events in a tracked dataset based on the status of cells and transitions.
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		DataFrame containing tracked cell data, including classification and status columns.
+	class_attr : str
+		Column name for the classification attribute (e.g., 'class') used to update the classification of cell states.
+	r2_threshold : float, optional
+		R-squared threshold for fitting the model (default is 0.5). Used when estimating the time of transition.
+
+	Returns
+	-------
+	pandas.DataFrame
+		DataFrame with updated classifications for irreversible events, with the following outcomes:
+		- Cells with all 0s in the status column are classified as 1 (no event).
+		- Cells with all 1s are classified as 2 (event already occurred).
+		- Cells with a mix of 0s and 1s are classified as 2 (ambiguous, possible transition).
+		- For cells classified as 2, the time of the event is estimated using the `estimate_time` function. If successful they are reclassified as 0 (event).
+		- The classification for cells still classified as 2 is revisited using a 95th percentile threshold.
+
+	Notes
+	-----
+	- The function assumes that cells are grouped by a unique identifier ('TRACK_ID') and sorted by position or ID.
+	- The classification is based on the `stat_col` derived from `class_attr` (status column).
+	- Cells with no event (all 0s in the status column) are assigned a class value of 1.
+	- Cells with irreversible events (all 1s in the status column) are assigned a class value of 2.
+	- Cells with transitions (a mix of 0s and 1s) are classified as 2 and their event times are estimated. When successful they are reclassified as 0.
+	- After event classification, the function reclassifies leftover ambiguous cases (class 2) using the `classify_unique_states` function.
+
+	Example
+	-------
+	>>> df = classify_irreversible_events(df, 'class', r2_threshold=0.7)
+	"""
 
 	cols = list(df.columns)
 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
@@ -1103,11 +1200,45 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5):
 	df = estimate_time(df, class_attr, model='step_function', class_of_interest=[2],r2_threshold=r2_threshold)
 	
 	# Revisit class 2 cells to classify as neg/pos with percentile tolerance
-	df.loc[df[class_attr]==2,:] = classify_unique_states(df.loc[df[class_attr]==2,:].copy(), class_attr, 95)
+	df.loc[df[class_attr]==2,:] = classify_unique_states(df.loc[df[class_attr]==2,:].copy(), class_attr, percentile_recovery)
 	
 	return df
 
 def classify_unique_states(df, class_attr, percentile=50):
+
+	"""
+	Classify unique cell states based on percentile values of a status attribute in a tracked dataset.
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		DataFrame containing tracked cell data, including classification and status columns.
+	class_attr : str
+		Column name for the classification attribute (e.g., 'class') used to update the classification of cell states.
+	percentile : int, optional
+		Percentile value used to classify the status attribute within the valid frames (default is median).
+
+	Returns
+	-------
+	pandas.DataFrame
+		DataFrame with updated classification for each track and corresponding time (if applicable). 
+		The classification is updated based on the calculated percentile:
+		- Cells with percentile values that round to 0 (negative to classification) are classified as 1.
+		- Cells with percentile values that round to 1 (positive to classification) are classified as 2.
+		- If classification is not applicable (NaN), time (`class_attr.replace('class', 't')`) is set to -1.
+
+	Notes
+	-----
+	- The function assumes that cells are grouped by a unique identifier ('TRACK_ID') and sorted by position or ID.
+	- The classification is based on the `stat_col` derived from `class_attr` (status column).
+	- NaN values in the status column are excluded from the percentile calculation.
+	- For each track, the classification is assigned according to the rounded percentile value.
+	- Time (`class_attr.replace('class', 't')`) is set to -1 when the cell state is classified.
+
+	Example
+	-------
+	>>> df = classify_unique_states(df, 'class', percentile=75)
+	"""
 
 	cols = list(df.columns)
 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
@@ -1140,10 +1271,58 @@ def classify_unique_states(df, class_attr, percentile=50):
 				df.loc[indices, class_attr.replace('class','t')] = -1
 	return df
 
-def classify_cells_from_query(df, class_attr, query):
+def classify_cells_from_query(df, status_attr, query):
+	
+	"""
+	Classify cells in a DataFrame based on a query string, assigning classifications to a specified column.
 
-	# Initialize all states to 1
-	df[class_attr] = 1
+	Parameters
+	----------
+	df : pandas.DataFrame
+		The DataFrame containing cell data to be classified.
+	status_attr : str
+		The name of the column where the classification results will be stored. 
+		- Initially, all cells are assigned a value of 0.
+	query : str
+		A string representing the condition for classifying the cells. The query is applied to the DataFrame using pandas `.query()`.
+
+	Returns
+	-------
+	pandas.DataFrame
+		The DataFrame with an updated `status_attr` column:
+		- Cells matching the query are classified with a value of 1.
+		- Cells that have `NaN` values in any of the columns involved in the query are classified as `NaN`.
+		- Cells that do not match the query are classified with a value of 0.
+
+	Notes
+	-----
+	- If the `query` string is empty, a message is printed and no classification is performed.
+	- If the query contains columns that are not found in `df`, the entire `class_attr` column is set to `NaN`.
+	- Any errors encountered during query evaluation will prevent changes from being applied and will print a message.
+
+	Examples
+	--------
+	>>> data = {'cell_type': ['A', 'B', 'A', 'B'], 'size': [10, 20, np.nan, 15]}
+	>>> df = pd.DataFrame(data)
+	>>> classify_cells_from_query(df, 'selected_cells', 'size > 15')
+	cell_type  size  selected_cells
+	0         A   10.0            0.0
+	1         B   20.0            1.0
+	2         A    NaN            NaN
+	3         B   15.0            0.0
+
+	- If the query string is empty, the function prints a message and returns the DataFrame unchanged.
+	- If any of the columns in the query don't exist in the DataFrame, the classification column is set to `NaN`.
+
+	Raises
+	------
+	Exception
+		If the query is invalid or if there are issues with the DataFrame or query syntax, an error message is printed, and `None` is returned.
+	"""
+
+
+	# Initialize all states to 0
+	df[status_attr] = 0
 	cols = extract_cols_from_query(query)
 	cols_in_df = np.all([c in list(df.columns) for c in cols], axis=0)
 
@@ -1154,13 +1333,13 @@ def classify_cells_from_query(df, class_attr, query):
 			if cols_in_df:
 				selection = df.dropna(subset=cols).query(query).index
 				null_selection = df[df.loc[:,cols].isna().any(axis=1)].index
-				# Set NaN to invalid cells, 0 otherwise
-				df.loc[null_selection, class_attr] = np.nan
-				df.loc[selection, class_attr] = 0
+				# Set NaN to invalid cells, 1 otherwise
+				df.loc[null_selection, status_attr] = np.nan
+				df.loc[selection, status_attr] = 1
 			else:
-				df.loc[:, class_attr] = np.nan
+				df.loc[:, status_attr] = np.nan
 
 		except Exception as e:
-			print("The query could not be understood. No filtering was applied. {e}")
+			print("The query could not be understood. No filtering was applied. {e}...")
 			return None
 	return df

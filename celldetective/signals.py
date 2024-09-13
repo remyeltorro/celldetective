@@ -9,7 +9,7 @@ from tensorflow.keras.losses import CategoricalCrossentropy, MeanSquaredError, M
 from tensorflow.keras.metrics import Precision, Recall, MeanIoU
 from tensorflow.keras.models import load_model,clone_model
 from tensorflow.config.experimental import list_physical_devices, set_memory_growth
-from tensorflow.keras.utils import to_categorical, plot_model
+from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv1D, BatchNormalization, Dense, Activation, Add, MaxPooling1D, Dropout, GlobalAveragePooling1D, Concatenate, ZeroPadding1D, Flatten
 from tensorflow.keras.callbacks import Callback
@@ -18,13 +18,12 @@ from sklearn.metrics import jaccard_score, balanced_accuracy_score, precision_sc
 from scipy.interpolate import interp1d
 from scipy.ndimage import shift
 
-from celldetective.io import get_signal_models_list, locate_signal_model, get_position_pickle, get_position_table
+from celldetective.io import locate_signal_model, get_position_pickle, get_position_table
 from celldetective.tracking import clean_trajectories, interpolate_nan_properties
 from celldetective.utils import regression_plot, train_test_split, compute_weights
 import matplotlib.pyplot as plt
 from natsort import natsorted
 from glob import glob
-import shutil
 import random
 from celldetective.utils import color_from_status, color_from_class
 from math import floor, ceil

@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QMessageBox, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
-	QPushButton, QLabel, QHBoxLayout, QCheckBox, QButtonGroup, QRadioButton, QGridLayout, QSpacerItem
-from PyQt5.QtCore import QEvent, Qt, QSize
+	QPushButton, QLabel, QHBoxLayout, QCheckBox
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -9,15 +9,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import matplotlib.pyplot as plt
 import celldetective.extra_properties as extra_properties
 from inspect import getmembers, isfunction
-from superqt import QLabeledDoubleRangeSlider, QLabeledSlider, QLabeledDoubleSlider
-from superqt.fonticon import icon
-from fonticon_mdi6 import MDI6
-
-from celldetective.io import auto_load_number_of_frames, load_frames
-from celldetective.utils import _extract_channel_indices_from_config
 from celldetective.filters import *
-from celldetective.segmentation import filter_image
-from stardist import fill_label_holes
 
 def center_window(window):
 	"""

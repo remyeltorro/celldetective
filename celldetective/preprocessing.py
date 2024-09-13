@@ -6,13 +6,11 @@ from tqdm import tqdm
 import numpy as np
 import os
 from celldetective.io import get_config, get_experiment_wells, interpret_wells_and_positions, extract_well_name_and_number, get_positions_in_well, extract_position_name, get_position_movie_path, load_frames, auto_load_number_of_frames
-from celldetective.utils import estimate_unreliable_edge, unpad, mask_edges, ConfigSectionMap, _extract_channel_indices_from_config, _extract_nbr_channels_from_config, _get_img_num_per_channel
-from celldetective.filters import std_filter, gauss_filter
+from celldetective.utils import estimate_unreliable_edge, unpad, ConfigSectionMap, _extract_channel_indices_from_config, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from celldetective.segmentation import filter_image, threshold_image
-from stardist import fill_label_holes
 from csbdeep.io import save_tiff_imagej_compatible
 from gc import collect
-from lmfit import Parameters, Model, models
+from lmfit import Parameters, Model
 import tifffile.tifffile as tiff
 
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):

@@ -9,7 +9,7 @@ import json
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
-from celldetective.utils import interpolate_nan, _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
+from celldetective.utils import interpolate_nan, _estimate_scale_factor, _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
@@ -20,10 +20,7 @@ from csbdeep.io import save_tiff_imagej_compatible
 import gc
 from art import tprint
 from scipy.ndimage import zoom
-import threading
 
-import matplotlib.pyplot as plt
-import time
 
 tprint("Segment")
 

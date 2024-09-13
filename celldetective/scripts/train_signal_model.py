@@ -5,11 +5,8 @@ Copright © 2023 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
 import argparse
 import os
 import json
-from pathlib import Path, PurePath
 from glob import glob
-from tqdm import tqdm
 import numpy as np
-import gc
 from art import tprint
 from celldetective.signals import SignalDetectionModel
 from celldetective.io import locate_signal_model

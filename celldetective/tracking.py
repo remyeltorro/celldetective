@@ -10,7 +10,6 @@ from celldetective.measure import measure_features
 from celldetective.utils import rename_intensity_column, velocity_per_track
 from celldetective.io import view_on_napari_btrack, interpret_tracking_configuration
 
-from btrack.datasets import cell_config
 import os
 import subprocess
 

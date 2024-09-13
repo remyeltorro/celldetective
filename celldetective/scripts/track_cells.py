@@ -7,12 +7,11 @@ import datetime
 import os
 import json
 from celldetective.io import auto_load_number_of_frames, load_frames, interpret_tracking_configuration
-from celldetective.utils import extract_experiment_channels, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, extract_experiment_channels
+from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
 from celldetective.measure import drop_tonal_features, measure_features
 from celldetective.tracking import track
 from pathlib import Path, PurePath
 from glob import glob
-from shutil import rmtree
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -21,7 +20,6 @@ import os
 from natsort import natsorted
 from art import tprint
 from tifffile import imread
-import threading
 
 tprint("Track")
 

@@ -3,10 +3,7 @@ import numpy as np
 from celldetective.utils import derivative, extract_identity_col
 import os
 import subprocess
-from math import ceil
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
-import random
-from tqdm import tqdm
 
 def measure_pairs(pos, neighborhood_protocol):
 	

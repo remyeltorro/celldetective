@@ -1,15 +1,15 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QRadioButton, QButtonGroup, QGroupBox, QComboBox,QTabWidget,QSizePolicy,QListWidget, QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
-	QMessageBox, QWidget, QLineEdit, QScrollArea, QSpacerItem, QLayout, QSizePolicy
+from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QListWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+	QMessageBox, QWidget
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import gc
-from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
-	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list, get_position_pickle, get_position_table
+	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list
 from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames, locate_signal_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
@@ -17,29 +17,25 @@ from celldetective.relative_measurements import rel_measure_at_position
 from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
 from celldetective.tracking import track_at_position
 from celldetective.measure import measure_at_position
-from celldetective.signals import analyze_signals_at_position, analyze_pair_signals, analyze_pair_signals_at_position
+from celldetective.signals import analyze_signals_at_position, analyze_pair_signals_at_position
 from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
 from natsort import natsorted
-from superqt import QLabeledDoubleSlider, QLabeledSlider, QLabeledRangeSlider, QLabeledSlider, QLabeledDoubleRangeSlider
+from superqt import QLabeledDoubleSlider
 import os
 import pandas as pd
-from tqdm import tqdm
 from celldetective.gui.gui_utils import center_window
 from tifffile import imwrite
 import json
 import psutil
 from celldetective.neighborhood import compute_neighborhood_at_position, compute_contact_neighborhood_at_position
 from celldetective.gui.gui_utils import FigureCanvas
-import matplotlib.pyplot as plt
-from celldetective.filters import std_filter, median_filter, gauss_filter
-from stardist import fill_label_holes
-from celldetective.preprocessing import correct_background_model_free, estimate_background_per_condition, correct_background_model
+from celldetective.preprocessing import correct_background_model_free, correct_background_model
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout, help_generic
-from celldetective.gui.viewers import StackVisualizer, CellSizeViewer, ThresholdedStackVisualizer
-from celldetective.gui.layouts import BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout, OperationLayout
+from celldetective.gui.viewers import CellSizeViewer
+from celldetective.gui.layouts import BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location
 

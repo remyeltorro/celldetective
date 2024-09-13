@@ -1,28 +1,19 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QIcon
-from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, GeometryChoice, OperationChoice
+from celldetective.gui.gui_utils import center_window
 from celldetective.gui.layouts import ChannelNormGenerator
-from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider, QLabeledSlider, QSearchableComboBox
+from superqt import QLabeledDoubleSlider, QLabeledSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
-from celldetective.utils import extract_experiment_channels, get_software_location
-from celldetective.io import interpret_tracking_configuration, load_frames, locate_signal_dataset, get_signal_datasets_list, load_experiment_tables
-from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
+from celldetective.utils import get_software_location
+from celldetective.io import locate_signal_dataset, get_signal_datasets_list, load_experiment_tables
 from celldetective.signals import train_signal_model
 import numpy as np
 import json
-from shutil import copyfile
 import os
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
-from natsort import natsorted
-from tifffile import imread
-from pathlib import Path, PurePath
 from datetime import datetime
-import pandas as pd
-from functools import partial
 from celldetective.gui import Styles
 from pandas.api.types import is_numeric_dtype
 

@@ -4,9 +4,7 @@ import skimage
 from PyQt5.QtWidgets import QAction, QMenu, QMainWindow, QMessageBox, QLabel, QWidget, QFileDialog, QHBoxLayout, \
 	QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton, QRadioButton, QButtonGroup
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
-from matplotlib.backends.backend_qt import NavigationToolbar2QT
 from matplotlib.patches import Circle
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import ndimage
 from skimage.morphology import disk
 
@@ -14,9 +12,7 @@ from celldetective.filters import std_filter, gauss_filter
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class, help_generic
 from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column, estimate_unreliable_edge
 from celldetective.io import auto_load_number_of_frames, load_frames
-from celldetective.segmentation import threshold_image, identify_markers_from_binary, apply_watershed, \
-	segment_frame_from_thresholds
-from scipy.ndimage import binary_fill_holes
+from celldetective.segmentation import threshold_image, identify_markers_from_binary, apply_watershed
 import scipy.ndimage as ndi
 from PyQt5.QtCore import Qt, QSize
 from glob import glob
@@ -31,7 +27,6 @@ from skimage.measure import regionprops_table
 import json
 import os
 
-from celldetective.gui.viewers import StackVisualizer
 from celldetective.gui import Styles
 
 class ThresholdConfigWizard(QMainWindow, Styles):

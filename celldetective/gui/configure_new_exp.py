@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QDialog, QHBoxLayout, QFileDialog, QVBoxLayout, QScrollArea, QCheckBox, QSlider, QGridLayout, QLabel, QLineEdit, QPushButton, QWidget
+from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QHBoxLayout, QFileDialog, QVBoxLayout, QScrollArea, QCheckBox, QGridLayout, QLabel, QLineEdit, QPushButton, QWidget
 from PyQt5.QtGui import QIntValidator, QDoubleValidator
 from celldetective.gui.gui_utils import center_window, help_generic
 from celldetective.gui.styles import Styles
@@ -11,8 +11,6 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from configparser import ConfigParser
 import os
-from shutil import copyfile
-import time
 from functools import partial
 import numpy as np
 from celldetective.gui import Styles

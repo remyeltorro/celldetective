@@ -2,7 +2,6 @@ from PyQt5.QtWidgets import QRadioButton, QButtonGroup, QMainWindow, QTableView,
 from PyQt5.QtCore import Qt, QAbstractTableModel
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.cm import viridis
 plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window
 from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status

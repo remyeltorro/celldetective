@@ -6,13 +6,12 @@ from celldetective.measure import contour_of_instance_segmentation
 from celldetective.utils import _get_img_num_per_channel, estimate_unreliable_edge
 from tifffile import imread
 import matplotlib.pyplot as plt 
-from stardist import fill_label_holes
 from pathlib import Path
 from natsort import natsorted
 from glob import glob
 import os
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QListWidget
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QListWidget
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import FigureCanvas, QuickSliderLayout, center_window
 from celldetective.gui import Styles

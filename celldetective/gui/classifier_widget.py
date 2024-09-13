@@ -8,18 +8,12 @@ from fonticon_mdi6 import MDI6
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import r2_score
-from scipy.optimize import curve_fit
-from math import ceil
 import json
 
 from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class, help_generic
 from celldetective.gui import Styles
-from celldetective.utils import extract_cols_from_query, get_software_location
+from celldetective.utils import get_software_location
 from celldetective.measure import classify_cells_from_query, interpret_track_classification
-
-def step_function(t, t_shift, dt):
-	return 1/(1+np.exp(-(t-t_shift)/dt))
 
 class ClassifierWidget(QWidget, Styles):
 
@@ -376,7 +370,7 @@ class ClassifierWidget(QWidget, Styles):
 			name_map = {self.class_name: self.group_name_user}
 			self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
 			print(self.df.columns)
-			self.df[self.group_name_user] = self.df[self.group_name_user].replace({0: 1, 1: 0})
+			#self.df[self.group_name_user] = self.df[self.group_name_user].replace({0: 1, 1: 0})
 			self.df.reset_index(inplace=True, drop=True)
 
 

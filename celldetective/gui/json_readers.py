@@ -1,8 +1,6 @@
-import sys
 import configparser
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QHBoxLayout, QLineEdit, QPushButton
 from PyQt5.QtCore import Qt
-import sys
 import configparser
 from celldetective.gui import Styles
 

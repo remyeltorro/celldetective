@@ -1,17 +1,11 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from skimage.measure import regionprops_table
 from skimage.graph import pixel_graph
-from functools import reduce
-from mahotas.features import haralick
-from scipy.ndimage import zoom
 import os
-import subprocess
-from celldetective.utils import contour_of_instance_segmentation, rename_intensity_column, create_patch_mask, remove_redundant_features, extract_identity_col
+from celldetective.utils import contour_of_instance_segmentation, extract_identity_col
 from scipy.spatial.distance import cdist
 from celldetective.io import locate_labels, get_position_pickle, get_position_table
-import re
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 

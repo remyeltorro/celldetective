@@ -1,25 +1,10 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
-    QMessageBox, QSpacerItem, QSizePolicy
+from PyQt5.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, \
+    QSpacerItem, QSizePolicy
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
-
-from superqt.fonticon import icon
-from fonticon_mdi6 import MDI6
-import gc
-
 from celldetective.gui.plot_measurements import ConfigMeasurementsPlot
-from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, control_tracking_btrack
 from celldetective.gui import ConfigSurvival, ConfigSignalPlot
-from celldetective.gui.gui_utils import QHSeperationLine
-from celldetective.segmentation import segment_at_position, segment_from_threshold_at_position
-from celldetective.tracking import track_at_position
-from celldetective.measure import measure_at_position
-from celldetective.signals import analyze_signals_at_position
-import numpy as np
-from glob import glob
-from natsort import natsorted
 import os
-import pandas as pd
 from celldetective.gui import Styles
 
 class AnalysisPanel(QFrame, Styles):

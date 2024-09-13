@@ -2,7 +2,6 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from celldetective.utils import get_software_location
-import celldetective
 import os
 from celldetective.gui.gui_utils import center_window
 

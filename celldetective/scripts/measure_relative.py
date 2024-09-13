@@ -1,7 +1,6 @@
 import argparse
 import os
-import json
-from celldetective.relative_measurements import measure_pair_signals_at_position, update_effector_table, extract_neighborhoods_from_pickles
+from celldetective.relative_measurements import measure_pair_signals_at_position, extract_neighborhoods_from_pickles
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels
 
 from pathlib import Path, PurePath

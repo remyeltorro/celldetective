@@ -5,7 +5,6 @@ Copyright © 2022 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
 import argparse
 import datetime
 import os
-import gc
 from art import tprint
 from celldetective.signals import analyze_signals
 import pandas as pd

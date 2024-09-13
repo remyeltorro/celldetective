@@ -1,43 +1,33 @@
-import math
 
-import skimage
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, \
-    QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, QTabWidget, \
-    QRadioButton, QButtonGroup, QSizePolicy, QListWidget, QDialog
+    QGridLayout, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon, QDoubleValidator, QIntValidator
-from matplotlib.patches import Circle
-from scipy import ndimage
-from skimage.draw import disk
-from skimage.morphology import disk
 
-from celldetective.filters import std_filter, gauss_filter
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, \
-    GeometryChoice, OperationChoice, ChannelChoice
-from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider, QLabeledSlider
+    GeometryChoice, OperationChoice
+from superqt import QLabeledDoubleSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 
-from celldetective.gui.thresholds_gui import ThresholdNormalisation, ThresholdSpot
+from celldetective.gui.thresholds_gui import ThresholdSpot
 from celldetective.utils import extract_experiment_channels, get_software_location
-from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
-from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation, normalise_by_cell
+from celldetective.io import load_frames, auto_load_number_of_frames
+from celldetective.measure import compute_haralick_features
 import numpy as np
 from tifffile import imread
 import json
-from shutil import copyfile
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
 from natsort import natsorted
 from tifffile import imread
-from pathlib import Path, PurePath
+from pathlib import Path
 import gc
-from stardist import fill_label_holes
 
 from celldetective.gui.viewers import CellEdgeVisualizer
-from celldetective.gui.layouts import ProtocolDesignerLayout, BackgroundFitCorrectionLayout, LocalCorrectionLayout, OperationLayout
+from celldetective.gui.layouts import ProtocolDesignerLayout, BackgroundFitCorrectionLayout, LocalCorrectionLayout
 from celldetective.gui.gui_utils import ThresholdLineEdit
 from celldetective.gui import Styles
 

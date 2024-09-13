@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas
-from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
+from superqt import QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import extract_experiment_channels, get_software_location

@@ -1,25 +1,13 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QApplication, QComboBox, QFrame, QCheckBox, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
-from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, DistanceChoice, OperationChoice
-from superqt import QLabeledDoubleRangeSlider, QLabeledDoubleSlider,QLabeledSlider
+from celldetective.gui.gui_utils import center_window, ListWidget, DistanceChoice
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
-from celldetective.utils import extract_experiment_channels, get_software_location
-from celldetective.io import interpret_tracking_configuration, load_frames, auto_load_number_of_frames
-from celldetective.measure import compute_haralick_features, contour_of_instance_segmentation
 import numpy as np
-from tifffile import imread
 import json
-from shutil import copyfile
 import os
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from glob import glob
-from natsort import natsorted
-from tifffile import imread
-from pathlib import Path, PurePath
-import gc
 import pandas as pd
 from celldetective.gui.viewers import CellSizeViewer, CellEdgeVisualizer
 from celldetective.gui import Styles

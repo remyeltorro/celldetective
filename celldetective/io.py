@@ -20,11 +20,7 @@ import json
 import threading
 from skimage.measure import regionprops_table
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
-import matplotlib.pyplot as plt
-from celldetective.filters import std_filter, median_filter, gauss_filter
-from stardist import fill_label_holes
 from celldetective.utils import interpolate_nan
-from scipy.interpolate import griddata
 
 
 def get_experiment_wells(experiment):

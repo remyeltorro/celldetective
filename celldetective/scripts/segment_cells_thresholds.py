@@ -7,7 +7,7 @@ import os
 import json
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.segmentation import segment_frame_from_thresholds
-from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, extract_experiment_channels
+from celldetective.utils import _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, extract_experiment_channels
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
@@ -16,7 +16,6 @@ import numpy as np
 from csbdeep.io import save_tiff_imagej_compatible
 import gc
 from art import tprint
-import threading
 
 tprint("Segment")
 

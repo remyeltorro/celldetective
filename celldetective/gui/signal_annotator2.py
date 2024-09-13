@@ -1,14 +1,11 @@
-import copy
-
 from PyQt5.QtWidgets import QMainWindow, QComboBox, QLabel, QRadioButton, QLineEdit, QFileDialog, QApplication, \
-	QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QAction, QShortcut, QLineEdit, QTabWidget, \
-	QButtonGroup, QGridLayout, QSlider, QCheckBox, QToolButton
+	QPushButton, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QShortcut, QLineEdit, \
+	QButtonGroup
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence
-from matplotlib.collections import LineCollection
-from celldetective.gui import SignalAnnotator, Styles
-from celldetective.gui.gui_utils import center_window, QHSeperationLine, FilterChoice
-from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QLabeledSlider, QSearchableComboBox
+from celldetective.gui import Styles
+from celldetective.gui.gui_utils import center_window
+from superqt import QLabeledDoubleRangeSlider, QSearchableComboBox
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
@@ -18,7 +15,6 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 import os
 from glob import glob
-from natsort import natsorted
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 from tqdm import tqdm

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QLabel, QCheckBox, QLineEdit, QHBoxLayout, QRadioButton, QComboBox, QFileDialog, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QRadioButton, QFileDialog, QPushButton, QMessageBox
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import center_window
 from celldetective.gui.layouts import ChannelNormGenerator

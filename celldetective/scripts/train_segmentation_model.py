@@ -11,11 +11,10 @@ from tqdm import tqdm
 import numpy as np
 import random
 
-from celldetective.utils import load_image_dataset, normalize_per_channel, augmenter, interpolate_nan
+from celldetective.utils import load_image_dataset, augmenter, interpolate_nan
 from celldetective.io import normalize_multichannel
 from stardist import fill_label_holes
 from art import tprint
-import matplotlib.pyplot as plt
 from distutils.dir_util import copy_tree
 from csbdeep.utils import save_json
 

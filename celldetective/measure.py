@@ -8,6 +8,8 @@ from lmfit import Parameters, Model
 import skimage.exposure
 import tifffile
 from lmfit import Parameters, Model, models
+from sklearn.metrics import r2_score
+from scipy.optimize import curve_fit
 # import lmfit
 from scipy import ndimage
 from stardist import fill_label_holes
@@ -19,6 +21,7 @@ from mahotas.features import haralick
 from scipy.ndimage import zoom, binary_fill_holes
 import os
 import subprocess
+from math import ceil
 
 from celldetective.filters import std_filter, gauss_filter
 import datetime
@@ -26,7 +29,7 @@ from skimage.draw import disk as dsk
 
 from celldetective.filters import std_filter, gauss_filter
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, \
-	remove_trajectory_measurements, contour_of_instance_segmentation
+	remove_trajectory_measurements, contour_of_instance_segmentation, extract_cols_from_query
 from celldetective.preprocessing import field_correction
 import celldetective.extra_properties as extra_properties
 from celldetective.extra_properties import *
@@ -986,3 +989,178 @@ def blob_detection(image, label, threshold, diameter):
 		blob_labels[mask_index] = [blobs_filtered.shape[0], spot_intensity['intensity_mean'][0]]
 	return blob_labels
 
+### Classification ####
+
+def step_function(t, t_shift, dt):
+	return 1/(1+np.exp(-(t-t_shift)/dt))
+
+def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], r2_threshold=0.5):
+
+	cols = list(df.columns)
+	assert 'TRACK_ID' in cols,'Please provide tracked data...'
+	if 'position' in cols:
+		sort_cols = ['position', 'TRACK_ID']
+	else:
+		sort_cols = ['TRACK_ID']
+
+	df = df.sort_values(by=sort_cols,ignore_index=True)
+	df = df.reset_index(drop=True)
+
+	for tid,group in df.loc[df[class_attr].isin(class_of_interest)].groupby(sort_cols):
+		
+		indices = group.index
+		status_col = class_attr.replace('class','status')
+
+		group_clean = group.dropna(subset=status_col)
+		status_signal = group_clean[status_col].values
+		timeline = group_clean['FRAME'].values
+		
+		frames = group_clean['FRAME'].to_numpy()
+		status_values = group_clean[status_col].to_numpy()
+		t_first = group['t_firstdetection'].to_numpy()[0]
+
+		try:
+
+			popt, pcov = curve_fit(eval(model), timeline.astype(int), status_signal, p0=[df['FRAME'].max()//2, 0.8],maxfev=30000)
+			values = [eval(model)(t, *popt) for t in timeline]
+			r2 = r2_score(status_signal,values)
+
+		except Exception as e:
+
+			print(e)
+			df.loc[indices, class_attr] = 2.0
+			df.loc[indices, class_attr.replace('class','t')] = -1
+			continue
+
+		if r2 > float(r2_threshold):
+			t0 = popt[0]
+			df.loc[indices, class_attr.replace('class','t')] = t0
+			df.loc[indices, class_attr] = 0.0
+		else:
+			df.loc[indices, class_attr.replace('class','t')] = -1
+			df.loc[indices, class_attr] = 2.0
+
+	return df
+
+
+def interpret_track_classification(df, class_attr, irreversible_event=False, unique_state=False,r2_threshold=0.5):
+
+	cols = list(df.columns)
+	assert 'TRACK_ID' in cols,'Please provide tracked data...'
+	if 'position' in cols:
+		sort_cols = ['position', 'TRACK_ID']
+	else:
+		sort_cols = ['TRACK_ID']
+
+	if irreversible_event:
+		unique_state = False
+
+	stat_col = class_attr.replace('class','status')
+	df.loc[:,stat_col] = 1 - df[class_attr].values
+
+	if irreversible_event:
+
+		df = classify_irreversible_events(df, class_attr, r2_threshold=0.5)
+
+	elif unique_state:
+		
+		df = classify_unique_states(df, class_attr, percentile=50)
+
+	return df
+
+def classify_irreversible_events(df, class_attr, r2_threshold=0.5):
+
+	cols = list(df.columns)
+	assert 'TRACK_ID' in cols,'Please provide tracked data...'
+	if 'position' in cols:
+		sort_cols = ['position', 'TRACK_ID']
+	else:
+		sort_cols = ['TRACK_ID']
+
+	stat_col = class_attr.replace('class','status')
+
+	for tid,track in df.groupby(sort_cols):
+
+		track_valid = track.dropna(subset=stat_col)
+		indices_valid = track_valid[class_attr].index
+
+		indices = track[class_attr].index
+		status_values = track_valid[stat_col].to_numpy()
+
+		if np.all([s==0 for s in status_values]):
+			# all negative, no event
+			df.loc[indices, class_attr] = 1
+
+		elif np.all([s==1 for s in status_values]):
+			# all positive, event already observed
+			df.loc[indices, class_attr] = 2
+			df.loc[indices, class_attr.replace('class','status')] = 2
+		else:
+			# ambiguity, possible transition
+			df.loc[indices, class_attr] = 2
+	
+	df.loc[df[class_attr]!=2, class_attr.replace('class', 't')] = -1
+	df = estimate_time(df, class_attr, model='step_function', class_of_interest=[2],r2_threshold=r2_threshold)
+	
+	# Revisit class 2 cells to classify as neg/pos with percentile tolerance
+	df.loc[df[class_attr]==2,:] = classify_unique_states(df.loc[df[class_attr]==2,:].copy(), class_attr, 95)
+	
+	return df
+
+def classify_unique_states(df, class_attr, percentile=50):
+
+	cols = list(df.columns)
+	assert 'TRACK_ID' in cols,'Please provide tracked data...'
+	if 'position' in cols:
+		sort_cols = ['position', 'TRACK_ID']
+	else:
+		sort_cols = ['TRACK_ID']
+
+	stat_col = class_attr.replace('class','status')
+
+	for tid,track in df.groupby(sort_cols):
+
+		track_valid = track.dropna(subset=stat_col)
+		indices_valid = track_valid[class_attr].index
+
+		indices = track[class_attr].index
+		status_values = track_valid[stat_col].to_numpy()
+
+		frames = track_valid['FRAME'].to_numpy()
+		t_first = track['t_firstdetection'].to_numpy()[0]
+		perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
+		
+		if perc_status==perc_status:
+			c = ceil(perc_status)
+			if c==0:
+				df.loc[indices, class_attr] = 1
+				df.loc[indices, class_attr.replace('class','t')] = -1
+			elif c==1:
+				df.loc[indices, class_attr] = 2
+				df.loc[indices, class_attr.replace('class','t')] = -1
+	return df
+
+def classify_cells_from_query(df, class_attr, query):
+
+	# Initialize all states to 1
+	df[class_attr] = 1
+	cols = extract_cols_from_query(query)
+	cols_in_df = np.all([c in list(df.columns) for c in cols], axis=0)
+
+	if query=='':
+		print('The provided query is empty...')
+	else:
+		try:
+			if cols_in_df:
+				selection = df.dropna(subset=cols).query(query).index
+				null_selection = df[df.loc[:,cols].isna().any(axis=1)].index
+				# Set NaN to invalid cells, 0 otherwise
+				df.loc[null_selection, class_attr] = np.nan
+				df.loc[selection, class_attr] = 0
+			else:
+				df.loc[:, class_attr] = np.nan
+
+		except Exception as e:
+			print("The query could not be understood. No filtering was applied. {e}")
+			return None
+	return df

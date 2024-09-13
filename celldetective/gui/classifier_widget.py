@@ -16,6 +16,7 @@ import json
 from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_class, help_generic
 from celldetective.gui import Styles
 from celldetective.utils import extract_cols_from_query, get_software_location
+from celldetective.measure import classify_cells_from_query, interpret_track_classification
 
 def step_function(t, t_shift, dt):
 	return 1/(1+np.exp(-(t-t_shift)/dt))
@@ -279,38 +280,18 @@ class ClassifierWidget(QWidget, Styles):
 		self.propscanvas.canvas.draw_idle()
 
 	def apply_property_query(self):
-
+		
 		query = self.property_query_le.text()
-		self.df[self.class_name] = 1
-
-		cols = extract_cols_from_query(query) 
-		print(cols)
-		cols_in_df = np.all([c in list(self.df.columns) for c in cols], axis=0)
-		print(f'Testing if columns from query are in the dataframe: {cols_in_df}...')
-
-		if query=='':
-			print('empty query')
-		else:
-			try:
-				if cols_in_df:
-					self.selection = self.df.dropna(subset=cols).query(query).index
-					null_selection = self.df[self.df.loc[:,cols].isna().any(axis=1)].index
-					self.df.loc[null_selection, self.class_name] = np.nan
-					self.df.loc[self.selection, self.class_name] = 0
-				else:
-					self.df.loc[:, self.class_name] = np.nan
-
-			except Exception as e:
-				print(e)
-				print(self.df.columns)
-				msgBox = QMessageBox()
-				msgBox.setIcon(QMessageBox.Warning)
-				msgBox.setText(f"The query could not be understood. No filtering was applied. {e}")
-				msgBox.setWindowTitle("Warning")
-				msgBox.setStandardButtons(QMessageBox.Ok)
-				returnValue = msgBox.exec()
-				if returnValue == QMessageBox.Ok:
-					return None
+		self.df = classify_cells_from_query(self.df, self.class_name, query)
+		if self.df is None:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText(f"The query could not be understood. No filtering was applied. {e}")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
 
 		self.update_props_scatter()
 
@@ -373,43 +354,8 @@ class ClassifierWidget(QWidget, Styles):
 			self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
 			self.df.reset_index(inplace=True, drop=True)
 
-			#self.df.reset_index(inplace=True)
-			if 'TRACK_ID' in self.df.columns:
-				print('Tracks detected... save a status column...')
-				stat_col = self.class_name_user.replace('class','status')
-				self.df.loc[:,stat_col] = 1 - self.df[self.class_name_user].values
-				for tid,track in self.df.groupby(['position','TRACK_ID']):
-
-					track_valid = track.dropna(subset=stat_col)
-					indices_valid = track_valid[self.class_name_user].index
-
-					indices = track[self.class_name_user].index
-					status_values = track_valid[stat_col].to_numpy()
-
-					if self.irreversible_event_btn.isChecked():
-						if np.all([s==0 for s in status_values]):
-							self.df.loc[indices, self.class_name_user] = 1
-						elif np.all([s==1 for s in status_values]):
-							self.df.loc[indices, self.class_name_user] = 2
-							self.df.loc[indices, self.class_name_user.replace('class','status')] = 2
-						else:
-							self.df.loc[indices, self.class_name_user] = 2
-
-					elif self.unique_state_btn.isChecked():
-						frames = track_valid['FRAME'].to_numpy()
-						t_first = track['t_firstdetection'].to_numpy()[0]
-						median_status = np.nanmedian(status_values[frames>=t_first])
-						if median_status==median_status:
-							c = ceil(median_status)
-							if c==0:
-								self.df.loc[indices, self.class_name_user] = 1
-								self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
-							elif c==1:
-								self.df.loc[indices, self.class_name_user] = 2
-								self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
-				if self.irreversible_event_btn.isChecked():
-					self.df.loc[self.df[self.class_name_user]!=2, self.class_name_user.replace('class', 't')] = -1
-					self.estimate_time()
+			self.df = interpret_track_classification(self.df, self.class_name_user, irreversible_event=self.irreversible_event_btn.isChecked(), unique_state=self.unique_state_btn.isChecked(), r2_threshold=self.r2_slider.value())
+		
 		else:
 			self.group_name_user = 'group_' + self.name_le.text()
 			print(f'User defined characteristic group name: {self.group_name_user}.')
@@ -437,9 +383,6 @@ class ClassifierWidget(QWidget, Styles):
 		for pos,pos_group in self.df.groupby('position'):
 			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.mode}.csv']), index=False)
 
-		# reset
-		#self.init_class()
-		#self.update_props_scatter()
 		self.parent_window.parent_window.update_position_options()
 		self.close()
 
@@ -498,74 +441,6 @@ class ClassifierWidget(QWidget, Styles):
 		self.ax_props.autoscale()
 		self.propscanvas.canvas.draw_idle()
 
-	def estimate_time(self):
-
-		self.df = self.df.sort_values(by=['position','TRACK_ID'],ignore_index=True)
-		self.df = self.df.reset_index(drop=True)
-
-		for tid,group in self.df.loc[self.df[self.class_name_user]==2].groupby(['position','TRACK_ID']):
-			indices = group.index
-			status_col = self.class_name_user.replace('class','status')
-
-			group_clean = group.dropna(subset=status_col)
-			status_signal = group_clean[status_col].values
-			timeline = group_clean['FRAME'].values
-			
-			frames = group_clean['FRAME'].to_numpy()
-			status_values = group_clean[status_col].to_numpy()
-			t_first = group['t_firstdetection'].to_numpy()[0]
-
-			try:
-				popt, pcov = curve_fit(step_function, timeline.astype(int), status_signal, p0=[self.df['FRAME'].max()//2, 0.8],maxfev=30000)
-				values = [step_function(t, *popt) for t in timeline]
-				r2 = r2_score(status_signal,values)
-			except Exception as e:
-				
-				print(e)
-				self.df.loc[indices, self.class_name_user] = 2.0
-				self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
-
-				# print('Attempting rescue...')
-				# likely_status = np.nanpercentile(status_values[frames>=t_first], 90)
-				# print(f'{likely_status=}')
-				# if likely_status==likely_status:
-				# 	c = round(likely_status)
-				# 	print(f'{c=}')
-				# 	if c==0:
-				# 		s2 = 1
-				# 	elif c==1:
-				# 		s2 = 2
-				# 	else:
-				# 		continue
-				# 	self.df.loc[indices, self.class_name_user] = s2
-				# 	self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
-					
-				continue
-
-			if r2 > float(self.r2_slider.value()):
-				t0 = popt[0]
-				self.df.loc[indices, self.class_name_user.replace('class','t')] = t0
-				self.df.loc[indices, self.class_name_user] = 0.0
-			else:
-				self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
-				self.df.loc[indices, self.class_name_user] = 2.0
-				
-				# print('Attempting rescue...')
-				# likely_status = np.nanmedian(status_values[frames>=t_first])
-				# print(f'{status_values[frames>=t_first]} {likely_status=}')
-				# if likely_status==likely_status:
-				# 	c = round(likely_status)
-				# 	print(f'{c=}')
-				# 	if c==0:
-				# 		s2 = 1
-				# 	elif c==1:
-				# 		s2 = 2
-				# 	else:
-				# 		continue
-
-				# 	self.df.loc[indices, self.class_name_user] = s2
-				# 	self.df.loc[indices, self.class_name_user.replace('class','t')] = -1
-					
 		print('Done.')
 
 

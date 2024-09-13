@@ -265,7 +265,7 @@ class SegmentationModelLoader(QWidget, Styles):
 				c.hide()
 			self.unlock_upload()
 		else:
-			for c in self.base_block_options:
+			for c in self.base_block_options + self.cellpose_options:
 				c.hide()
 			self.threshold_config_button.show()
 			self.upload_button.setEnabled(True)

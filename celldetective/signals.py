@@ -3073,7 +3073,7 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 	3. Tracks with missing or NaN values in the specified signal are ignored during calculation.
 	4. Tracks are aligned based on their 'FRAME' values and the specified `time_col` (if provided).
 	"""
-	
+
 	assert signal_name in list(df.columns),"The signal you want to plot is not one of the measured features."
 	if isinstance(class_value,int):
 		class_value = [class_value]
@@ -3082,6 +3082,11 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 		max_duration = ceil(np.amax(df.groupby(['position','TRACK_ID']).size().values))
 	else:
 		max_duration = forced_max_duration
+	
+	abs_time = False
+	if isinstance(time_col, (int,float)):
+		abs_time = True
+
 	n_tracks = len(df.groupby(['position','TRACK_ID']))
 	signal_matrix = np.zeros((n_tracks,int(max_duration)*2 + 1))
 	signal_matrix[:,:] = np.nan
@@ -3093,11 +3098,16 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 		cclass = track_group[class_col].to_numpy()[0]
 		if cclass != 0:
 			ref_time = 0
+			if abs_time:
+				ref_time = time_col
 		else:
-			try:
-				ref_time = floor(track_group[time_col].to_numpy()[0])
-			except:
-				continue
+			if not abs_time:
+				try:
+					ref_time = floor(track_group[time_col].to_numpy()[0])
+				except:
+					continue
+			else:
+				ref_time = time_col
 		if conflict_mode=='mean':
 			signal = track_group.groupby('FRAME')[signal_name].mean().to_numpy()
 		elif conflict_mode=='first':

@@ -5,6 +5,7 @@ from celldetective.gui.gui_utils import center_window, FigureCanvas
 from superqt import QColormapComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
+from celldetective.gui.generic_signal_plot import SurvivalPlotWidget
 from celldetective.utils import get_software_location, _extract_labels_from_config
 from celldetective.io import load_experiment_tables
 import numpy as np
@@ -224,169 +225,174 @@ class ConfigSurvival(QWidget, Styles):
 
 			self.compute_survival_functions()
 			# prepare survival
-
-			# plot survival
-			self.survivalWidget = QWidget()
-			self.survivalWidget.setMinimumHeight(int(0.8*self.screen_height))
-			self.survivalWidget.setWindowTitle('survival')
-			self.plotvbox = QVBoxLayout(self.survivalWidget)
-			self.plotvbox.setContentsMargins(30,30,30,30)
-			self.survival_title = QLabel('Survival function')
-			self.survival_title.setStyleSheet("""
-				font-weight: bold;
-				padding: 0px;
-				""")
-			self.plotvbox.addWidget(self.survival_title, alignment=Qt.AlignCenter)
-
-			plot_buttons_hbox = QHBoxLayout()
-			plot_buttons_hbox.addWidget(QLabel(''),90, alignment=Qt.AlignLeft)
-
-			self.legend_btn = QPushButton('')
-			self.legend_btn.setIcon(icon(MDI6.text_box,color="black"))
-			self.legend_btn.setStyleSheet(self.button_select_all)
-			self.legend_btn.setToolTip('Show or hide the legend')
-			self.legend_visible = True
-			self.legend_btn.clicked.connect(self.show_hide_legend)
-			plot_buttons_hbox.addWidget(self.legend_btn, 5,alignment=Qt.AlignRight)
+			self.interpret_pos_location()
+			print(f'{self=}')
+			self.plot_window = SurvivalPlotWidget(parent_window=self, df=self.df, df_pos_info = self.df_pos_info, df_well_info = self.df_well_info, title='plot survivals')
+			self.plot_window.show()
 
 
-			self.log_btn = QPushButton('')
-			self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
-			self.log_btn.setStyleSheet(self.button_select_all)
-			self.log_btn.clicked.connect(self.switch_to_log)
-			self.log_btn.setToolTip('Enable or disable log scale')
-			plot_buttons_hbox.addWidget(self.log_btn, 5, alignment=Qt.AlignRight)
+			# # plot survival
+			# self.survivalWidget = QWidget()
+			# self.survivalWidget.setMinimumHeight(int(0.8*self.screen_height))
+			# self.survivalWidget.setWindowTitle('survival')
+			# self.plotvbox = QVBoxLayout(self.survivalWidget)
+			# self.plotvbox.setContentsMargins(30,30,30,30)
+			# self.survival_title = QLabel('Survival function')
+			# self.survival_title.setStyleSheet("""
+			# 	font-weight: bold;
+			# 	padding: 0px;
+			# 	""")
+			# self.plotvbox.addWidget(self.survival_title, alignment=Qt.AlignCenter)
 
-			self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
-			self.survival_window = FigureCanvas(self.fig, title="Survival")
-			self.survival_window.setContentsMargins(0,0,0,0)
-			if self.df is not None:
-				self.initialize_axis()
-			plt.tight_layout()
-			self.fig.set_facecolor('none')  # or 'None'
-			self.fig.canvas.setStyleSheet("background-color: transparent;")
-			self.survival_window.canvas.draw()
+			# plot_buttons_hbox = QHBoxLayout()
+			# plot_buttons_hbox.addWidget(QLabel(''),90, alignment=Qt.AlignLeft)
 
-			#self.survival_window.layout.addWidget(QLabel('WHAAAAATTT???'))
-
-			self.plot_options = [QRadioButton() for i in range(3)]
-			self.radio_labels = ['well', 'pos', 'both']
-			radio_hbox = QHBoxLayout()
-			radio_hbox.setContentsMargins(30,30,30,30)
-			self.plot_btn_group = QButtonGroup()
-			for i in range(3):
-				self.plot_options[i].setText(self.radio_labels[i])
-				#self.plot_options[i].toggled.connect(self.plot_survivals)
-				self.plot_btn_group.addButton(self.plot_options[i])
-				radio_hbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
-			self.plot_btn_group.buttonClicked[int].connect(self.plot_survivals)
-
-			if self.position_indices is not None:
-				if len(self.well_indices)>1 and len(self.position_indices)==1:
-					self.plot_btn_group.buttons()[0].click()
-					for i in [1,2]:
-						self.plot_options[i].setEnabled(False)
-				elif len(self.well_indices)>1:
-					self.plot_btn_group.buttons()[0].click()
-				elif len(self.well_indices)==1 and len(self.position_indices)==1:
-					self.plot_btn_group.buttons()[1].click()
-					for i in [0,2]:
-						self.plot_options[i].setEnabled(False)
-			else:
-				if len(self.well_indices)>1:
-					self.plot_btn_group.buttons()[0].click()
-				elif len(self.well_indices)==1:
-					self.plot_btn_group.buttons()[2].click()
+			# self.legend_btn = QPushButton('')
+			# self.legend_btn.setIcon(icon(MDI6.text_box,color="black"))
+			# self.legend_btn.setStyleSheet(self.button_select_all)
+			# self.legend_btn.setToolTip('Show or hide the legend')
+			# self.legend_visible = True
+			# self.legend_btn.clicked.connect(self.show_hide_legend)
+			# plot_buttons_hbox.addWidget(self.legend_btn, 5,alignment=Qt.AlignRight)
 
 
-			# elif len(self.well_indices)>1:		
-			# 	self.plot_btn_group.buttons()[0].click()
-			# else:
-			# 	self.plot_btn_group.buttons()[1].click()
+			# self.log_btn = QPushButton('')
+			# self.log_btn.setIcon(icon(MDI6.math_log,color="black"))
+			# self.log_btn.setStyleSheet(self.button_select_all)
+			# self.log_btn.clicked.connect(self.switch_to_log)
+			# self.log_btn.setToolTip('Enable or disable log scale')
+			# plot_buttons_hbox.addWidget(self.log_btn, 5, alignment=Qt.AlignRight)
+
+			# self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
+			# self.survival_window = FigureCanvas(self.fig, title="Survival")
+			# self.survival_window.setContentsMargins(0,0,0,0)
+			# if self.df is not None:
+			# 	self.initialize_axis()
+			# plt.tight_layout()
+			# self.fig.set_facecolor('none')  # or 'None'
+			# self.fig.canvas.setStyleSheet("background-color: transparent;")
+			# self.survival_window.canvas.draw()
+
+			# #self.survival_window.layout.addWidget(QLabel('WHAAAAATTT???'))
+
+			# self.plot_options = [QRadioButton() for i in range(3)]
+			# self.radio_labels = ['well', 'pos', 'both']
+			# radio_hbox = QHBoxLayout()
+			# radio_hbox.setContentsMargins(30,30,30,30)
+			# self.plot_btn_group = QButtonGroup()
+			# for i in range(3):
+			# 	self.plot_options[i].setText(self.radio_labels[i])
+			# 	#self.plot_options[i].toggled.connect(self.plot_survivals)
+			# 	self.plot_btn_group.addButton(self.plot_options[i])
+			# 	radio_hbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
+			# self.plot_btn_group.buttonClicked[int].connect(self.plot_survivals)
 
 			# if self.position_indices is not None:
-			# 	for i in [0,2]:
-			# 		self.plot_options[i].setEnabled(False)
+			# 	if len(self.well_indices)>1 and len(self.position_indices)==1:
+			# 		self.plot_btn_group.buttons()[0].click()
+			# 		for i in [1,2]:
+			# 			self.plot_options[i].setEnabled(False)
+			# 	elif len(self.well_indices)>1:
+			# 		self.plot_btn_group.buttons()[0].click()
+			# 	elif len(self.well_indices)==1 and len(self.position_indices)==1:
+			# 		self.plot_btn_group.buttons()[1].click()
+			# 		for i in [0,2]:
+			# 			self.plot_options[i].setEnabled(False)
+			# else:
+			# 	if len(self.well_indices)>1:
+			# 		self.plot_btn_group.buttons()[0].click()
+			# 	elif len(self.well_indices)==1:
+			# 		self.plot_btn_group.buttons()[2].click()
 
 
-			#self.plot_options[0].setChecked(True)
-			self.plotvbox.addLayout(radio_hbox)
+			# # elif len(self.well_indices)>1:		
+			# # 	self.plot_btn_group.buttons()[0].click()
+			# # else:
+			# # 	self.plot_btn_group.buttons()[1].click()
 
-			self.plotvbox.addLayout(plot_buttons_hbox)
-			self.plotvbox.addWidget(self.survival_window)
+			# # if self.position_indices is not None:
+			# # 	for i in [0,2]:
+			# # 		self.plot_options[i].setEnabled(False)
 
-			self.select_pos_label = QLabel('Select positions')
-			self.select_pos_label.setStyleSheet("""
-				font-weight: bold;
-				padding: 0px;
-				""")
-			self.plotvbox.addWidget(self.select_pos_label, alignment=Qt.AlignCenter)
 
-			self.select_option = [QRadioButton() for i in range(2)]
-			self.select_label = ['name', 'spatial']
-			select_hbox = QHBoxLayout()
-			select_hbox.setContentsMargins(30,30,30,30)
-			self.select_btn_group = QButtonGroup()
-			for i in range(2):
-				self.select_option[i].setText(self.select_label[i])
-				#self.select_option[i].toggled.connect(self.switch_selection_mode)
-				self.select_btn_group.addButton(self.select_option[i])
-				select_hbox.addWidget(self.select_option[i],33, alignment=Qt.AlignCenter)
-			self.select_btn_group.buttonClicked[int].connect(self.switch_selection_mode)
-			self.plotvbox.addLayout(select_hbox)
+			# #self.plot_options[0].setChecked(True)
+			# self.plotvbox.addLayout(radio_hbox)
 
-			self.look_for_metadata()
-			if self.metadata_found:
-				self.fig_scatter, self.ax_scatter = plt.subplots(1,1,figsize=(4,3))
-				self.position_scatter = FigureCanvas(self.fig_scatter)
-				self.load_coordinates()
-				self.plot_spatial_location()
-				#self.plot_positions()
-				self.ax_scatter.spines['top'].set_visible(False)
-				self.ax_scatter.spines['right'].set_visible(False)
-				self.ax_scatter.set_aspect('equal')
-				self.ax_scatter.set_xticks([])
-				self.ax_scatter.set_yticks([])
-				plt.tight_layout()
-				self.fig_scatter.set_facecolor('none')  # or 'None'
-				self.fig_scatter.canvas.setStyleSheet("background-color: transparent;")
-				self.plotvbox.addWidget(self.position_scatter)
+			# self.plotvbox.addLayout(plot_buttons_hbox)
+			# self.plotvbox.addWidget(self.survival_window)
 
-			self.generate_pos_selection_widget()
+			# self.select_pos_label = QLabel('Select positions')
+			# self.select_pos_label.setStyleSheet("""
+			# 	font-weight: bold;
+			# 	padding: 0px;
+			# 	""")
+			# self.plotvbox.addWidget(self.select_pos_label, alignment=Qt.AlignCenter)
 
-			# if self.df is not None and len(self.ks_estimators_per_position)>0:
-			# 	self.plot_survivals()
-			self.select_btn_group.buttons()[0].click()
-			self.survivalWidget.show()
+			# self.select_option = [QRadioButton() for i in range(2)]
+			# self.select_label = ['name', 'spatial']
+			# select_hbox = QHBoxLayout()
+			# select_hbox.setContentsMargins(30,30,30,30)
+			# self.select_btn_group = QButtonGroup()
+			# for i in range(2):
+			# 	self.select_option[i].setText(self.select_label[i])
+			# 	#self.select_option[i].toggled.connect(self.switch_selection_mode)
+			# 	self.select_btn_group.addButton(self.select_option[i])
+			# 	select_hbox.addWidget(self.select_option[i],33, alignment=Qt.AlignCenter)
+			# self.select_btn_group.buttonClicked[int].connect(self.switch_selection_mode)
+			# self.plotvbox.addLayout(select_hbox)
 
-	def generate_pos_selection_widget(self):
+			# self.look_for_metadata()
+			# if self.metadata_found:
+			# 	self.fig_scatter, self.ax_scatter = plt.subplots(1,1,figsize=(4,3))
+			# 	self.position_scatter = FigureCanvas(self.fig_scatter)
+			# 	self.load_coordinates()
+			# 	self.plot_spatial_location()
+			# 	#self.plot_positions()
+			# 	self.ax_scatter.spines['top'].set_visible(False)
+			# 	self.ax_scatter.spines['right'].set_visible(False)
+			# 	self.ax_scatter.set_aspect('equal')
+			# 	self.ax_scatter.set_xticks([])
+			# 	self.ax_scatter.set_yticks([])
+			# 	plt.tight_layout()
+			# 	self.fig_scatter.set_facecolor('none')  # or 'None'
+			# 	self.fig_scatter.canvas.setStyleSheet("background-color: transparent;")
+			# 	self.plotvbox.addWidget(self.position_scatter)
 
-		self.well_names = self.df['well_name'].unique()
-		self.pos_names = self.df_pos_info['pos_name'].unique() #pd.DataFrame(self.ks_estimators_per_position)['position_name'].unique()
-		print(f'POSITION NAMES: ',self.pos_names)
-		self.usable_well_labels = []
-		for name in self.well_names:
-			for lbl in self.well_labels:
-				if name+':' in lbl:
-					self.usable_well_labels.append(lbl)
+			# self.generate_pos_selection_widget()
 
-		self.line_choice_widget = QWidget()
-		self.line_check_vbox = QVBoxLayout()
-		self.line_choice_widget.setLayout(self.line_check_vbox)
-		if len(self.well_indices)>1:
-			self.well_display_options = [QCheckBox(self.usable_well_labels[i]) for i in range(len(self.usable_well_labels))]
-			for i in range(len(self.well_names)):
-				self.line_check_vbox.addWidget(self.well_display_options[i], alignment=Qt.AlignLeft)
-				self.well_display_options[i].setChecked(True)
-				self.well_display_options[i].toggled.connect(self.select_survival_lines)
-		else:
-			self.pos_display_options = [QCheckBox(self.pos_names[i]) for i in range(len(self.pos_names))]
-			for i in range(len(self.pos_names)):
-				self.line_check_vbox.addWidget(self.pos_display_options[i], alignment=Qt.AlignLeft)
-				self.pos_display_options[i].setChecked(True)
-				self.pos_display_options[i].toggled.connect(self.select_survival_lines)
+			# # if self.df is not None and len(self.ks_estimators_per_position)>0:
+			# # 	self.plot_survivals()
+			# self.select_btn_group.buttons()[0].click()
+			# self.survivalWidget.show()
 
-		self.plotvbox.addWidget(self.line_choice_widget, alignment=Qt.AlignCenter)
+	# def generate_pos_selection_widget(self):
+
+	# 	self.well_names = self.df['well_name'].unique()
+	# 	self.pos_names = self.df_pos_info['pos_name'].unique() #pd.DataFrame(self.ks_estimators_per_position)['position_name'].unique()
+	# 	print(f'POSITION NAMES: ',self.pos_names)
+	# 	self.usable_well_labels = []
+	# 	for name in self.well_names:
+	# 		for lbl in self.well_labels:
+	# 			if name+':' in lbl:
+	# 				self.usable_well_labels.append(lbl)
+
+	# 	self.line_choice_widget = QWidget()
+	# 	self.line_check_vbox = QVBoxLayout()
+	# 	self.line_choice_widget.setLayout(self.line_check_vbox)
+	# 	if len(self.well_indices)>1:
+	# 		self.well_display_options = [QCheckBox(self.usable_well_labels[i]) for i in range(len(self.usable_well_labels))]
+	# 		for i in range(len(self.well_names)):
+	# 			self.line_check_vbox.addWidget(self.well_display_options[i], alignment=Qt.AlignLeft)
+	# 			self.well_display_options[i].setChecked(True)
+	# 			self.well_display_options[i].toggled.connect(self.select_survival_lines)
+	# 	else:
+	# 		self.pos_display_options = [QCheckBox(self.pos_names[i]) for i in range(len(self.pos_names))]
+	# 		for i in range(len(self.pos_names)):
+	# 			self.line_check_vbox.addWidget(self.pos_display_options[i], alignment=Qt.AlignLeft)
+	# 			self.pos_display_options[i].setChecked(True)
+	# 			self.pos_display_options[i].toggled.connect(self.select_survival_lines)
+
+	# 	self.plotvbox.addWidget(self.line_choice_widget, alignment=Qt.AlignCenter)
 
 
 	def load_available_tables_local(self):
@@ -535,16 +541,16 @@ class ConfigSurvival(QWidget, Styles):
 		self.df_pos_info.loc[:,'select'] = True
 		self.df_well_info.loc[:,'select'] = True
 
-	def initialize_axis(self):
+	# def initialize_axis(self):
 
-		self.ax.clear()
-		self.ax.plot([],[])
-		self.ax.spines['top'].set_visible(False)
-		self.ax.spines['right'].set_visible(False)
-		#self.ax.set_ylim(0.001,1.05)
-		self.ax.set_xlim(0,self.df['FRAME'].max()*self.FrameToMin)
-		self.ax.set_xlabel('time [min]')
-		self.ax.set_ylabel('survival')
+	# 	self.ax.clear()
+	# 	self.ax.plot([],[])
+	# 	self.ax.spines['top'].set_visible(False)
+	# 	self.ax.spines['right'].set_visible(False)
+	# 	#self.ax.set_ylim(0.001,1.05)
+	# 	self.ax.set_xlim(0,self.df['FRAME'].max()*self.FrameToMin)
+	# 	self.ax.set_xlabel('time [min]')
+	# 	self.ax.set_ylabel('survival')
 
 	def plot_survivals(self, id):
 

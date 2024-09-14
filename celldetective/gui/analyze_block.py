@@ -79,7 +79,7 @@ class AnalysisPanel(QFrame, Styles):
 		self.configSurvival.show()
 
 	def configure_plot_signals(self):
-		print('plot signal analysis starting!!!')
+		print('Configure a signal collapse representation...')
 		self.ConfigSignalPlot = ConfigSignalPlot(self)
 		self.ConfigSignalPlot.show()
 

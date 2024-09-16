@@ -1,5 +1,5 @@
 import numpy as np
-
+from lifelines import KaplanMeierFitter
 
 def switch_to_events(classes, event_times, max_times, origin_times=None, left_censored=True, FrameToMin=None):
 	
@@ -105,3 +105,29 @@ def switch_to_events(classes, event_times, max_times, origin_times=None, left_ce
 		#print('convert to minutes!', FrameToMin)
 		survival_times = [s*FrameToMin for s in survival_times]
 	return events, survival_times
+
+def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMin=1):
+
+	cols = list(df.columns)
+	assert class_of_interest in cols,"The requested class cannot be found in the dataframe..."
+	assert t_event in cols,"The event time cannot be found in the dataframe..."
+	left_censored = False
+
+	classes = df.groupby(['position','TRACK_ID'])[class_of_interest].min().values
+	event_times = df.groupby(['position','TRACK_ID'])[t_event].min().values
+	max_times = df.groupby(['position','TRACK_ID'])['FRAME'].max().values
+
+	if t_reference is not None:
+		left_censored = True
+		assert t_reference in cols,"The reference time cannot be found in the dataframe..."
+		first_detections = df.groupby(['position','TRACK_ID'])[t_reference].max().values
+	
+	events, survival_times = switch_to_events(classes, event_times, max_times, origin_times=first_detections, left_censored=left_censored, FrameToMin=FrameToMin)
+	ks = KaplanMeierFitter()
+	if len(events)>0:
+		ks.fit(survival_times, event_observed=events)
+	else:
+		ks = None
+
+	return ks
+

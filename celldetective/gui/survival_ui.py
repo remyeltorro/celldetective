@@ -17,6 +17,8 @@ from celldetective.events import switch_to_events
 from celldetective.gui import Styles
 from matplotlib import colormaps
 
+from celldetective.events import compute_survival
+
 class ConfigSurvival(QWidget, Styles):
 	
 	"""
@@ -218,12 +220,31 @@ class ConfigSurvival(QWidget, Styles):
 					self.df = self.df.query(query_text)
 			except Exception as e:
 				print(e, ' The query is misunderstood and will not be applied...')
-
-			self.compute_survival_functions()
-			# prepare survival
+			
 			self.interpret_pos_location()
-			self.plot_window = SurvivalPlotWidget(parent_window=self, df=self.df, df_pos_info = self.df_pos_info, df_well_info = self.df_well_info, title='plot survivals')
-			self.plot_window.show()
+			if self.class_of_interest in list(self.df.columns) and self.cbs[2].currentText() in list(self.df.columns):
+				self.compute_survival_functions()
+			else:
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Warning)
+				msgBox.setText("The class and/or event time of interest is not found in the dataframe...")
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Ok)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Ok:
+					return None
+			if 'survival_fit' in list(self.df_pos_info.columns):
+				self.plot_window = SurvivalPlotWidget(parent_window=self, df=self.df, df_pos_info = self.df_pos_info, df_well_info = self.df_well_info, title='plot survivals')
+				self.plot_window.show()
+			else:
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Warning)
+				msgBox.setText("No survival function was successfully computed...\nCheck your parameter choice.")
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Ok)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Ok:
+					return None	
 
 	def load_available_tables_local(self):
 
@@ -252,9 +273,7 @@ class ConfigSurvival(QWidget, Styles):
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Ok:
-				self.close()
 				return None		
-			print('no table could be found...')
 		else:
 			self.df_well_info = self.df_pos_info.loc[:,['well_path', 'well_index', 'well_name', 'well_number', 'well_alias']].drop_duplicates()
 			#print(f"{self.df_well_info=}")
@@ -262,111 +281,18 @@ class ConfigSurvival(QWidget, Styles):
 	def compute_survival_functions(self):
 
 		# Per position survival
-		left_censored = False
 		for block,movie_group in self.df.groupby(['well','position']):
-			try:
-				classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
-				times = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].min().values
-			except Exception as e:
-				print(e)
-				continue
-			max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
-			first_detections = None
-			
-			if self.cbs[1].currentText()=='first detection':
-				left_censored = True
 
-				first_detections = []
-				for tid,track_group in movie_group.groupby('TRACK_ID'):
-					if 'area' in self.df.columns:
-						area = track_group['area'].values
-						timeline = track_group['FRAME'].values
-						if np.any(area==area):
-							first_det = timeline[area==area][0]
-							first_detections.append(first_det)
-						else:
-							# think about assymmetry with class and times
-							continue
-					else:
-						continue
-
-			elif self.cbs[1].currentText().startswith('t'):
-				left_censored = True
-				first_detections = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].max().values
-				print(first_detections)
-
-
-			if self.cbs[1].currentText()=='first detection' or self.cbs[1].currentText().startswith('t'):
-				left_censored = True
-			else:
-				left_censored = False
-			events, survival_times = switch_to_events(classes, times, max_times, first_detections, left_censored=left_censored, FrameToMin=self.FrameToMin)
-			ks = KaplanMeierFitter()
-			if len(events)>0:
-				ks.fit(survival_times, event_observed=events)
+			ks = compute_survival(movie_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin)
+			if ks is not None:
 				self.df_pos_info.loc[self.df_pos_info['pos_path']==block[1],'survival_fit'] = ks
 
 		# Per well survival
-		left_censored = False
 		for well,well_group in self.df.groupby('well'):
 
-			well_classes = []
-			well_times = []
-			well_max_times = []
-			well_first_detections = []
-
-			for block,movie_group in well_group.groupby('position'):
-				try:
-					classes = movie_group.groupby('TRACK_ID')[self.class_of_interest].min().values
-					times = movie_group.groupby('TRACK_ID')[self.cbs[2].currentText()].min().values
-				except Exception as e:
-					print(e)
-					continue
-				max_times = movie_group.groupby('TRACK_ID')['FRAME'].max().values
-				first_detections = None
-
-				if self.cbs[1].currentText()=='first detection':
-					
-					left_censored = True
-					first_detections = []
-					for tid,track_group in movie_group.groupby('TRACK_ID'):
-						if 'area' in self.df.columns:
-							area = track_group['area'].values
-							timeline = track_group['FRAME'].values
-							if np.any(area==area):
-								first_det = timeline[area==area][0]
-								first_detections.append(first_det)
-							else:
-								# think about assymmetry with class and times
-								continue
-
-				elif self.cbs[1].currentText().startswith('t'):
-					left_censored = True
-					first_detections = movie_group.groupby('TRACK_ID')[self.cbs[1].currentText()].max().values
-
-				else:
-					pass
-
-				well_classes.extend(classes)
-				well_times.extend(times)
-				well_max_times.extend(max_times)
-				if first_detections is not None:
-					well_first_detections.extend(first_detections)  
-			
-			if len(well_first_detections)==0:
-				well_first_detections = None
-			
-			print(f"{well_classes=}; {well_times=}")
-			events, survival_times = switch_to_events(well_classes, well_times, well_max_times, well_first_detections,left_censored=left_censored, FrameToMin=self.FrameToMin)
-			print(f"{events=}; {survival_times=}")
-			ks = KaplanMeierFitter()
-			if len(survival_times)>0:
-				ks.fit(survival_times, event_observed=events)
-				print(ks.survival_function_)
-			else:
-				ks = None
-			print(f"{ks=}")
-			self.df_well_info.loc[self.df_well_info['well_path']==well,'survival_fit'] = ks
+			ks = compute_survival(well_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin)
+			if ks is not None:
+				self.df_well_info.loc[self.df_well_info['well_path']==well,'survival_fit'] = ks
 
 		self.df_pos_info.loc[:,'select'] = True
 		self.df_well_info.loc[:,'select'] = True

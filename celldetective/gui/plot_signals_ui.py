@@ -19,7 +19,6 @@ import pandas as pd
 import math
 from celldetective.gui import Styles
 from matplotlib import colormaps
-import matplotlib.cm as mcm
 
 
 class ConfigSignalPlot(QWidget, Styles):
@@ -258,7 +257,6 @@ class ConfigSignalPlot(QWidget, Styles):
 			self.feature_selected = self.feature_cb.currentText()
 			self.feature_choice_widget.close()
 			self.compute_signal_functions()
-
 			self.interpret_pos_location()
 			self.plot_window = GenericSignalPlotWidget(parent_window=self, df=self.df, df_pos_info = self.df_pos_info, df_well_info = self.df_well_info, feature_selected=self.feature_selected, title='plot signals')
 			self.plot_window.show()
@@ -270,8 +268,21 @@ class ConfigSignalPlot(QWidget, Styles):
 
 		# read instructions from combobox options
 		self.load_available_tables()
+		class_col = self.cbs[1].currentText()	
+
 		if self.df is not None:
-			self.ask_for_features()
+
+			if class_col not in list(self.df.columns):
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Warning)
+				msgBox.setText("The class of interest could not be found in the data. Abort.")
+				msgBox.setWindowTitle("Warning")
+				msgBox.setStandardButtons(QMessageBox.Ok)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Ok:
+					return None
+			else:
+				self.ask_for_features()
 		else:
 			return None
 

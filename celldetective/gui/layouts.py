@@ -647,7 +647,7 @@ class ProtocolDesignerLayout(QVBoxLayout, Styles):
 	def generate_layout(self):
 
 		self.title_layout = QHBoxLayout()
-		self.title_layout.addWidget(self.title_lbl, alignment=Qt.AlignCenter)
+		self.title_layout.addWidget(self.title_lbl, 100, alignment=Qt.AlignCenter)
 
 		self.addLayout(self.title_layout)
 		self.addWidget(self.tabs)

@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMessageBox, QComboBox, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QDoubleValidator
+from PyQt5.QtGui import QDoubleValidator
 from celldetective.gui.gui_utils import center_window
 from superqt import QColormapComboBox
 from celldetective.gui.generic_signal_plot import SurvivalPlotWidget
@@ -12,11 +12,8 @@ import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 from glob import glob
 import pandas as pd
-from lifelines import KaplanMeierFitter
-from celldetective.events import switch_to_events
 from celldetective.gui import Styles
 from matplotlib import colormaps
-
 from celldetective.events import compute_survival
 
 class ConfigSurvival(QWidget, Styles):

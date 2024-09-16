@@ -1,8 +1,12 @@
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QMessageBox, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
-	QPushButton, QLabel, QHBoxLayout, QCheckBox
-from PyQt5.QtCore import Qt
+	QPushButton, QLabel, QHBoxLayout, QCheckBox, QFileDialog
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
+
+from celldetective.gui import Styles
+from superqt.fonticon import icon
+from fonticon_mdi6 import MDI6
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -10,6 +14,7 @@ import matplotlib.pyplot as plt
 import celldetective.extra_properties as extra_properties
 from inspect import getmembers, isfunction
 from celldetective.filters import *
+from os import sep
 
 def center_window(window):
 	"""
@@ -21,6 +26,33 @@ def center_window(window):
 	centerPoint = QApplication.desktop().screenGeometry(screen).center()
 	frameGm.moveCenter(centerPoint)
 	window.move(frameGm.topLeft())
+
+class ExportPlotBtn(QPushButton, Styles):
+	
+	def __init__(self, fig, export_dir=None):
+
+		super().__init__()
+
+		self.export_dir = export_dir
+		self.fig = fig
+
+		self.setText('')
+		self.setIcon(icon(MDI6.content_save,color="black"))
+		self.setStyleSheet(self.button_select_all)
+		self.setToolTip('Export figure.')
+		self.setIconSize(QSize(20, 20))
+		self.clicked.connect(self.save_plot)
+	
+	def save_plot(self):
+		if self.export_dir is not None:
+			guess_dir = self.export_dir+sep+'plot.png'
+		else:
+			guess_dir = 'plot.png'
+		fileName, _ = QFileDialog.getSaveFileName(self, 
+			"Save Image", guess_dir, "Images (*.png *.xpm *.jpg *.svg)") #, options=options
+		if fileName:
+			self.fig.tight_layout()
+			self.fig.savefig(fileName, bbox_inches='tight', dpi=300)
 
 
 class QHSeperationLine(QFrame):

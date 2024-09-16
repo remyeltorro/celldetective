@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import QMessageBox,QGridLayout, QButtonGroup, \
 	QCheckBox, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, \
-	QRadioButton, QFileDialog
+	QRadioButton
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator
 
-from celldetective.gui.gui_utils import center_window, FigureCanvas
+from celldetective.gui.gui_utils import center_window, FigureCanvas, ExportPlotBtn
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.signals import mean_signal
@@ -24,6 +24,7 @@ class GenericSignalPlotWidget(QWidget, Styles):
 	def __init__(self, df = None, df_pos_info = None, df_well_info = None, feature_selected = None, parent_window=None, title='plot', *args, **kwargs):
 		
 		super().__init__()
+		center_window(self)
 
 		self.parent_window = parent_window
 		self.setWindowTitle(title)
@@ -55,7 +56,6 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.fig.tight_layout()
 		self.setLayout(self.layout)
 		self.setAttribute(Qt.WA_DeleteOnClose)
-		center_window(self)
 
 	def populate_widget(self):
 
@@ -127,22 +127,15 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.cell_lines_btn.setIconSize(QSize(20, 20))
 		plot_buttons_hbox.addWidget(self.cell_lines_btn, 5, alignment=Qt.AlignRight)
 
-		self.export_btn = QPushButton('')
-		self.export_btn.setIcon(icon(MDI6.content_save,color="black"))
-		self.export_btn.setStyleSheet(self.button_select_all)
-		self.export_btn.setToolTip('Export figure.')
-		self.export_btn.setIconSize(QSize(20, 20))
-		plot_buttons_hbox.addWidget(self.export_btn, 5, alignment=Qt.AlignRight)
-
-		self.layout.addLayout(plot_buttons_hbox)
-
 		self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
-		#self.setMinimumHeight(100)
 		self.plot_widget = FigureCanvas(self.fig, title="")
 		self.plot_widget.setContentsMargins(0,0,0,0)
-		# if self.df is not None:
 		self.initialize_axis()
 		plt.tight_layout()
+
+		self.export_btn = ExportPlotBtn(self.fig, export_dir=self.parent_window.exp_dir)
+		plot_buttons_hbox.addWidget(self.export_btn, 5, alignment=Qt.AlignRight)
+		self.layout.addLayout(plot_buttons_hbox)
 
 		self.ax.set_prop_cycle('color',[self.cmap(i) for i in np.linspace(0, 1, len(self.parent_window.well_indices))])
 
@@ -157,8 +150,6 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.log_btn.clicked.connect(self.switch_to_log)
 		self.ci_btn.clicked.connect(self.switch_ci)
 		self.cell_lines_btn.clicked.connect(self.switch_cell_lines)
-		self.export_btn.clicked.connect(self.save_plot)
-
 
 		self.class_selection_widget = QWidget()
 
@@ -288,13 +279,6 @@ class GenericSignalPlotWidget(QWidget, Styles):
 			self.scaling_factor = float(new_scale)
 			self.plot_signals(0)
 
-	def save_plot(self):
-
-		fileName, _ = QFileDialog.getSaveFileName(self, 
-			"Save Image", self.parent_window.exp_dir+os.sep+'plot.png', "Images (*.png *.xpm *.jpg *.svg)") #, options=options
-		if fileName:
-			plt.tight_layout()
-			plt.savefig(fileName, bbox_inches='tight', dpi=300)
 
 	def switch_selection_mode(self, id):
 
@@ -550,15 +534,15 @@ class GenericSignalPlotWidget(QWidget, Styles):
 				self.plot_mode = self.radio_labels[i]
 
 		if self.target_class==[0,1]:
-			mean_signal = 'mean_all'
+			mean_signal_type = 'mean_all'
 			std_signal = 'std_all'
 			matrix = 'matrix_all'
 		elif self.target_class==[0]:
-			mean_signal = 'mean_event'
+			mean_signal_type = 'mean_event'
 			std_signal = 'std_event'
 			matrix = 'matrix_event'
 		else:
-			mean_signal = 'mean_no_event'
+			mean_signal_type = 'mean_no_event'
 			std_signal = 'std_no_event'
 			matrix = 'matrix_no_event'
 
@@ -574,9 +558,9 @@ class GenericSignalPlotWidget(QWidget, Styles):
 			well_index = self.df_pos_info.loc[self.df_pos_info['select'],'well_index'].values
 			for i in range(len(lines)):
 				if len(self.parent_window.well_indices)<=1:
-					self.plot_line(lines[i], colors[pos_indices[i]], pos_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=matrix)
+					self.plot_line(lines[i], colors[pos_indices[i]], pos_labels[i], mean_signal_type, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=matrix)
 				else:
-					self.plot_line(lines[i], well_color[well_index[i]], pos_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=matrix)
+					self.plot_line(lines[i], well_color[well_index[i]], pos_labels[i], mean_signal_type, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines, matrix=matrix)
 			if self.legend_visible:
 				self.ax.legend(ncols=3,fontsize='x-small')
 
@@ -587,9 +571,9 @@ class GenericSignalPlotWidget(QWidget, Styles):
 			well_labels = self.df_well_info.loc[self.df_well_info['select'],'well_name'].values
 			for i in range(len(lines)):	
 				if len(self.parent_window.well_indices)<=1:
-					self.plot_line(lines[i], 'k', well_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
+					self.plot_line(lines[i], 'k', well_labels[i], mean_signal_type, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
 				else:
-					self.plot_line(lines[i], well_color[well_index[i]], well_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
+					self.plot_line(lines[i], well_color[well_index[i]], well_labels[i], mean_signal_type, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
 			if self.legend_visible:
 				self.ax.legend(ncols=2, fontsize='x-small')
 
@@ -607,31 +591,31 @@ class GenericSignalPlotWidget(QWidget, Styles):
 
 			for i in range(len(lines_pos)):
 				if len(self.parent_window.well_indices)<=1:
-					self.plot_line(lines_pos[i], colors[pos_indices[i]], pos_labels[i], mean_signal, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
+					self.plot_line(lines_pos[i], colors[pos_indices[i]], pos_labels[i], mean_signal_type, std_signal=std_signal, ci_option=self.show_ci, cell_lines_option=self.show_cell_lines,matrix=matrix)
 				else:
-					self.plot_line(lines_pos[i], well_color[well_index_pos[i]], None, mean_signal, std_signal=std_signal, ci_option=False)
+					self.plot_line(lines_pos[i], well_color[well_index_pos[i]], None, mean_signal_type, std_signal=std_signal, ci_option=False)
 
 			for i in range(len(lines_well)):
 				if len(self.parent_window.well_indices)<=1:
-					self.plot_line(lines_well[i], 'k', 'pool', mean_signal, std_signal=std_signal, ci_option=False)
+					self.plot_line(lines_well[i], 'k', 'pool', mean_signal_type, std_signal=std_signal, ci_option=False)
 				else:
-					self.plot_line(lines_well[i], well_color[well_index[i]], well_labels[i], mean_signal, std_signal=std_signal, ci_option=False)
+					self.plot_line(lines_well[i], well_color[well_index[i]], well_labels[i], mean_signal_type, std_signal=std_signal, ci_option=False)
 			if self.legend_visible:
 				self.ax.legend(ncols=3,fontsize='x-small')
 
 		self.plot_widget.canvas.draw()
 
-	def plot_line(self, line, color, label, mean_signal, ci_option=True, cell_lines_option=False, alpha_ci=0.5, std_signal=None, matrix=None):
+	def plot_line(self, line, color, label, mean_signal_type, ci_option=True, cell_lines_option=False, alpha_ci=0.5, std_signal=None, matrix=None):
 		
 		# Plot a signal
 		if line==line:
-			self.ax.plot(line['timeline']*self.parent_window.FrameToMin, line[mean_signal]*self.scaling_factor, color=color, label=label)
+			self.ax.plot(line['timeline']*self.parent_window.FrameToMin, line[mean_signal_type]*self.scaling_factor, color=color, label=label)
 
 			if ci_option and std_signal is not None:
 
 				self.ax.fill_between(line['timeline']*self.parent_window.FrameToMin,
-								[a-b for a,b in zip(line[mean_signal]*self.scaling_factor, line[std_signal]*self.scaling_factor)],
-								[a+b for a,b in zip(line[mean_signal]*self.scaling_factor, line[std_signal]*self.scaling_factor)],
+								[a-b for a,b in zip(line[mean_signal_type]*self.scaling_factor, line[std_signal]*self.scaling_factor)],
+								[a+b for a,b in zip(line[mean_signal_type]*self.scaling_factor, line[std_signal]*self.scaling_factor)],
 								color=color,
 								alpha=alpha_ci,
 								)

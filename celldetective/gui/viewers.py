@@ -88,9 +88,9 @@ class StackVisualizer(QWidget, Styles):
 		if self.create_frame_slider:
 			self.generate_frame_slider()
 
-		center_window(self)
 		self.canvas.layout.setContentsMargins(15,15,15,30)
 		self.setAttribute(Qt.WA_DeleteOnClose)
+		center_window(self)
 
 	def show(self):
 		# Display the widget
@@ -141,7 +141,7 @@ class StackVisualizer(QWidget, Styles):
 	def generate_figure_canvas(self):
 		# Generate the figure canvas for displaying images
 
-		self.fig, self.ax = plt.subplots(tight_layout=True) #figsize=(5, 5)
+		self.fig, self.ax = plt.subplots(figsize=(5,5),tight_layout=True) #figsize=(5, 5)
 		self.canvas = FigureCanvas(self.fig, title=self.window_title, interactive=True)
 		self.ax.clear()
 		self.im = self.ax.imshow(self.init_frame, cmap='gray', interpolation='none', **self.imshow_kwargs)
@@ -196,13 +196,13 @@ class StackVisualizer(QWidget, Styles):
 		contrast_layout = QuickSliderLayout(
 											label='Contrast: ',
 											slider=self.contrast_slider,
-											slider_initial_value=[np.nanpercentile(self.init_frame, 1),np.nanpercentile(self.init_frame, 99.99)],
+											slider_initial_value=[np.nanpercentile(self.init_frame, 0.1),np.nanpercentile(self.init_frame, 99.99)],
 											slider_range=(np.nanmin(self.init_frame),np.nanmax(self.init_frame)),
 											decimal_option=True,
 											precision=1.0E-05,
 											)
 		contrast_layout.setContentsMargins(15,0,15,0)
-		self.im.set_clim(vmin=np.nanpercentile(self.init_frame, 1),vmax=np.nanpercentile(self.init_frame, 99.99))
+		self.im.set_clim(vmin=np.nanpercentile(self.init_frame, 0.1),vmax=np.nanpercentile(self.init_frame, 99.99))
 		self.contrast_slider.valueChanged.connect(self.change_contrast)
 		self.canvas.layout.addLayout(contrast_layout)
 

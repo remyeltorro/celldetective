@@ -429,6 +429,8 @@ if __name__ == "__main__":
 	import psutil
 	import subprocess
 	import json
+	# import matplotlib
+	# matplotlib.rcParams.update({'font.size': 8})
 
 	print('Libraries successfully loaded...')
 

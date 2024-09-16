@@ -8,7 +8,7 @@ from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QSearchable
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
 from celldetective.io import auto_load_number_of_frames, load_frames, \
 	load_napari_data
-from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
+from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class, ExportPlotBtn
 import json
 import numpy as np
 from superqt.fonticon import icon
@@ -35,6 +35,8 @@ class SignalAnnotator(QMainWindow, Styles):
 	def __init__(self, parent_window=None):
 
 		super().__init__()
+		center_window(self)
+
 		self.parent_window = parent_window
 		self.setWindowTitle("Signal annotator")
 		self.mode = self.parent_window.mode
@@ -46,22 +48,21 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.recently_modified = False
 		self.selection = []
 		if self.mode == "targets":
-			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_targets.json"
-			self.trajectories_path = self.pos + 'output/tables/trajectories_targets.csv'
+			self.instructions_path = self.exp_dir + os.sep.join(['configs', 'signal_annotator_config_targets.json'])
+			self.trajectories_path = self.pos + os.sep.join(['output','tables','trajectories_targets.csv'])
 		elif self.mode == "effectors":
-			self.instructions_path = self.exp_dir + "configs/signal_annotator_config_effectors.json"
-			self.trajectories_path = self.pos + 'output/tables/trajectories_effectors.csv'
+			self.instructions_path = self.exp_dir + os.sep.join(['configs', 'signal_annotator_config_effectors.json'])
+			self.trajectories_path = self.pos + os.sep.join(['output','tables','trajectories_effectors.csv'])
 
 		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
 		self.screen_width = self.parent_window.parent_window.parent_window.screen_width
+		#self.setMinimumHeight(int(0.8*self.screen_height))
 		self.value_magnitude = 1
 
 		# default params
 		self.class_name = 'class'
 		self.time_name = 't0'
 		self.status_name = 'status'
-
-		center_window(self)
 
 		self.locate_stack()
 		self.load_annotator_config()
@@ -74,11 +75,6 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.create_cell_signal_canvas()
 
 		self.populate_widget()
-
-		#self.setMinimumWidth(int(0.8 * self.screen_width))
-		# self.setMaximumHeight(int(0.8*self.screen_height))
-		#self.setMinimumHeight(int(0.8 * self.screen_height))
-		# self.setMaximumHeight(int(0.8*self.screen_height))
 
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
@@ -95,12 +91,13 @@ class SignalAnnotator(QMainWindow, Styles):
 
 		main_layout.setContentsMargins(30, 30, 30, 30)
 		self.left_panel = QVBoxLayout()
-		self.left_panel.setContentsMargins(30, 30, 30, 30)
-		self.left_panel.setSpacing(10)
+		self.left_panel.setContentsMargins(30, 5, 30, 5)
+		self.left_panel.setSpacing(3)
 
 		self.right_panel = QVBoxLayout()
 
 		class_hbox = QHBoxLayout()
+		class_hbox.setContentsMargins(0,0,0,0)
 		class_hbox.addWidget(QLabel('event: '), 25)
 		self.class_choice_cb = QComboBox()
 
@@ -137,14 +134,14 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.del_class_btn.clicked.connect(self.del_event_class)
 		class_hbox.addWidget(self.del_class_btn, 5)
 
-		self.left_panel.addLayout(class_hbox)
+		self.left_panel.addLayout(class_hbox,5)
 
 		self.cell_info = QLabel('')
-		self.left_panel.addWidget(self.cell_info)
+		self.left_panel.addWidget(self.cell_info,10)
 
 		# Annotation buttons
 		options_hbox = QHBoxLayout()
-		options_hbox.setContentsMargins(150, 30, 50, 0)
+		options_hbox.setContentsMargins(0, 0, 0, 0)
 		self.event_btn = QRadioButton('event')
 		self.event_btn.setStyleSheet(self.button_style_sheet_2)
 		self.event_btn.toggled.connect(self.enable_time_of_interest)
@@ -157,25 +154,28 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.else_btn.setStyleSheet(self.button_style_sheet_2)
 		self.else_btn.toggled.connect(self.enable_time_of_interest)
 
-		self.suppr_btn = QRadioButton('mark for\nsuppression')
+		self.suppr_btn = QRadioButton('remove')
+		self.suppr_btn.setToolTip('Mark for deletion. Upon saving, the cell\nwill be removed from the tables.')
 		self.suppr_btn.setStyleSheet(self.button_style_sheet_2)
 		self.suppr_btn.toggled.connect(self.enable_time_of_interest)
 
-		options_hbox.addWidget(self.event_btn, 25)
-		options_hbox.addWidget(self.no_event_btn, 25)
-		options_hbox.addWidget(self.else_btn, 25)
-		options_hbox.addWidget(self.suppr_btn, 25)
-		self.left_panel.addLayout(options_hbox)
+		options_hbox.addWidget(self.event_btn, 25, alignment=Qt.AlignCenter)
+		options_hbox.addWidget(self.no_event_btn, 25, alignment=Qt.AlignCenter)
+		options_hbox.addWidget(self.else_btn, 25, alignment=Qt.AlignCenter)
+		options_hbox.addWidget(self.suppr_btn, 25, alignment=Qt.AlignCenter)
+		self.left_panel.addLayout(options_hbox,5)
 
 		time_option_hbox = QHBoxLayout()
-		time_option_hbox.setContentsMargins(100, 30, 100, 30)
+		time_option_hbox.setContentsMargins(0, 5, 100, 10)
 		self.time_of_interest_label = QLabel('time of interest: ')
-		time_option_hbox.addWidget(self.time_of_interest_label, 30)
+		time_option_hbox.addWidget(self.time_of_interest_label, 10)
 		self.time_of_interest_le = QLineEdit()
-		time_option_hbox.addWidget(self.time_of_interest_le, 70)
-		self.left_panel.addLayout(time_option_hbox)
+		time_option_hbox.addWidget(self.time_of_interest_le, 15)
+		time_option_hbox.addWidget(QLabel(''), 75)
+		self.left_panel.addLayout(time_option_hbox,5)
 
 		main_action_hbox = QHBoxLayout()
+		main_action_hbox.setContentsMargins(0,0,0,0)
 		self.correct_btn = QPushButton('correct')
 		self.correct_btn.setIcon(icon(MDI6.redo_variant, color="white"))
 		self.correct_btn.setIconSize(QSize(20, 20))
@@ -190,7 +190,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.cancel_btn.setEnabled(False)
 		self.cancel_btn.clicked.connect(self.cancel_selection)
 		main_action_hbox.addWidget(self.cancel_btn)
-		self.left_panel.addLayout(main_action_hbox)
+		self.left_panel.addLayout(main_action_hbox,5)
 
 		self.annotation_btns_to_hide = [self.event_btn, self.no_event_btn,
 										self.else_btn, self.time_of_interest_label,
@@ -207,7 +207,8 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.no_event_shortcut.setEnabled(False)
 
 		# Cell signals
-		self.left_panel.addWidget(self.cell_fcanvas)
+
+		self.left_panel.addWidget(self.cell_fcanvas, 45)
 
 		plot_buttons_hbox = QHBoxLayout()
 		plot_buttons_hbox.setContentsMargins(0, 0, 0, 0)
@@ -229,10 +230,13 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.log_btn.clicked.connect(self.switch_to_log)
 		plot_buttons_hbox.addWidget(self.log_btn, 5)
 
-		self.left_panel.addLayout(plot_buttons_hbox)
+		self.export_plot_btn = ExportPlotBtn(self.cell_fig, export_dir = self.exp_dir)
+		plot_buttons_hbox.addWidget(self.export_plot_btn, 5)		
+
+		self.left_panel.addLayout(plot_buttons_hbox,5)
 
 		signal_choice_vbox = QVBoxLayout()
-		signal_choice_vbox.setContentsMargins(30, 0, 30, 50)
+		signal_choice_vbox.setContentsMargins(30, 0, 30, 0)
 		for i in range(len(self.signal_choice_cb)):
 			hlayout = QHBoxLayout()
 			hlayout.addWidget(self.signal_choice_label[i], 20)
@@ -244,9 +248,10 @@ class SignalAnnotator(QMainWindow, Styles):
 		# self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
 		# self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
 
-		self.left_panel.addLayout(signal_choice_vbox)
+		self.left_panel.addLayout(signal_choice_vbox,15)
 
 		btn_hbox = QHBoxLayout()
+		btn_hbox.setContentsMargins(0,10,0,0)
 		self.save_btn = QPushButton('Save')
 		self.save_btn.setStyleSheet(self.button_style_sheet)
 		self.save_btn.clicked.connect(self.save_trajectories)
@@ -258,7 +263,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.export_btn.setIcon(icon(MDI6.export, color="black"))
 		self.export_btn.setIconSize(QSize(25, 25))
 		btn_hbox.addWidget(self.export_btn, 10)
-		self.left_panel.addLayout(btn_hbox)
+		self.left_panel.addLayout(btn_hbox,5)
 
 		# Animation
 		animation_buttons_box = QHBoxLayout()
@@ -312,9 +317,6 @@ class SignalAnnotator(QMainWindow, Styles):
 			self.contrast_slider.setSingleStep(0.001)
 			self.contrast_slider.setTickInterval(0.001)
 			self.contrast_slider.setOrientation(1)
-			print(self.stack.shape, np.unique(self.stack))
-			print('range: ',
-				  [np.nanpercentile(self.stack, 0.001), np.nanpercentile(self.stack, 99.999)])
 			self.contrast_slider.setRange(
 				*[np.nanpercentile(self.stack, 0.001), np.nanpercentile(self.stack, 99.999)])
 			self.contrast_slider.setValue(
@@ -474,14 +476,12 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.time_name = self.expected_time
 		self.status_name = self.expected_status
 
-		print('selection and expected names: ', self.class_name, self.expected_time, self.expected_status)
 		cols = list(self.df_tracks.columns)
 
 		if self.time_name in cols and self.class_name in cols and not self.status_name in cols:
 			# only create the status column if it does not exist to not erase static classification results
 			self.make_status_column()
 		elif self.time_name in cols and self.class_name in cols and self.df_tracks[self.status_name].isnull().all():
-			print('this is the case!', )
 			self.make_status_column()
 		elif self.time_name in cols and self.class_name in cols:
 			# all good, do nothing
@@ -640,7 +640,7 @@ class SignalAnnotator(QMainWindow, Styles):
 
 		"""
 
-		movies = glob(self.pos + f"movie/{self.parent_window.parent_window.movie_prefix}*.tif")
+		movies = glob(self.pos + os.sep.join(["movie", f"{self.parent_window.parent_window.movie_prefix}*.tif"]))
 
 		if len(movies) == 0:
 			msgBox = QMessageBox()
@@ -779,8 +779,8 @@ class SignalAnnotator(QMainWindow, Styles):
 	# self.loc_t, self.loc_idx = np.where(self.tracks==self.track_of_interest)
 
 	def make_status_column(self):
-		print(self.class_name, self.time_name, self.status_name)
-		print('remaking the status column')
+
+		print(f'Generating status information for class `{self.class_name}` and time `{self.time_name}`...')
 		for tid, group in self.df_tracks.groupby('TRACK_ID'):
 
 			indices = group.index
@@ -808,7 +808,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		# self.log_btns = [QPushButton() for i in range(self.n_signals)]
 
 		signals = list(self.df_tracks.columns)
-		print(signals)
+
 		to_remove = ['TRACK_ID', 'FRAME', 'x_anim', 'y_anim', 't', 'state', 'generation', 'root', 'parent', 'class_id',
 					 'class', 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name',
 					 'pos_name', 'index','class_color','status_color']
@@ -837,7 +837,6 @@ class SignalAnnotator(QMainWindow, Styles):
 					self.lines[i].set_xdata([])
 					self.lines[i].set_ydata([])
 				else:
-					print(f'plot signal {signal_choice} for cell {self.track_of_interest}')
 					xdata = self.df_tracks.loc[self.df_tracks['TRACK_ID'] == self.track_of_interest, 'FRAME'].to_numpy()
 					ydata = self.df_tracks.loc[
 						self.df_tracks['TRACK_ID'] == self.track_of_interest, signal_choice].to_numpy()
@@ -864,7 +863,7 @@ class SignalAnnotator(QMainWindow, Styles):
 			self.cell_ax.legend()
 			self.cell_fcanvas.canvas.draw()
 		except Exception as e:
-			print(f"Plot signals: {e=}")
+			pass
 		
 		if len(range_values)>0:
 			range_values = np.array(range_values)
@@ -898,12 +897,10 @@ class SignalAnnotator(QMainWindow, Styles):
 		Load settings from config or set default values.
 		"""
 
-		print('Reading instructions..')
 		if os.path.exists(self.instructions_path):
 			with open(self.instructions_path, 'r') as f:
 
 				instructions = json.load(f)
-				print(f'Reading instructions: {instructions}')
 
 				if 'rgb_mode' in instructions:
 					self.rgb_mode = instructions['rgb_mode']
@@ -946,7 +943,8 @@ class SignalAnnotator(QMainWindow, Styles):
 
 		self.img_num_channels = _get_img_num_per_channel(self.channels, self.len_movie, self.nbr_channels)
 		self.stack = []
-		for ch in tqdm(self.target_channels, desc="channel"):
+		disable_tqdm = not len(self.target_channels)>1
+		for ch in tqdm(self.target_channels, desc="channel",disable=disable_tqdm):
 			target_ch_name = ch[0]
 			if self.percentile_mode:
 				normalize_kwargs = {"percentiles": (ch[1], ch[2]), "values": None}
@@ -977,8 +975,6 @@ class SignalAnnotator(QMainWindow, Styles):
 			self.stack = self.stack[0]
 			if self.log_option:
 				self.stack[np.where(self.stack > 0.)] = np.log(self.stack[np.where(self.stack > 0.)])
-
-		print(f'Load stack of shape: {self.stack.shape}.')
 
 	def closeEvent(self, event):
 
@@ -1031,8 +1027,8 @@ class SignalAnnotator(QMainWindow, Styles):
 
 	def create_cell_signal_canvas(self):
 
-		self.cell_fig, self.cell_ax = plt.subplots()
-		self.cell_fcanvas = FigureCanvas(self.cell_fig, interactive=False)
+		self.cell_fig, self.cell_ax = plt.subplots(tight_layout=True)
+		self.cell_fcanvas = FigureCanvas(self.cell_fig, interactive=True)
 		self.cell_ax.clear()
 
 		spacing = 0.5
@@ -1063,6 +1059,9 @@ class SignalAnnotator(QMainWindow, Styles):
 
 	def on_scatter_pick(self, event):
 
+		self.correct_btn.disconnect()
+		self.correct_btn.clicked.connect(self.show_annotation_buttons)
+
 		ind = event.ind
 
 		if len(ind) > 1:
@@ -1082,7 +1081,7 @@ class SignalAnnotator(QMainWindow, Styles):
 			self.no_event_shortcut.setEnabled(True)
 
 			self.track_of_interest = self.tracks[self.framedata][ind]
-			print(f'You selected track {self.track_of_interest}.')
+			print(f'You selected cell #{self.track_of_interest}...')
 			self.give_cell_information()
 			self.plot_signals()
 
@@ -1132,7 +1131,7 @@ class SignalAnnotator(QMainWindow, Styles):
 			if len(min_values) > 0:
 				self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
 		except Exception as e:
-			print('Ylim error:',e)
+			pass
 
 	def draw_frame(self, framedata):
 
@@ -1193,7 +1192,7 @@ class SignalAnnotator(QMainWindow, Styles):
 
 		self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks[self.class_name] > 2].index)
 		self.df_tracks.to_csv(self.trajectories_path, index=False)
-		print('table saved.')
+		print('Table successfully exported...')
 		self.extract_scatter_from_trajectories()
 
 	# self.give_cell_information()
@@ -1214,7 +1213,6 @@ class SignalAnnotator(QMainWindow, Styles):
 		while len(np.where(self.stack[self.last_key].flatten() == 0)[0]) > 0.99 * len(
 				self.stack[self.last_key].flatten()):
 			self.last_key -= 1
-		print(f'Last frame is {len(self.stack) - 1}; last not black is {self.last_key}')
 		self.anim._drawn_artists = self.draw_frame(self.last_key)
 		self.anim._drawn_artists = sorted(self.anim._drawn_artists, key=lambda x: x.get_zorder())
 		for a in self.anim._drawn_artists:
@@ -1235,7 +1233,6 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.first_frame_btn.disconnect()
 
 		self.first_key = 0
-		print(f'First frame is {0}')
 		self.anim._drawn_artists = self.draw_frame(0)
 		self.anim._drawn_artists = sorted(self.anim._drawn_artists, key=lambda x: x.get_zorder())
 		for a in self.anim._drawn_artists:
@@ -1271,8 +1268,6 @@ class SignalAnnotator(QMainWindow, Styles):
 			signals.update({"time_of_interest": time_of_interest, "class": cclass})
 			# Here auto add all available channels
 			training_set.append(signals)
-
-		print(training_set)
 
 		pathsave = QFileDialog.getSaveFileName(self, "Select file name", self.exp_dir + auto_dataset_name, ".npy")[0]
 		if pathsave != '':
@@ -1417,10 +1412,10 @@ class MeasureAnnotator(SignalAnnotator):
 		self.cell_fcanvas = FigureCanvas(self.cell_fig, interactive=False)
 		self.cell_ax.clear()
 
-		spacing = 0.5
-		minorLocator = MultipleLocator(1)
-		self.cell_ax.xaxis.set_minor_locator(minorLocator)
-		self.cell_ax.xaxis.set_major_locator(MultipleLocator(5))
+		# spacing = 0.5
+		# minorLocator = MultipleLocator(1)
+		# self.cell_ax.xaxis.set_minor_locator(minorLocator)
+		# self.cell_ax.xaxis.set_major_locator(MultipleLocator(5))
 		self.cell_ax.grid(which='major')
 		self.cell_ax.set_xlabel("time [frame]")
 		self.cell_ax.set_ylabel("signal")
@@ -1523,7 +1518,7 @@ class MeasureAnnotator(SignalAnnotator):
 		for i in range(len(self.signal_choice_cb)):
 			signal_choice = self.signal_choice_cb[i].currentText()
 			if signal_choice != "--":
-				print(f'plot signal {signal_choice} for cell {self.track_of_interest} at frame {current_frame}')
+				#print(f'plot signal {signal_choice} for cell {self.track_of_interest} at frame {current_frame}')
 				if 'TRACK_ID' in self.df_tracks.columns:
 					ydata = self.df_tracks.loc[
 						(self.df_tracks['TRACK_ID'] == self.track_of_interest) &
@@ -1557,7 +1552,7 @@ class MeasureAnnotator(SignalAnnotator):
 			self.del_shortcut.setEnabled(True)
 			self.no_event_shortcut.setEnabled(True)
 			self.track_of_interest = self.tracks[self.framedata][ind]
-			print(f'You selected track {self.track_of_interest}.')
+			print(f'You selected cell #{self.track_of_interest}...')
 			self.give_cell_information()
 			if len(self.cell_ax.lines) > 0:
 				self.cell_ax.lines[-1].remove()  # Remove the last line (red points) from the plot
@@ -1597,20 +1592,23 @@ class MeasureAnnotator(SignalAnnotator):
 		self.button_widget.setLayout(main_layout)
 
 		main_layout.setContentsMargins(30, 30, 30, 30)
+
 		self.left_panel = QVBoxLayout()
-		self.left_panel.setContentsMargins(30, 30, 30, 30)
-		self.left_panel.setSpacing(10)
+		self.left_panel.setContentsMargins(30, 5, 30, 5)
+		#self.left_panel.setSpacing(3)
 
 		self.right_panel = QVBoxLayout()
 
 		class_hbox = QHBoxLayout()
+		class_hbox.setContentsMargins(0,0,0,0)
+		class_hbox.setSpacing(0)
+
 		class_hbox.addWidget(QLabel('characteristic \n group: '), 25)
 		self.class_choice_cb = QComboBox()
 
 		cols = np.array(self.df_tracks.columns)
 		self.class_cols = np.array([c.startswith('group') or c.startswith('status') for c in list(self.df_tracks.columns)])
 		self.class_cols = list(cols[self.class_cols])
-		print(self.class_cols)
 
 		try:
 			self.class_cols.remove('group_id')
@@ -1641,13 +1639,15 @@ class MeasureAnnotator(SignalAnnotator):
 		self.del_class_btn.clicked.connect(self.del_event_class)
 		class_hbox.addWidget(self.del_class_btn, 5)
 
-		self.left_panel.addLayout(class_hbox)
+		self.left_panel.addLayout(class_hbox,5)
 
 		self.cell_info = QLabel('')
-		self.left_panel.addWidget(self.cell_info)
+		self.left_panel.addWidget(self.cell_info,5)
 
 		time_option_hbox = QHBoxLayout()
-		time_option_hbox.setContentsMargins(100, 30, 100, 30)
+		time_option_hbox.setContentsMargins(100, 0, 100, 0)
+		time_option_hbox.setSpacing(0)
+
 		self.time_of_interest_label = QLabel('phenotype: ')
 		time_option_hbox.addWidget(self.time_of_interest_label, 30)
 		self.time_of_interest_le = QLineEdit()
@@ -1660,9 +1660,12 @@ class MeasureAnnotator(SignalAnnotator):
 		self.del_cell_btn.setIconSize(QSize(20, 20))
 		self.del_cell_btn.clicked.connect(self.del_cell)
 		time_option_hbox.addWidget(self.del_cell_btn)
-		self.left_panel.addLayout(time_option_hbox)
+		self.left_panel.addLayout(time_option_hbox,5)
 
 		main_action_hbox = QHBoxLayout()
+		main_action_hbox.setContentsMargins(0,0,0,0)
+		main_action_hbox.setSpacing(0)
+
 		self.correct_btn = QPushButton('correct')
 		self.correct_btn.setIcon(icon(MDI6.redo_variant, color="white"))
 		self.correct_btn.setIconSize(QSize(20, 20))
@@ -1677,7 +1680,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.cancel_btn.setEnabled(False)
 		self.cancel_btn.clicked.connect(self.cancel_selection)
 		main_action_hbox.addWidget(self.cancel_btn)
-		self.left_panel.addLayout(main_action_hbox)
+		self.left_panel.addLayout(main_action_hbox,5)
 
 		self.annotation_btns_to_hide = [self.time_of_interest_label,
 										self.time_of_interest_le,
@@ -1694,7 +1697,8 @@ class MeasureAnnotator(SignalAnnotator):
 		self.no_event_shortcut.setEnabled(False)
 
 		# Cell signals
-		self.left_panel.addWidget(self.cell_fcanvas)
+		self.cell_fcanvas.setMinimumHeight(int(0.2*self.screen_height))
+		self.left_panel.addWidget(self.cell_fcanvas,90)
 
 		plot_buttons_hbox = QHBoxLayout()
 		plot_buttons_hbox.setContentsMargins(0, 0, 0, 0)
@@ -1720,7 +1724,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.log_btn.clicked.connect(self.switch_to_log)
 		plot_buttons_hbox.addWidget(self.log_btn, 5)
 
-		self.left_panel.addLayout(plot_buttons_hbox)
+		self.left_panel.addLayout(plot_buttons_hbox,5)
 
 		signal_choice_vbox = QVBoxLayout()
 		signal_choice_vbox.setContentsMargins(30, 0, 30, 50)
@@ -1735,14 +1739,13 @@ class MeasureAnnotator(SignalAnnotator):
 		# self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
 		# self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
 
-		self.left_panel.addLayout(signal_choice_vbox)
+		self.left_panel.addLayout(signal_choice_vbox,10)
 
 		btn_hbox = QHBoxLayout()
 		self.save_btn = QPushButton('Save')
 		self.save_btn.setStyleSheet(self.button_style_sheet)
 		self.save_btn.clicked.connect(self.save_trajectories)
 		btn_hbox.addWidget(self.save_btn, 90)
-		self.left_panel.addLayout(btn_hbox)
 
 		self.export_btn = QPushButton('')
 		self.export_btn.setStyleSheet(self.button_select_all)
@@ -1750,7 +1753,7 @@ class MeasureAnnotator(SignalAnnotator):
 		self.export_btn.setIcon(icon(MDI6.export, color="black"))
 		self.export_btn.setIconSize(QSize(25, 25))
 		btn_hbox.addWidget(self.export_btn, 10)
-		self.left_panel.addLayout(btn_hbox)
+		self.left_panel.addLayout(btn_hbox,5)
 
 		# Animation
 		animation_buttons_box = QHBoxLayout()
@@ -1802,8 +1805,6 @@ class MeasureAnnotator(SignalAnnotator):
 		self.contrast_slider.setSingleStep(0.001)
 		self.contrast_slider.setTickInterval(0.001)
 		self.contrast_slider.setOrientation(1)
-		print('range: ',
-			  [np.nanpercentile(self.img.flatten(), 0.001), np.nanpercentile(self.img.flatten(), 99.999)])
 		self.contrast_slider.setRange(
 			*[np.nanpercentile(self.img, 0.001), np.nanpercentile(self.img, 99.999)])
 		self.contrast_slider.setValue(
@@ -1958,9 +1959,8 @@ class MeasureAnnotator(SignalAnnotator):
 				cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
 			self.cell_info.setText(cell_selected + cell_status)
 		except Exception as e:
-			print('Cell info:',e)
-			print(self.track_of_interest, self.status_name)
-			
+			print(e)
+
 	def create_new_event_class(self):
 
 		# display qwidget to name the event
@@ -2048,7 +2048,7 @@ class MeasureAnnotator(SignalAnnotator):
 		try:
 			self.status_scatter.set_edgecolors(self.colors[self.framedata][:, 0])
 		except Exception as e:
-			print('L1993: ',e)
+			pass
 
 		self.current_label = self.labels[self.current_frame]
 		self.current_label = contour_of_instance_segmentation(self.current_label, 5)
@@ -2064,7 +2064,6 @@ class MeasureAnnotator(SignalAnnotator):
 			self.status_name=self.target_class
 		else:
 			self.status_name = self.class_choice_cb.currentText()
-		print('selection and expected names: ', self.status_name)
 
 		if self.status_name not in self.df_tracks.columns:
 			self.make_status_column()
@@ -2100,7 +2099,6 @@ class MeasureAnnotator(SignalAnnotator):
 		if self.status_name == "state_firstdetection":
 			pass
 		else:
-			print('remaking the group column')
 			self.df_tracks.loc[:, self.status_name] = 0
 			all_states = self.df_tracks.loc[:, self.status_name].tolist()
 			all_states = np.array(all_states)
@@ -2300,8 +2298,6 @@ class MeasureAnnotator(SignalAnnotator):
 				self.current_stack[np.where(self.current_stack > 0.)] = np.log(
 					self.current_stack[np.where(self.current_stack > 0.)])
 
-		print(f'Load stack of shape: {self.current_stack.shape}.')
-
 	def changed_channel(self):
 
 		self.reload_frame()
@@ -2339,7 +2335,7 @@ class MeasureAnnotator(SignalAnnotator):
 			pass
 
 		self.df_tracks.to_csv(self.trajectories_path, index=False)
-		print('table saved.')
+		print('Table successfully exported...')
 		self.update_frame()
 
 
@@ -2396,9 +2392,8 @@ class MeasureAnnotator(SignalAnnotator):
 
 		"""
 
-		print("this is the loaded position: ", self.pos)
 		if isinstance(self.pos, str):
-			movies = glob(self.pos + f"movie/{self.parent_window.parent_window.movie_prefix}*.tif")
+			movies = glob(self.pos + os.sep.join(['movie',f"{self.parent_window.parent_window.movie_prefix}*.tif"]))
 
 		else:
 			msgBox = QMessageBox()
@@ -2434,8 +2429,6 @@ class MeasureAnnotator(SignalAnnotator):
 			self.nbr_channels = len(self.channels)
 			self.current_channel = 0
 			self.img = load_frames(0, self.stack_path, normalize_input=False)
-			print(self.img.shape)
-			print(f'{self.stack_path} successfully located.')
 
 	def reload_frame(self):
 

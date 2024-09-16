@@ -114,22 +114,24 @@ class ProcessPanel(QFrame, Styles):
 		self.ContentsFrame.hide()
 
 	def collapse_advanced(self):
+
+		effector_open = not self.parent_window.ProcessEffectors.ContentsFrame.isHidden()
+		targets_open = not self.parent_window.ProcessTargets.ContentsFrame.isHidden()
+		interactions_open = not self.parent_window.NeighPanel.ContentsFrame.isHidden()
+		preprocessing_open = not self.parent_window.PreprocessingPanel.ContentsFrame.isHidden()
+		is_open = np.array([effector_open, targets_open, interactions_open, preprocessing_open])
+
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent_window.scroll.setMinimumHeight(int(550))
-			#self.parent.w.adjustSize()
-			self.parent_window.adjustSize()
-			#self.parent.scroll.adjustSize()
+			if len(is_open[is_open])==0:
+				self.parent_window.scroll.setMinimumHeight(int(550))
+				self.parent_window.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			#self.parent.w.adjustSize()
-			#self.parent.adjustSize()
 			self.parent_window.scroll.setMinimumHeight(min(int(930), int(0.9*self.parent_window.screen_height)))
-			self.parent_window.scroll.setMinimumWidth(425)
 
-			#self.parent.scroll.adjustSize()
 
 	def help_population(self):
 
@@ -1161,19 +1163,22 @@ class NeighPanel(QFrame, Styles):
 
 	def collapse_advanced(self):
 
+		effector_open = not self.parent_window.ProcessEffectors.ContentsFrame.isHidden()
+		targets_open = not self.parent_window.ProcessTargets.ContentsFrame.isHidden()
+		interactions_open = not self.parent_window.NeighPanel.ContentsFrame.isHidden()
+		preprocessing_open = not self.parent_window.PreprocessingPanel.ContentsFrame.isHidden()
+		is_open = np.array([effector_open, targets_open, interactions_open, preprocessing_open])
+
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent_window.scroll.setMinimumHeight(int(550))
-			#self.parent.w.adjustSize()
-			self.parent_window.adjustSize()
+			if len(is_open[is_open])==0:
+				self.parent_window.scroll.setMinimumHeight(int(550))
+				self.parent_window.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			#self.parent.w.adjustSize()
-			#self.parent.adjustSize()
 			self.parent_window.scroll.setMinimumHeight(min(int(1000), int(0.9*self.parent_window.screen_height)))
-			self.parent_window.scroll.setMinimumWidth(425)
 
 
 	def populate_contents(self):
@@ -1710,19 +1715,22 @@ class PreprocessingPanel(QFrame, Styles):
 
 	def collapse_advanced(self):
 
+		effector_open = not self.parent_window.ProcessEffectors.ContentsFrame.isHidden()
+		targets_open = not self.parent_window.ProcessTargets.ContentsFrame.isHidden()
+		interactions_open = not self.parent_window.NeighPanel.ContentsFrame.isHidden()
+		preprocessing_open = not self.parent_window.PreprocessingPanel.ContentsFrame.isHidden()
+		is_open = np.array([effector_open, targets_open, interactions_open, preprocessing_open])
+
 		if self.ContentsFrame.isHidden():
 			self.collapse_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			self.parent_window.scroll.setMinimumHeight(int(550))
-			#self.parent.w.adjustSize()
-			self.parent_window.adjustSize()
+			if len(is_open[is_open])==0:
+				self.parent_window.scroll.setMinimumHeight(int(550))
+				self.parent_window.adjustSize()
 		else:
 			self.collapse_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_btn.setIconSize(QSize(20, 20))
-			#self.parent.w.adjustSize()
-			#self.parent.adjustSize()
 			self.parent_window.scroll.setMinimumHeight(min(int(930), int(0.9*self.parent_window.screen_height)))
-			self.parent_window.scroll.setMinimumWidth(425)
 
 	def populate_contents(self):
 

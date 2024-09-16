@@ -645,8 +645,11 @@ class ProtocolDesignerLayout(QVBoxLayout, Styles):
 		self.delete_protocol_btn.clicked.connect(self.remove_protocol_from_list)
 
 	def generate_layout(self):
-		
-		self.addWidget(self.title_lbl, alignment=Qt.AlignCenter)
+
+		self.title_layout = QHBoxLayout()
+		self.title_layout.addWidget(self.title_lbl, alignment=Qt.AlignCenter)
+
+		self.addLayout(self.title_layout)
 		self.addWidget(self.tabs)
 
 		list_header_layout = QHBoxLayout()

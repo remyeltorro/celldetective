@@ -1745,6 +1745,16 @@ class PreprocessingPanel(QFrame, Styles):
 											  tab_names=['Fit', 'Model-free'],
 											  title='BACKGROUND CORRECTION',
 											  list_title='Corrections to apply:')
+		
+		self.help_background_btn = QPushButton()
+		self.help_background_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_background_btn.setIconSize(QSize(20, 20))
+		self.help_background_btn.clicked.connect(self.help_background)
+		self.help_background_btn.setStyleSheet(self.button_select_all)
+		self.help_background_btn.setToolTip("Help.")
+
+		self.protocol_layout.title_layout.addWidget(self.help_background_btn, 5, alignment=Qt.AlignRight)
+
 		self.grid_contents.addLayout(self.protocol_layout,0,0,1,4)
 		self.submit_preprocessing_btn = QPushButton("Submit")
 		self.submit_preprocessing_btn.setStyleSheet(self.button_style_sheet_2)
@@ -1849,3 +1859,27 @@ class PreprocessingPanel(QFrame, Styles):
 				return None
 		else:
 			self.current_stack = movies[0]
+
+	def help_background(self):
+
+		"""
+		Helper to choose a proper cell population structure.
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','preprocessing.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(suggestion)
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None			

@@ -1,0 +1,51 @@
+{
+  "Is the background spatially invariant (within a well)?": {
+    "yes": {
+      "Do your stacks represent timeseries?": {
+        "yes": {
+          "Does your background add to the signal (typical of fluorescence)?": {
+            "yes": "You may perform a model-free background correction. Set the channel(s) of interest and specify that you have timeseries. Estimate the frame range over which you have the best estimate of the background (typically before cell arrival, when applicable). Carefully tune the threshold to exclude all non-background objects. If the background intensity values fluctuate slightly from one frame to the next or one position to the next, activate the optimization option. Since your background is additive, you may subtract it from the images. ",
+            "no": "You may perform a model-free background correction. Set the channel(s) of interest and specify that you have timeseries. Estimate the frame range over which you have the best estimate of the background (typically before cell arrival, when applicable). Carefully tune the threshold to exclude all non-background objects. If the background intensity values fluctuate slightly from one frame to the next or one position to the next, activate the optimization option. Since your background is not additive, you may divide it from the images to express the intensities as relative to the background."
+          }
+        },
+        "no": {
+          "Does your background add to the signal (typical of fluorescence)?": {
+            "yes": "You may perform a model-free background correction. Set the channel(s) of interest and specify that you have tiles. Carefully tune the threshold to exclude all non-background objects. If the background intensity values fluctuate slightly from one position to the next, activate the optimization option. Since your background is additive, you may subtract it from the images. ",
+            "no": "You may perform a model-free background correction. Set the channel(s) of interest and specify that you have tiles. Carefully tune the threshold to exclude all non-background objects. If the background intensity values fluctuate slightly from one position to the next, activate the optimization option. Since your background is not additive, you may divide it from the images to express the intensities as relative to the background."
+          }
+        }
+      }
+    },
+    "no": {
+      "Is the background brighter at the center than at the edges?": {
+        "yes": {
+          "Is the background correction critical to segment the cells? It is often the case when you use a traditional segmentation pipeline.": {
+            "yes": {
+              "Does your background add to the signal (typical of fluorescence)?": {
+                "yes": "You may perform a model-based (fit) correction. Set the channel(s) of interest and carefully tune the threshold to exclude all non-background objects. Choose a paraboloid model and subtract.",
+                "no": "You may perform a model-based (fit) correction. Set the channel(s) of interest and carefully tune the threshold to exclude all non-background objects. Choose a paraboloid model and divide to express the intensities as relative to the background."
+              }
+            },
+            "no": "You can skip the image preprocessing step to save a considerable amount of storage. You will have the option to perform this preprocessing on-the-fly in the measurement module, which may be preferable. See <a href='https://celldetective.readthedocs.io/en/latest/measure.html#background-correction'>the documentation</a>."
+          }
+        },
+        "no": {
+          "Is the background a constant value?": {
+            "yes": {
+              "Is the background correction critical to segment the cells? It is often the case when you use a traditional segmentation pipeline.": {
+                "yes": {
+                  "Does your background add to the signal (typical of fluorescence)?": {
+                    "yes": "You may perform a model-based (fit) correction. Set the channel(s) of interest and carefully tune the threshold to exclude all non-background objects. Choose a plane model and subtract.",
+                    "no": "You may perform a model-based (fit) correction. Set the channel(s) of interest and carefully tune the threshold to exclude all non-background objects. Choose a plane model and divide to express the intensities as relative to the background."
+                  }
+                },
+                "no": "You can skip the image preprocessing step to save a considerable amount of storage. You will have the option to perform this preprocessing on-the-fly in the measurement module, which may be preferable. See <a href='https://celldetective.readthedocs.io/en/latest/measure.html#background-correction'>the documentation</a>."
+              }
+            },
+            "no": "For a complex background pattern it is preferable to not perform a correction at this stage. We recommend exploring the local cell correction available in the measurement module. See <a href='https://celldetective.readthedocs.io/en/latest/measure.html#background-correction'>the documentation</a>."
+          }
+        }
+      }
+    }
+  }
+}

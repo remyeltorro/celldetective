@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import QMessageBox, QButtonGroup, QComboBox, QCheckBox, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton, QRadioButton
+from PyQt5.QtWidgets import QMessageBox, QComboBox, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QDoubleValidator
-from celldetective.gui.gui_utils import center_window, FigureCanvas
+from celldetective.gui.gui_utils import center_window
 from superqt import QColormapComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6

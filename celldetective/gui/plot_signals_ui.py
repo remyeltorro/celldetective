@@ -96,7 +96,7 @@ class ConfigSignalPlot(QWidget, Styles):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: '), QLabel('cmap: ')]
-		self.cb_options = [['targets','effectors'],['class'], ['t0'], list(plt.colormaps())]
+		self.cb_options = [['targets','effectors'],['class'], ['t0'], []]
 		self.cbs = [QComboBox() for i in range(len(labels))]
 		self.cbs[-1] = QColormapComboBox()
 		

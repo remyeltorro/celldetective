@@ -50,6 +50,7 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.ci_btn.click()
 		#self.legend_btn.click()
 
+		self.fig.tight_layout()
 		center_window(self)
 		self.setLayout(self.layout)
 		self.setAttribute(Qt.WA_DeleteOnClose)
@@ -221,7 +222,7 @@ class GenericSignalPlotWidget(QWidget, Styles):
 
 		self.look_for_metadata()
 		if self.metadata_found:
-			self.fig_scatter, self.ax_scatter = plt.subplots(1,1,figsize=(4,3))
+			self.fig_scatter, self.ax_scatter = plt.subplots(1,1,figsize=(4,2)) #,figsize=(4,3)
 			self.position_scatter = FigureCanvas(self.fig_scatter)
 			self.load_coordinates()
 			self.plot_spatial_location()
@@ -237,7 +238,8 @@ class GenericSignalPlotWidget(QWidget, Styles):
 			self.layout.addWidget(self.position_scatter)
 
 		self.generate_pos_selection_widget()
-		# self.select_btn_group.buttons()[0].click()
+		self.select_btn_group.buttons()[0].click()
+
 
 	def rescale_y_axis(self):
 		new_scale = self.scaling_factor_le.text().replace(',','.')
@@ -369,14 +371,77 @@ class GenericSignalPlotWidget(QWidget, Styles):
 			self.sc = self.ax_scatter.scatter(self.df_pos_info["x"].values, self.df_pos_info["y"].values, picker=True, pickradius=1, color=self.select_color(self.df_pos_info["select"].values))
 			self.scat_labels = self.df_pos_info['metadata_tag'].values
 			self.ax_scatter.invert_xaxis()
+
 			self.annot = self.ax_scatter.annotate("", xy=(0,0), xytext=(10,10),textcoords="offset points",
 								bbox=dict(boxstyle="round", fc="w"),
 								arrowprops=dict(arrowstyle="->"))
 			self.annot.set_visible(False)
+			
+			xmin,xmax = self.ax_scatter.get_xlim()
+			ymin,ymax = self.ax_scatter.get_ylim()
+			xdatarange = xmax - xmin
+			ydatarange = ymax - ymin
+			
+			self.ax_scatter.set_xlim(xmin-0.1*xdatarange, xmax + 0.1*xdatarange)
+			self.ax_scatter.set_ylim(ymin-0.1*ydatarange, ymax + 0.1*ydatarange)
+			
+			#xmin,xmax = self.ax_scatter.get_xlim()
+			#ymin,ymax = self.ax_scatter.get_ylim()
+			#desired_a = 4
+			#new_x_max = xmin + desired_a * (ymax - ymin)
+			#self.ax_scatter.set_xlim(xmin - (new_x_max - xmin)/2.0, new_x_max - (new_x_max - xmin)/2.0)
+			
+			self.fig_scatter.tight_layout()
 			self.fig_scatter.canvas.mpl_connect("motion_notify_event", self.hover)
 			self.fig_scatter.canvas.mpl_connect("pick_event", self.unselect_position)
 		except Exception as e:
 			pass
+
+	def update_annot(self, ind):
+		
+		pos = self.sc.get_offsets()[ind["ind"][0]]
+		self.annot.xy = pos
+		text = self.scat_labels[ind["ind"][0]]
+		self.annot.set_text(text)
+		self.annot.get_bbox_patch().set_facecolor('k')
+		self.annot.get_bbox_patch().set_alpha(0.4)
+
+
+	def hover(self, event):
+		vis = self.annot.get_visible()
+		if event.inaxes == self.ax_scatter:
+			cont, ind = self.sc.contains(event)
+			if cont:
+				self.update_annot(ind)
+				self.annot.set_visible(True)
+				self.fig_scatter.canvas.draw_idle()
+			else:
+				if vis:
+					self.annot.set_visible(False)
+					self.fig_scatter.canvas.draw_idle()
+
+	def unselect_position(self, event):
+		
+		ind = event.ind # index of selected position
+		well_idx = self.df_pos_info.iloc[ind]['well_index'].values[0]
+		selectedPos = self.df_pos_info.iloc[ind]['pos_path'].values[0]
+		currentSelState = self.df_pos_info.iloc[ind]['select'].values[0]
+		if self.plot_options[0].isChecked() or self.plot_options[2].isChecked():
+			self.df_pos_info.loc[self.df_pos_info['well_index']==well_idx,'select'] = not currentSelState
+			self.df_well_info.loc[self.df_well_info['well_index']==well_idx, 'select'] = not currentSelState
+			if len(self.parent_window.well_indices)>1:
+				self.well_display_options[well_idx].setChecked(not currentSelState)
+			else:
+				for p in self.pos_display_options:
+					p.setChecked(not currentSelState)
+		else:
+			self.df_pos_info.loc[self.df_pos_info['pos_path']==selectedPos,'select'] = not currentSelState
+			if len(self.parent_window.well_indices)<=1:
+				self.pos_display_options[ind[0]].setChecked(not currentSelState)
+
+		self.sc.set_color(self.select_color(self.df_pos_info["select"].values))
+		self.position_scatter.canvas.draw_idle()
+		self.plot_signals(0)
 
 	def select_color(self, selection):
 		colors = [tab10(0) if s else tab10(0.1) for s in selection]

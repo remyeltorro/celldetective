@@ -31,7 +31,7 @@ class ConfigSurvival(QWidget, Styles):
 		super().__init__()
 		self.parent_window = parent_window
 		self.setWindowTitle("Configure survival")
-		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','logo.png'])))
+		self.setWindowIcon(self.celldetective_icon)
 
 		self.exp_dir = self.parent_window.exp_dir
 		self.soft_path = get_software_location()		
@@ -51,12 +51,10 @@ class ConfigSurvival(QWidget, Styles):
 		center_window(self)
 
 		self.setMinimumWidth(350)
-		#self.setMinimumHeight(int(0.8*self.screen_height))
-		#self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
-		#self.load_previous_measurement_instructions()
 		if self.auto_close:
 			self.close()
+		
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
 	def interpret_pos_location(self):
@@ -99,7 +97,7 @@ class ConfigSurvival(QWidget, Styles):
 
 
 		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('cmap: ')] #QLabel('class: '), 
-		self.cb_options = [['targets','effectors'], ['0'], [], list(plt.colormaps())] #['class'], 
+		self.cb_options = [['targets','effectors'], ['0'], [], []] #['class'], 
 		self.cbs = [QComboBox() for i in range(len(labels))]
 
 		self.cbs[-1] = QColormapComboBox()
@@ -115,7 +113,8 @@ class ConfigSurvival(QWidget, Styles):
 				self.cbs[i].addItems(self.cb_options[i])
 			choice_layout.addLayout(hbox)
 
-		for cm in list(colormaps):
+		all_cms = list(colormaps)
+		for cm in all_cms:
 			try:
 				self.cbs[-1].addColormap(cm)
 			except:
@@ -160,15 +159,10 @@ class ConfigSurvival(QWidget, Styles):
 		for tab in tables:
 			cols = pd.read_csv(tab, nrows=1,encoding_errors='ignore').columns.tolist()
 			self.all_columns.extend(cols)
+
 		self.all_columns = np.unique(self.all_columns)
 		#class_idx = np.array([s.startswith('class_') for s in self.all_columns])
 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
-		class_idx = np.array([s.startswith('class') for s in self.all_columns])
-
-		# class_columns = list(self.all_columns[class_idx])
-		# for c in ['class_id', 'class_color']:
-		# 	if c in class_columns:
-		# 		class_columns.remove(c)
 
 		try:
 			time_columns = list(self.all_columns[time_idx])
@@ -177,25 +171,13 @@ class ConfigSurvival(QWidget, Styles):
 			self.auto_close = True
 			return None
 
-		try:
-			class_columns = list(self.all_columns[class_idx])
-			self.cbs[3].clear()
-			self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
-		except:
-			print('no column starts with class')
-			self.auto_close = True
-			return None
-
-		self.cbs[2].clear()
-		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
-
 		self.cbs[1].clear()
 		self.cbs[1].addItems(np.unique(self.cb_options[1]+time_columns))
 		self.cbs[1].setCurrentText('t_firstdetection')
 
-		# self.cbs[3].clear()
-		# self.cbs[3].addItems(np.unique(self.cb_options[3]+class_columns))
-		
+		self.cbs[2].clear()
+		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
+
 
 	def process_survival(self):
 

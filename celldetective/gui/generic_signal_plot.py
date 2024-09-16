@@ -27,10 +27,12 @@ class GenericSignalPlotWidget(QWidget, Styles):
 
 		self.parent_window = parent_window
 		self.setWindowTitle(title)
+		self.setWindowIcon(self.celldetective_icon)
 
 		self.show_ci = False
 		self.legend_visible = True
 		self.show_cell_lines = False
+		self.alpha_setting = 0.5
 		self.scaling_factor = 1
 		self.target_class = [0]
 		self.float_validator = QDoubleValidator()
@@ -51,9 +53,9 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		#self.legend_btn.click()
 
 		self.fig.tight_layout()
-		center_window(self)
 		self.setLayout(self.layout)
 		self.setAttribute(Qt.WA_DeleteOnClose)
+		center_window(self)
 
 	def populate_widget(self):
 
@@ -202,6 +204,23 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		#self.layout.addLayout(scale_hbox)
 		self.layout.addWidget(self.rescale_widget)
 
+
+		# Rescale 
+		self.cell_lines_alpha_wdg = QWidget()
+		alpha_hbox = QHBoxLayout()
+		self.cell_lines_alpha_wdg.setLayout(alpha_hbox)
+
+		alpha_hbox.addWidget(QLabel('single-cell\nsignal alpha: '), 25)
+		self.alpha_le = QLineEdit('0,8')
+		self.alpha_le.setValidator(self.float_validator)
+		alpha_hbox.addWidget(self.alpha_le, 65)
+
+		self.submit_alpha_btn = QPushButton('submit')
+		self.submit_alpha_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_alpha_btn.clicked.connect(self.submit_alpha)
+		alpha_hbox.addWidget(self.submit_alpha_btn, 10)
+		self.layout.addWidget(self.cell_lines_alpha_wdg)
+
 		self.select_option = [QRadioButton() for i in range(2)]
 		self.select_label = ['by name', 'spatially']
 
@@ -240,6 +259,19 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.generate_pos_selection_widget()
 		self.select_btn_group.buttons()[0].click()
 
+	def submit_alpha(self):
+
+		alpha = self.alpha_le.text().replace(',','.')
+		try:
+			alpha = float(alpha)
+		except:
+			return None
+		if alpha>1.0:
+			alpha = 1.0
+		elif alpha<0.0:
+			alpha = 0.0
+		self.alpha_setting = alpha
+		self.plot_signals(0)
 
 	def rescale_y_axis(self):
 		new_scale = self.scaling_factor_le.text().replace(',','.')
@@ -589,7 +621,7 @@ class GenericSignalPlotWidget(QWidget, Styles):
 
 		self.plot_widget.canvas.draw()
 
-	def plot_line(self, line, color, label, mean_signal, ci_option=True, cell_lines_option=False, alpha_ci=0.5, alpha_cell_lines=0.5, std_signal=None, matrix=None):
+	def plot_line(self, line, color, label, mean_signal, ci_option=True, cell_lines_option=False, alpha_ci=0.5, std_signal=None, matrix=None):
 		
 		# Plot a signal
 		if line==line:
@@ -607,7 +639,7 @@ class GenericSignalPlotWidget(QWidget, Styles):
 				# Show individual cell signals
 				mat = line[matrix]
 				for i in range(mat.shape[0]):
-					self.ax.plot(line['timeline']*self.parent_window.FrameToMin, mat[i,:]*self.scaling_factor, color=color, alpha=alpha_cell_lines)
+					self.ax.plot(line['timeline']*self.parent_window.FrameToMin, mat[i,:]*self.scaling_factor, color=color, alpha=self.alpha_setting)
 
 
 	def switch_ci(self):
@@ -655,7 +687,8 @@ class SurvivalPlotWidget(GenericSignalPlotWidget):
 		self.cell_lines_btn.hide()
 		self.class_selection_widget.hide()
 		self.rescale_widget.hide()
-
+		self.cell_lines_alpha_wdg.hide()
+		
 	def switch_to_log(self):
 
 		"""

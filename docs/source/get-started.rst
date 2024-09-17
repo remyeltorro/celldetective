@@ -11,26 +11,26 @@ Stable release
 ~~~~~~~~~~~~~~
 
 
-Celldetective can be installed with ``pip``:
+Celldetective requires a version of Python between 3.9 and 3.11 (included). If your Python version is older or more recent, consider using `conda` to create an environment as described below.
+
+With the proper Python version, Celldetective can be directly installed with `pip`:
 
 .. code-block:: bash
-
     pip install celldetective
 
-We recommend that you create an environment to use Celldetective, *e.g.* with ``conda``:
+We recommend that you create an environment to use Celldetective, to protect your package versions and fix the Python version *e.g.*
+with `conda`:
 
 .. code-block:: bash
-
-    conda create -n celldetective python=3.9.18 pyqt
+    conda create -n celldetective python=3.11 pyqt
     conda activate celldetective
     pip install celldetective
 
-Need an update? Simply type the following in the terminal (in your environment):
+Need an update? Simply type the following in the terminal (in your
+environment):
 
 .. code-block:: bash
-
     pip install --upgrade celldetective
-
 
 Development version
 ~~~~~~~~~~~~~~~~~~~
@@ -44,7 +44,12 @@ If you want to run the latest development version, you can clone the repository 
     git clone git://github.com/remyeltorro/celldetective.git
     cd celldetective
 
+    # optional: create an environment
+    conda create -n celldetective python=3.11 pyqt
+    conda activate celldetective
+
     # install the celldetective package in editable/development mode
+    pip install -r requirements.txt
     pip install -e .
 
 To run the latest development version without cloning the repository, you can also use this line:

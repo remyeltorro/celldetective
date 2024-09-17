@@ -21,6 +21,7 @@ from skimage.measure import regionprops_table
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.utils import interpolate_nan
 import concurrent.futures
+from tifffile import imwrite
 
 def get_experiment_wells(experiment):
 	
@@ -676,6 +677,49 @@ def locate_labels(position, population='target'):
 
 	return labels
 
+def fix_missing_labels(position, population='target', prefix='Aligned'):
+	
+	"""
+	Fix missing label files by creating empty label images for frames that do not have corresponding label files.
+
+	This function locates missing label files in a sequence of frames and creates empty labels (filled with zeros) 
+	for the frames that are missing. The function works for two types of populations: 'target' or 'effector'.
+
+	Parameters
+	----------
+	position : str
+		The file path to the folder containing the images/label files. This is the root directory where 
+		the label files are expected to be found.
+	population : str, optional
+		Specifies whether to look for 'target' or 'effector' labels. Accepts 'target' or 'effector' 
+		as valid values. Default is 'target'.
+	prefix : str, optional
+		The prefix used to locate the image stack (default is 'Aligned').
+
+	Returns
+	-------
+	None
+		The function creates new label files in the corresponding folder for any frames missing label files.
+	"""
+
+	if not position.endswith(os.sep):
+		position += os.sep
+
+	stack = locate_stack(position, prefix=prefix)
+	template = np.zeros((stack[0].shape[0], stack[0].shape[1]))
+	all_frames = np.arange(len(stack))
+
+	if population.lower() == "target" or population.lower() == "targets":
+		label_path = natsorted(glob(position + os.sep.join(["labels_targets", "*.tif"])))
+	elif population.lower() == "effector" or population.lower() == "effectors":
+		label_path = natsorted(glob(position + os.sep.join(["labels_effectors", "*.tif"])))
+
+	path = os.path.split(label_path[0])[0]
+	int_valid = [int(lbl.split(os.sep)[-1].split('.')[0]) for lbl in label_path]
+	to_create = [x for x in all_frames if x not in int_valid]
+	to_create = [str(x).zfill(4)+'.tif' for x in to_create]
+	for file in to_create:
+		imwrite(os.sep.join([path, file]), template)
 
 
 def locate_stack_and_labels(position, prefix='Aligned', population="target"):

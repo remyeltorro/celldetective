@@ -28,3 +28,4 @@ lmfit #~=1.2.2
 superqt[cmap] #>= 0.6.1
 setuptools
 matplotlib_scalebar
+numpy==1.26.4

@@ -127,23 +127,25 @@ steps.
 
 To use the software, you must install python, *e.g.* through
 [Anaconda](https://www.anaconda.com/download). We developed and tested
-the software in Python 3.9.18.
+the software in Python 3.9 and more recently 3.11.
 
 # Installation
 
 ## Stable release
 
-Celldetective can be installed with `pip`:
+Celldetective requires a version of Python between 3.9 and 3.11 (included). If your Python version is older or more recent, consider using `conda` to create an environment as described below.
+
+With the proper Python version, Celldetective can be directly installed with `pip`:
 
 ``` bash
 pip install celldetective
 ```
 
-We recommend that you create an environment to use Celldetective, *e.g.*
+We recommend that you create an environment to use Celldetective, to protect your package versions and fix the Python version *e.g.*
 with `conda`:
 
 ``` bash
-conda create -n celldetective python=3.9.18 pyqt
+conda create -n celldetective python=3.11 pyqt
 conda activate celldetective
 pip install celldetective
 ```
@@ -169,6 +171,10 @@ will be immediately available in the python environment:
 git clone git://github.com/remyeltorro/celldetective.git
 cd celldetective
 
+# optional: create an environment
+conda create -n celldetective python=3.11 pyqt
+conda activate celldetective
+
 # install the celldetective package in editable/development mode
 pip install -r requirements.txt
 pip install -e .
@@ -191,10 +197,10 @@ with package requirements for other projects. Run the following lines to
 create an environment named \"celldetective\":
 
 ``` bash
-conda create -n celldetective python=3.9.18 pyqt
+conda create -n celldetective python=3.11 pyqt
 conda activate celldetective
 pip install -r requirements.txt
-pip install .
+pip install -e .
 ```
 
 The installation of the dependencies will take a few minutes (up to half

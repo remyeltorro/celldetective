@@ -35,7 +35,7 @@ from celldetective.preprocessing import correct_background_model_free, correct_b
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout, help_generic
 from celldetective.gui.viewers import CellSizeViewer
-from celldetective.gui.layouts import BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout
+from celldetective.gui.layouts import CellposeParamsWidget, StarDistParamsWidget, BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location
 
@@ -783,120 +783,14 @@ class ProcessPanel(QFrame, Styles):
 
 		if self.model_name.startswith('CP') and self.model_name in self.seg_models_generic and not self.cellpose_calibrated:
 
-			self.diamWidget = QWidget()
-			self.diamWidget.setWindowTitle('Estimate diameter')
-
-			layout = QVBoxLayout()
-			self.diamWidget.setLayout(layout)
-
-			self.view_diameter_btn = QPushButton()
-			self.view_diameter_btn.setStyleSheet(self.button_select_all)
-			self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
-			self.view_diameter_btn.setToolTip("View stack.")
-			self.view_diameter_btn.setIconSize(QSize(20, 20))
-			self.view_diameter_btn.clicked.connect(self.view_current_stack_with_scale_bar)
-
-			self.diameter_le = ThresholdLineEdit(init_value=40, connected_buttons=[self.view_diameter_btn],placeholder='cell diameter in pixels', value_type='float')
-
-			self.cellpose_channel_cb = [QComboBox() for i in range(2)]
-			self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
-			if self.model_name=="CP_nuclei":
-				self.cellpose_channel_template = ['live_nuclei_channel', 'None']
-
-
-			for k in range(2):
-				hbox_channel = QHBoxLayout()
-				hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
-				hbox_channel.addWidget(self.cellpose_channel_cb[k])
-				if k==1:
-					self.cellpose_channel_cb[k].addItems(list(self.exp_channels)+['None'])
-				else:
-					self.cellpose_channel_cb[k].addItems(list(self.exp_channels))
-				idx = self.cellpose_channel_cb[k].findText(self.cellpose_channel_template[k])
-				if idx>0:
-					self.cellpose_channel_cb[k].setCurrentIndex(idx)
-				else:
-					self.cellpose_channel_cb[k].setCurrentIndex(0)
-
-				if k==1:
-					idx = self.cellpose_channel_cb[k].findText('None')
-					self.cellpose_channel_cb[k].setCurrentIndex(idx)
-
-				layout.addLayout(hbox_channel)
-
-			hbox = QHBoxLayout()
-			hbox.addWidget(QLabel('diameter [px]: '), 33)
-			hbox.addWidget(self.diameter_le, 61)
-			hbox.addWidget(self.view_diameter_btn)
-			layout.addLayout(hbox)
-
-			self.flow_slider = QLabeledDoubleSlider()
-			self.flow_slider.setOrientation(1)
-			self.flow_slider.setRange(-6,6)
-			self.flow_slider.setValue(0.4)
-
-			hbox = QHBoxLayout()
-			hbox.addWidget(QLabel('flow threshold: '), 33)
-			hbox.addWidget(self.flow_slider, 66)
-			layout.addLayout(hbox)
-
-			self.cellprob_slider = QLabeledDoubleSlider()
-			self.cellprob_slider.setOrientation(1)
-			self.cellprob_slider.setRange(-6,6)
-			self.cellprob_slider.setValue(0.)
-
-			hbox = QHBoxLayout()
-			hbox.addWidget(QLabel('cellprob threshold: '), 33)
-			hbox.addWidget(self.cellprob_slider, 66)
-			layout.addLayout(hbox)
-
-			self.set_cellpose_scale_btn = QPushButton('set')
-			self.set_cellpose_scale_btn.clicked.connect(self.set_cellpose_scale)
-			layout.addWidget(self.set_cellpose_scale_btn)
-
+			self.diamWidget = CellposeParamsWidget(self, model_name=self.model_name)
 			self.diamWidget.show()
-			center_window(self.diamWidget)
 			return None
-
 
 		if self.model_name.startswith('SD') and self.model_name in self.seg_models_generic and not self.stardist_calibrated:
 
-			self.diamWidget = QWidget()
-			self.diamWidget.setWindowTitle('Channels')
-
-			layout = QVBoxLayout()
-			self.diamWidget.setLayout(layout)
-
-			self.stardist_channel_cb = [QComboBox() for i in range(1)]
-			self.stardist_channel_template = ['live_nuclei_channel']
-			max_i = 1
-			if self.model_name=="SD_versatile_he":
-				self.stardist_channel_template = ["H&E_1","H&E_2","H&E_3"]
-				self.stardist_channel_cb = [QComboBox() for i in range(3)]
-				max_i = 3
-
-			for k in range(max_i):
-				hbox_channel = QHBoxLayout()
-				hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
-				hbox_channel.addWidget(self.stardist_channel_cb[k])
-				if k==1:
-					self.stardist_channel_cb[k].addItems(list(self.exp_channels)+['None'])
-				else:
-					self.stardist_channel_cb[k].addItems(list(self.exp_channels))
-				idx = self.stardist_channel_cb[k].findText(self.stardist_channel_template[k])
-				if idx>0:
-					self.stardist_channel_cb[k].setCurrentIndex(idx)
-				else:
-					self.stardist_channel_cb[k].setCurrentIndex(0)
-
-				layout.addLayout(hbox_channel)
-
-			self.set_stardist_scale_btn = QPushButton('set')
-			self.set_stardist_scale_btn.clicked.connect(self.set_stardist_scale)
-			layout.addWidget(self.set_stardist_scale_btn)
-
+			self.diamWidget = StarDistParamsWidget(self, model_name = self.model_name)
 			self.diamWidget.show()
-			center_window(self.diamWidget)
 			return None
 
 
@@ -995,23 +889,23 @@ class ProcessPanel(QFrame, Styles):
 		# QApplication.restoreOverrideCursor()
 		# self.unfreeze()
 
-	def view_current_stack_with_scale_bar(self):
+	# def view_current_stack_with_scale_bar(self):
 
-		self.parent_window.locate_image()
-		if self.parent_window.current_stack is not None:
-			self.viewer = CellSizeViewer(
-										  initial_diameter = float(self.diameter_le.text().replace(',', '.')),
-				parent_le = self.diameter_le,
-										  stack_path=self.parent_window.current_stack,
-										  window_title=f'Position {self.parent_window.position_list.currentText()}',
-										  frame_slider = True,
-										  contrast_slider = True,
-										  channel_cb = True,
-										  channel_names = self.parent_window.exp_channels,
-										  n_channels = self.parent_window.nbr_channels,
-										  PxToUm = 1,
-										 )
-			self.viewer.show()
+	# 	self.parent_window.locate_image()
+	# 	if self.parent_window.current_stack is not None:
+	# 		self.viewer = CellSizeViewer(
+	# 									  initial_diameter = float(self.diameter_le.text().replace(',', '.')),
+	# 			parent_le = self.diameter_le,
+	# 									  stack_path=self.parent_window.current_stack,
+	# 									  window_title=f'Position {self.parent_window.position_list.currentText()}',
+	# 									  frame_slider = True,
+	# 									  contrast_slider = True,
+	# 									  channel_cb = True,
+	# 									  channel_names = self.parent_window.exp_channels,
+	# 									  n_channels = self.parent_window.nbr_channels,
+	# 									  PxToUm = 1,
+	# 									 )
+	# 		self.viewer.show()
 
 
 
@@ -1083,14 +977,14 @@ class ProcessPanel(QFrame, Styles):
 
 	def set_cellpose_scale(self):
 
-		scale = self.parent_window.PxToUm * float(self.diameter_le.get_threshold()) / 30.0
+		scale = self.parent_window.PxToUm * float(self.diamWidget.diameter_le.get_threshold()) / 30.0
 		if self.model_name=="CP_nuclei":
-			scale = self.parent_window.PxToUm * float(self.diameter_le.get_threshold()) / 17.0
-		flow_thresh = self.flow_slider.value()
-		cellprob_thresh = self.cellprob_slider.value()
+			scale = self.parent_window.PxToUm * float(self.diamWidget.diameter_le.get_threshold()) / 17.0
+		flow_thresh = self.diamWidget.flow_slider.value()
+		cellprob_thresh = self.diamWidget.cellprob_slider.value()
 		model_complete_path = locate_segmentation_model(self.model_name)
 		input_config_path = model_complete_path+"config_input.json"
-		new_channels = [self.cellpose_channel_cb[i].currentText() for i in range(2)]
+		new_channels = [self.diamWidget.cellpose_channel_cb[i].currentText() for i in range(2)]
 		print(new_channels)
 		with open(input_config_path) as config_file:
 			input_config = json.load(config_file)
@@ -1109,21 +1003,13 @@ class ProcessPanel(QFrame, Styles):
 
 	def set_stardist_scale(self):
 
-		# scale = self.parent.PxToUm * float(self.diameter_le.text()) / 30.0
-		# if self.model_name=="CP_nuclei":
-		# 	scale = self.parent.PxToUm * float(self.diameter_le.text()) / 17.0
-		# flow_thresh = self.flow_slider.value()
-		# cellprob_thresh = self.cellprob_slider.value()
 		model_complete_path = locate_segmentation_model(self.model_name)
 		input_config_path = model_complete_path+"config_input.json"
-		new_channels = [self.stardist_channel_cb[i].currentText() for i in range(len(self.stardist_channel_cb))]
+		new_channels = [self.diamWidget.stardist_channel_cb[i].currentText() for i in range(len(self.diamWidget.stardist_channel_cb))]
 		with open(input_config_path) as config_file:
 			input_config = json.load(config_file)
 
-		# input_config['spatial_calibration'] = scale
 		input_config['channels'] = new_channels
-		# input_config['flow_threshold'] = flow_thresh
-		# input_config['cellprob_threshold'] = cellprob_thresh
 		with open(input_config_path, 'w') as f:
 			json.dump(input_config, f, indent=4)
 

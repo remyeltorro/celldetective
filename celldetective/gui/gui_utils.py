@@ -6,6 +6,7 @@ from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from celldetective.gui import Styles
 from superqt.fonticon import icon
+from superqt import QLabeledDoubleSlider
 from fonticon_mdi6 import MDI6
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -15,6 +16,7 @@ import celldetective.extra_properties as extra_properties
 from inspect import getmembers, isfunction
 from celldetective.filters import *
 from os import sep
+
 
 class QuickSliderLayout(QHBoxLayout):
 	

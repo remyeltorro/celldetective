@@ -1,14 +1,14 @@
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QWidget, QListWidget, QTabWidget, QHBoxLayout,QMessageBox, QPushButton, QVBoxLayout, QRadioButton, QLabel, QButtonGroup, QSizePolicy, QComboBox,QSpacerItem, QGridLayout
-from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
+from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout, center_window
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIntValidator
 
-from superqt import QLabeledRangeSlider, QLabeledSlider, QLabeledDoubleRangeSlider, QSearchableComboBox
+from superqt import QLabeledRangeSlider, QLabeledDoubleSlider, QLabeledSlider, QLabeledDoubleRangeSlider, QSearchableComboBox
 
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import _extract_channel_indices_from_config
-from celldetective.gui.viewers import ThresholdedStackVisualizer, CellEdgeVisualizer, StackVisualizer
+from celldetective.gui.viewers import ThresholdedStackVisualizer, CellEdgeVisualizer, StackVisualizer, CellSizeViewer
 from celldetective.gui import Styles
 from celldetective.preprocessing import correct_background_model, correct_background_model_free, estimate_background_per_condition
 from functools import partial
@@ -17,6 +17,164 @@ import os
 import pandas as pd
 import numpy as np
 
+class StarDistParamsWidget(QWidget, Styles):
+
+	def __init__(self, parent_window=None, model_name='SD_versatile_fluo', *args, **kwargs):
+		
+		super().__init__(*args)
+		self.setWindowTitle('Channels')
+		self.parent_window = parent_window
+		self.model_name = model_name
+
+		if hasattr(self.parent_window.parent_window, 'locate_image'):
+			self.attr_parent = self.parent_window.parent_window
+		elif hasattr(self.parent_window.parent_window.parent_window, 'locate_image'):
+			self.attr_parent = self.parent_window.parent_window.parent_window
+		else:
+			self.attr_parent = self.parent_window.parent_window.parent_window.parent_window
+
+		self.layout = QVBoxLayout()
+		self.populate_widgets()
+		self.setLayout(self.layout)
+		center_window(self)
+
+	def populate_widgets(self):
+
+		self.stardist_channel_cb = [QComboBox() for i in range(1)]
+		self.stardist_channel_template = ['live_nuclei_channel']
+		max_i = 1
+		if self.model_name=="SD_versatile_he":
+			self.stardist_channel_template = ["H&E_1","H&E_2","H&E_3"]
+			self.stardist_channel_cb = [QComboBox() for i in range(3)]
+			max_i = 3
+
+		for k in range(max_i):
+			hbox_channel = QHBoxLayout()
+			hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
+			hbox_channel.addWidget(self.stardist_channel_cb[k])
+			if k==1:
+				self.stardist_channel_cb[k].addItems(list(self.attr_parent.exp_channels)+['None'])
+			else:
+				self.stardist_channel_cb[k].addItems(list(self.attr_parent.exp_channels))
+			idx = self.stardist_channel_cb[k].findText(self.stardist_channel_template[k])
+			if idx>0:
+				self.stardist_channel_cb[k].setCurrentIndex(idx)
+			else:
+				self.stardist_channel_cb[k].setCurrentIndex(0)
+
+			self.layout.addLayout(hbox_channel)
+
+		self.set_stardist_scale_btn = QPushButton('set')
+		self.set_stardist_scale_btn.setStyleSheet(self.button_style_sheet)
+		self.set_stardist_scale_btn.clicked.connect(self.parent_window.set_stardist_scale)
+		self.layout.addWidget(self.set_stardist_scale_btn)
+
+
+class CellposeParamsWidget(QWidget, Styles):
+
+	def __init__(self, parent_window=None, model_name='CP_cyto2', *args, **kwargs):
+		
+		super().__init__(*args)
+		self.setWindowTitle('Estimate diameter')
+		self.parent_window = parent_window
+		self.model_name = model_name
+
+		if hasattr(self.parent_window.parent_window, 'locate_image'):
+			self.attr_parent = self.parent_window.parent_window
+		elif hasattr(self.parent_window.parent_window.parent_window, 'locate_image'):
+			self.attr_parent = self.parent_window.parent_window.parent_window
+		else:
+			self.attr_parent = self.parent_window.parent_window.parent_window.parent_window
+
+		self.layout = QVBoxLayout()
+		self.populate_widgets()
+		self.setLayout(self.layout)
+		center_window(self)
+
+	def populate_widgets(self):
+
+		self.view_diameter_btn = QPushButton()
+		self.view_diameter_btn.setStyleSheet(self.button_select_all)
+		self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
+		self.view_diameter_btn.setToolTip("View stack.")
+		self.view_diameter_btn.setIconSize(QSize(20, 20))
+		self.view_diameter_btn.clicked.connect(self.view_current_stack_with_scale_bar)
+
+		self.diameter_le = ThresholdLineEdit(init_value=40, connected_buttons=[self.view_diameter_btn],placeholder='cell diameter in pixels', value_type='float')
+
+		self.cellpose_channel_cb = [QComboBox() for i in range(2)]
+		self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
+		if self.model_name=="CP_nuclei":
+			self.cellpose_channel_template = ['live_nuclei_channel', 'None']
+
+		for k in range(2):
+			hbox_channel = QHBoxLayout()
+			hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
+			hbox_channel.addWidget(self.cellpose_channel_cb[k])
+			if k==1:
+				self.cellpose_channel_cb[k].addItems(list(self.attr_parent.exp_channels)+['None'])
+			else:
+				self.cellpose_channel_cb[k].addItems(list(self.attr_parent.exp_channels))
+			idx = self.cellpose_channel_cb[k].findText(self.cellpose_channel_template[k])
+			if idx>0:
+				self.cellpose_channel_cb[k].setCurrentIndex(idx)
+			else:
+				self.cellpose_channel_cb[k].setCurrentIndex(0)
+
+			if k==1:
+				idx = self.cellpose_channel_cb[k].findText('None')
+				self.cellpose_channel_cb[k].setCurrentIndex(idx)
+
+			self.layout.addLayout(hbox_channel)
+
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('diameter [px]: '), 33)
+		hbox.addWidget(self.diameter_le, 61)
+		hbox.addWidget(self.view_diameter_btn)
+		self.layout.addLayout(hbox)
+
+		self.flow_slider = QLabeledDoubleSlider()
+		self.flow_slider.setOrientation(1)
+		self.flow_slider.setRange(-6,6)
+		self.flow_slider.setValue(0.4)
+
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('flow threshold: '), 33)
+		hbox.addWidget(self.flow_slider, 66)
+		self.layout.addLayout(hbox)
+
+		self.cellprob_slider = QLabeledDoubleSlider()
+		self.cellprob_slider.setOrientation(1)
+		self.cellprob_slider.setRange(-6,6)
+		self.cellprob_slider.setValue(0.)
+
+		hbox = QHBoxLayout()
+		hbox.addWidget(QLabel('cellprob threshold: '), 33)
+		hbox.addWidget(self.cellprob_slider, 66)
+		self.layout.addLayout(hbox)
+
+		self.set_cellpose_scale_btn = QPushButton('set')
+		self.set_cellpose_scale_btn.setStyleSheet(self.button_style_sheet)
+		self.set_cellpose_scale_btn.clicked.connect(self.parent_window.set_cellpose_scale)
+		self.layout.addWidget(self.set_cellpose_scale_btn)
+
+	def view_current_stack_with_scale_bar(self):
+		
+		self.attr_parent.locate_image()
+		if self.attr_parent.current_stack is not None:
+			self.viewer = CellSizeViewer(
+										  initial_diameter = float(self.diameter_le.text().replace(',', '.')),
+										  parent_le = self.diameter_le,
+										  stack_path=self.attr_parent.current_stack,
+										  window_title=f'Position {self.attr_parent.position_list.currentText()}',
+										  frame_slider = True,
+										  contrast_slider = True,
+										  channel_cb = True,
+										  channel_names = self.attr_parent.exp_channels,
+										  n_channels = self.attr_parent.nbr_channels,
+										  PxToUm = 1,
+										 )
+			self.viewer.show()
 
 class ChannelNormGenerator(QVBoxLayout, Styles):
 	

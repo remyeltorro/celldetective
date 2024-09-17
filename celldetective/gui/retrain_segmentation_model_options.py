@@ -10,6 +10,7 @@ from fonticon_mdi6 import MDI6
 from celldetective.utils import get_software_location
 from celldetective.io import get_segmentation_datasets_list, locate_segmentation_dataset
 from celldetective.segmentation import train_segmentation_model
+from celldetective.gui.layouts import CellposeParamsWidget
 import numpy as np
 import json
 import os
@@ -129,14 +130,14 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 
 		lr_layout = QHBoxLayout()
 		lr_layout.addWidget(QLabel('learning rate: '),30)
-		self.lr_le = QLineEdit('0,01')
+		self.lr_le = QLineEdit('0,0003')
 		self.lr_le.setValidator(self.onlyFloat)
 		lr_layout.addWidget(self.lr_le, 70)
 		layout.addLayout(lr_layout)
 
 		bs_layout = QHBoxLayout()
 		bs_layout.addWidget(QLabel('batch size: '),30)
-		self.bs_le = QLineEdit('4')
+		self.bs_le = QLineEdit('8')
 		self.bs_le.setValidator(self.onlyInt)
 		bs_layout.addWidget(self.bs_le, 70)
 		layout.addLayout(bs_layout)
@@ -236,7 +237,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		self.augmentation_slider.setTickInterval(0.01)		
 		self.augmentation_slider.setOrientation(1)
 		self.augmentation_slider.setRange(1, 5)
-		self.augmentation_slider.setValue(1.5)
+		self.augmentation_slider.setValue(2.0)
 
 		augmentation_hbox.addWidget(self.augmentation_slider, 70)
 		layout.addLayout(augmentation_hbox)
@@ -248,7 +249,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		self.validation_slider.setTickInterval(0.01)		
 		self.validation_slider.setOrientation(1)
 		self.validation_slider.setRange(0,0.9)
-		self.validation_slider.setValue(0.25)		
+		self.validation_slider.setValue(0.2)		
 		validation_split_layout.addWidget(self.validation_slider, 70)
 		layout.addLayout(validation_split_layout)
 
@@ -326,9 +327,11 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 
 	def rescale_slider(self):
 		if self.stardist_model.isChecked():
-			self.epochs_slider.setRange(1,300)
+			self.epochs_slider.setRange(1,500)
+			self.lr_le.setText('0,0003')
 		else:
-			self.epochs_slider.setRange(1,3000)
+			self.epochs_slider.setRange(1,10000)
+			self.lr_le.setText('0,01')
 
 
 	def showDialog_pretrained(self):
@@ -372,38 +375,20 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 				self.cancel_pretrained.setVisible(False)
 				return None
 
-		print(self.pretrained_model)
-
 		self.seg_folder = self.pretrained_model.split('/')[-2]
 		self.model_name = self.pretrained_model.split('/')[-1]
 		if self.model_name.startswith('CP') and self.seg_folder=='segmentation_generic':
 
-			self.diamWidget = QWidget()
-			self.diamWidget.setWindowTitle('Estimate diameter')
-			
-			layout = QVBoxLayout()
-			self.diamWidget.setLayout(layout)
-			self.diameter_le = QLineEdit('40')
-
-			hbox = QHBoxLayout()
-			hbox.addWidget(QLabel('diameter [px]: '), 33)
-			hbox.addWidget(self.diameter_le, 66)
-			layout.addLayout(hbox)
-
-			self.set_cellpose_scale_btn = QPushButton('set')
-			self.set_cellpose_scale_btn.clicked.connect(self.set_cellpose_scale)
-			layout.addWidget(self.set_cellpose_scale_btn)
-
+			self.diamWidget = CellposeParamsWidget(self, model_name=self.model_name)
 			self.diamWidget.show()
-			center_window(self.diamWidget)
 
 	def set_cellpose_scale(self):
 
-		scale = self.parent_window.parent_window.PxToUm * float(self.diameter_le.text()) / 30.0
+		scale = self.parent_window.parent_window.PxToUm * float(self.diamWidget.diameter_le.text().replace(',','.')) / 30.0
 		if self.model_name=="CP_nuclei":
-			scale = self.parent_window.parent_window.PxToUm * float(self.diameter_le.text()) / 17.0
+			scale = self.parent_window.parent_window.PxToUm * float(self.diamWidget.diameter_le.text().replace(',','.')) / 17.0
 		self.spatial_calib_le.setText(str(scale).replace('.',','))
-		self.diamWidget.close()		
+		self.diamWidget.close()
 
 
 	def showDialog_dataset(self):

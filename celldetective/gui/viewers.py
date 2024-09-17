@@ -13,7 +13,7 @@ import os
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QListWidget
 from PyQt5.QtCore import Qt, QSize
-from celldetective.gui.gui_utils import FigureCanvas, QuickSliderLayout, center_window
+from celldetective.gui.gui_utils import FigureCanvas, center_window, QuickSliderLayout
 from celldetective.gui import Styles
 from superqt import QLabeledDoubleSlider, QLabeledSlider, QLabeledDoubleRangeSlider
 from superqt.fonticon import icon

@@ -4,19 +4,20 @@ API
 ..
    .. autosummary::
       :toctree: generated
-
-      celldetective.events
+      
       celldetective.io
-      celldetective.measure
-      celldetective.neighborhood
+      celldetective.preprocessing
       celldetective.segmentation
-      celldetective.signals
       celldetective.tracking
-
+      celldetective.measure
+      celldetective.signals
+      celldetective.events
+      celldetective.neighborhood
+      celldetective.relative_measurements
+      
+      celldetective.utils
       celldetective.extra_properties
       celldetective.filters
-      celldetective.utils
-
 
 .. autosummary::
    :toctree: stubs_autogen
@@ -26,6 +27,12 @@ I/O
 ---
 
 .. automodule:: celldetective.io
+   :members:
+
+Preprocessing
+-------------
+
+.. automodule:: celldetective.preprocessing
    :members:
 
 Segmentation
@@ -52,17 +59,30 @@ Signals
 .. automodule:: celldetective.signals
    :members:
 
+Events
+------
+
+.. automodule:: celldetective.events
+   :members:
+
 Neighborhood
 ------------
    
 .. automodule:: celldetective.neighborhood
    :members:
 
-Events
-------
+Interactions
+------------
 
-.. automodule:: celldetective.events
+.. automodule:: celldetective.relative_measurements
    :members:
+
+Utils
+-----
+
+.. automodule:: celldetective.utils
+   :members:
+
 
 Filters
 -------
@@ -75,11 +95,4 @@ Extra properties
 ----------------
 
 .. automodule:: celldetective.extra_properties
-   :members:
-
-
-Utils
------
-
-.. automodule:: celldetective.utils
    :members:

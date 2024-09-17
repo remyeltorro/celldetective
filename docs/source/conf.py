@@ -16,7 +16,7 @@ copyright = '2024, Rémy Torro'
 author = 'Rémy Torro'
 
 release = '1.2'
-version = '1.2.1'
+version = '1.2.2.post1'
 
 # -- General configuration
 

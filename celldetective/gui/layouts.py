@@ -19,20 +19,38 @@ import numpy as np
 
 class StarDistParamsWidget(QWidget, Styles):
 
+	"""
+	A widget to configure parameters for StarDist segmentation.
+
+	This widget allows the user to select specific imaging channels for segmentation and adjust 
+	parameters for StarDist, a neural network-based image segmentation tool designed to segment 
+	star-convex shapes (typically nuclei).
+
+	Parameters
+	----------
+	parent_window : QWidget, optional
+		The parent window hosting this widget (default is None).
+	model_name : str, optional
+		The name of the StarDist model being used, typically 'SD_versatile_fluo' for versatile 
+		fluorescence or 'SD_versatile_he' for H&E-stained images (default is 'SD_versatile_fluo').
+	"""
+
 	def __init__(self, parent_window=None, model_name='SD_versatile_fluo', *args, **kwargs):
 		
 		super().__init__(*args)
 		self.setWindowTitle('Channels')
 		self.parent_window = parent_window
 		self.model_name = model_name
-
+		
+		# Setting up references to parent window attributes
 		if hasattr(self.parent_window.parent_window, 'locate_image'):
 			self.attr_parent = self.parent_window.parent_window
 		elif hasattr(self.parent_window.parent_window.parent_window, 'locate_image'):
 			self.attr_parent = self.parent_window.parent_window.parent_window
 		else:
 			self.attr_parent = self.parent_window.parent_window.parent_window.parent_window
-
+		
+		# Set up layout and widgets
 		self.layout = QVBoxLayout()
 		self.populate_widgets()
 		self.setLayout(self.layout)
@@ -40,14 +58,24 @@ class StarDistParamsWidget(QWidget, Styles):
 
 	def populate_widgets(self):
 
+		"""
+		Populates the widget with channel selection comboboxes and a 'set' button to configure
+		the StarDist segmentation settings. Handles different models by adjusting the number of
+		available channels.
+		"""
+		
+		# Initialize comboboxes based on the selected model
 		self.stardist_channel_cb = [QComboBox() for i in range(1)]
 		self.stardist_channel_template = ['live_nuclei_channel']
 		max_i = 1
+		
+		# If the H&E model is selected, update the combobox configuration
 		if self.model_name=="SD_versatile_he":
 			self.stardist_channel_template = ["H&E_1","H&E_2","H&E_3"]
 			self.stardist_channel_cb = [QComboBox() for i in range(3)]
 			max_i = 3
-
+	   
+		# Populate the comboboxes with available channels from the experiment
 		for k in range(max_i):
 			hbox_channel = QHBoxLayout()
 			hbox_channel.addWidget(QLabel(f'channel {k+1}: '))
@@ -56,6 +84,8 @@ class StarDistParamsWidget(QWidget, Styles):
 				self.stardist_channel_cb[k].addItems(list(self.attr_parent.exp_channels)+['None'])
 			else:
 				self.stardist_channel_cb[k].addItems(list(self.attr_parent.exp_channels))
+			
+			# Set the default channel based on the template or fallback to the first option
 			idx = self.stardist_channel_cb[k].findText(self.stardist_channel_template[k])
 			if idx>0:
 				self.stardist_channel_cb[k].setCurrentIndex(idx)
@@ -63,7 +93,8 @@ class StarDistParamsWidget(QWidget, Styles):
 				self.stardist_channel_cb[k].setCurrentIndex(0)
 
 			self.layout.addLayout(hbox_channel)
-
+		
+		# Button to apply the StarDist settings
 		self.set_stardist_scale_btn = QPushButton('set')
 		self.set_stardist_scale_btn.setStyleSheet(self.button_style_sheet)
 		self.set_stardist_scale_btn.clicked.connect(self.parent_window.set_stardist_scale)
@@ -72,20 +103,49 @@ class StarDistParamsWidget(QWidget, Styles):
 
 class CellposeParamsWidget(QWidget, Styles):
 
+	"""
+	A widget to configure parameters for Cellpose segmentation, allowing users to set the cell diameter, 
+	select imaging channels, and adjust flow and cell probability thresholds for cell detection.
+
+	This widget is designed for estimating cell diameters and configuring parameters for Cellpose, 
+	a deep learning-based segmentation tool. It also provides functionality to preview the image stack with a scale bar.
+
+	Parameters
+	----------
+	parent_window : QWidget, optional
+		The parent window that hosts the widget (default is None).
+	model_name : str, optional
+		The name of the Cellpose model being used, typically 'CP_cyto2' for cytoplasm or 'CP_nuclei' for nuclei segmentation 
+		(default is 'CP_cyto2').
+
+	Notes
+	-----
+	- This widget assumes that the parent window or one of its ancestor windows has access to the experiment channels
+	  and can locate the current image stack via `locate_image()`.
+	- This class integrates sliders for flow and cell probability thresholds, as well as a channel selection for running
+	  Cellpose segmentation.
+	- The `view_current_stack_with_scale_bar()` method opens a new window where the user can visually inspect the 
+	  image stack with a superimposed scale bar, to better estimate the cell diameter.
+
+	"""
+
+
 	def __init__(self, parent_window=None, model_name='CP_cyto2', *args, **kwargs):
 		
 		super().__init__(*args)
 		self.setWindowTitle('Estimate diameter')
 		self.parent_window = parent_window
 		self.model_name = model_name
-
+		
+		# Setting up references to parent window attributes
 		if hasattr(self.parent_window.parent_window, 'locate_image'):
 			self.attr_parent = self.parent_window.parent_window
 		elif hasattr(self.parent_window.parent_window.parent_window, 'locate_image'):
 			self.attr_parent = self.parent_window.parent_window.parent_window
 		else:
 			self.attr_parent = self.parent_window.parent_window.parent_window.parent_window
-
+	   
+		# Layout and widgets setup
 		self.layout = QVBoxLayout()
 		self.populate_widgets()
 		self.setLayout(self.layout)
@@ -93,15 +153,23 @@ class CellposeParamsWidget(QWidget, Styles):
 
 	def populate_widgets(self):
 
+		"""
+		Populates the widget with UI elements such as buttons, sliders, and comboboxes to allow configuration
+		of Cellpose segmentation parameters.
+		"""
+
+		# Button to view the current stack with a scale bar
 		self.view_diameter_btn = QPushButton()
 		self.view_diameter_btn.setStyleSheet(self.button_select_all)
 		self.view_diameter_btn.setIcon(icon(MDI6.image_check, color="black"))
 		self.view_diameter_btn.setToolTip("View stack.")
 		self.view_diameter_btn.setIconSize(QSize(20, 20))
 		self.view_diameter_btn.clicked.connect(self.view_current_stack_with_scale_bar)
-
+		
+		# Line edit for entering cell diameter
 		self.diameter_le = ThresholdLineEdit(init_value=40, connected_buttons=[self.view_diameter_btn],placeholder='cell diameter in pixels', value_type='float')
-
+		
+		# Comboboxes for selecting imaging channels
 		self.cellpose_channel_cb = [QComboBox() for i in range(2)]
 		self.cellpose_channel_template = ['brightfield_channel', 'live_nuclei_channel']
 		if self.model_name=="CP_nuclei":
@@ -126,40 +194,46 @@ class CellposeParamsWidget(QWidget, Styles):
 				self.cellpose_channel_cb[k].setCurrentIndex(idx)
 
 			self.layout.addLayout(hbox_channel)
-
+		
+		# Layout for diameter input and button
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('diameter [px]: '), 33)
 		hbox.addWidget(self.diameter_le, 61)
 		hbox.addWidget(self.view_diameter_btn)
 		self.layout.addLayout(hbox)
-
+		
+		# Flow threshold slider
 		self.flow_slider = QLabeledDoubleSlider()
 		self.flow_slider.setOrientation(1)
 		self.flow_slider.setRange(-6,6)
 		self.flow_slider.setValue(0.4)
-
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('flow threshold: '), 33)
 		hbox.addWidget(self.flow_slider, 66)
 		self.layout.addLayout(hbox)
 
+		# Cell probability threshold slider
 		self.cellprob_slider = QLabeledDoubleSlider()
 		self.cellprob_slider.setOrientation(1)
 		self.cellprob_slider.setRange(-6,6)
 		self.cellprob_slider.setValue(0.)
-
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('cellprob threshold: '), 33)
 		hbox.addWidget(self.cellprob_slider, 66)
 		self.layout.addLayout(hbox)
-
+		
+		# Button to set the scale for Cellpose segmentation
 		self.set_cellpose_scale_btn = QPushButton('set')
 		self.set_cellpose_scale_btn.setStyleSheet(self.button_style_sheet)
 		self.set_cellpose_scale_btn.clicked.connect(self.parent_window.set_cellpose_scale)
 		self.layout.addWidget(self.set_cellpose_scale_btn)
 
 	def view_current_stack_with_scale_bar(self):
-		
+
+		"""
+		Displays the current image stack with a scale bar, allowing users to visually estimate cell diameters.
+		"""
+
 		self.attr_parent.locate_image()
 		if self.attr_parent.current_stack is not None:
 			self.viewer = CellSizeViewer(

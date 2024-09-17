@@ -207,7 +207,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         radii_layout.addWidget(self.add_radius_btn, 5)
         layout.addLayout(radii_layout)
 
-        self.radii_list = ListWidget(self, GeometryChoice, initial_features=["10"], dtype=int)
+        self.radii_list = ListWidget(GeometryChoice, initial_features=["10"], dtype=int)
         layout.addWidget(self.radii_list)
 
         self.del_radius_btn.clicked.connect(self.radii_list.removeSel)
@@ -234,7 +234,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         operation_layout.addWidget(self.add_op_btn, 5)
         layout.addLayout(operation_layout)
 
-        self.operations_list = ListWidget(self, OperationChoice, initial_features=["mean"])
+        self.operations_list = ListWidget(OperationChoice, initial_features=["mean"])
         layout.addWidget(self.operations_list)
 
         self.del_op_btn.clicked.connect(self.operations_list.removeSel)
@@ -262,7 +262,7 @@ class ConfigMeasurements(QMainWindow, Styles):
         self.add_feature_btn.setToolTip("Add feature")
         self.add_feature_btn.setIconSize(QSize(20, 20))
 
-        self.features_list = ListWidget(self, FeatureChoice, initial_features=['area', 'intensity_mean', ])
+        self.features_list = ListWidget(FeatureChoice, initial_features=['area', 'intensity_mean', ])
 
         self.del_feature_btn.clicked.connect(self.features_list.removeSel)
         self.add_feature_btn.clicked.connect(self.features_list.addItem)
@@ -305,7 +305,7 @@ class ConfigMeasurements(QMainWindow, Styles):
 
         layout.addLayout(contour_layout)
 
-        self.contours_list = ListWidget(self, GeometryChoice, initial_features=[], dtype=int)
+        self.contours_list = ListWidget(GeometryChoice, initial_features=[], dtype=int)
         layout.addWidget(self.contours_list)
 
         self.del_contour_btn.clicked.connect(self.contours_list.removeSel)
@@ -787,7 +787,8 @@ class ConfigMeasurements(QMainWindow, Styles):
             self.fig, self.ax = plt.subplots(1, 1, figsize=(4, 3))
             self.hist_window = FigureCanvas(self.fig, title="Haralick: control digitized histogram")
             self.ax.clear()
-            self.ax.hist(norm_img.flatten(), bins=self.haralick_options['n_intensity_bins'])
+            flat = norm_img.flatten()
+            self.ax.hist(flat[flat==flat], bins=self.haralick_options['n_intensity_bins'])
             self.ax.set_xlabel('gray level value')
             self.ax.set_ylabel('#')
             plt.tight_layout()

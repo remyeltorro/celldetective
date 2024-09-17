@@ -7,7 +7,6 @@ from PyQt5.QtGui import QDoubleValidator
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ExportPlotBtn
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
-from celldetective.signals import mean_signal
 import numpy as np
 import json
 import os

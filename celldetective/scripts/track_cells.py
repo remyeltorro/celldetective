@@ -58,7 +58,6 @@ parent1 = Path(pos).parent
 expfolder = parent1.parent
 config = PurePath(expfolder,Path("config.ini"))
 assert os.path.exists(config),'The configuration file for the experiment could not be located. Abort.'
-print("Configuration file: ",config)
 
 # from exp config fetch spatial calib, channel names
 movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]
@@ -74,10 +73,9 @@ nbr_channels = len(channel_names)
 # from tracking instructions, fetch btrack config, features, haralick, clean_traj, idea: fetch custom timeline?
 instr_path = PurePath(expfolder,Path(f"{instruction_file}"))
 if os.path.exists(instr_path):
-	print(f"Tracking instructions for the {mode} population has been successfully located.")
+	print(f"Tracking instructions for the {mode} population have been successfully loaded...")
 	with open(instr_path, 'r') as f:
 		instructions = json.load(f)
-		print("Reading the following instructions: ",instructions)
 	btrack_config = interpret_tracking_configuration(instructions['btrack_config_path'])
 
 	if 'features' in instructions:
@@ -100,7 +98,7 @@ if os.path.exists(instr_path):
 	else:
 		post_processing_options = None
 else:
-	print('No tracking instructions found. Use standard bTrack motion model.')
+	print('Tracking instructions could not be located... Using a standard bTrack motion model instead...')
 	btrack_config = interpret_tracking_configuration(None)
 	features = None
 	mask_channels = None
@@ -115,7 +113,7 @@ label_path = natsorted(glob(pos+f"{label_folder}"+os.sep+"*.tif"))
 if len(label_path)>0:
 	print(f"Found {len(label_path)} segmented frames...")
 else:
-	print(f"No segmented frames have been found. Please run segmentation first, skipping...")
+	print(f"No segmented frames have been found. Please run segmentation first. Abort...")
 	os.abort()
 
 # Do this if features or Haralick is not None, else don't need stack

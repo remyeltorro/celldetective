@@ -146,7 +146,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 
 	def populate_left_panel(self):
 
-		self.filters_qlist = ListWidget(self, FilterChoice, [])
+		self.filters_qlist = ListWidget(FilterChoice, [])
 
 		grid_preprocess = QGridLayout()
 		grid_preprocess.setContentsMargins(20, 20, 20, 20)

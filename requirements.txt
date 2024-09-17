@@ -9,8 +9,8 @@ stardist
 cellpose<3
 scikit-learn
 btrack
-tensorflow #<=2.12.1
-keras==2.15.0
+#tensorflow #<=2.12.1
+#keras==2.15.0
 napari
 tqdm
 mahotas

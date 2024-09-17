@@ -10,7 +10,7 @@ from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
 	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list
-from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames, locate_signal_model
+from celldetective.io import locate_segmentation_model, fix_missing_labels, auto_load_number_of_frames, load_frames, locate_signal_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.relative_measurements import rel_measure_at_position
@@ -576,6 +576,24 @@ class ProcessPanel(QFrame, Styles):
 				msgBox.setWindowTitle("Warning")
 				msgBox.setStandardButtons(QMessageBox.Ok)
 				returnValue = msgBox.exec()
+
+				msgBox = QMessageBox()
+				msgBox.setIcon(QMessageBox.Question)
+				msgBox.setText("Would you like to pass empty frames to fix the asymmetry?")
+				msgBox.setWindowTitle("Question")
+				msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+				returnValue = msgBox.exec()
+				if returnValue == QMessageBox.Yes:
+					print('Fixing the missing labels...')
+					fix_missing_labels(self.parent_window.pos, prefix=self.parent_window.movie_prefix,population=self.mode)
+					try:
+						control_segmentation_napari(self.parent_window.pos, prefix=self.parent_window.movie_prefix, population=self.mode,flush_memory=True)
+					except Exception as e:
+						print(f'Error {e}')
+						return None
+				else:
+					return None
+
 			gc.collect()
 
 	def check_signals(self):

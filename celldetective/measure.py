@@ -17,7 +17,7 @@ from math import ceil
 from skimage.draw import disk as dsk
 
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, \
-	remove_trajectory_measurements, contour_of_instance_segmentation, extract_cols_from_query, step_function
+	remove_trajectory_measurements, contour_of_instance_segmentation, extract_cols_from_query, step_function, interpolate_nan
 from celldetective.preprocessing import field_correction
 import celldetective.extra_properties as extra_properties
 from celldetective.extra_properties import *
@@ -540,6 +540,8 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
 	haralick_labels = ['haralick_'+h+"_"+modality for h in haralick_labels]
 	if len(img.shape)==3:
 		img = img[:,:,target_channel]
+
+	img = interpolate_nan(img)
 
 	# Rescale image and mask
 	img = zoom(img,[scale_factor,scale_factor],order=3).astype(float)

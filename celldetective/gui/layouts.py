@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QWidget, QListWidget, QTabWidget, QHBoxLayout,QMessageBox, QPushButton, QVBoxLayout, QRadioButton, QLabel, QButtonGroup, QSizePolicy, QComboBox,QSpacerItem, QGridLayout
-from celldetective.gui.gui_utils import ThresholdLineEdit
+from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIntValidator
 
@@ -10,13 +10,13 @@ from fonticon_mdi6 import MDI6
 from celldetective.utils import _extract_channel_indices_from_config
 from celldetective.gui.viewers import ThresholdedStackVisualizer, CellEdgeVisualizer, StackVisualizer
 from celldetective.gui import Styles
-from celldetective.gui.gui_utils import QuickSliderLayout
 from celldetective.preprocessing import correct_background_model, correct_background_model_free, estimate_background_per_condition
 from functools import partial
 from glob import glob
 import os
 import pandas as pd
 import numpy as np
+
 
 class ChannelNormGenerator(QVBoxLayout, Styles):
 	

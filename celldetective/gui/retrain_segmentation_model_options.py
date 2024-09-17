@@ -388,6 +388,12 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		if self.model_name=="CP_nuclei":
 			scale = self.parent_window.parent_window.PxToUm * float(self.diamWidget.diameter_le.text().replace(',','.')) / 17.0
 		self.spatial_calib_le.setText(str(scale).replace('.',','))
+
+		for k in range(len(self.diamWidget.cellpose_channel_cb)):
+			ch = self.diamWidget.cellpose_channel_cb[k].currentText()
+			idx = self.ch_norm.channel_cbs[k].findText(ch)
+			self.ch_norm.channel_cbs[k].setCurrentIndex(idx)
+
 		self.diamWidget.close()
 
 

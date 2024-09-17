@@ -47,8 +47,9 @@ class ConfigTracking(QMainWindow, Styles):
 
 		center_window(self)
 		self.setMinimumWidth(540)
-		self.setMinimumHeight(int(0.3*self.screen_height))
-		self.setMaximumHeight(int(0.8*self.screen_height))
+		self.minimum_height = 300
+		# self.setMinimumHeight(int(0.3*self.screen_height))
+		# self.setMaximumHeight(int(0.8*self.screen_height))
 		self.populate_widget()
 		self.load_previous_tracking_instructions()
 
@@ -148,9 +149,28 @@ class ConfigTracking(QMainWindow, Styles):
 		self.generate_post_proc_panel_contents()
 		grid.addWidget(self.ContentsPostProc, 1, 0, 1, 4, alignment=Qt.AlignTop)
 		self.collapse_post_proc_btn.clicked.connect(lambda: self.ContentsPostProc.setHidden(not self.ContentsPostProc.isHidden()))
-		# self.collapse_post_proc_btn.clicked.connect(self.collapse_features_advanced)
+		self.collapse_post_proc_btn.clicked.connect(self.collapse_post_advanced)
 		self.ContentsPostProc.hide()
 		self.uncheck_post_proc()
+
+	def collapse_post_advanced(self):
+
+		features_open = not self.ContentsFeatures.isHidden()
+		config_open = not self.ContentsConfig.isHidden()
+		post_open = not self.ContentsPostProc.isHidden()
+		is_open = np.array([features_open, config_open, post_open])
+
+		if self.ContentsPostProc.isHidden():
+			self.collapse_post_proc_btn.setIcon(icon(MDI6.chevron_down,color="black"))
+			self.collapse_post_proc_btn.setIconSize(QSize(20, 20))
+			if len(is_open[is_open])==0:
+				self.scroll_area.setMinimumHeight(int(self.minimum_height))
+				self.adjustSize()
+		else:
+			self.collapse_post_proc_btn.setIcon(icon(MDI6.chevron_up,color="black"))
+			self.collapse_post_proc_btn.setIconSize(QSize(20, 20))
+			self.scroll_area.setMinimumHeight(min(int(930), int(0.9*self.screen_height)))
+
 
 	def help_post(self):
 		
@@ -251,16 +271,22 @@ class ConfigTracking(QMainWindow, Styles):
 		Switch the chevron icon and adjust the size for the FEATURES frame.
 		"""
 
+		features_open = not self.ContentsFeatures.isHidden()
+		config_open = not self.ContentsConfig.isHidden()
+		post_open = not self.ContentsPostProc.isHidden()
+		is_open = np.array([features_open, config_open, post_open])
+
 		if self.ContentsFeatures.isHidden():
 			self.collapse_features_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_features_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()
+			if len(is_open[is_open])==0:
+				self.scroll_area.setMinimumHeight(int(self.minimum_height))
+				self.adjustSize()
 		else:
 			self.collapse_features_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_features_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()	
+			self.scroll_area.setMinimumHeight(min(int(930), int(0.9*self.screen_height)))
+
 
 	def generate_post_proc_panel_contents(self):
 
@@ -345,7 +371,7 @@ class ConfigTracking(QMainWindow, Styles):
 		self.add_feature_btn.setToolTip("Add feature")
 		self.add_feature_btn.setIconSize(QSize(20, 20))		
 
-		self.features_list = ListWidget(self, FeatureChoice, initial_features=['area','intensity_mean',])
+		self.features_list = ListWidget(FeatureChoice, initial_features=['area','intensity_mean',])
 
 		self.del_feature_btn.clicked.connect(self.features_list.removeSel)
 		self.add_feature_btn.clicked.connect(self.features_list.addItem)
@@ -519,16 +545,22 @@ class ConfigTracking(QMainWindow, Styles):
 		Switch the chevron icon and adjust the size for the CONFIG frame.
 		"""
 
+		features_open = not self.ContentsFeatures.isHidden()
+		config_open = not self.ContentsConfig.isHidden()
+		post_open = not self.ContentsPostProc.isHidden()
+		is_open = np.array([features_open, config_open, post_open])
+
 		if self.ContentsConfig.isHidden():
 			self.collapse_config_btn.setIcon(icon(MDI6.chevron_down,color="black"))
 			self.collapse_config_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()
+			if len(is_open[is_open])==0:
+				self.scroll_area.setMinimumHeight(int(self.minimum_height))
+				self.adjustSize()
 		else:
 			self.collapse_config_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_config_btn.setIconSize(QSize(20, 20))
-			self.button_widget.adjustSize()
-			self.adjustSize()	
+			self.scroll_area.setMinimumHeight(min(int(930), int(0.9*self.screen_height)))
+
 
 	def generate_config_panel_contents(self):
 		
@@ -956,7 +988,8 @@ class ConfigTracking(QMainWindow, Styles):
 			self.fig, self.ax = plt.subplots(1,1,figsize=(4,3))
 			self.hist_window = FigureCanvas(self.fig, title="Haralick: control digitized histogram")
 			self.ax.clear()
-			self.ax.hist(norm_img.flatten(), bins=self.haralick_options['n_intensity_bins'])
+			flat = norm_img.flatten()
+			self.ax.hist(flat[flat==flat], bins=self.haralick_options['n_intensity_bins'])
 			self.ax.set_xlabel('gray level value')
 			self.ax.set_ylabel('#')
 			plt.tight_layout()

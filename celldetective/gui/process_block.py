@@ -22,7 +22,6 @@ from celldetective.utils import extract_experiment_channels
 import numpy as np
 from glob import glob
 from natsort import natsorted
-from superqt import QLabeledDoubleSlider
 import os
 import pandas as pd
 from celldetective.gui.gui_utils import center_window
@@ -34,7 +33,6 @@ from celldetective.gui.gui_utils import FigureCanvas
 from celldetective.preprocessing import correct_background_model_free, correct_background_model
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout, help_generic
-from celldetective.gui.viewers import CellSizeViewer
 from celldetective.gui.layouts import CellposeParamsWidget, StarDistParamsWidget, BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location

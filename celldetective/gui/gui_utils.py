@@ -6,7 +6,6 @@ from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from celldetective.gui import Styles
 from superqt.fonticon import icon
-from superqt import QLabeledDoubleSlider
 from fonticon_mdi6 import MDI6
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg

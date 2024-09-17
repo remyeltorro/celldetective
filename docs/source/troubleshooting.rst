@@ -72,6 +72,7 @@ StarDist
 When training a StarDist model on an older CPU the following error can be triggered:
 
 .. code-block:: bash
+
     pyopencl._cl.LogicError: clGetPlatformIDs failed: PLATFORM_NOT_FOUND_KHR
 
 Try to install the missing pocl library as:
@@ -79,3 +80,12 @@ Try to install the missing pocl library as:
 .. code-block:: bash
 
     pip install pocl-binary-distribution
+
+Multithreading
+--------------
+
+Setting too many threads for the device you are using may lead to jobs aborting silently. This has been observed in the segmentation jobs. If you notice that whole label frames are missing, try to decrease the number of threads in the settings. 
+
+.. note::
+
+    In general, avoid combining both the use of GPU and multithreading as it may lead to memory issues.

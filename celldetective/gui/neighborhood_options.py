@@ -140,7 +140,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 
 		layout.addLayout(list_header_layout)
 
-		self.measurements_list = ListWidget(self, DistanceChoice, initial_features=["60"], dtype=int)
+		self.measurements_list = ListWidget(DistanceChoice, initial_features=["60"], dtype=int)
 		self.measurements_list.setToolTip('Neighborhoods to compute.')
 		layout.addWidget(self.measurements_list)
 

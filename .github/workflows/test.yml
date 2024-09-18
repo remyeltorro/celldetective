@@ -36,4 +36,4 @@ jobs:
       - name: Test package
         run: |
           python -m unittest
-          pytest /home/runner/work/celldetective/tests/test_qt.py
+          python -m pytest

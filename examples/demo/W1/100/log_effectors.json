@@ -1,0 +1,9 @@
+2024-09-17 20:55:37.296174 SEGMENT 
+segmentation model: ricm-bimodal
+2024-09-17 20:56:31.884035 SEGMENT 
+segmentation model: ricm-bimodal
+2024-09-17 21:10:38.816730 TRACK 
+features: []
+mask_channels: None
+haralick_options: None
+post_processing_options: None

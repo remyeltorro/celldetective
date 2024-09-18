@@ -36,5 +36,4 @@ jobs:
       - name: Test package
         run: |
           python -m unittest
-          pip install pytest pytest-qt
           pytest "../tests/test_qt.py"

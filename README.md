@@ -32,20 +32,11 @@ analysis on multimodal time lapse microscopy images.
     </p>
 </embed>
 
-Despite notable efforts in the development of user-friendly softwares
-that integrate state-of-the-art solutions to perform single cell
-analysis, very few are designed for time-lapse data and even less for
-multimodal problems where cells populations are mixed and can only be
-separated through the use of multimodal information. Few software
-solutions provide, to our knowledge, the extraction of response
-functions from single cell events such as the dynamic survival of a
-population directly in the GUI, as coding skills are usually required to
-do so. We want to study complex data which is often multimodal time
-lapse microscopy images of interacting cell populations, without loss of
-generality. With a high need for an easy-to-use,
-no-coding-skill-required software adapted to images and intended for
-biologists, we introduce **Celldetective**, an open-source python-based
-software with the following highlight features:
+Celldetective was designed to analyze time-lapse microscopy images in difficult situations: mixed cell populations that are only separable through the use of multimodal information. This software provides a toolkit for the analysis of cell population interactions. 
+
+The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that removes completely the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
+
+Some highlight features include:
 
 -   **Comprehensive single-cell image analysis** : Celldetective ships
     segmentation, tracking, and measurement modules, as well as event
@@ -106,28 +97,26 @@ In GPU mode, succesive segmentation and DL signal analysis could be
 performed without saturating the GPU memory thanks to the subprocess
 formulation for the different modules. The GPU can be disabled in the
 startup window. The software does not require a GPU (but model inference
-will be longer). A typical analysis of a single movie with a GPU takes
-between 5 to 15 minutes. Depending on the number of cells and frames on
+will be longer). 
+
+A typical analysis of a single movie with a GPU takes
+between 3 to 15 minutes. Depending on the number of cells and frames on
 the images, this computation time can increase to the order of half an
 hour on a CPU.
 
-The memory must be sufficient to load a movie stack at once in order to
-visualize it in napari. Otherwise, processing is performed frame by
-frame, therefore the memory required is extremely low.
+Processing is performed frame by frame, therefore the memory requirement is extremely low. The main bottleneck is in the visualization of segmentation and tracking output. Whole stacks (typically 1-9 Gb) have to be loaded in memory at once to be viewed in napari. 
 
 ## Software requirements
 
 The software was developed simulateously on Ubuntu 20.04 and Windows 11.
-It was tested on MacOS, but Tensorflow installation can rquire extra
+It was tested on MacOS, but Tensorflow installation can require extra
 steps.
 
--   Linux: Ubuntu 20.04.6 LTS (Focal Fossa) (not tested on ulterior
-    versions)
+-   Linux: Ubuntu 20.04.6 LTS (Focal Fossa)
 -   Windows: Windows 11 Home 23H2
 
 To use the software, you must install python, *e.g.* through
-[Anaconda](https://www.anaconda.com/download). We developed and tested
-the software in Python 3.9 and more recently 3.11.
+[Anaconda](https://www.anaconda.com/download). Celldetective is routinely tested on both Ubuntu and Windows for Python versions 3.9, 3.10 and 3.11.
 
 # Installation
 
@@ -157,58 +146,8 @@ environment):
 pip install --upgrade celldetective
 ```
 
-## Development version
+For more installation options, please check the [documentation](https://celldetective.readthedocs.io/en/latest/get-started.html#installation).
 
-### From GitHub
-
-If you want to run the latest development version, you can clone the
-repository to your local machine and install Celldetective in
-"development" mode. This means that any changes to the cloned repository
-will be immediately available in the python environment:
-
-``` bash
-# creates "celldetective" folder
-git clone git://github.com/remyeltorro/celldetective.git
-cd celldetective
-
-# optional: create an environment
-conda create -n celldetective python=3.11 pyqt
-conda activate celldetective
-
-# install the celldetective package in editable/development mode
-pip install -r requirements.txt
-pip install -e .
-```
-
-To run the latest development version without cloning the repository,
-you can also use this line:
-
-``` bash
-pip install git+https//github.com/remyeltorro/celldetective.git
-```
-
-### From a zip file
-
-You can also download the repository as a compressed file. Unzip the
-file and open a terminal at the root of the folder (same level as the
-file requirements.txt). We recommend that you create a python
-environment as Celldetective relies on many packages that may interfere
-with package requirements for other projects. Run the following lines to
-create an environment named \"celldetective\":
-
-``` bash
-conda create -n celldetective python=3.11 pyqt
-conda activate celldetective
-pip install -r requirements.txt
-pip install -e .
-```
-
-The installation of the dependencies will take a few minutes (up to half
-an hour if the network is bad). The Celldetective package itself is
-light and installs in a few seconds.
-
-Before launching the software, move to a different directory as running
-the package locally can create some bugs when locating the models.
 
 # Quick start
 
@@ -216,8 +155,11 @@ You can launch the GUI by 1) opening a terminal and 2) typing the
 following:
 
 ``` bash
+# conda activate celldetective
 python -m celldetective
 ```
+
+For more information about how to get started, please check the [documentation](https://celldetective.readthedocs.io/en/latest/get-started.html#launching-the-gui).
 
 # Documentation
 

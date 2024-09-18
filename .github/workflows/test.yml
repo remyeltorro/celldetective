@@ -42,7 +42,9 @@ jobs:
       - name: Test package
         run: |
           python -m unittest
-          python -m pytest
+      - name: Test GUI
+        run: |
+          python -m pytest tests/test_qt.py
   Windows:
     name: Test Windows
     runs-on: ${{ matrix.os }}
@@ -75,4 +77,6 @@ jobs:
       - name: Test package
         run: |
           python -m unittest
-          python -m pytest
+      - name: Test GUI
+        run: |
+          python -m pytest tests/test_qt.py

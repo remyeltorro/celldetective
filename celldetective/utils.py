@@ -2023,6 +2023,7 @@ def augmenter(x, y, flip=True, gauss_blur=True, noise_option=True, shift=True,
 	>>> y = np.random.randint(2, size=(128, 128))  # Sample binary mask
 	>>> x_aug, y_aug = augmenter(x, y)
 	# The returned `x_aug` and `y_aug` are augmented versions of `x` and `y`.
+	
 	"""
 
 	r = random.random()

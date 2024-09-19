@@ -1961,7 +1961,7 @@ def noise(x, apply_probability=0.5, clip_option=False):
 
 
 def augmenter(x, y, flip=True, gauss_blur=True, noise_option=True, shift=True, 
-	channel_extinction=False, extinction_probability=0.1, clip=False, max_sigma_blur=4, 
+	channel_extinction=True, extinction_probability=0.1, clip=False, max_sigma_blur=4, 
 	apply_noise_probability=0.5, augment_probability=0.9):
 
 	"""
@@ -2042,9 +2042,9 @@ def augmenter(x, y, flip=True, gauss_blur=True, noise_option=True, shift=True,
 	  
 		if channel_extinction:
 			assert extinction_probability <= 1.,'The extinction probability must be a number between 0 and 1.'
-			for i in range(x.shape[-1]):
-				if np.random.random() > (1 - extinction_probability):
-					x[:,:,i] = 0.
+			channel_off = [np.random.random() < extinction_probability for i in range(x.shape[-1])]
+			if not np.all(channel_off):
+				x[:,:,np.array(channel_off, dtype=bool)] = 0.
 
 	return x, y
 

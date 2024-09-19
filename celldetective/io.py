@@ -22,6 +22,7 @@ from celldetective.utils import _estimate_scale_factor, _extract_channel_indices
 from celldetective.utils import interpolate_nan
 import concurrent.futures
 from tifffile import imwrite
+from stardist import fill_label_holes
 
 def get_experiment_wells(experiment):
 	
@@ -1069,8 +1070,8 @@ def get_pair_signal_models_list(return_path=False):
 	available_models = glob(modelpath + f'*{os.sep}')
 	available_models = [m.replace('\\', '/').split('/')[-2] for m in available_models]
 	#for rm in repository_models:
-	#	if rm not in available_models:
-	#		available_models.append(rm)
+	#   if rm not in available_models:
+	#       available_models.append(rm)
 
 	if not return_path:
 		return available_models
@@ -1276,7 +1277,7 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 	if data.shape[1]==4:
 		viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
 	else:
-		viewer.add_tracks(data[:,[0,1,3,4]], properties=properties, graph=graph, name='tracks')		
+		viewer.add_tracks(data[:,[0,1,3,4]], properties=properties, graph=graph, name='tracks')     
 	viewer.show(block=True)
 
 	if flush_memory:
@@ -1347,47 +1348,63 @@ def load_napari_data(position, prefix="Aligned", population="target", return_sta
 from skimage.measure import label
 
 
-def auto_correct_masks(masks):
+def auto_correct_masks(masks, bbox_factor = 1.75, min_area=9, fill_labels=False):
 
 	"""
-	Automatically corrects segmentation masks by splitting disconnected objects sharing the same label.
+	Correct segmentation masks to ensure consistency and remove anomalies.
 
-	This function examines each labeled object in the input masks and splits objects whose bounding box
-	area is significantly larger than their actual area, indicating potential merging of multiple objects.
-	It uses geometric properties to identify such cases and applies a relabeling to separate merged objects.
+	This function processes a labeled mask image to correct anomalies and reassign labels. 
+	It performs the following operations:
+	
+	1. Corrects negative mask values by taking their absolute values.
+	2. Identifies and corrects segmented objects with a bounding box area that is disproportionately 
+	   larger than the actual object area. This indicates potential segmentation errors where separate objects 
+	   share the same label.
+	3. Removes small objects that are considered noise (default threshold is an area of less than 9 pixels).
+	4. Reorders the labels so they are consecutive from 1 up to the number of remaining objects (to avoid encoding errors).
 
 	Parameters
 	----------
-	masks : ndarray
-		A 2D numpy array representing the segmentation masks, where each object is labeled with a unique integer.
+	masks : np.ndarray
+		A 2D array representing the segmented mask image with labeled regions. Each unique value 
+		in the array represents a different object or cell.
 
 	Returns
 	-------
-	ndarray
-		A 2D numpy array of the corrected segmentation masks with potentially merged objects separated and
-		relabeled.
+	clean_labels : np.ndarray
+		A corrected version of the input mask, with anomalies corrected, small objects removed, 
+		and labels reordered to be consecutive integers.
 
 	Notes
 	-----
-	- The function uses bounding box area and actual object area to identify potentially merged objects.
-	  Objects are considered potentially merged if their bounding box area is more than twice their actual area.
-	- Relabeling of objects is done sequentially, adding to the maximum label number found in the original
-	  masks to ensure new labels do not overlap with existing ones.
-	- This function relies on `skimage.measure.label` for relabeling and `skimage.measure.regionprops_table`
-	  for calculating object properties.
+	- This function is useful for post-processing segmentation outputs to ensure high-quality 
+	  object detection, particularly in applications such as cell segmentation in microscopy images.
+	- The function assumes that the input masks contain integer labels and that the background 
+	  is represented by 0.
 
+	Examples
+	--------
+	>>> masks = np.array([[0, 0, 1, 1], [0, 2, 2, 1], [0, 2, 0, 0]])
+	>>> corrected_masks = auto_correct_masks(masks)
+	>>> corrected_masks
+	array([[0, 0, 1, 1],
+		   [0, 2, 2, 1],
+		   [0, 2, 0, 0]])
 	"""
 
+	# Avoid negative mask values
+	masks[masks<0] = np.abs(masks[masks<0])
+	
 	props = pd.DataFrame(regionprops_table(masks, properties=('label', 'area', 'area_bbox')))
 	max_lbl = props['label'].max()
-	corrected_lbl = masks.copy().astype(int)
+	corrected_lbl = masks.copy() #.astype(int)
 
 	for cell in props['label'].unique():
 
 		bbox_area = props.loc[props['label'] == cell, 'area_bbox'].values
 		area = props.loc[props['label'] == cell, 'area'].values
 
-		if bbox_area > 1.75 * area:  # condition for anomaly
+		if bbox_area > bbox_factor * area:  # condition for anomaly
 
 			lbl = masks == cell
 			lbl = lbl.astype(int)
@@ -1400,7 +1417,27 @@ def auto_correct_masks(masks):
 
 		max_lbl = np.amax(corrected_lbl)
 
-	return corrected_lbl
+	# Second routine to eliminate objects too small
+	props2 = pd.DataFrame(regionprops_table(corrected_lbl, properties=('label', 'area', 'area_bbox')))
+	for cell in props2['label'].unique():
+		area = props2.loc[props2['label'] == cell, 'area'].values
+		lbl = corrected_lbl == cell
+		if area < min_area:
+			corrected_lbl[lbl] = 0
+
+	# Additionnal routine to reorder labels from 1 to number of cells
+	label_ids = np.unique(corrected_lbl)[1:]
+	clean_labels = corrected_lbl.copy()
+
+	for k,lbl in enumerate(label_ids):
+		clean_labels[corrected_lbl==lbl] = k+1
+
+	clean_labels = clean_labels.astype(int)
+
+	if fill_labels:
+		clean_labels = fill_label_holes(clean_labels)
+
+	return clean_labels
 
 
 
@@ -1529,7 +1566,7 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 					multichannel.append(frame)
 				except:
 					pass
-			multichannel = np.array(multichannel)		
+			multichannel = np.array(multichannel)       
 			save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_labelled.tif", labels_layer, axes='YX')
 			save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}.tif", multichannel, axes='CYX')
 			info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names), 'cell_type': ct, 'antibody': ab, 'concentration': conc, 'pharmaceutical_agent': pa}

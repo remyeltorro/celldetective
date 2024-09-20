@@ -28,7 +28,7 @@ analysis on multimodal time lapse microscopy images.
 ![Pipeline](https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/celldetective-blocks.png)
 
 
-**Brief description**: Celldetective was designed to analyze time-lapse microscopy images in difficult situations: mixed cell populations that are only separable through multimodal information. This software provides a toolkit for the analysis of cell population interactions. 
+Celldetective was designed to analyze time-lapse microscopy images in difficult situations: mixed cell populations that are only separable through multimodal information. This software provides a toolkit for the analysis of cell population interactions. 
 
 
 **Key features**: 
@@ -38,7 +38,9 @@ analysis on multimodal time lapse microscopy images.
 - Neighborhood linking within and across populations and interaction annotations
 - Everything is done graphically, no coding is required!
   
-Check out the [highlights](https://celldetective.readthedocs.io/en/latest/overview.html#description) in the documentation! Instead of reinventing the wheel and out of respect for the amazing work done by these teams, we chose to build around StarDist[^1] & Cellpose[^2][^3] for the Deep-learning segmentation and the Bayesian tracker bTrack[^4] for tracking. If you use these models or methods in your Celldetective workflow, don't forget to cite the respective papers!
+Check out the [highlights](https://celldetective.readthedocs.io/en/latest/overview.html#description) in the documentation! 
+
+Instead of reinventing the wheel and out of respect for the amazing work done by these teams, we chose to build around StarDist[^1] & Cellpose[^2][^3] for the Deep-learning segmentation and the Bayesian tracker bTrack[^4] for tracking. If you use these models or methods in your Celldetective workflow, don't forget to cite the respective papers!
 
 **Target Audience**: The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that completely removes the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
 

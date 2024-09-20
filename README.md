@@ -40,7 +40,7 @@ Celldetective was designed to analyze time-lapse microscopy images in difficult 
   
 Check out the [highlights](https://celldetective.readthedocs.io/en/latest/overview.html#description) in the documentation! 
 
-Instead of reinventing the wheel and out of respect for the amazing work done by these teams, we chose to build around StarDist[^1] & Cellpose[^2][^3] for the Deep-learning segmentation and the Bayesian tracker bTrack[^4] for tracking. If you use these models or methods in your Celldetective workflow, don't forget to cite the respective papers!
+Instead of reinventing the wheel and out of respect for the amazing work done by these teams, we chose to build around StarDist[^1] & Cellpose[^2][^3] (BSD-3 license) for the Deep-learning segmentation and the Bayesian tracker bTrack[^4] (MIT license) for tracking. If you use these models or methods in your Celldetective workflow, don't forget to cite the respective papers!
 
 **Target Audience**: The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that completely removes the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
 

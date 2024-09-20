@@ -11,6 +11,8 @@
 ![ico4](https://img.shields.io/pypi/v/celldetective)
 ![ico6](https://img.shields.io/github/downloads/remyeltorro/celldetective/total)
 ![ico5](https://img.shields.io/pypi/dm/celldetective)
+![GitHub repo size](https://img.shields.io/github/repo-size/remyeltorro/celldetective)
+![GitHub License](https://img.shields.io/github/license/remyeltorro/celldetective?link=https%3A%2F%2Fgithub.com%2Fremyeltorro%2Fcelldetective%2Fblob%2Fmain%2FLICENSE)
 ![ico2](https://img.shields.io/github/forks/remyeltorro/celldetective?link=https%3A%2F%2Fgithub.com%2Fremyeltorro%2Fcelldetective%2Fforks)
 ![ico3](https://img.shields.io/github/stars/remyeltorro/celldetective?link=https%3A%2F%2Fgithub.com%2Fremyeltorro%2Fcelldetective%2Fstargazers)
 

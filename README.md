@@ -19,9 +19,9 @@
 Celldetective is a python package and software to perform single-cell
 analysis on multimodal time lapse microscopy images.
 
--   📚 [Check the full documentation](https://celldetective.readthedocs.io)
--   🐛 [Report a bug or request a new feature](https://github.com/remyeltorro/celldetective/issues/new/choose)
--   🗂️ [Explore the datasets, models and demos](https://zenodo.org/records/10650279)
+-  [Check the full documentation](https://celldetective.readthedocs.io)
+-  [Report a bug or request a new feature](https://github.com/remyeltorro/celldetective/issues/new/choose)
+-  [Explore the datasets, models and demos](https://zenodo.org/records/10650279)
 
 ## Overview
 
@@ -32,15 +32,15 @@ analysis on multimodal time lapse microscopy images.
 
 
 **Key features**: 
-- 🦠 Achieve single-cell description (segment / track / measure) for up to two populations of interest
-- 📈 Signal annotation and traditional or Deep learning automation
-- 🖍️ Mask annotation in napari[^5] and retraining of Deep learning models
-- 🏡 Neighborhood linking within and across populations and interaction annotations
-- 🚫💻 Everything is done graphically, no coding is required!
+- Achieve single-cell description (segment / track / measure) for up to two populations of interest
+- Signal annotation and traditional or Deep learning automation
+- Mask annotation in napari[^5] and retraining of Deep learning models
+- Neighborhood linking within and across populations and interaction annotations
+- Everything is done graphically, no coding is required!
   
 Check out the [highlights](https://celldetective.readthedocs.io/en/latest/overview.html#description) in the documentation! Instead of reinventing the wheel and out of respect for the amazing work done by these teams, we chose to build around StarDist[^1] & Cellpose[^2][^3] for the Deep-learning segmentation and the Bayesian tracker bTrack[^4] for tracking. If you use these models or methods in your Celldetective workflow, don't forget to cite the respective papers!
 
-🎯 **Target Audience**: The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that completely removes the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
+**Target Audience**: The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that completely removes the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
 
 ![Signal analysis](https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/signal-annotator.gif)
 

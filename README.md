@@ -19,71 +19,31 @@
 Celldetective is a python package and software to perform single-cell
 analysis on multimodal time lapse microscopy images.
 
--   **Documentation:** <https://celldetective.readthedocs.io>
--   **Source code:** <https://github.com/remyeltorro/celldetective>
--   **Bug reports:**
-    <https://github.com/remyeltorro/celldetective/issues/new/choose>
--   **Datasets, models and demos:**
-    <https://zenodo.org/records/10650279>
+-   📚 [Check the full documentation](https://celldetective.readthedocs.io)
+-   🐛 [Report a bug or request a new feature](https://github.com/remyeltorro/celldetective/issues/new/choose)
+-   🗂️ [Explore the datasets, models and demos](https://zenodo.org/records/10650279)
 
 ## Overview
 
-<embed>
-    <p align="center">
-    <img src="https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/celldetective-blocks.png" width="90%" />
-    </p>
-</embed>
+![Pipeline](https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/celldetective-blocks.png)
 
-Celldetective was designed to analyze time-lapse microscopy images in difficult situations: mixed cell populations that are only separable through the use of multimodal information. This software provides a toolkit for the analysis of cell population interactions. 
 
-The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that removes completely the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
+**Brief description**: Celldetective was designed to analyze time-lapse microscopy images in difficult situations: mixed cell populations that are only separable through the use of multimodal information. This software provides a toolkit for the analysis of cell population interactions. 
 
-Some highlight features include:
 
--   **Comprehensive single-cell image analysis** : Celldetective ships
-    segmentation, tracking, and measurement modules, as well as event
-    detection from single-cell signals, for up to two populations of
-    interest.
--   **Integration of state-of-the-art solutions** : Celldetective
-    harnesses state-of-the-art segmentation techniques (StarDist[^1],
-    Cellpose[^2] ,[^3]) and tracking algorithm (bTrack[^4]), as well as
-    the napari viewer[^5] where applicable. These algorithms are
-    interfaced to be well integrated and accessible for the target
-    audience, in the context of complex biological applications.
--   **A framework for event description and annotations** : we propose a
-    broad and intuitive framework to annotate and automate the detection
-    of events from single-cell signals through Deep Learning signal
-    classification and regression. The event formulation is directly
-    exploited to define population survival responses.
--   **A neighborhood scheme to study cell-cell interactions** : we
-    introduce a neighborhood scheme to relate the spatio-temporal
-    distribution and measurements of two cell populations, allowing the
-    study of how cell-cell interactions affect single-cell and
-    population responses.
--   **Deep Learning customization in GUI** : Celldetective facilitates
-    the specialization of Deep Learning models or the creation of new
-    ones adapted to user data, by facilitating the creation of training
-    sets and the training of such models, without having to write a
-    single line of code.
--   **In-software analysis** : Celldetective ships visualization tools
-    to collapse single-cell signals with respect to an event, build
-    survival curves, compare measurement distributions across biological
-    conditions.
--   **A library of segmentation and signal models**: we created specific
-    models to investigate a co-culture of MCF-7 cells and primary NK
-    cells, that are available directly is the software with a large
-    collection of generalist models developed by the StarDist and
-    Cellpose teams, which are a perfect starting point to segment single
-    cells in a new biological system.
--   **Accessible and open source** : Celldetective does not require any
-    coding skills. The software, its models and datasets are made fully
-    open source to encourage transparency and reproducibility.
+**Key features**: 
+- 🦠 Achieve single-cell description (segment / track / measure) for up to two populations of interest
+- 📈 Signal annotation and traditional or Deep learning automation
+- 🖍️ Mask annotation in napari[^5] and retraining of Deep learning models
+- 🏡 Neighborhood linking within and across populations and interaction annotations
+- 🚫💻 Everything is done graphically, no coding required!
+  
+Check out the [highlights](https://celldetective.readthedocs.io/en/latest/overview.html#description) in the documentation! Instead of reinventing the wheel and out of respect for the amazing work done by these teams, we chose to build around StarDist[^1] & Cellpose[^2][^3] for the Deep-learning segmentation and the Bayesian tracker bTrack[^4] for tracking. If you use these models or methods in your Celldetective workflow, don't forget to cite the respective papers!
 
-<embed>
-    <p align="center">
-    <img src="https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/signal-annotator.gif" width="90%" />
-    </p>
-</embed>
+🎯 **Target Audience**: The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that removes completely the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
+
+![Signal analysis](https://github.com/remyeltorro/celldetective/blob/main/docs/source/_static/signal-annotator.gif)
+
 
 # System requirements
 
@@ -162,12 +122,6 @@ python -m celldetective
 ```
 
 For more information about how to get started, please check the [documentation](https://celldetective.readthedocs.io/en/latest/get-started.html#launching-the-gui).
-
-# Documentation
-
-Read the tutorial here:
-
-<https://celldetective.readthedocs.io/>
 
 # How to cite?
 

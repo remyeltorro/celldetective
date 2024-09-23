@@ -2044,8 +2044,8 @@ def augmenter(x, y, flip=True, gauss_blur=True, noise_option=True, shift=True,
 		if channel_extinction:
 			assert extinction_probability <= 1.,'The extinction probability must be a number between 0 and 1.'
 			channel_off = [np.random.random() < extinction_probability for i in range(x.shape[-1])]
-			if not np.all(channel_off):
-				x[:,:,np.array(channel_off, dtype=bool)] = 0.
+			channel_off[0] = False
+			x[:,:,np.array(channel_off, dtype=bool)] = 0.
 
 	return x, y
 

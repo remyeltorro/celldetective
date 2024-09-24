@@ -21,6 +21,7 @@ class TestDLMCF7Segmentation(unittest.TestCase):
 		with open(TEST_CONFIG_FILENAME) as config_file:
 			self.config = json.load(config_file)
 		self.channels = self.config['channels']
+		print(f'{self.channels=}')
 		self.spatial_calibration = self.config['spatial_calibration']
 
 	def test_correct_segmentation_with_multimodal_model(self):

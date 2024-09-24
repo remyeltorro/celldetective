@@ -148,20 +148,20 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		channel_indices = np.array(channel_indices)
 		none_channel_indices = np.where(channel_indices==None)[0]
 		channel_indices[channel_indices==None] = 0
-		print(f"{channel_indices=} {none_channel_indices=}")
 
-		frame = stack[t,:,:,channel_indices.astype(int)].astype(float)
+		frame = stack[t]
+		#frame = stack[t,:,:,channel_indices.astype(int)].astype(float)
 		if frame.ndim==2:
 			frame = frame[:,:,np.newaxis]
 		if frame.ndim==3 and np.array(frame.shape).argmin()==0:
 			frame = np.moveaxis(frame,0,-1)
-		template = frame.copy()
 
 		frame_to_segment = np.zeros((frame.shape[0], frame.shape[1], len(required_channels))).astype(float)
 		for ch in channel_intersection:
 			idx = required_channels.index(ch)
 			frame_to_segment[:,:,idx] = frame[:,:,channels.index(ch)]
 		frame = frame_to_segment
+		template = frame.copy()
 
 		values = []
 		percentiles = []
@@ -173,7 +173,6 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 				percentiles.append(None)
 				values.append(normalization_values[k])
 
-		print(f'{frame.shape=} {percentiles=} {values=}')
 		frame = normalize_multichannel(frame, **{"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
 		
 		if scale_model is not None:

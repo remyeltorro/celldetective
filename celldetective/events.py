@@ -117,6 +117,11 @@ def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMi
 	event_times = df.groupby(['position','TRACK_ID'])[t_event].min().values
 	max_times = df.groupby(['position','TRACK_ID'])['FRAME'].max().values
 
+	if t_reference=="0" or t_reference==0:
+		t_reference = None
+		left_censored = False
+		first_detections = None
+
 	if t_reference is not None:
 		left_censored = True
 		assert t_reference in cols,"The reference time cannot be found in the dataframe..."

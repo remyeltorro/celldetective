@@ -1183,26 +1183,9 @@ def _extract_channel_indices(channels, required_channels):
 				ch_idx = channels.index(c)
 				channel_indices.append(ch_idx)
 			except Exception as e:
-				print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
-				channels = None
-				break
+				channel_indices.append(None)
 		else:
 			channel_indices.append(None)
-
-	# if channels is not None:
-	# 	channel_indices = []
-	# 	for ch in required_channels:
-			
-	# 		try:
-	# 			idx = channels.index(ch)
-	# 		except ValueError:
-	# 			print('Mismatch between the channels required by the model and the provided channels.')
-	# 			return None
-
-	# 		channel_indices.append(idx)
-	# 	channel_indices = np.array(channel_indices)
-	# else:
-	# 	channel_indices = np.arange(len(required_channels))
 
 	return channel_indices
 

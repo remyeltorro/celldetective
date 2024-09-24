@@ -95,6 +95,9 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		assert len(channels)==stack.shape[-1],f'The channel names provided do not match with the expected number of channels in the stack: {stack.shape[-1]}.'
 
 	required_channels = input_config['channels']
+	channel_intersection = [ch for ch in channels if ch in required_channels]
+	assert len(channel_intersection)>0,'None of the channels required by the model can be found in the images to segment... Abort.'
+
 	channel_indices = _extract_channel_indices(channels, required_channels)
 
 	required_spatial_calibration = input_config['spatial_calibration']
@@ -145,7 +148,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		channel_indices = np.array(channel_indices)
 		none_channel_indices = np.where(channel_indices==None)[0]
 		channel_indices[channel_indices==None] = 0
-		print(channel_indices)
+		print(f"{channel_indices=} {none_channel_indices=}")
 
 		frame = stack[t,:,:,channel_indices.astype(int)].astype(float)
 		if frame.ndim==2:
@@ -153,6 +156,12 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		if frame.ndim==3 and np.array(frame.shape).argmin()==0:
 			frame = np.moveaxis(frame,0,-1)
 		template = frame.copy()
+
+		frame_to_segment = np.zeros((frame.shape[0], frame.shape[1], len(required_channels))).astype(float)
+		for ch in channel_intersection:
+			idx = required_channels.index(ch)
+			frame_to_segment[:,:,idx] = frame[:,:,channels.index(ch)]
+		frame = frame_to_segment
 
 		values = []
 		percentiles = []
@@ -164,6 +173,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 				percentiles.append(None)
 				values.append(normalization_values[k])
 
+		print(f'{frame.shape=} {percentiles=} {values=}')
 		frame = normalize_multichannel(frame, **{"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
 		
 		if scale_model is not None:

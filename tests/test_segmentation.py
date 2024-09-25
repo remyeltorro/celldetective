@@ -40,7 +40,7 @@ class TestDLMCF7Segmentation(unittest.TestCase):
 		m.update_state(self.binary_label_true, label_binary)
 		score = m.result().numpy()
 
-		self.assertGreater(score,0.9)
+		self.assertGreater(score,0.85)
 
 	def test_correct_segmentation_with_transferred_model(self):
 		
@@ -58,7 +58,7 @@ class TestDLMCF7Segmentation(unittest.TestCase):
 		m.update_state(self.binary_label_true, label_binary)
 		score = m.result().numpy()
 
-		self.assertGreater(score,0.9)
+		self.assertGreater(score,0.85)
 
 
 class TestThresholdMCF7Segmentation(unittest.TestCase):

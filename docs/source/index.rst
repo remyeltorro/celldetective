@@ -43,6 +43,8 @@ Contents
    
    example_notebook
    adcc-example
+   spreading-assay-example
+
 
 .. toctree::
    :caption: Help:

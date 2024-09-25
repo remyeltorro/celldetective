@@ -242,37 +242,42 @@ class ClassifierWidget(QWidget, Styles):
 
 	def update_props_scatter(self, feature_changed=True):
 
-		if not self.project_times:
-			self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-			colors = [color_from_status(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
-			self.scat_props.set_facecolor(colors)
-			self.scat_props.set_alpha(self.currentAlpha)
-			self.ax_props.set_xlabel(self.features_cb[1].currentText())
-			self.ax_props.set_ylabel(self.features_cb[0].currentText())
-		else:
-			self.scat_props.set_offsets(self.df[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-			colors = [color_from_class(c) for c in self.df[self.class_name].to_numpy()]
-			self.scat_props.set_facecolor(colors)
-			self.scat_props.set_alpha(self.currentAlpha)
-			self.ax_props.set_xlabel(self.features_cb[1].currentText())
-			self.ax_props.set_ylabel(self.features_cb[0].currentText())
+		try:
+
+			if not self.project_times:
+				self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
+				colors = [color_from_status(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
+				self.scat_props.set_facecolor(colors)
+				self.scat_props.set_alpha(self.currentAlpha)
+				self.ax_props.set_xlabel(self.features_cb[1].currentText())
+				self.ax_props.set_ylabel(self.features_cb[0].currentText())
+			else:
+				self.scat_props.set_offsets(self.df[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
+				colors = [color_from_status(c) for c in self.df[self.class_name].to_numpy()]
+				self.scat_props.set_facecolor(colors)
+				self.scat_props.set_alpha(self.currentAlpha)
+				self.ax_props.set_xlabel(self.features_cb[1].currentText())
+				self.ax_props.set_ylabel(self.features_cb[0].currentText())
 
 
-		feat_x = self.features_cb[1].currentText()
-		feat_y = self.features_cb[0].currentText()
-		min_x = self.df.dropna(subset=feat_x)[feat_x].min()
-		max_x = self.df.dropna(subset=feat_x)[feat_x].max()
-		min_y = self.df.dropna(subset=feat_y)[feat_y].min()
-		max_y = self.df.dropna(subset=feat_y)[feat_y].max()
+			feat_x = self.features_cb[1].currentText()
+			feat_y = self.features_cb[0].currentText()
+			min_x = self.df.dropna(subset=feat_x)[feat_x].min()
+			max_x = self.df.dropna(subset=feat_x)[feat_x].max()
+			min_y = self.df.dropna(subset=feat_y)[feat_y].min()
+			max_y = self.df.dropna(subset=feat_y)[feat_y].max()
 
-		if min_x==min_x and max_x==max_x:
-			self.ax_props.set_xlim(min_x, max_x)
-		if min_y==min_y and max_y==max_y:
-			self.ax_props.set_ylim(min_y, max_y)
+			if min_x==min_x and max_x==max_x:
+				self.ax_props.set_xlim(min_x, max_x)
+			if min_y==min_y and max_y==max_y:
+				self.ax_props.set_ylim(min_y, max_y)
+			
+			if feature_changed:
+				self.propscanvas.canvas.toolbar.update()
+			self.propscanvas.canvas.draw_idle()
 		
-		if feature_changed:
-			self.propscanvas.canvas.toolbar.update()
-		self.propscanvas.canvas.draw_idle()
+		except Exception as e:
+			pass
 
 	def apply_property_query(self):
 		

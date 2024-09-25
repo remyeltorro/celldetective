@@ -1438,59 +1438,65 @@ class MeasureAnnotator(SignalAnnotator):
 		self.plot_signals()
 
 	def plot_signals(self):
-		try:
-			current_frame = self.current_frame  # Assuming you have a variable for the current frame
-			yvalues = []
-			all_yvalues = []
-			current_yvalues = []
-			all_median_values = []
-			labels = []
-			for i in range(len(self.signal_choice_cb)):
-				signal_choice = self.signal_choice_cb[i].currentText()
+		
+		#try:
+		current_frame = self.current_frame  # Assuming you have a variable for the current frame
+		
+		yvalues = []
+		all_yvalues = []
+		current_yvalues = []
+		all_median_values = []
+		labels = []
 
-				if signal_choice != "--":
-					if 'TRACK_ID' in self.df_tracks.columns:
-						ydata = self.df_tracks.loc[
-							(self.df_tracks['TRACK_ID'] == self.track_of_interest) &
-							(self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
-					else:
-						ydata = self.df_tracks.loc[
-							(self.df_tracks['ID'] == self.track_of_interest), signal_choice].to_numpy()
-					all_ydata = self.df_tracks.loc[:, signal_choice].to_numpy()
-					ydata = ydata[ydata == ydata]  # remove nan
-					current_ydata = self.df_tracks.loc[
+		for i in range(len(self.signal_choice_cb)):
+
+			signal_choice = self.signal_choice_cb[i].currentText()
+
+			if signal_choice != "--":
+				if 'TRACK_ID' in self.df_tracks.columns:
+					ydata = self.df_tracks.loc[
+						(self.df_tracks['TRACK_ID'] == self.track_of_interest) &
 						(self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
-					current_ydata = current_ydata[current_ydata == current_ydata]
-					all_ydata = all_ydata[all_ydata == all_ydata]
-					yvalues.extend(ydata)
-					current_yvalues.append(current_ydata)
-					all_yvalues.append(all_ydata)
-					labels.append(signal_choice)
+				else:
+					ydata = self.df_tracks.loc[
+						(self.df_tracks['ID'] == self.track_of_interest), signal_choice].to_numpy()
+				all_ydata = self.df_tracks.loc[:, signal_choice].to_numpy()
+				ydataNaN = ydata
+				ydata = ydata[ydata == ydata]  # remove nan
+				current_ydata = self.df_tracks.loc[
+					(self.df_tracks['FRAME'] == current_frame), signal_choice].to_numpy()
+				current_ydata = current_ydata[current_ydata == current_ydata]
+				all_ydata = all_ydata[all_ydata == all_ydata]
+				yvalues.extend(ydataNaN)
+				current_yvalues.append(current_ydata)
+				all_yvalues.append(all_ydata)
+				labels.append(signal_choice)
 
-			self.cell_ax.clear()
+		self.cell_ax.clear()
 
-			if len(yvalues) > 0:
-				self.cell_ax.boxplot(all_yvalues, showfliers=self.show_fliers)
-				ylim = self.cell_ax.get_ylim()
-				self.cell_ax.set_ylim(ylim)
-				x_pos = np.arange(len(all_yvalues)) + 1
+		if len(yvalues) > 0:
+			self.cell_ax.boxplot(all_yvalues, showfliers=self.show_fliers)
+			ylim = self.cell_ax.get_ylim()
+			self.cell_ax.set_ylim(ylim)
+			x_pos = np.arange(len(all_yvalues)) + 1
 
-				for index, feature in enumerate(current_yvalues):
-					x_values_strip = (index + 1) + np.random.normal(0, 0.04, size=len(
-						feature))
-					self.cell_ax.plot(x_values_strip, feature, marker='o', linestyle='None', color=tab10.colors[0],
-									  alpha=0.1)
-				self.cell_ax.plot(x_pos, yvalues, marker='H', linestyle='None', color=tab10.colors[3], alpha=1)
+			for index, feature in enumerate(current_yvalues):
+				x_values_strip = (index + 1) + np.random.normal(0, 0.04, size=len(
+					feature))
+				self.cell_ax.plot(x_values_strip, feature, marker='o', linestyle='None', color=tab10.colors[0],
+								  alpha=0.1)
+			
+			self.cell_ax.plot(x_pos, yvalues, marker='H', linestyle='None', color=tab10.colors[3], alpha=1)
 
 
-			else:
-				self.cell_ax.text(0.5, 0.5, "No data available", horizontalalignment='center',
-								  verticalalignment='center', transform=self.cell_ax.transAxes)
+		else:
+			self.cell_ax.text(0.5, 0.5, "No data available", horizontalalignment='center',
+							  verticalalignment='center', transform=self.cell_ax.transAxes)
 
-			self.cell_fcanvas.canvas.draw()
+		self.cell_fcanvas.canvas.draw()
 
-		except Exception as e:
-			print(f"{e=}")
+		# except Exception as e:
+		# 	print("plot_signals: ",f"{e=}")
 
 	def configure_ylims(self):
 
@@ -1954,7 +1960,7 @@ class MeasureAnnotator(SignalAnnotator):
 		try:
 			cell_selected = f"cell: {self.track_of_interest}\n"
 			if 'TRACK_ID' in self.df_tracks.columns:
-				cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['TRACK_ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
+				cell_status = f"phenotype: {self.df_tracks.loc[(self.df_tracks['FRAME']==self.current_frame)&(self.df_tracks['TRACK_ID'] == self.track_of_interest), self.status_name].to_numpy()[0]}\n"
 			else:
 				cell_status = f"phenotype: {self.df_tracks.loc[self.df_tracks['ID'] == self.track_of_interest, self.status_name].to_numpy()[0]}\n"
 			self.cell_info.setText(cell_selected + cell_status)
@@ -2032,9 +2038,8 @@ class MeasureAnnotator(SignalAnnotator):
 
 	def assign_color_state(self, state):
 		if np.isnan(state):
-			pass
-		else:
-			return self.state_color_map[state]
+		 	state = "nan"
+		return self.state_color_map[state]
 
 	def draw_frame(self, framedata):
 
@@ -2045,10 +2050,10 @@ class MeasureAnnotator(SignalAnnotator):
 		self.frame_lbl.setText(f'position: {self.framedata}')
 		self.im.set_array(self.img)
 		self.status_scatter.set_offsets(self.positions[self.framedata])
-		try:
-			self.status_scatter.set_edgecolors(self.colors[self.framedata][:, 0])
-		except Exception as e:
-			pass
+		# try:
+		self.status_scatter.set_edgecolors(self.colors[self.framedata][:, 0])
+		# except Exception as e:
+		# 	pass
 
 		self.current_label = self.labels[self.current_frame]
 		self.current_label = contour_of_instance_segmentation(self.current_label, 5)
@@ -2060,18 +2065,23 @@ class MeasureAnnotator(SignalAnnotator):
 		return (self.im, self.status_scatter,self.im_mask,)
 
 	def compute_status_and_colors(self):
+		print('compute status and colors!')
 		if self.class_choice_cb.currentText() == '':
 			self.status_name=self.target_class
 		else:
 			self.status_name = self.class_choice_cb.currentText()
 
+		print(f'{self.status_name=}')
 		if self.status_name not in self.df_tracks.columns:
+			print('not in df, make column')
 			self.make_status_column()
 		else:
 			all_states = self.df_tracks.loc[:, self.status_name].tolist()
 			all_states = np.array(all_states)
 			self.state_color_map = color_from_state(all_states, recently_modified=False)
+			print(f'{self.state_color_map=}')
 			self.df_tracks['group_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
+			print(self.df_tracks['group_color'])
 
 	def del_event_class(self):
 
@@ -2342,9 +2352,11 @@ class MeasureAnnotator(SignalAnnotator):
 	# self.extract_scatter_from_trajectories()
 
 	def modify(self):
+
 		all_states = self.df_tracks.loc[:, self.status_name].tolist()
 		all_states = np.array(all_states)
 		self.state_color_map = color_from_state(all_states, recently_modified=False)
+		print(f'{self.state_color_map=}')
 
 		self.df_tracks['group_color'] = self.df_tracks[self.status_name].apply(self.assign_color_state)
 
@@ -2383,7 +2395,7 @@ class MeasureAnnotator(SignalAnnotator):
 				self.colors[t][idx, 0] = self.previous_color[k][0]
 			# self.colors[t][idx, 1] = self.previous_color[k][1]
 		except Exception as e:
-			print(f'{e=}')
+			print("cancel_selection: ",f'{e=}')
 
 	def locate_stack(self):
 

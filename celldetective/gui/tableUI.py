@@ -1003,7 +1003,7 @@ class TableUI(QMainWindow, Styles):
 
 
 		elif self.per_status_option.isChecked():
-
+			self.projection_mode = self.status_operation.currentText()
 			group_table = collapse_trajectories_by_status(self.data, status=self.per_status_cb.currentText(),population=self.population, projection=self.status_operation.currentText(), groupby_columns=self.groupby_cols)
 
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")

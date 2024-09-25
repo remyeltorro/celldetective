@@ -1193,7 +1193,7 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_re
 		elif np.all([s==1 for s in status_values]):
 			# all positive, event already observed
 			df.loc[indices, class_attr] = 2
-			df.loc[indices, class_attr.replace('class','status')] = 2
+			#df.loc[indices, class_attr.replace('class','status')] = 2
 		else:
 			# ambiguity, possible transition
 			df.loc[indices, class_attr] = 2

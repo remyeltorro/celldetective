@@ -768,7 +768,7 @@ def color_from_status(status, recently_modified=False):
 		else:
 			return 'k'
 
-def color_from_state(state):
+def color_from_state(state, recently_modified=False):
 
 	"""
 	Generate a color map based on unique values in the provided state array.
@@ -797,9 +797,15 @@ def color_from_state(state):
 	unique_values = np.unique(state)
 	color_map={}
 	for value in unique_values:
-		color_map[value] = plt.cm.tab10(value)
-		if value == 99:
+		if np.isnan(value):
+			value = "nan"
 			color_map[value] = 'k'
+		elif value==0:
+			color_map[value] = 'tab:blue'
+		elif value==1:
+			color_map[value] = 'tab:red'
+		else:
+			color_map[value] = plt.cm.tab10(value)
 
 	return color_map
 

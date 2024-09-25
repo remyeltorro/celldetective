@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt
 from celldetective.utils import get_software_location
 import os
 from celldetective.gui.gui_utils import center_window
+from celldetective._version import __version__
 
 class AboutWidget(QWidget):
 
@@ -27,7 +28,7 @@ class AboutWidget(QWidget):
 									""")
 		layout.addWidget(self.soft_name, alignment=Qt.AlignCenter)
 
-		self.version_lbl = QLabel(f"Version X.X.X <a href=\"https://github.com/remyeltorro/celldetective/releases\">(release notes)</a>")
+		self.version_lbl = QLabel(f"Version {__version__} <a href=\"https://github.com/remyeltorro/celldetective/releases\">(release notes)</a>")
 		self.version_lbl.setOpenExternalLinks(True)
 		layout.addWidget(self.version_lbl, alignment=Qt.AlignCenter)
 

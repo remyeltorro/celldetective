@@ -2,10 +2,21 @@ from setuptools import setup
 import setuptools
 import pip
 import os
-
+import re
 from pip._internal.req import parse_requirements
 from pathlib import Path
+
 this_directory = Path(__file__).parent
+
+# Load version
+VERSIONFILE="celldetective/_version.py"
+verstrline = open(VERSIONFILE, "rt").read()
+VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+mo = re.search(VSRE, verstrline, re.M)
+if mo:
+    verstr = mo.group(1)
+else:
+    raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
 
 links = []
 requires = []
@@ -18,7 +29,7 @@ except:
     requirements = [str(ir.requirement) for ir in requirements]
 
 setup(name='celldetective',
-			version='1.2.2.post2',
+			version=verstr,
 			description='description',
 			long_description=(this_directory / "README.md").read_text(),
 			#long_description=open('README.rst',encoding="utf8").read(),

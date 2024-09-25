@@ -26,7 +26,7 @@ class TestDLMCF7Segmentation(unittest.TestCase):
 
 	def test_correct_segmentation_with_multimodal_model(self):
 		
-		labels = segment(self.stack, "MCF7_bf_pi_cfse_h", channels=self.channels, spatial_calibration=self.spatial_calibration, view_on_napari=False,
+		labels = segment(self.stack, "mcf7_nuc_multimodal", channels=self.channels, spatial_calibration=self.spatial_calibration, view_on_napari=False,
 						use_gpu=False)
 		np.testing.assert_array_equal(labels[0], labels[1])
 
@@ -44,7 +44,7 @@ class TestDLMCF7Segmentation(unittest.TestCase):
 
 	def test_correct_segmentation_with_transferred_model(self):
 		
-		labels = segment(self.stack, "MCF7_h_versatile", channels=self.channels, spatial_calibration=self.spatial_calibration, view_on_napari=False,
+		labels = segment(self.stack, "mcf7_nuc_stardist_transfer", channels=self.channels, spatial_calibration=self.spatial_calibration, view_on_napari=False,
 			use_gpu=True)
 		np.testing.assert_array_equal(labels[0], labels[1])
 

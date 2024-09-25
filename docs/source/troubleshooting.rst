@@ -38,13 +38,13 @@ Pytorch
 
 On older hardware, Pytorch may yield the following error:
 
-.. code-block:: bash
+.. code-block:: console
 
     Pytorch: [W NNPACK.cpp:64] Could not initialize NNPACK! Reason: Unsupported hardware.
 
 A potential fix is to install Pytorch through `mamba <https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html>`_:
 
-.. code-block:: bash
+.. code-block:: console
 
     mamba remove pytorch
     mamba install pytorch
@@ -54,13 +54,14 @@ Tensorflow
 
 On older hardware, Tensorflow may yield the following error:
 
-.. code-block:: bash
+.. code-block:: console
+
     Tensorflow: Illegal instruction (core dumped)
     The TensorFlow library was compiled to use AVX instructions, but these aren't available on your machine.
 
 A potential fix is to install Tensorflow through `mamba <https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html>`_:
 
-.. code-block:: bash
+.. code-block:: console
 
     conda remove tensorflow
     mamba remove tensorflow
@@ -71,13 +72,13 @@ StarDist
 
 When training a StarDist model on an older CPU the following error can be triggered:
 
-.. code-block:: bash
+.. code-block:: console
 
     pyopencl._cl.LogicError: clGetPlatformIDs failed: PLATFORM_NOT_FOUND_KHR
 
 Try to install the missing pocl library as:
 
-.. code-block:: bash
+.. code-block:: console
 
     pip install pocl-binary-distribution
 

@@ -15,13 +15,15 @@ Celldetective requires a version of Python between 3.9 and 3.11 (included). If y
 
 With the proper Python version, Celldetective can be directly installed with `pip`:
 
-.. code-block:: bash
+.. code-block:: console
+
     pip install celldetective
 
 We recommend that you create an environment to use Celldetective, to protect your package versions and fix the Python version *e.g.*
 with `conda`:
 
-.. code-block:: bash
+.. code-block:: console
+
     conda create -n celldetective python=3.11 pyqt
     conda activate celldetective
     pip install celldetective
@@ -29,7 +31,8 @@ with `conda`:
 Need an update? Simply type the following in the terminal (in your
 environment):
 
-.. code-block:: bash
+.. code-block:: console
+
     pip install --upgrade celldetective
 
 Development version
@@ -38,7 +41,7 @@ Development version
 
 If you want to run the latest development version, you can clone the repository to your local machine and install Celldetective in “development” mode. This means that any changes to the cloned repository will be immediately available in the python environment:
 
-.. code-block:: bash
+.. code-block:: console
 
     # creates "celldetective" folder
     git clone git://github.com/remyeltorro/celldetective.git
@@ -54,13 +57,13 @@ If you want to run the latest development version, you can clone the repository 
 
 To run the latest development version without cloning the repository, you can also use this line:
 
-.. code-block:: bash
+.. code-block:: console
 
     pip install git+https//github.com/remyeltorro/celldetective.git
 
 You can also download the repository as a compressed file. Unzip the file and open a terminal at the root of the folder (same level as the file ``requirements.txt``). We recommend that you create a python environment as Celldetective relies on many packages that may interfere with package requirements for other projects. Run the following lines to create an environment named "celldetective":
 
-.. code-block:: bash
+.. code-block:: console
 
     conda create -n celldetective python=3.9.18 pyqt
     conda activate celldetective

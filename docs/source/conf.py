@@ -1,6 +1,7 @@
 import sphinx_rtd_theme
 import sys
 import os
+import celldetective
 
 #sys.path.append('/home/limozin/Documents/GitHub/rtd-tutorial')
 sys.path.insert(0, os.path.abspath('./../../'))
@@ -15,8 +16,9 @@ project = 'celldetective'
 copyright = '2024, Rémy Torro'
 author = 'Rémy Torro'
 
-release = '1.2'
-version = '1.2.2.post2'
+vers = celldetective.__version__
+release = '.'.join(vers.split('.')[:-1]) #'1.2'
+version = vers #'1.2.2.post2'
 
 # -- General configuration
 

@@ -2301,9 +2301,9 @@ def get_zenodo_files(cat=None):
 	for f in all_files_short:
 		if f.startswith('CP') or f.startswith('SD'):
 			category = os.sep.join(['models','segmentation_generic'])
-		elif f.startswith('MCF7'):
+		elif f.startswith('MCF7') or f.startswith('mcf7'):
 			category = os.sep.join(['models','segmentation_targets'])
-		elif f.startswith('primNK'):
+		elif f.startswith('primNK') or f.startswith('lymphocytes'):
 			category = os.sep.join(['models','segmentation_effectors'])
 		elif f.startswith('demo'):
 			category = 'demos'
@@ -2345,9 +2345,7 @@ def download_zenodo_file(file, output_dir):
 	if len(file_to_rename)>0 and not file_to_rename[0].endswith(os.sep) and not file.startswith('demo'):
 		os.rename(file_to_rename[0], os.sep.join([output_dir,file,file]))
 
-	if file=="db_mcf7_nuclei_w_primary_NK":
-		os.rename(os.sep.join([output_dir,file.replace('db_','')]), os.sep.join([output_dir,file]))
-	if file=="db_primary_NK_w_mcf7":
+	if file.startswith('db_'):
 		os.rename(os.sep.join([output_dir,file.replace('db_','')]), os.sep.join([output_dir,file]))
 	if file=='db-si-NucPI':
 		os.rename(os.sep.join([output_dir,'db2-NucPI']), os.sep.join([output_dir,file]))

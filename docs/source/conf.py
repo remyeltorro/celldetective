@@ -25,9 +25,8 @@ project = 'celldetective'
 copyright = '2024, Rémy Torro'
 author = 'Rémy Torro'
 
-vers = celldetective.__version__
-release = '.'.join(vers.split('.')[:-1]) #'1.2'
-version = vers #'1.2.2.post2'
+release = verstr
+version = verstr #'1.2.2.post2'
 
 # -- General configuration
 

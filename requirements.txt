@@ -32,3 +32,4 @@ matplotlib_scalebar
 numpy==1.26.4
 pytest
 pytest-qt
+h5py

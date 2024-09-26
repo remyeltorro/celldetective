@@ -73,9 +73,7 @@ jobs:
           pip install setuptools wheel PyQt5
       - name: Install package
         run: |
-          pip install "."
-          pip uninstall h5py
-          pip install h5py
+          pip install -e "."
       - name: Test package
         run: |
           python -m unittest

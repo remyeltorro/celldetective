@@ -74,6 +74,8 @@ jobs:
       - name: Install package
         run: |
           pip install "."
+          pip uninstall h5py
+          pip install h5py
       - name: Test package
         run: |
           python -m unittest

@@ -28,7 +28,7 @@ import subprocess
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_napari=False,
-			use_gpu=True, channel_axis=-1):
+			use_gpu=True, channel_axis=-1, cellprob_threshold=None, flow_threshold=None):
 	
 	"""
 	
@@ -50,10 +50,6 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		Whether to visualize the segmentation results using Napari. Default is False.
 	use_gpu : bool, optional
 		Whether to use GPU acceleration if available. Default is True.
-	time_flat_normalization : bool, optional
-		Whether to perform time-flat normalization on the stack before segmentation. Default is False.
-	time_flat_percentiles : tuple, optional
-		The percentiles used for time-flat normalization. Default is (0.0, 99.99).
 
 	Returns
 	-------
@@ -111,10 +107,13 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		diameter = input_config['diameter']
 		# if diameter!=30:
 		# 	required_spatial_calibration = None
-		cellprob_threshold = input_config['cellprob_threshold']
-		flow_threshold = input_config['flow_threshold']
+		if cellprob_threshold is None:
+			cellprob_threshold = input_config['cellprob_threshold']
+		if flow_threshold is None:
+			flow_threshold = input_config['flow_threshold']
 
 	scale = _estimate_scale_factor(spatial_calibration, required_spatial_calibration)
+	print(f"{spatial_calibration=} {required_spatial_calibration=} Scale = {scale}...")
 
 	if model_type=='stardist':
 

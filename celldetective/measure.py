@@ -980,7 +980,6 @@ def blob_detection(image, label, threshold, diameter):
 
 ### Classification ####
 
-
 def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], r2_threshold=0.5):
 
 	"""
@@ -1027,6 +1026,7 @@ def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], 
 	df = df.sort_values(by=sort_cols,ignore_index=True)
 	df = df.reset_index(drop=True)
 
+
 	for tid,group in df.loc[df[class_attr].isin(class_of_interest)].groupby(sort_cols):
 		
 		indices = group.index
@@ -1034,21 +1034,19 @@ def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], 
 
 		group_clean = group.dropna(subset=status_col)
 		status_signal = group_clean[status_col].values
+		if np.all(np.array(status_signal)==1):
+			continue
+
 		timeline = group_clean['FRAME'].values
-		
 		frames = group_clean['FRAME'].to_numpy()
 		status_values = group_clean[status_col].to_numpy()
 		t_first = group['t_firstdetection'].to_numpy()[0]
 
 		try:
-
-			popt, pcov = curve_fit(eval(model), timeline.astype(int), status_signal, p0=[df['FRAME'].max()//2, 0.8],maxfev=30000)
+			popt, pcov = curve_fit(eval(model), timeline.astype(int), status_signal, p0=[max(timeline)//2, 0.8],maxfev=100000)
 			values = [eval(model)(t, *popt) for t in timeline]
 			r2 = r2_score(status_signal,values)
-
-		except Exception as e:
-
-			print(e)
+		except Exception:
 			df.loc[indices, class_attr] = 2.0
 			df.loc[indices, class_attr.replace('class','t')] = -1
 			continue
@@ -1064,7 +1062,7 @@ def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], 
 	return df
 
 
-def interpret_track_classification(df, class_attr, irreversible_event=False, unique_state=False,r2_threshold=0.5):
+def interpret_track_classification(df, class_attr, irreversible_event=False, unique_state=False,r2_threshold=0.5, percentile_recovery=50):
 
 	"""
 	Interpret and classify tracked cells based on their status signals.
@@ -1123,15 +1121,15 @@ def interpret_track_classification(df, class_attr, irreversible_event=False, uni
 
 	if irreversible_event:
 
-		df = classify_irreversible_events(df, class_attr, r2_threshold=0.5)
-
+		df = classify_irreversible_events(df, class_attr, r2_threshold=r2_threshold, percentile_recovery=percentile_recovery)
+	
 	elif unique_state:
 		
 		df = classify_unique_states(df, class_attr, percentile=50)
 
 	return df
 
-def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_recovery=95):
+def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_recovery=50):
 
 	"""
 	Classify irreversible events in a tracked dataset based on the status of cells and transitions.
@@ -1179,6 +1177,12 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_re
 	stat_col = class_attr.replace('class','status')
 
 	for tid,track in df.groupby(sort_cols):
+		
+		# Set status to 0.0 before first detection
+		t_firstdetection = track['t_firstdetection'].values[0]
+		indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
+		track.loc[indices_pre_detection,stat_col] = 0.0
+		df.loc[indices_pre_detection,stat_col] = 0.0
 
 		track_valid = track.dropna(subset=stat_col)
 		indices_valid = track_valid[class_attr].index
@@ -1198,11 +1202,15 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_re
 			# ambiguity, possible transition
 			df.loc[indices, class_attr] = 2
 	
+	print("Classes after initial pass: ",df.loc[df['FRAME']==0,class_attr].value_counts())
+
 	df.loc[df[class_attr]!=2, class_attr.replace('class', 't')] = -1
 	df = estimate_time(df, class_attr, model='step_function', class_of_interest=[2],r2_threshold=r2_threshold)
-	
+	print("Classes after fit: ", df.loc[df['FRAME']==0,class_attr].value_counts())
+
 	# Revisit class 2 cells to classify as neg/pos with percentile tolerance
 	df.loc[df[class_attr]==2,:] = classify_unique_states(df.loc[df[class_attr]==2,:].copy(), class_attr, percentile_recovery)
+	print("Classes after unique state recovery: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 	
 	return df
 
@@ -1251,13 +1259,16 @@ def classify_unique_states(df, class_attr, percentile=50):
 
 	stat_col = class_attr.replace('class','status')
 
+
 	for tid,track in df.groupby(sort_cols):
+
 
 		track_valid = track.dropna(subset=stat_col)
 		indices_valid = track_valid[class_attr].index
 
 		indices = track[class_attr].index
 		status_values = track_valid[stat_col].to_numpy()
+
 
 		frames = track_valid['FRAME'].to_numpy()
 		t_first = track['t_firstdetection'].to_numpy()[0]
@@ -1324,6 +1335,9 @@ def classify_cells_from_query(df, status_attr, query):
 
 
 	# Initialize all states to 0
+	if not status_attr.startswith('status_'):
+		status_attr = 'status_'+status_attr
+
 	df[status_attr] = 0
 	cols = extract_cols_from_query(query)
 	cols_in_df = np.all([c in list(df.columns) for c in cols], axis=0)
@@ -1344,4 +1358,18 @@ def classify_cells_from_query(df, status_attr, query):
 		except Exception as e:
 			print("The query could not be understood. No filtering was applied. {e}...")
 			return None
+	return df
+
+def classify_tracks_from_query(df, event_name, query, irreversible_event=True, unique_state=False, r2_threshold=0.5, percentile_recovery=50):
+	
+	status_attr = "status_"+event_name
+	df = classify_cells_from_query(df, status_attr, query)
+	class_attr = "class_"+event_name
+
+	name_map = {status_attr: class_attr}
+	df = df.drop(list(set(name_map.values()) & set(df.columns)), axis=1).rename(columns=name_map)
+	df.reset_index(inplace=True, drop=True)
+
+	df = interpret_track_classification(df, class_attr, irreversible_event=irreversible_event, unique_state=unique_state, r2_threshold=r2_threshold, percentile_recovery=percentile_recovery)
+
 	return df

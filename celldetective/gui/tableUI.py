@@ -1,9 +1,10 @@
 from PyQt5.QtWidgets import QRadioButton, QButtonGroup, QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox, QMessageBox
 from PyQt5.QtCore import Qt, QAbstractTableModel
+from PyQt5.QtGui import QBrush, QColor
 import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
-from celldetective.gui.gui_utils import FigureCanvas, center_window
+from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine
 from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status
 import numpy as np
 import seaborn as sns
@@ -14,6 +15,7 @@ from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from math import floor
+from cliffs_delta import cliffs_delta
 
 from matplotlib import colormaps
 
@@ -26,6 +28,7 @@ class PandasModel(QAbstractTableModel):
 	def __init__(self, data):
 		QAbstractTableModel.__init__(self)
 		self._data = data
+		self.colors = dict()
 
 	def rowCount(self, parent=None):
 		return self._data.shape[0]
@@ -37,12 +40,23 @@ class PandasModel(QAbstractTableModel):
 		if index.isValid():
 			if role == Qt.DisplayRole:
 				return str(self._data.iloc[index.row(), index.column()])
+			if role == Qt.BackgroundRole:
+				color = self.colors.get((index.row(), index.column()))
+				if color is not None:
+					return color
 		return None
 
-	def headerData(self, col, orientation, role):
+	def headerData(self, rowcol, orientation, role):
 		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-			return self._data.columns[col]
+			return self._data.columns[rowcol]
+		if orientation == Qt.Vertical and role == Qt.DisplayRole:
+			return self._data.index[rowcol]
 		return None
+
+	def change_color(self, row, column, color):
+		ix = self.index(row, column)
+		self.colors[(row, column)] = color
+		self.dataChanged.emit(ix, ix, (Qt.BackgroundRole,))
 
 
 class QueryWidget(QWidget):
@@ -315,6 +329,50 @@ class RenameColWidget(QWidget):
 		self.parent_window.model = PandasModel(self.parent_window.data)
 		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
+
+class PivotTableUI(QWidget):
+
+	def __init__(self, data, title="", *args, **kwargs):
+
+		QWidget.__init__(self, *args, **kwargs)
+		
+		self.data = data
+		self.title = title
+		self.setWindowTitle(title)
+		print("tab to show: ",self.data)
+
+		self.table = QTableView(self)
+
+		self.v_layout = QVBoxLayout()
+		self.v_layout.addWidget(self.table)
+		self.setLayout(self.v_layout)
+
+		self.showdata()
+		#self.set_cell_color(0,0)
+		self.color_cells()
+
+		self.table.resizeColumnsToContents()
+		self.setAttribute(Qt.WA_DeleteOnClose)
+		center_window(self)
+
+	def showdata(self):
+		self.model = PandasModel(self.data)
+		self.table.setModel(self.model)
+
+	def set_cell_color(self, row, column, color='red'):
+		self.model.change_color(row, column, QBrush(QColor(color))) #eval(f"Qt.{color}")
+
+	def color_cells(self):
+		for i in range(self.data.shape[0]):
+			for j in range(self.data.shape[1]):
+				value = self.data.iloc[i,j]
+				if value < 0.147:
+					self.set_cell_color(i,j,"#404040")
+				elif value < 0.33:
+					self.set_cell_color(i,j,"#b3b3b3")
+				else:
+					pass
+
 
 
 class TableUI(QMainWindow, Styles):
@@ -744,6 +802,9 @@ class TableUI(QMainWindow, Styles):
 		self.box_check = QCheckBox('boxplot')
 		self.boxenplot_check = QCheckBox('boxenplot')
 
+		self.sep_line = QHSeperationLine()
+		self.effect_size_check = QCheckBox("Compute effect size?\n(Cliff's Delta)")
+
 		layout.addWidget(self.hist_check)
 		layout.addWidget(self.kde_check)
 		layout.addWidget(self.count_check)
@@ -754,6 +815,8 @@ class TableUI(QMainWindow, Styles):
 		layout.addWidget(self.strip_check)
 		layout.addWidget(self.box_check)
 		layout.addWidget(self.boxenplot_check)
+		layout.addWidget(self.sep_line)
+		layout.addWidget(self.effect_size_check)
 
 		self.x_cb = QSearchableComboBox()
 		self.x_cb.addItems(['--']+list(self.data.columns))
@@ -938,6 +1001,37 @@ class TableUI(QMainWindow, Styles):
 		self.fig.canvas.setStyleSheet("background-color: transparent;")
 		self.plot1dWindow.canvas.draw()
 		self.plot1dWindow.show()
+
+		if self.effect_size_check.isChecked():
+			
+			self.groupby_cols = []
+			if self.x is not None:
+				self.groupby_cols.append(self.x)
+			if hue_variable is not None:
+				self.groupby_cols.append(hue_variable)
+			
+			effect_sizes = []
+
+			for lbl1,group1 in self.data.dropna(subset=self.y).groupby(self.groupby_cols):
+				for lbl2,group2 in self.data.dropna(subset=self.y).groupby(self.groupby_cols):
+
+					dist1 = group1[self.y].values
+					dist2 = group2[self.y].values
+					es = cliffs_delta(list(dist2),list(dist1))[0]
+					effect_sizes.append({"cdt1": lbl1, "cdt2": lbl2, "effect_size": es})
+			
+			effect_sizes = pd.DataFrame(effect_sizes)
+			effect_sizes['cdt1'] = effect_sizes['cdt1'].astype(str)
+			effect_sizes['cdt2'] = effect_sizes['cdt2'].astype(str)
+
+			pivot = effect_sizes.pivot(index='cdt1', columns='cdt2', values='effect_size')
+			pivot.reset_index(inplace=True)
+			pivot.columns.name = None
+			pivot.set_index("cdt1",drop=True, inplace=True)
+			pivot.index.name = None
+
+			self.effect_size_table = PivotTableUI(pivot, title="Effect size (Cliff's Delta)")
+			self.effect_size_table.show()
 
 
 	def set_proj_mode(self):

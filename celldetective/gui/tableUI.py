@@ -16,6 +16,7 @@ from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from math import floor
 from cliffs_delta import cliffs_delta
+from scipy.stats import ks_2samp
 
 from matplotlib import colormaps
 
@@ -332,12 +333,14 @@ class RenameColWidget(QWidget):
 
 class PivotTableUI(QWidget):
 
-	def __init__(self, data, title="", *args, **kwargs):
+	def __init__(self, data, title="", mode=None, *args, **kwargs):
 
 		QWidget.__init__(self, *args, **kwargs)
 		
 		self.data = data
 		self.title = title
+		self.mode = mode
+
 		self.setWindowTitle(title)
 		print("tab to show: ",self.data)
 
@@ -348,8 +351,11 @@ class PivotTableUI(QWidget):
 		self.setLayout(self.v_layout)
 
 		self.showdata()
-		#self.set_cell_color(0,0)
-		self.color_cells()
+
+		if self.mode=="cliff":
+			self.color_cells_cliff()
+		elif self.mode=="pvalue":
+			self.color_cells_pvalue()
 
 		self.table.resizeColumnsToContents()
 		self.setAttribute(Qt.WA_DeleteOnClose)
@@ -362,7 +368,7 @@ class PivotTableUI(QWidget):
 	def set_cell_color(self, row, column, color='red'):
 		self.model.change_color(row, column, QBrush(QColor(color))) #eval(f"Qt.{color}")
 
-	def color_cells(self):
+	def color_cells_cliff(self):
 		for i in range(self.data.shape[0]):
 			for j in range(self.data.shape[1]):
 				value = self.data.iloc[i,j]
@@ -373,6 +379,20 @@ class PivotTableUI(QWidget):
 				else:
 					pass
 
+	def color_cells_pvalue(self):
+		for i in range(self.data.shape[0]):
+			for j in range(self.data.shape[1]):
+				value = self.data.iloc[i,j]
+				if value <= 0.0001:
+					self.set_cell_color(i,j,"#ffffff")
+				elif value <= 0.001:
+					self.set_cell_color(i,j,"#cccccc")
+				elif value <= 0.01:
+					self.set_cell_color(i,j,"#b3b3b3")
+				elif value <= 0.05:
+					self.set_cell_color(i,j,"#6e6e6e")
+				elif value > 0.05:
+					self.set_cell_color(i,j,"#333333")
 
 
 class TableUI(QMainWindow, Styles):
@@ -803,6 +823,7 @@ class TableUI(QMainWindow, Styles):
 		self.boxenplot_check = QCheckBox('boxenplot')
 
 		self.sep_line = QHSeperationLine()
+		self.pvalue_check = QCheckBox("Compute KS test p-value?")
 		self.effect_size_check = QCheckBox("Compute effect size?\n(Cliff's Delta)")
 
 		layout.addWidget(self.hist_check)
@@ -816,6 +837,7 @@ class TableUI(QMainWindow, Styles):
 		layout.addWidget(self.box_check)
 		layout.addWidget(self.boxenplot_check)
 		layout.addWidget(self.sep_line)
+		layout.addWidget(self.pvalue_check)
 		layout.addWidget(self.effect_size_check)
 
 		self.x_cb = QSearchableComboBox()
@@ -893,13 +915,13 @@ class TableUI(QMainWindow, Styles):
 		cmap = getattr(mcm, self.cmap_cb.currentText())
 
 		try:
-			hue_variable = self.hue_cb.currentText()
-			colors = [cmap(i / len(self.data[hue_variable].unique())) for i in range(len(self.data[hue_variable].unique()))]
+			self.hue_variable = self.hue_cb.currentText()
+			colors = [cmap(i / len(self.data[self.hue_variable].unique())) for i in range(len(self.data[self.hue_variable].unique()))]
 		except:
 			colors = None
 
 		if self.hue_cb.currentText()=='--':
-			hue_variable = None
+			self.hue_variable = None
 
 		if self.y_cb.currentText()=='--':
 			self.y = None
@@ -915,42 +937,42 @@ class TableUI(QMainWindow, Styles):
 		
 		if self.hist_check.isChecked():
 			if self.x is not None:
-				sns.histplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
+				sns.histplot(data=self.data, x=self.x, hue=self.hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
 				legend = False
 			elif self.x is None and self.y is not None:
-				sns.histplot(data=self.data, x=self.y, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
+				sns.histplot(data=self.data, x=self.y, hue=self.hue_variable, legend=legend, ax=self.ax, palette=colors, kde=True, common_norm=False, stat='density')
 				legend = False
 			else:
 				pass
 
 		if self.kde_check.isChecked():
 			if self.x is not None:
-				sns.kdeplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
+				sns.kdeplot(data=self.data, x=self.x, hue=self.hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
 				legend = False
 			elif self.x is None and self.y is not None:
-				sns.kdeplot(data=self.data, x=self.y, hue=hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
+				sns.kdeplot(data=self.data, x=self.y, hue=self.hue_variable, legend=legend, ax=self.ax, palette=colors, cut=0)
 				legend = False	
 			else:
 				pass
 
 		if self.count_check.isChecked():
-			sns.countplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+			sns.countplot(data=self.data, x=self.x, hue=self.hue_variable, legend=legend, ax=self.ax, palette=colors)
 			legend = False
 
 
 		if self.ecdf_check.isChecked():
 			if self.x is not None:
-				sns.ecdfplot(data=self.data, x=self.x, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+				sns.ecdfplot(data=self.data, x=self.x, hue=self.hue_variable, legend=legend, ax=self.ax, palette=colors)
 				legend = False
 			elif self.x is None and self.y is not None:
-				sns.ecdfplot(data=self.data, x=self.y, hue=hue_variable, legend=legend, ax=self.ax, palette=colors)
+				sns.ecdfplot(data=self.data, x=self.y, hue=self.hue_variable, legend=legend, ax=self.ax, palette=colors)
 				legend = False
 			else:
 				pass
 						
 		if self.scat_check.isChecked():
 			if self.x_option:
-				sns.scatterplot(data=self.data, x=self.x,y=self.y, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				sns.scatterplot(data=self.data, x=self.x,y=self.y, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors)
 				legend = False
 			else:
 				print('please provide a -x variable...')
@@ -958,42 +980,42 @@ class TableUI(QMainWindow, Styles):
 
 		if self.swarm_check.isChecked():
 			if self.x_option:
-				sns.swarmplot(data=self.data, x=self.x,y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				sns.swarmplot(data=self.data, x=self.x,y=self.y,dodge=True, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors)
 				legend = False
 			else:
-				sns.swarmplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors)
+				sns.swarmplot(data=self.data, y=self.y,dodge=True, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors)
 				legend = False
 
 		if self.violin_check.isChecked():
 			if self.x_option:
-				sns.violinplot(data=self.data,x=self.x, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				sns.violinplot(data=self.data,x=self.x, y=self.y,dodge=True, ax=self.ax, hue=self.hue_variable, legend=legend, palette=colors)
 				legend = False
 			else:
-				sns.violinplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
+				sns.violinplot(data=self.data, y=self.y,dodge=True, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors, cut=0)
 				legend = False
 
 		if self.box_check.isChecked():
 			if self.x_option:
-				sns.boxplot(data=self.data, x=self.x, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxplot(data=self.data, x=self.x, y=self.y,dodge=True, hue=self.hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 			else:
-				sns.boxplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxplot(data=self.data, y=self.y,dodge=True, hue=self.hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 
 		if self.boxenplot_check.isChecked():
 			if self.x_option:
-				sns.boxenplot(data=self.data, x=self.x, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxenplot(data=self.data, x=self.x, y=self.y,dodge=True, hue=self.hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 			else:
-				sns.boxenplot(data=self.data, y=self.y,dodge=True, hue=hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
+				sns.boxenplot(data=self.data, y=self.y,dodge=True, hue=self.hue_variable,legend=legend, ax=self.ax, fill=False,palette=colors, linewidth=2,)
 				legend = False
 
 		if self.strip_check.isChecked():
 			if self.x_option:
-				sns.stripplot(data=self.data, x = self.x, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				sns.stripplot(data=self.data, x = self.x, y=self.y,dodge=True, ax=self.ax, hue=self.hue_variable, legend=legend, palette=colors)
 				legend = False
 			else:
-				sns.stripplot(data=self.data, y=self.y,dodge=True, ax=self.ax, hue=hue_variable, legend=legend, palette=colors)
+				sns.stripplot(data=self.data, y=self.y,dodge=True, ax=self.ax, hue=self.hue_variable, legend=legend, palette=colors)
 				legend = False
 
 		plt.tight_layout()
@@ -1003,35 +1025,89 @@ class TableUI(QMainWindow, Styles):
 		self.plot1dWindow.show()
 
 		if self.effect_size_check.isChecked():
-			
-			self.groupby_cols = []
-			if self.x is not None:
-				self.groupby_cols.append(self.x)
-			if hue_variable is not None:
-				self.groupby_cols.append(hue_variable)
-			
-			effect_sizes = []
+			self.compute_effect_size()
+		if self.pvalue_check.isChecked():
+			self.compute_pvalue()
 
-			for lbl1,group1 in self.data.dropna(subset=self.y).groupby(self.groupby_cols):
-				for lbl2,group2 in self.data.dropna(subset=self.y).groupby(self.groupby_cols):
+	def extract_groupby_cols(self):
 
-					dist1 = group1[self.y].values
-					dist2 = group2[self.y].values
-					es = cliffs_delta(list(dist2),list(dist1))[0]
-					effect_sizes.append({"cdt1": lbl1, "cdt2": lbl2, "effect_size": es})
-			
-			effect_sizes = pd.DataFrame(effect_sizes)
-			effect_sizes['cdt1'] = effect_sizes['cdt1'].astype(str)
-			effect_sizes['cdt2'] = effect_sizes['cdt2'].astype(str)
+		x = self.x
+		y = self.y
+		hue_variable = self.hue_variable
 
-			pivot = effect_sizes.pivot(index='cdt1', columns='cdt2', values='effect_size')
-			pivot.reset_index(inplace=True)
-			pivot.columns.name = None
-			pivot.set_index("cdt1",drop=True, inplace=True)
-			pivot.index.name = None
+		if self.hist_check.isChecked() or self.ecdf_check.isChecked() or self.kde_check.isChecked():
+			y = self.x
+			x = None
 
-			self.effect_size_table = PivotTableUI(pivot, title="Effect size (Cliff's Delta)")
-			self.effect_size_table.show()
+		groupby_cols = []
+		if x is not None:
+			groupby_cols.append(x)
+		if hue_variable is not None:
+			groupby_cols.append(hue_variable)
+
+		return groupby_cols, y
+
+	def compute_effect_size(self):
+
+		if self.count_check.isChecked() or self.scat_check.isChecked():
+			print('Please select a valid plot representation to compute effect size (histogram, boxplot, etc.)...')
+			return None
+
+		groupby_cols, y = self.extract_groupby_cols()
+		
+		effect_sizes = []
+
+		for lbl1,group1 in self.data.dropna(subset=y).groupby(groupby_cols):
+			for lbl2,group2 in self.data.dropna(subset=y).groupby(groupby_cols):
+
+				dist1 = group1[y].values
+				dist2 = group2[y].values
+				es = cliffs_delta(list(dist1),list(dist2))[0]
+				effect_sizes.append({"cdt1": lbl1, "cdt2": lbl2, "effect_size": es})
+		
+		effect_sizes = pd.DataFrame(effect_sizes)
+		effect_sizes['cdt1'] = effect_sizes['cdt1'].astype(str)
+		effect_sizes['cdt2'] = effect_sizes['cdt2'].astype(str)
+
+		pivot = effect_sizes.pivot(index='cdt1', columns='cdt2', values='effect_size')
+		pivot.reset_index(inplace=True)
+		pivot.columns.name = None
+		pivot.set_index("cdt1",drop=True, inplace=True)
+		pivot.index.name = None
+
+		self.effect_size_table = PivotTableUI(pivot, title="Effect size (Cliff's Delta)", mode="cliff")
+		self.effect_size_table.show()
+
+	def compute_pvalue(self):
+
+		if self.count_check.isChecked() or self.scat_check.isChecked():
+			print('Please select a valid plot representation to compute effect size (histogram, boxplot, etc.)...')
+			return None
+
+		groupby_cols, y = self.extract_groupby_cols()
+
+		pvalues = []
+
+		for lbl1,group1 in self.data.dropna(subset=y).groupby(groupby_cols):
+			for lbl2,group2 in self.data.dropna(subset=y).groupby(groupby_cols):
+
+				dist1 = group1[y].values
+				dist2 = group2[y].values
+				test = ks_2samp(list(dist1),list(dist2), alternative='less', mode='auto')
+				pvalues.append({"cdt1": lbl1, "cdt2": lbl2, "p-value": test.pvalue})
+		
+		pvalues = pd.DataFrame(pvalues)
+		pvalues['cdt1'] = pvalues['cdt1'].astype(str)
+		pvalues['cdt2'] = pvalues['cdt2'].astype(str)
+
+		pivot = pvalues.pivot(index='cdt1', columns='cdt2', values='p-value')
+		pivot.reset_index(inplace=True)
+		pivot.columns.name = None
+		pivot.set_index("cdt1",drop=True, inplace=True)
+		pivot.index.name = None
+
+		self.pval_table = PivotTableUI(pivot, title="p-value (1-sided KS test)", mode="pvalue")
+		self.pval_table.show()
 
 
 	def set_proj_mode(self):

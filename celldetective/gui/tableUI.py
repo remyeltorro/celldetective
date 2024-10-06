@@ -345,6 +345,8 @@ class PivotTableUI(QWidget):
 		self.table = QTableView(self)
 
 		self.v_layout = QVBoxLayout()
+		self.information_label = QLabel('Information about color code...')
+		self.v_layout.addWidget(self.information_label)
 		self.v_layout.addWidget(self.table)
 		self.setLayout(self.v_layout)
 
@@ -367,31 +369,71 @@ class PivotTableUI(QWidget):
 		self.model.change_color(row, column, QBrush(QColor(color))) #eval(f"Qt.{color}")
 
 	def color_cells_cliff(self):
+
+		color_codes = {
+			"negligible": "#eff3ff",  # Green
+			"small": "#bdd7e7",       # Yellow
+			"medium": "#6baed6",      # Orange
+			"large": "#2171b5"        # Red
+		}
+
 		for i in range(self.data.shape[0]):
 			for j in range(self.data.shape[1]):
 				value = self.data.iloc[i,j]
 				if value < 0.147:
-					self.set_cell_color(i,j,"#404040")
+					self.set_cell_color(i,j,color_codes['negligible'])
 				elif value < 0.33:
-					self.set_cell_color(i,j,"#b3b3b3")
-				else:
-					pass
+					self.set_cell_color(i,j,color_codes['small'])
+				elif value < 0.474:
+					self.set_cell_color(i,j,color_codes['medium'])
+				elif value >= 0.474:
+					self.set_cell_color(i,j,color_codes['large'])
+	
+		# Create the HTML text for the label
+		html_caption = f"""
+		<p style="background-color:black; padding: 5px; font-weight:bold;">
+			<span style="color:{color_codes['negligible']}">Negligible</span>, 
+			<span style="color:{color_codes['small']}">Small</span>, 
+			<span style="color:{color_codes['medium']}">Medium</span>, 
+			<span style="color:{color_codes['large']}">Large</span>
+		</p>
+		"""
+		self.information_label.setText(html_caption)
 
 	def color_cells_pvalue(self):
+
+		color_codes = {
+			"ns": "#fee5d9",
+			"*": "#fcae91",
+			"**": "#fb6a4a",
+			"***": "#de2d26",
+			"****": "#a50f15"
+		}
+
 		for i in range(self.data.shape[0]):
 			for j in range(self.data.shape[1]):
 				value = self.data.iloc[i,j]
 				if value <= 0.0001:
-					self.set_cell_color(i,j,"#ffffff")
+					self.set_cell_color(i,j,color_codes['****'])
 				elif value <= 0.001:
-					self.set_cell_color(i,j,"#cccccc")
+					self.set_cell_color(i,j,color_codes['***'])
 				elif value <= 0.01:
-					self.set_cell_color(i,j,"#b3b3b3")
+					self.set_cell_color(i,j,color_codes['**'])
 				elif value <= 0.05:
-					self.set_cell_color(i,j,"#6e6e6e")
+					self.set_cell_color(i,j,color_codes['*'])
 				elif value > 0.05:
-					self.set_cell_color(i,j,"#333333")
-
+					self.set_cell_color(i,j,color_codes['ns'])
+		
+		html_caption = f"""
+		<p style="background-color:black; padding: 5px; font-weight:bold;">
+			<span style="color:{color_codes['ns']}">ns</span>, 
+			<span style="color:{color_codes['*']}">*</span>, 
+			<span style="color:{color_codes['**']}">**</span>, 
+			<span style="color:{color_codes['***']}">***</span>,
+			<span style="color:{color_codes['****']}">****</span>
+		</p>
+		"""
+		self.information_label.setText(html_caption)
 
 class TableUI(QMainWindow, Styles):
 

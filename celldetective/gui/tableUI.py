@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine
-from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status
+from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status, test_2samp_generic
 import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
@@ -15,8 +15,6 @@ from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from math import floor
-from cliffs_delta import cliffs_delta
-from scipy.stats import ks_2samp
 
 from matplotlib import colormaps
 
@@ -1054,27 +1052,7 @@ class TableUI(QMainWindow, Styles):
 			return None
 
 		groupby_cols, y = self.extract_groupby_cols()
-		
-		effect_sizes = []
-
-		for lbl1,group1 in self.data.dropna(subset=y).groupby(groupby_cols):
-			for lbl2,group2 in self.data.dropna(subset=y).groupby(groupby_cols):
-
-				dist1 = group1[y].values
-				dist2 = group2[y].values
-				es = cliffs_delta(list(dist1),list(dist2))[0]
-				effect_sizes.append({"cdt1": lbl1, "cdt2": lbl2, "effect_size": es})
-		
-		effect_sizes = pd.DataFrame(effect_sizes)
-		effect_sizes['cdt1'] = effect_sizes['cdt1'].astype(str)
-		effect_sizes['cdt2'] = effect_sizes['cdt2'].astype(str)
-
-		pivot = effect_sizes.pivot(index='cdt1', columns='cdt2', values='effect_size')
-		pivot.reset_index(inplace=True)
-		pivot.columns.name = None
-		pivot.set_index("cdt1",drop=True, inplace=True)
-		pivot.index.name = None
-
+		pivot = test_2samp_generic(self.data, feature=y, groupby_cols=groupby_cols, method="cliffs_delta")
 		self.effect_size_table = PivotTableUI(pivot, title="Effect size (Cliff's Delta)", mode="cliff")
 		self.effect_size_table.show()
 
@@ -1085,27 +1063,7 @@ class TableUI(QMainWindow, Styles):
 			return None
 
 		groupby_cols, y = self.extract_groupby_cols()
-
-		pvalues = []
-
-		for lbl1,group1 in self.data.dropna(subset=y).groupby(groupby_cols):
-			for lbl2,group2 in self.data.dropna(subset=y).groupby(groupby_cols):
-
-				dist1 = group1[y].values
-				dist2 = group2[y].values
-				test = ks_2samp(list(dist1),list(dist2), alternative='less', mode='auto')
-				pvalues.append({"cdt1": lbl1, "cdt2": lbl2, "p-value": test.pvalue})
-		
-		pvalues = pd.DataFrame(pvalues)
-		pvalues['cdt1'] = pvalues['cdt1'].astype(str)
-		pvalues['cdt2'] = pvalues['cdt2'].astype(str)
-
-		pivot = pvalues.pivot(index='cdt1', columns='cdt2', values='p-value')
-		pivot.reset_index(inplace=True)
-		pivot.columns.name = None
-		pivot.set_index("cdt1",drop=True, inplace=True)
-		pivot.index.name = None
-
+		pivot = test_2samp_generic(self.data, feature=y, groupby_cols=groupby_cols, method="ks_2samp")
 		self.pval_table = PivotTableUI(pivot, title="p-value (1-sided KS test)", mode="pvalue")
 		self.pval_table.show()
 

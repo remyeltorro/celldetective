@@ -138,14 +138,6 @@ class ControlPanel(QMainWindow, Styles):
 		self.edit_config_button.clicked.connect(self.open_config_editor)
 		self.edit_config_button.setStyleSheet(self.button_select_all)
 
-		self.exp_options_layout = QHBoxLayout()
-		self.exp_options_layout.addWidget(experiment_label, 32, alignment=Qt.AlignRight)
-		self.exp_options_layout.addWidget(QLabel(name), 65, alignment=Qt.AlignLeft)
-		self.exp_options_layout.addWidget(self.folder_exp_btn, 5, alignment=Qt.AlignRight)
-		self.exp_options_layout.addWidget(self.edit_config_button, 5, alignment=Qt.AlignRight)
-		self.grid.addLayout(self.exp_options_layout, 0,0,1,3)
-
-		well_layout = QHBoxLayout()
 		self.well_list = QComboBox()
 		thresh = 32
 		self.well_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.well_labels]		
@@ -156,7 +148,6 @@ class ControlPanel(QMainWindow, Styles):
 		self.well_list.activated.connect(self.display_positions)
 		self.to_disable.append(self.well_list)
 
-		position_layout = QHBoxLayout()
 		self.position_list = QComboBox()
 		self.position_list.addItems(["*"])
 		self.position_list.addItems(self.positions[0])
@@ -172,27 +163,46 @@ class ControlPanel(QMainWindow, Styles):
 		self.view_stack_btn.clicked.connect(self.view_current_stack)
 		self.view_stack_btn.setEnabled(False)
 
-		well_layout.setContentsMargins(0,0,0,0)
 		well_lbl = QLabel('Well: ')
 		well_lbl.setAlignment(Qt.AlignRight)
-		well_layout.addWidget(well_lbl, 32)
-		well_layout.addWidget(self.well_list, 68)
-		self.grid.addLayout(well_layout, 1, 0, 1, 3)
 
-		position_layout.setContentsMargins(0,0,0,0)
 		pos_lbl = QLabel('Position: ')
 		pos_lbl.setAlignment(Qt.AlignRight)
-		position_layout.addWidget(pos_lbl, 32)
 
-		subposition_layout = QHBoxLayout()
-		subposition_layout.addWidget(self.position_list, 95)
-		subposition_layout.addWidget(self.view_stack_btn, 5)
-		position_layout.addLayout(subposition_layout, 68)
-		self.grid.addLayout(position_layout, 2, 0, 1, 3)
-
-		
 		hsep = QHSeperationLine()
-		self.grid.addWidget(hsep, 5, 0, 1, 3)
+
+		## LAYOUT
+
+		# Header layout
+		vbox = QVBoxLayout()
+		self.grid.addLayout(vbox, 0,0,1,3)
+
+		# Experiment row
+		exp_hbox = QHBoxLayout()
+		exp_hbox.addWidget(experiment_label, 25, alignment=Qt.AlignRight)
+		exp_subhbox = QHBoxLayout()
+		exp_subhbox.addWidget(QLabel(name), 90, alignment=Qt.AlignLeft)
+		exp_subhbox.addWidget(self.folder_exp_btn, 5, alignment=Qt.AlignRight)
+		exp_subhbox.addWidget(self.edit_config_button, 5, alignment=Qt.AlignRight)
+		exp_hbox.addLayout(exp_subhbox, 75)
+		vbox.addLayout(exp_hbox)
+
+		# Well row
+		well_hbox = QHBoxLayout()
+		well_hbox.addWidget(well_lbl, 25, alignment=Qt.AlignVCenter)
+		well_hbox.addWidget(self.well_list, 75)
+		vbox.addLayout(well_hbox)
+
+		# Position row
+		position_hbox = QHBoxLayout()
+		position_hbox.addWidget(pos_lbl, 25, alignment=Qt.AlignVCenter)
+		pos_subhbox = QHBoxLayout()
+		pos_subhbox.addWidget(self.position_list, 95)
+		pos_subhbox.addWidget(self.view_stack_btn, 5)
+		position_hbox.addLayout(pos_subhbox, 75)
+		vbox.addLayout(position_hbox)
+
+		vbox.addWidget(hsep)
 
 	def locate_image(self):
 

@@ -766,6 +766,9 @@ def locate_stack_and_labels(position, prefix='Aligned', population="target"):
 	position = position.replace('\\', '/')
 	labels = locate_labels(position, population=population)
 	stack = locate_stack(position, prefix=prefix)
+	if len(labels) < len(stack):
+		fix_missing_labels(position, population=population, prefix=prefix)
+		labels = locate_labels(position, population=population)
 	assert len(stack) == len(
 		labels), f"The shape of the stack {stack.shape} does not match with the shape of the labels {labels.shape}"
 
@@ -1272,7 +1275,7 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 	if stack is not None:
 		viewer.add_image(stack, channel_axis=-1, colormap=["gray"] * stack.shape[-1])
 	if labels is not None:
-		viewer.add_labels(labels, name='segmentation', opacity=0.4)
+		viewer.add_labels(labels.astype(int), name='segmentation', opacity=0.4)
 	viewer.add_points(vertices, size=4, name='points', opacity=0.3)
 	if data.shape[1]==4:
 		viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')

@@ -1338,10 +1338,11 @@ def classify_cells_from_query(df, status_attr, query):
 	if not status_attr.startswith('status_'):
 		status_attr = 'status_'+status_attr
 
-	df[status_attr] = 0
+	df = df.copy()
+	df.loc[:,status_attr] = 0
+
 	cols = extract_cols_from_query(query)
 	cols_in_df = np.all([c in list(df.columns) for c in cols], axis=0)
-
 	if query=='':
 		print('The provided query is empty...')
 	else:
@@ -1354,11 +1355,10 @@ def classify_cells_from_query(df, status_attr, query):
 				df.loc[selection, status_attr] = 1
 			else:
 				df.loc[:, status_attr] = np.nan
-
 		except Exception as e:
-			print("The query could not be understood. No filtering was applied. {e}...")
+			print(f"The query could not be understood. No filtering was applied. {e}...")
 			return None
-	return df
+	return df.copy()
 
 def classify_tracks_from_query(df, event_name, query, irreversible_event=True, unique_state=False, r2_threshold=0.5, percentile_recovery=50):
 	

@@ -242,18 +242,20 @@ class ClassifierWidget(QWidget, Styles):
 
 	def update_props_scatter(self, feature_changed=True):
 
+		class_name = self.class_name
+
 		try:
 
 			if not self.project_times:
 				self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-				colors = [color_from_status(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,self.class_name].to_numpy()]
+				colors = [color_from_status(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,class_name].to_numpy()]
 				self.scat_props.set_facecolor(colors)
 				self.scat_props.set_alpha(self.currentAlpha)
 				self.ax_props.set_xlabel(self.features_cb[1].currentText())
 				self.ax_props.set_ylabel(self.features_cb[0].currentText())
 			else:
 				self.scat_props.set_offsets(self.df[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
-				colors = [color_from_status(c) for c in self.df[self.class_name].to_numpy()]
+				colors = [color_from_status(c) for c in self.df[class_name].to_numpy()]
 				self.scat_props.set_facecolor(colors)
 				self.scat_props.set_alpha(self.currentAlpha)
 				self.ax_props.set_xlabel(self.features_cb[1].currentText())
@@ -282,7 +284,8 @@ class ClassifierWidget(QWidget, Styles):
 	def apply_property_query(self):
 		
 		query = self.property_query_le.text()
-		self.df = classify_cells_from_query(self.df, self.class_name, query)
+		self.df = classify_cells_from_query(self.df, self.name_le.text(), query)
+		self.class_name = "status_"+self.name_le.text()
 		if self.df is None:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
@@ -292,7 +295,6 @@ class ClassifierWidget(QWidget, Styles):
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Ok:
 				return None
-
 		self.update_props_scatter()
 
 	def set_frame(self, value):
@@ -351,6 +353,7 @@ class ClassifierWidget(QWidget, Styles):
 					return None
 
 			name_map = {self.class_name: self.class_name_user}
+			print(f"{name_map=}")
 			self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
 			self.df.reset_index(inplace=True, drop=True)
 
@@ -379,6 +382,8 @@ class ClassifierWidget(QWidget, Styles):
 			#self.df[self.group_name_user] = self.df[self.group_name_user].replace({0: 1, 1: 0})
 			self.df.reset_index(inplace=True, drop=True)
 
+		if 'custom' in list(self.df.columns):
+			self.df = self.df.drop(['custom'],axis=1)
 
 		for pos,pos_group in self.df.groupby('position'):
 			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.mode}.csv']), index=False)

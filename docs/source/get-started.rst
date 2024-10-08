@@ -23,9 +23,9 @@ with `conda`:
 
 .. code-block:: console
 
-    $(base) conda create -n celldetective python=3.11 pyqt
-    $(base) conda activate celldetective
-    $(celldetective) pip install celldetective
+    $ conda create -n celldetective python=3.11 pyqt
+    $ conda activate celldetective
+    $ pip install celldetective
 
 Need an update? Simply type the following in the terminal (in your
 environment):
@@ -41,15 +41,15 @@ If you want to run the latest development version, you can clone the repository 
 
 .. code-block:: console
 
-    $(base) git clone git://github.com/remyeltorro/celldetective.git
-    $(base) cd celldetective
+    $ git clone git://github.com/remyeltorro/celldetective.git
+    $ cd celldetective
 
     # create and activate environment (optional)
-    $(base) conda create -n celldetective python=3.11 pyqt
-    $(base) conda activate celldetective
+    $ conda create -n celldetective python=3.11 pyqt
+    $ conda activate celldetective
 
-    $(celldetective) pip install -r requirements.txt
-    $(celldetective) pip install -e .
+    $ pip install -r requirements.txt
+    $ pip install -e .
 
 You can also use `GitHub Desktop <https://github.com/apps/desktop>`_ to clone the project, typically in /home/username/Documents/GitHub/celldetective. Navigate to this folder in the console and then activate your environment and proceed with the steps above.
 

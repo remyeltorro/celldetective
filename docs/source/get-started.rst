@@ -51,7 +51,7 @@ If you want to run the latest development version, you can clone the repository 
     $ pip install -r requirements.txt
     $ pip install -e .
 
-You can also use `GitHub Desktop <https://github.com/apps/desktop>`_ to clone the project, typically in /home/username/Documents/GitHub/celldetective. Navigate to this folder in the console and then activate your environment and proceed with the steps above.
+You can also use `GitHub Desktop <https://github.com/apps/desktop>`_ to clone the project, typically in /home/username/Documents/GitHub/celldetective. Navigate to this folder in the console, activate your environment and proceed with the steps above.
 
 To run the latest development version without cloning the repository, you can also use this line:
 

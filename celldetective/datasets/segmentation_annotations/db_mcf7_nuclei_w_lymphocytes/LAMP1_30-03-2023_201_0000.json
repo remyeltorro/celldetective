@@ -1,0 +1,10 @@
+{
+    "spatial_calibration": 0.1568,
+    "channels": [
+        "fluo_channel_1",
+        "live_nuclei_channel",
+        "dead_nuclei_channel",
+        "effector_fluo_channel",
+        "brightfield_channel"
+    ]
+}

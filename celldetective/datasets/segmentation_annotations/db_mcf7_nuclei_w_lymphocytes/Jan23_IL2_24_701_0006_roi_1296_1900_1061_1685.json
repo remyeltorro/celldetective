@@ -1,0 +1,13 @@
+{
+    "spatial_calibration": 0.3112,
+    "channels": [
+        "brightfield_channel",
+        "dead_nuclei_channel",
+        "effector_fluo_channel",
+        "live_nuclei_channel"
+    ],
+    "cell_type": "HER2+",
+    "antibody": " Herceptin",
+    "concentration": "100",
+    "pharmaceutical_agent": "IL2"
+}

@@ -239,7 +239,7 @@ We highly recommend that you align the movie beforehand using for example, the "
     :align: center
     :alt: sift_align
     
-    Demonstration of the of the SIFT multichannel tool on FIJI
+    Demonstration of the SIFT multichannel tool on FIJI
 
 
 Background correction

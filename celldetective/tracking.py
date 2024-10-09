@@ -609,7 +609,7 @@ def interpolate_time_gaps(trajectories, column_labels={'track': "TRACK_ID", 'tim
 
 	trajectories[column_labels['time']] = pd.to_datetime(trajectories[column_labels['time']], unit='s')
 	trajectories.set_index(column_labels['track'], inplace=True)
-	trajectories = trajectories.groupby(column_labels['track'], group_keys=True).apply(lambda x: x.set_index(column_labels['time']).resample('1S').asfreq()).reset_index()
+	trajectories = trajectories.groupby(column_labels['track'], group_keys=True).apply(lambda x: x.set_index(column_labels['time']).resample('1s').asfreq()).reset_index()
 	trajectories[[column_labels['x'], column_labels['y']]] = trajectories.groupby(column_labels['track'], group_keys=False)[[column_labels['x'], column_labels['y']]].apply(lambda x: x.interpolate(method='linear'))
 	trajectories.reset_index(drop=True, inplace=True)
 	trajectories[column_labels['time']] = trajectories[column_labels['time']].astype('int64').astype(float) / 10**9
@@ -679,7 +679,11 @@ def extrapolate_tracks(trajectories, post=False, pre=False, column_labels={'trac
 			extrapolated_positions = pd.DataFrame({column_labels['x']: last_known_position[0][1], column_labels['y']: last_known_position[0][2]}, index=np.arange(last_known_position[0][0] + 1, max_time + 1))
 			track_data = extrapolated_frames.join(extrapolated_positions, how="inner", on=column_labels['time'])
 			track_data[column_labels['track']] = track_id
-			df_extrapolated = pd.concat([df_extrapolated, track_data])
+
+			if len(df_extrapolated)==0:
+				df_extrapolated = track_data
+			elif len(track_data)!=0:
+				df_extrapolated = pd.concat([df_extrapolated, track_data])
 
 
 		# concatenate the original dataframe and the extrapolated dataframe

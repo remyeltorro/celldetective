@@ -964,7 +964,7 @@ def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time':
 			if np.any(detection==detection):
 				t_first = timeline[detection==detection][0]
 				cclass = 0
-				if t_first==0:
+				if t_first<=0:
 					t_first = -1
 					cclass = 2
 				else:

@@ -899,6 +899,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 				
 				frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 				target_img = frames[:,:,target_channel_index].copy()
+				
 				correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
 				frames[:,:,target_channel_index] = correction.copy()
 
@@ -919,6 +920,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 			
 			frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 			target_img = frames[:,:,target_channel_index].copy()
+			
 			correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
 			frames[:,:,target_channel_index] = correction.copy()
 
@@ -981,6 +983,8 @@ def field_correction(img, threshold_on_std=1, operation='divide', model='parabol
 	"""
 
 	target_copy = img.copy().astype(float)
+	if np.percentile(target_copy.flatten(),99.9)==0.0:
+		return target_copy
 
 	std_frame = filter_image(target_copy,filters=activation_protocol)
 	edge = estimate_unreliable_edge(activation_protocol)

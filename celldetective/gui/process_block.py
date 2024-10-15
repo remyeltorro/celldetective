@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QListWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+from PyQt5.QtWidgets import QDialog, QFrame, QGridLayout, QComboBox, QListWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
 	QMessageBox, QWidget
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
@@ -36,6 +36,11 @@ from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout, he
 from celldetective.gui.layouts import CellposeParamsWidget, StarDistParamsWidget, BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout, ChannelOffsetOptionsLayout
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location
+
+from celldetective.gui.workers import ProgressWindow
+from celldetective.gui.processes.segment_cells import SegmentCellProcess
+import time
+import asyncio
 
 class ProcessPanel(QFrame, Styles):
 	def __init__(self, parent_window, mode):
@@ -840,7 +845,14 @@ class ProcessPanel(QFrame, Styles):
 							print(f"Segmentation from threshold config: {self.threshold_config}")
 							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
 					else:
-						segment_at_position(self.pos, self.mode, self.model_name, stack_prefix=self.parent_window.movie_prefix, use_gpu=self.parent_window.parent_window.use_gpu, threads=self.parent_window.parent_window.n_threads)
+						self.movie_prefix = self.parent_window.movie_prefix
+						self.use_gpu = self.parent_window.parent_window.use_gpu
+						self.job = ProgressWindow(SegmentCellProcess, parent_window=self)
+						result = self.job.exec_()
+						if result == QDialog.Accepted:
+							pass
+						elif result == QDialog.Rejected:
+							return None
 
 				if self.track_action.isChecked():
 					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent_window.position_list.currentText()!="*":
@@ -904,8 +916,6 @@ class ProcessPanel(QFrame, Styles):
 	# 									  PxToUm = 1,
 	# 									 )
 	# 		self.viewer.show()
-
-
 
 	def open_napari_tracking(self):
 		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')

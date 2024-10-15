@@ -57,7 +57,11 @@ def intensity_median(regionmask, intensity_image):
 	return np.nanmedian(intensity_image[regionmask])
 
 def intensity_nanmean(regionmask, intensity_image):
-	return np.nanmean(intensity_image[regionmask])
+	
+	if np.all(intensity_image==0):
+		return np.nan
+	else:
+		return np.nanmean(intensity_image[regionmask])
 
 def intensity_centre_of_mass_displacement(regionmask, intensity_image):
 

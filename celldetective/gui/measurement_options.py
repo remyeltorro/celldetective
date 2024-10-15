@@ -262,7 +262,7 @@ class ConfigMeasurements(QMainWindow, Styles):
 		self.add_feature_btn.setToolTip("Add feature")
 		self.add_feature_btn.setIconSize(QSize(20, 20))
 
-		self.features_list = ListWidget(FeatureChoice, initial_features=['area', 'intensity_mean', ])
+		self.features_list = ListWidget(FeatureChoice, initial_features=['area', 'intensity_nanmean', ])
 
 		self.del_feature_btn.clicked.connect(self.features_list.removeSel)
 		self.add_feature_btn.clicked.connect(self.features_list.addItem)

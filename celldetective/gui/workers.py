@@ -49,6 +49,13 @@ class ProgressWindow(QDialog):
 		self.setModal(True)
 		center_window(self)
 
+	def closeEvent(self, evnt):
+		# if self._want_to_close:
+		# 	super(MyDialog, self).closeEvent(evnt)
+		# else:
+		evnt.ignore()
+		self.setWindowState(Qt.WindowMinimized)
+
 	def __run_net(self):
 		#self.__btn_run.setDisabled(True)
 		self.__btn_stp.setEnabled(True)

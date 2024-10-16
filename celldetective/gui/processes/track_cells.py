@@ -191,7 +191,7 @@ class TrackingProcess(Process):
 				
 				self.sum_done+=1/self.len_movie*50
 				mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 50 + 1)
-				pred_time = (self.len_movie - (self.sum_done*self.len_movie / 50 + 1)) * mean_exec_per_step
+				pred_time = (self.len_movie - (self.sum_done*self.len_movie / 50 + 1)) * mean_exec_per_step + 30
 				self.queue.put([self.sum_done, pred_time])
 		
 		except Exception as e:
@@ -247,6 +247,8 @@ class TrackingProcess(Process):
 		
 		# Send end signal
 		self.queue.put([100, 0])
+		time.sleep(1)
+		
 		self.queue.put("finished")
 		self.queue.close()
 

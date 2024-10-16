@@ -10,7 +10,7 @@ from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
 	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list
-from celldetective.io import locate_segmentation_model, fix_missing_labels, auto_load_number_of_frames, load_frames, locate_signal_model
+from celldetective.io import extract_position_name, locate_segmentation_model, fix_missing_labels, auto_load_number_of_frames, load_frames, locate_signal_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.relative_measurements import rel_measure_at_position
@@ -819,6 +819,7 @@ class ProcessPanel(QFrame, Styles):
 
 				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*/"))[pos_idx]
 				print(f"Position {self.pos}...\nLoading stack movie...")
+				self.pos_name = extract_position_name(self.pos)
 
 				if not os.path.exists(self.pos + 'output/'):
 					os.mkdir(self.pos + 'output/')
@@ -849,7 +850,7 @@ class ProcessPanel(QFrame, Styles):
 								return None
 						else:
 							print(f"Segmentation from threshold config: {self.threshold_config}")
-							self.job = ProgressWindow(SegmentCellThresholdProcess, parent_window=self)
+							self.job = ProgressWindow(SegmentCellThresholdProcess, parent_window=self, title="Segment")
 							result = self.job.exec_()
 							if result == QDialog.Accepted:
 								pass
@@ -857,7 +858,7 @@ class ProcessPanel(QFrame, Styles):
 								return None
 							#segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
 					else:
-						self.job = ProgressWindow(SegmentCellDLProcess, parent_window=self)
+						self.job = ProgressWindow(SegmentCellDLProcess, parent_window=self, title="Segment")
 						result = self.job.exec_()
 						if result == QDialog.Accepted:
 							pass
@@ -875,7 +876,7 @@ class ProcessPanel(QFrame, Styles):
 						if returnValue == QMessageBox.No:
 							return None
 					
-					self.job = ProgressWindow(TrackingProcess, parent_window=self)
+					self.job = ProgressWindow(TrackingProcess, parent_window=self, title="Tracking")
 					result = self.job.exec_()
 					if result == QDialog.Accepted:
 						pass
@@ -885,7 +886,7 @@ class ProcessPanel(QFrame, Styles):
 
 				if self.measure_action.isChecked():
 
-					self.job = ProgressWindow(MeasurementProcess, parent_window=self)
+					self.job = ProgressWindow(MeasurementProcess, parent_window=self, title="Measurement")
 					result = self.job.exec_()
 					if result == QDialog.Accepted:
 						pass

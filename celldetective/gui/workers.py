@@ -7,15 +7,17 @@ import math
 
 class ProgressWindow(QDialog):
 
-	def __init__(self, process=None, parent_window=None):
+	def __init__(self, process=None, parent_window=None, title=""):
 		QDialog.__init__(self)
 
-		self.setWindowTitle('Progress')
+		self.setWindowTitle(f'{title} Progress')
 		self.__process = process
 		self.parent_window = parent_window
+		self.pos_name = self.parent_window.pos_name
 
 		#self.__btn_run = QPushButton("Start")
 		self.__btn_stp = QPushButton("Cancel")
+		self.position_label = QLabel(f'Processing position {self.pos_name}...')
 		self.__label   = QLabel("Idle")
 		self.time_left_lbl = QLabel('')
 		self.progress_bar = QProgressBar()
@@ -35,6 +37,7 @@ class ProgressWindow(QDialog):
 		self.__btn_stp.setDisabled(True)
 
 		self.layout = QVBoxLayout()
+		self.layout.addWidget(self.position_label)
 		self.layout.addWidget(self.time_left_lbl)
 		self.layout.addWidget(self.progress_bar)
 		self.btn_layout = QHBoxLayout()
@@ -43,7 +46,7 @@ class ProgressWindow(QDialog):
 		self.layout.addLayout(self.btn_layout)
 
 		self.setLayout(self.layout)
-		self.setFixedSize(QSize(250, 100))
+		self.setFixedSize(QSize(250, 130))
 		self.__run_net()
 		self.setModal(True)
 		center_window(self)

@@ -7,19 +7,23 @@ import math
 
 class ProgressWindow(QDialog):
 
-	def __init__(self, process=None, parent_window=None, title=""):
+	def __init__(self, process=None, parent_window=None, title="", position_info=True):
 		QDialog.__init__(self)
 
 		self.setWindowTitle(f'{title} Progress')
 		self.__process = process
 		self.parent_window = parent_window
-		self.pos_name = self.parent_window.pos_name
+		self.position_info = position_info
+		if self.position_info:
+			self.pos_name = self.parent_window.pos_name
 
 		#self.__btn_run = QPushButton("Start")
 		self.__btn_stp = QPushButton("Cancel")
-		self.position_label = QLabel(f'Processing position {self.pos_name}...')
+		if self.position_info:
+			self.position_label = QLabel(f'Processing position {self.pos_name}...')
 		self.__label   = QLabel("Idle")
 		self.time_left_lbl = QLabel('')
+
 		self.progress_bar = QProgressBar()
 		self.progress_bar.setValue(0)
 
@@ -37,7 +41,8 @@ class ProgressWindow(QDialog):
 		self.__btn_stp.setDisabled(True)
 
 		self.layout = QVBoxLayout()
-		self.layout.addWidget(self.position_label)
+		if self.position_info:
+			self.layout.addWidget(self.position_label)
 		self.layout.addWidget(self.time_left_lbl)
 		self.layout.addWidget(self.progress_bar)
 		self.btn_layout = QHBoxLayout()
@@ -66,18 +71,18 @@ class ProgressWindow(QDialog):
 
 	def __stp_net(self):
 		self.__runner.close()
-		print('Job cancelled... Abort.')
+		print('\n Job cancelled... Abort.')
 		self.reject()
 
 	def __on_finished(self):
 		self.__btn_stp.setDisabled(True)
-		self.__label.setText("Finished!")
+		self.__label.setText("\nFinished!")
 		self.__runner.close()
 		self.accept()
 
 	def __on_error(self):
 		self.__btn_stp.setDisabled(True)
-		self.__label.setText("Error")
+		self.__label.setText("\nError")
 		self.__runner.close()
 		self.accept()
 

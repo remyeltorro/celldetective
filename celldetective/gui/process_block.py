@@ -60,6 +60,8 @@ class ProcessPanel(QFrame, Styles):
 		self.wells = np.array(self.parent_window.wells,dtype=str)
 		self.cellpose_calibrated = False
 		self.stardist_calibrated = False
+		self.use_gpu = self.parent_window.parent_window.use_gpu
+		self.n_threads = self.parent_window.parent_window.n_threads
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -800,8 +802,6 @@ class ProcessPanel(QFrame, Styles):
 			return None
 
 		self.movie_prefix = self.parent_window.movie_prefix
-		self.use_gpu = self.parent_window.parent_window.use_gpu
-		self.n_threads = self.parent_window.parent_window.n_threads
 
 		for w_idx in self.well_index:
 

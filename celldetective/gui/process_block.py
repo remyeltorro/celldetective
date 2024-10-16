@@ -38,7 +38,10 @@ from celldetective.gui import Styles
 from celldetective.utils import get_software_location
 
 from celldetective.gui.workers import ProgressWindow
-from celldetective.gui.processes.segment_cells import SegmentCellProcess
+from celldetective.gui.processes.segment_cells import SegmentCellThresholdProcess, SegmentCellDLProcess
+from celldetective.gui.processes.track_cells import TrackingProcess
+from celldetective.gui.processes.measure_cells import MeasurementProcess
+
 import time
 import asyncio
 
@@ -796,6 +799,9 @@ class ProcessPanel(QFrame, Styles):
 			self.diamWidget.show()
 			return None
 
+		self.movie_prefix = self.parent_window.movie_prefix
+		self.use_gpu = self.parent_window.parent_window.use_gpu
+		self.n_threads = self.parent_window.parent_window.n_threads
 
 		for w_idx in self.well_index:
 
@@ -843,11 +849,15 @@ class ProcessPanel(QFrame, Styles):
 								return None
 						else:
 							print(f"Segmentation from threshold config: {self.threshold_config}")
-							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
+							self.job = ProgressWindow(SegmentCellThresholdProcess, parent_window=self)
+							result = self.job.exec_()
+							if result == QDialog.Accepted:
+								pass
+							elif result == QDialog.Rejected:
+								return None
+							#segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
 					else:
-						self.movie_prefix = self.parent_window.movie_prefix
-						self.use_gpu = self.parent_window.parent_window.use_gpu
-						self.job = ProgressWindow(SegmentCellProcess, parent_window=self)
+						self.job = ProgressWindow(SegmentCellDLProcess, parent_window=self)
 						result = self.job.exec_()
 						if result == QDialog.Accepted:
 							pass
@@ -864,10 +874,24 @@ class ProcessPanel(QFrame, Styles):
 						returnValue = msgBox.exec()
 						if returnValue == QMessageBox.No:
 							return None
-					track_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
+					
+					self.job = ProgressWindow(TrackingProcess, parent_window=self)
+					result = self.job.exec_()
+					if result == QDialog.Accepted:
+						pass
+					elif result == QDialog.Rejected:
+						return None
+					#track_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
 
 				if self.measure_action.isChecked():
-					measure_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
+
+					self.job = ProgressWindow(MeasurementProcess, parent_window=self)
+					result = self.job.exec_()
+					if result == QDialog.Accepted:
+						pass
+					elif result == QDialog.Rejected:
+						return None
+					#measure_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
 
 				table = os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])
 				if self.signal_analysis_action.isChecked() and os.path.exists(table):

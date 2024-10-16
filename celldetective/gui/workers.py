@@ -13,8 +13,6 @@ class ProgressWindow(QDialog):
 		self.setWindowTitle('Progress')
 		self.__process = process
 		self.parent_window = parent_window
-		self.done = False
-		self.cancelled = False
 
 		#self.__btn_run = QPushButton("Start")
 		self.__btn_stp = QPushButton("Cancel")
@@ -30,6 +28,7 @@ class ProgressWindow(QDialog):
 		#self.__btn_run.clicked.connect(self.__run_net)
 		self.__btn_stp.clicked.connect(self.__stp_net)
 		self.__runner.signals.finished.connect(self.__on_finished)
+		self.__runner.signals.finished.connect(self.__on_error)
 		self.__runner.signals.update.connect(self.progress_bar.setValue)
 		self.__runner.signals.update_time.connect(self.time_left_lbl.setText)
 
@@ -63,7 +62,6 @@ class ProgressWindow(QDialog):
 		self.pool.start(self.__runner)
 
 	def __stp_net(self):
-		self.cancelled = True
 		self.__runner.close()
 		print('Job cancelled... Abort.')
 		self.reject()
@@ -72,10 +70,13 @@ class ProgressWindow(QDialog):
 		self.__btn_stp.setDisabled(True)
 		self.__label.setText("Finished!")
 		self.__runner.close()
-		self.done = True
 		self.accept()
 
-
+	def __on_error(self):
+		self.__btn_stp.setDisabled(True)
+		self.__label.setText("Error")
+		self.__runner.close()
+		self.accept()
 
 class Runner(QRunnable):
 
@@ -108,6 +109,8 @@ class Runner(QRunnable):
 				if data == "finished":
 					self.signals.finished.emit()
 					break
+				elif data == "error":
+					self.signals.error.emit()
 			except Exception as e:
 				print(e)
 				pass
@@ -121,3 +124,4 @@ class RunnerSignal(QObject):
 	update = pyqtSignal(int)
 	update_time = pyqtSignal(str)
 	finished = pyqtSignal()
+	error = pyqtSignal()

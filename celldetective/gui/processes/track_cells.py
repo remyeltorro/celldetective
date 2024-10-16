@@ -189,9 +189,9 @@ class TrackingProcess(Process):
 
 				self.timestep_dataframes.append(df_props)
 				
-				self.sum_done+=1/self.len_movie*100
-				mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 100 + 1)
-				pred_time = (self.len_movie - (self.sum_done*self.len_movie / 100 + 1)) * mean_exec_per_step
+				self.sum_done+=1/self.len_movie*50
+				mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 50 + 1)
+				pred_time = (self.len_movie - (self.sum_done*self.len_movie / 50 + 1)) * mean_exec_per_step
 				self.queue.put([self.sum_done, pred_time])
 		
 		except Exception as e:
@@ -246,6 +246,7 @@ class TrackingProcess(Process):
 		gc.collect()		
 		
 		# Send end signal
+		self.queue.put([100, 0])
 		self.queue.put("finished")
 		self.queue.close()
 

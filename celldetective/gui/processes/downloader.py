@@ -8,6 +8,8 @@ from urllib.request import urlopen
 import zipfile
 import tempfile
 import time
+from pathlib import Path
+import json
 
 class DownloadProcess(Process):
 
@@ -19,8 +21,10 @@ class DownloadProcess(Process):
 		self.parent_window = parent_window
 		self.output_dir = self.parent_window.output_dir
 		self.file = self.parent_window.file
+		self.progress = True
 
-		zenodo_json = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective", "links", "zenodo.json"])
+		file_path = Path(os.path.dirname(os.path.realpath(__file__)))
+		zenodo_json = os.sep.join([str(file_path.parents[2]),"celldetective", "links", "zenodo.json"])
 		print(f"{zenodo_json=}")
 		
 		with open(zenodo_json,"r") as f:
@@ -29,7 +33,7 @@ class DownloadProcess(Process):
 		all_files_short = [f.replace(".zip","") for f in all_files]
 		zenodo_url = zenodo_json['links']['files'].replace('api/','')
 		full_links = ["/".join([zenodo_url, f]) for f in all_files]
-		index = all_files_short.index(file)
+		index = all_files_short.index(self.file)
 		
 		self.zip_url = full_links[index]
 		self.path_to_zip_file = os.sep.join([self.output_dir, 'temp.zip'])
@@ -53,8 +57,9 @@ class DownloadProcess(Process):
 		dst = os.path.expanduser(dst)
 		dst_dir = os.path.dirname(dst)
 		f = tempfile.NamedTemporaryFile(delete=False, dir=dst_dir)
+
 		try:
-			with tqdm(total=file_size, disable=not progress,
+			with tqdm(total=file_size, disable=not self.progress,
 					  unit='B', unit_scale=True, unit_divisor=1024) as pbar:
 				while True:
 					buffer = u.read(8192) #8192
@@ -62,8 +67,10 @@ class DownloadProcess(Process):
 						break
 					f.write(buffer)
 					pbar.update(len(buffer))
-					print(f"{len(buffer)=}")
-					self.queue.put(len(buffer))
+					self.sum_done+=len(buffer) / file_size * 100
+					mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*file_size / 100 + 1)
+					pred_time = (file_size - (self.sum_done*file_size / 100 + 1)) * mean_exec_per_step
+					self.queue.put([self.sum_done, pred_time])
 			f.close()
 			shutil.move(f.name, dst)
 		finally:
@@ -83,7 +90,7 @@ class DownloadProcess(Process):
 
 		os.remove(self.path_to_zip_file)
 		self.queue.put(100)
-		time.sleep(1)
+		time.sleep(0.5)
 
 		# Send end signal
 		self.queue.put("finished")

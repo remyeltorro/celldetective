@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from celldetective.utils import get_software_location
+from celldetective.utils import get_software_location, download_zenodo_file
 import os
 from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 from PyQt5.QtCore import Qt, QUrl
@@ -108,6 +108,10 @@ class AppInitWindow(QMainWindow):
 			for i in range(len(self.recentFileActs)):
 				self.OpenRecentAction.addAction(self.recentFileActs[i])
 
+		fileMenu.addMenu(self.openDemo)
+		self.openDemo.addAction(self.openSpreadingAssayDemo)
+		self.openDemo.addAction(self.openCytotoxicityAssayDemo)
+
 		fileMenu.addAction(self.openModels)
 		fileMenu.addSeparator()
 		fileMenu.addAction(self.exitAction)
@@ -141,6 +145,10 @@ class AppInitWindow(QMainWindow):
 		self.openAction.setShortcut("Ctrl+O")
 		self.openAction.setShortcutVisibleInContextMenu(True)
 
+		self.openDemo = QMenu('Open Demo')
+		self.openSpreadingAssayDemo = QAction('Spreading Assay Demo', self)
+		self.openCytotoxicityAssayDemo = QAction('Cytotoxicity Assay Demo', self)
+
 		self.MemoryAndThreadsAction = QAction('Memory & Threads...')
 
 		self.CorrectAnnotationAction = QAction('Correct a segmentation annotation...')
@@ -172,8 +180,26 @@ class AppInitWindow(QMainWindow):
 		self.AboutAction.triggered.connect(self.open_about_window)
 		self.MemoryAndThreadsAction.triggered.connect(self.set_memory_and_threads)
 		self.CorrectAnnotationAction.triggered.connect(self.correct_seg_annotation)
-
 		self.DocumentationAction.triggered.connect(self.open_documentation)
+
+		self.openSpreadingAssayDemo.triggered.connect(self.download_spreading_assay_demo)
+		self.openCytotoxicityAssayDemo.triggered.connect(self.download_cytotoxicity_assay_demo)
+
+	def download_spreading_assay_demo(self):
+		
+		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
+		if not os.path.exists(os.sep.join([self.target_dir,'demo_ricm'])):
+			download_zenodo_file('demo_ricm', self.target_dir)
+		self.experiment_path_selection.setText(os.sep.join([self.target_dir, 'demo_ricm']))
+		self.validate_button.click()
+
+	def download_cytotoxicity_assay_demo(self):
+		
+		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
+		if not os.path.exists(os.sep.join([self.target_dir,'demo_adcc'])):
+			download_zenodo_file('demo_adcc', self.target_dir)
+		self.experiment_path_selection.setText(os.sep.join([self.target_dir, 'demo_adcc']))
+		self.validate_button.click()
 
 	def reload_previous_gpu_threads(self):
 
@@ -256,7 +282,7 @@ class AppInitWindow(QMainWindow):
 
 
 	def open_experiment(self):
-		print('ok')
+		
 		self.browse_experiment_folder()
 		if self.experiment_path_selection.text()!='':
 			self.open_directory()

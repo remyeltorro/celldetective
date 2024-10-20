@@ -850,7 +850,8 @@ class ProcessPanel(QFrame, Styles):
 								return None
 						else:
 							print(f"Segmentation from threshold config: {self.threshold_config}")
-							self.job = ProgressWindow(SegmentCellThresholdProcess, parent_window=self, title="Segment")
+							process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads, "threshold_instructions": self.threshold_config, "use_gpu": self.use_gpu}
+							self.job = ProgressWindow(SegmentCellThresholdProcess, parent_window=self, title="Segment", process_args = process_args)
 							result = self.job.exec_()
 							if result == QDialog.Accepted:
 								pass
@@ -858,7 +859,8 @@ class ProcessPanel(QFrame, Styles):
 								return None
 							#segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
 					else:
-						self.job = ProgressWindow(SegmentCellDLProcess, parent_window=self, title="Segment")
+						process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads, "model_name": self.model_name, "use_gpu": self.use_gpu}
+						self.job = ProgressWindow(SegmentCellDLProcess, parent_window=self, title="Segment", process_args = process_args)
 						result = self.job.exec_()
 						if result == QDialog.Accepted:
 							pass
@@ -876,7 +878,8 @@ class ProcessPanel(QFrame, Styles):
 						if returnValue == QMessageBox.No:
 							return None
 					
-					self.job = ProgressWindow(TrackingProcess, parent_window=self, title="Tracking")
+					process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads}					
+					self.job = ProgressWindow(TrackingProcess, parent_window=self, title="Tracking", process_args=process_args)
 					result = self.job.exec_()
 					if result == QDialog.Accepted:
 						pass
@@ -885,8 +888,8 @@ class ProcessPanel(QFrame, Styles):
 					#track_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
 
 				if self.measure_action.isChecked():
-
-					self.job = ProgressWindow(MeasurementProcess, parent_window=self, title="Measurement")
+					process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads}
+					self.job = ProgressWindow(MeasurementProcess, parent_window=self, title="Measurement", process_args=process_args)
 					result = self.job.exec_()
 					if result == QDialog.Accepted:
 						pass

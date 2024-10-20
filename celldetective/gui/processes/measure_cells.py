@@ -21,15 +21,16 @@ from art import tprint
 
 class MeasurementProcess(Process):
 
-	def __init__(self, queue=None, parent_window=None):
+	def __init__(self, queue=None, process_args=None):
 		
 		super().__init__()
 		
 		self.queue = queue
-		self.parent_window = parent_window
-		self.pos = self.parent_window.pos
-		self.mode = self.parent_window.mode
-		self.n_threads = self.parent_window.n_threads
+
+		if process_args is not None:
+			for key, value in process_args.items():
+				setattr(self, key, value)
+
 		self.column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}
 
 		tprint("Measure")

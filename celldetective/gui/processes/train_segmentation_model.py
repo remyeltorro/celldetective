@@ -19,15 +19,15 @@ from csbdeep.utils import save_json
 
 class TrainSegModelProcess(Process):
 
-	def __init__(self, queue=None, parent_window=None):
+	def __init__(self, queue=None, process_args=None, *args, **kwargs):
 		
-		super().__init__()
+		super().__init__(*args, **kwargs)
 		
 		self.queue = queue
-		self.parent_window = parent_window
-		self.pos = self.parent_window.pos
-		self.instructions = self.parent_window.instructions
-		self.use_gpu = self.parent_window.use_gpu
+
+		if process_args is not None:
+			for key, value in process_args.items():
+				setattr(self, key, value)
 
 		tprint("Train segmentation")
 		self.read_instructions()

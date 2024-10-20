@@ -13,14 +13,15 @@ import json
 
 class DownloadProcess(Process):
 
-	def __init__(self, queue=None, parent_window=None):
+	def __init__(self, queue=None, process_args=None, *args, **kwargs):
 		
-		super().__init__()
+		super().__init__(*args, **kwargs)
 		
+		if process_args is not None:
+			for key, value in process_args.items():
+				setattr(self, key, value)
+
 		self.queue = queue
-		self.parent_window = parent_window
-		self.output_dir = self.parent_window.output_dir
-		self.file = self.parent_window.file
 		self.progress = True
 
 		file_path = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -89,7 +90,7 @@ class DownloadProcess(Process):
 			os.rename(file_to_rename[0], os.sep.join([self.output_dir,self.file,self.file]))
 
 		os.remove(self.path_to_zip_file)
-		self.queue.put(100)
+		self.queue.put([100,0])
 		time.sleep(0.5)
 
 		# Send end signal

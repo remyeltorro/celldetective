@@ -23,15 +23,15 @@ import concurrent.futures
 
 class BaseSegmentProcess(Process):
 
-	def __init__(self, queue=None, parent_window=None):
+	def __init__(self, queue=None, process_args=None, *args, **kwargs):
 		
-		super().__init__()
+		super().__init__(*args, **kwargs)
 		
 		self.queue = queue
-		self.parent_window = parent_window
-		self.pos = self.parent_window.pos
-		self.mode = self.parent_window.mode
-		self.n_threads = self.parent_window.n_threads
+
+		if process_args is not None:
+			for key, value in process_args.items():
+				setattr(self, key, value)
 
 		tprint("Segment")
 
@@ -39,7 +39,6 @@ class BaseSegmentProcess(Process):
 		self.locate_experiment_config()
 		self.extract_experiment_parameters()
 		self.detect_movie_length()
-
 		self.write_folders()
 
 	def write_folders(self):
@@ -102,8 +101,6 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 	def __init__(self, *args, **kwargs):
 		
 		super().__init__(*args, **kwargs)
-
-		self.model_name = self.parent_window.model_name
 
 		self.check_gpu()
 
@@ -168,7 +165,6 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 					
 	def check_gpu(self):
 
-		self.use_gpu = self.parent_window.use_gpu
 		if not self.use_gpu:
 			os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
@@ -178,12 +174,13 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 
 			if self.model_type=='stardist':
 				model = StarDist2D(None, name=self.model_name, basedir=Path(self.model_complete_path).parent)
-				model.config.use_gpu = self.use_gpu
-				model.use_gpu = self.use_gpu
+				model.config.use_gpu = self.use_gpu.copy()
+				model.use_gpu = self.use_gpu.copy()
 				print(f"StarDist model {self.model_name} successfully loaded.")
 				scale_model = self.scale
 
 			elif self.model_type=='cellpose':
+
 
 				import torch
 				if not self.use_gpu:
@@ -258,7 +255,6 @@ class SegmentCellThresholdProcess(BaseSegmentProcess):
 		
 		super().__init__(*args, **kwargs)
 
-		self.threshold_instructions = self.parent_window.threshold_config
 		self.equalize = False
 
 		# Model
@@ -325,9 +321,9 @@ class SegmentCellThresholdProcess(BaseSegmentProcess):
 				mask = segment_frame_from_thresholds(f, **self.threshold_instructions)
 				save_tiff_imagej_compatible(os.sep.join([self.pos, self.label_folder, f"{str(t).zfill(4)}.tif"]), mask.astype(np.uint16), axes='YX')
 
-				# del f;
-				# del mask;
-				# gc.collect()
+				del f;
+				del mask;
+				gc.collect()
 
 				# Send signal for progress bar
 				self.sum_done+=1/self.len_movie*100

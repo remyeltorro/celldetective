@@ -194,7 +194,8 @@ class AppInitWindow(QMainWindow):
 		if not os.path.exists(os.sep.join([self.target_dir,'demo_ricm'])):
 			self.output_dir = self.target_dir
 			self.file = 'demo_ricm'
-			self.job = ProgressWindow(DownloadProcess, parent_window=self, title="Download", position_info=False)
+			process_args = {"output_dir": self.output_dir, "file": self.file}
+			self.job = ProgressWindow(DownloadProcess, parent_window=self, title="Download", position_info=False, process_args=process_args)
 			result = self.job.exec_()
 			if result == QDialog.Accepted:
 				pass

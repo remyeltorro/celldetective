@@ -7,7 +7,7 @@ import math
 
 class ProgressWindow(QDialog):
 
-	def __init__(self, process=None, parent_window=None, title="", position_info=True):
+	def __init__(self, process=None, parent_window=None, title="", position_info=True, process_args=None):
 		QDialog.__init__(self)
 
 		self.setWindowTitle(f'{title} Progress')
@@ -27,7 +27,7 @@ class ProgressWindow(QDialog):
 		self.progress_bar = QProgressBar()
 		self.progress_bar.setValue(0)
 
-		self.__runner  = Runner(process=self.__process,progress_bar=self.progress_bar, parent_window=self.parent_window, remaining_time_label=self.time_left_lbl)
+		self.__runner  = Runner(process=self.__process, progress_bar=self.progress_bar, process_args=process_args, remaining_time_label=self.time_left_lbl)
 		self.pool = QThreadPool.globalInstance()
 		print("Multithreading with maximum %d threads" % self.pool.maxThreadCount())
 
@@ -88,14 +88,15 @@ class ProgressWindow(QDialog):
 
 class Runner(QRunnable):
 
-	def __init__(self, process=None, progress_bar=None, remaining_time_label=None, parent_window=None):
+	def __init__(self, process=None, progress_bar=None, remaining_time_label=None, process_args=None):
 		QRunnable.__init__(self)
 
+		print(f"{process_args=}")
 		self.progress_bar = progress_bar
-		self.parent_window = parent_window
+		#self.parent_window = parent_window
 		self.remaining_time_label = remaining_time_label
 		self.__queue = Queue()
-		self.__process = process(self.__queue, parent_window=self.parent_window)
+		self.__process = process(self.__queue, process_args=process_args)
 		self.signals = RunnerSignal()
 
 	def run(self):
@@ -112,7 +113,7 @@ class Runner(QRunnable):
 					if remaining_minutes == 0:
 						time_left = "About "+str(remaining_seconds)+" s remaining"
 					self.signals.update_time.emit(time_left)
-					if isinstance(progress, float | int):
+					if isinstance(progress, (float,int)):
 						self.signals.update.emit(math.ceil(progress))
 				if data == "finished":
 					self.signals.finished.emit()

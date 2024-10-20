@@ -605,7 +605,8 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		with open(model_folder+"training_instructions.json", 'w') as f:
 			json.dump(self.training_instructions, f, indent=4)
 		
-		self.job = ProgressWindow(TrainSegModelProcess, parent_window=self, title="Training", position_info=False)
+		process_args = {"instructions": self.instructions, "use_gpu": self.use_gpu}
+		self.job = ProgressWindow(TrainSegModelProcess, parent_window=self, title="Training", position_info=False, process_args=process_args)
 		result = self.job.exec_()
 		if result == QDialog.Accepted:
 			pass

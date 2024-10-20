@@ -23,6 +23,7 @@ Contents
    :caption: Basics:
 
    overview
+   acknowledegments
    get-started
    segment
    track

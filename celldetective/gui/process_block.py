@@ -166,10 +166,10 @@ class ProcessPanel(QFrame, Styles):
 		self.generate_signal_analysis_options()
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
-		self.view_tab_btn = QPushButton("View table")
+		self.view_tab_btn = QPushButton("Explore table")
 		self.view_tab_btn.setStyleSheet(self.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
-		self.view_tab_btn.setToolTip('View table')
+		self.view_tab_btn.setToolTip('Explore table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
 		#self.view_tab_btn.setEnabled(False)
@@ -177,7 +177,7 @@ class ProcessPanel(QFrame, Styles):
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
 		self.submit_btn = QPushButton("Submit")
-		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.process_population)
 		self.grid_contents.addWidget(self.submit_btn, 11, 0, 1, 4)
 
@@ -228,7 +228,7 @@ class ProcessPanel(QFrame, Styles):
 
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
-		self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
+		self.signal_analysis_action = QCheckBox("DETECT EVENTS")
 		self.signal_analysis_action.setStyleSheet("""
 			font-size: 10px;
 			padding-left: 10px;
@@ -1283,10 +1283,10 @@ class NeighPanel(QFrame, Styles):
 		self.grid_contents.addLayout(signal_layout, 7, 0, 1, 4)
 		self.grid_contents.addWidget(QHSeperationLine(), 11, 0, 1, 4)
 
-		self.view_tab_btn = QPushButton("View table")
+		self.view_tab_btn = QPushButton("Explore table")
 		self.view_tab_btn.setStyleSheet(self.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
-		self.view_tab_btn.setToolTip('View table')
+		self.view_tab_btn.setToolTip('Explore table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
 		#self.view_tab_btn.setEnabled(False)
@@ -1295,7 +1295,7 @@ class NeighPanel(QFrame, Styles):
 		#self.grid_contents.addWidget(QLabel(''), 12, 0, 1, 4)
 
 		self.submit_btn = QPushButton("Submit")
-		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.setToolTip("Compute the neighborhoods of the selected positions.")
 		self.submit_btn.clicked.connect(self.process_neighborhood)
 		self.grid_contents.addWidget(self.submit_btn, 14, 0, 1, 4)
@@ -1676,7 +1676,7 @@ class PreprocessingPanel(QFrame, Styles):
 		self.grid_contents.addLayout(self.protocol_layout,0,0,1,4)
 
 		self.submit_preprocessing_btn = QPushButton("Submit")
-		self.submit_preprocessing_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_preprocessing_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_preprocessing_btn.clicked.connect(self.launch_preprocessing)
 		
 		self.grid_contents.addWidget(self.submit_preprocessing_btn, 1,0,1,4)

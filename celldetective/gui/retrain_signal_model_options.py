@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QApplication, QDialog, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QIcon
 from celldetective.gui.gui_utils import center_window
@@ -16,6 +16,8 @@ from glob import glob
 from datetime import datetime
 from celldetective.gui import Styles
 from pandas.api.types import is_numeric_dtype
+from celldetective.gui.processes.train_signal_model import TrainSignalModelProcess
+from celldetective.gui.workers import ProgressWindow
 
 class ConfigSignalModelTraining(QMainWindow, Styles):
 	
@@ -584,6 +586,14 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		with open(model_folder+"training_instructions.json", 'w') as f:
 			json.dump(training_instructions, f, indent=4)
 		
-		train_signal_model(model_folder+"training_instructions.json")
+		self.instructions = model_folder+"training_instructions.json"
+		process_args = {"instructions": self.instructions} # "use_gpu": self.use_gpu
+		self.job = ProgressWindow(TrainSignalModelProcess, parent_window=self, title="Training", position_info=False, process_args=process_args)
+		result = self.job.exec_()
+		if result == QDialog.Accepted:
+			pass
+		elif result == QDialog.Rejected:
+			return None	
 
+		#train_signal_model(model_folder+"training_instructions.json")
 		self.parent_window.refresh_signal_models()

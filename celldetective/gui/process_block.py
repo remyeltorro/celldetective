@@ -238,7 +238,7 @@ class ProcessPanel(QFrame, Styles):
 
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
-		self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
+		self.signal_analysis_action = QCheckBox("EVENT DETECTION")
 		self.signal_analysis_action.setStyleSheet("""
 			font-size: 10px;
 			padding-left: 10px;
@@ -859,6 +859,11 @@ class ProcessPanel(QFrame, Styles):
 								return None
 							#segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
 					else:
+						# model = locate_segmentation_model(self.model_name)
+						# if model is None:
+						# 	process = {"output_dir": self.output_dir, "file": self.model_name}
+						# 	self.download_model_job = ProgressWindow(DownloadProcess, parent_window=self, title="Download", process_args = args)
+
 						process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads, "model_name": self.model_name, "use_gpu": self.use_gpu}
 						self.job = ProgressWindow(SegmentCellDLProcess, parent_window=self, title="Segment", process_args = process_args)
 						result = self.job.exec_()
@@ -1266,7 +1271,7 @@ class NeighPanel(QFrame, Styles):
 
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
-		self.signal_analysis_action = QCheckBox("PAIR SIGNAL ANALYSIS")
+		self.signal_analysis_action = QCheckBox("PAIR EVENT DETECTION")
 		self.signal_analysis_action.setStyleSheet("""
 		font-size: 10px;
 		padding-left: 10px;

@@ -149,7 +149,7 @@ class MeasurementProcess(Process):
 		intensity_measurement_radii_log=f'intensity_measurement_radii: {self.intensity_measurement_radii}'
 		isotropic_options_log=f'isotropic_operations: {self.isotropic_operations} \n'
 		log='\n'.join([features_log,border_distances_log,haralick_options_log,background_correction_log,spot_detection_log,intensity_measurement_radii_log,isotropic_options_log])
-		with open(self.pos + f'log_{self.mode}.json', 'a') as f:
+		with open(self.pos + f'log_{self.mode}.txt', 'a') as f:
 			f.write(f'{datetime.datetime.now()} MEASURE \n')
 			f.write(log+'\n')
 

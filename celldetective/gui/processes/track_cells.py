@@ -106,7 +106,7 @@ class TrackingProcess(Process):
 		log_list=[features_log, mask_channels_log, haralick_option_log, post_processing_option_log]
 		log='\n'.join(log_list)
 
-		with open(self.pos+f'log_{self.mode}.json', 'a') as f:
+		with open(self.pos+f'log_{self.mode}.txt', 'a') as f:
 			f.write(f'{datetime.datetime.now()} TRACK \n')
 			f.write(log+"\n")
 

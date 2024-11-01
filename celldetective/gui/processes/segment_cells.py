@@ -132,7 +132,7 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 	def write_log(self):
 
 		log=f'segmentation model: {self.model_name}\n'
-		with open(self.pos+f'log_{self.mode}.json', 'a') as f:
+		with open(self.pos+f'log_{self.mode}.txt', 'a') as f:
 			f.write(f'{datetime.datetime.now()} SEGMENT \n')
 			f.write(log)
 
@@ -174,8 +174,8 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 
 			if self.model_type=='stardist':
 				model = StarDist2D(None, name=self.model_name, basedir=Path(self.model_complete_path).parent)
-				model.config.use_gpu = self.use_gpu.copy()
-				model.use_gpu = self.use_gpu.copy()
+				model.config.use_gpu = self.use_gpu
+				model.use_gpu = self.use_gpu
 				print(f"StarDist model {self.model_name} successfully loaded.")
 				scale_model = self.scale
 
@@ -297,7 +297,7 @@ class SegmentCellThresholdProcess(BaseSegmentProcess):
 	def write_log(self):
 
 		log=f'Threshold segmentation: {self.threshold_instructions}\n'
-		with open(self.pos+f'log_{self.mode}.json', 'a') as f:
+		with open(self.pos+f'log_{self.mode}.txt', 'a') as f:
 			f.write(f'{datetime.datetime.now()} SEGMENT \n')
 			f.write(log)
 

@@ -46,8 +46,21 @@ A potential fix is to install Pytorch through `mamba <https://mamba.readthedocs.
 
 .. code-block:: console
 
-    mamba remove pytorch
-    mamba install pytorch
+    $ mamba remove pytorch
+    $ mamba install pytorch
+
+The following error (when training a model): 
+
+.. code-block:: console
+    
+    usr/local/lib/python3.10/dist-packages/torch/lib/../../nvidia/cusparse/lib/libcusparse.so.12: undefined symbol: __nvJitLinkAddData_12_1, version libnvJitLink.so.12
+
+can be fixed by reinstalling torchvision and torchaudio:
+
+.. console-block:: console
+    
+    $ python -m pip uninstall torch torchvision torchaudio
+    $ python -m pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121
 
 Tensorflow
 ~~~~~~~~~~

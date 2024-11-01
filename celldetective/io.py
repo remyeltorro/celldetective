@@ -707,7 +707,7 @@ def fix_missing_labels(position, population='target', prefix='Aligned'):
 		position += os.sep
 
 	stack = locate_stack(position, prefix=prefix)
-	template = np.zeros((stack[0].shape[0], stack[0].shape[1]))
+	template = np.zeros((stack[0].shape[0], stack[0].shape[1]),dtype=int)
 	all_frames = np.arange(len(stack))
 
 	if population.lower() == "target" or population.lower() == "targets":
@@ -1789,7 +1789,7 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 		return available_models, modelpath
 
 
-def locate_segmentation_model(name):
+def locate_segmentation_model(name, download=True):
 	
 	"""
 	Locates a specified segmentation model within the local 'celldetective' directory or
@@ -1829,13 +1829,15 @@ def locate_segmentation_model(name):
 		if name == m.replace('\\', os.sep).split(os.sep)[-2]:
 			match = m
 			return match
-	# else no match, try zenodo
-	files, categories = get_zenodo_files()
-	if name in files:
-		index = files.index(name)
-		cat = categories[index]
-		download_zenodo_file(name, os.sep.join([main_dir, cat]))
-		match = os.sep.join([main_dir, cat, name]) + os.sep
+	if download:
+		# else no match, try zenodo
+		files, categories = get_zenodo_files()
+		if name in files:
+			index = files.index(name)
+			cat = categories[index]
+			download_zenodo_file(name, os.sep.join([main_dir, cat]))
+			match = os.sep.join([main_dir, cat, name]) + os.sep
+
 	return match
 
 

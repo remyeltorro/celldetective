@@ -25,7 +25,7 @@ analysis on multimodal time lapse microscopy images.
 
 ## Overview
 
-![Pipeline](https://github.com/remyeltorro/celldetective/raw/main/docs/source/_static/celldetective-blocks.png)
+![Pipeline](https://github.com/celldetective/celldetective/raw/main/docs/source/_static/celldetective-blocks.png)
 
 
 Celldetective was designed to analyze time-lapse microscopy images in difficult situations: mixed cell populations that are only separable through multimodal information. This software provides a toolkit for the analysis of cell population interactions. 
@@ -44,7 +44,7 @@ Instead of reinventing the wheel and out of respect for the amazing work done by
 
 **Target Audience**: The software is targeted to scientists who are interested in quantifying dynamically (or not) cell populations from microscopy images. Experimental scientists who produce such images can also analyze their data, thanks to the graphical interface, that completely removes the need for coding, and the many helper functions that guide the user in the analysis steps. Finally, the modular structure of Celldetective welcomes users with a partial need. 
 
-![Signal analysis](https://github.com/remyeltorro/celldetective/raw/main/docs/source/_static/signal-annotator.gif)
+![Signal analysis](https://github.com/celldetective/celldetective/raw/main/docs/source/_static/signal-annotator.gif)
 
 
 # System requirements

@@ -17,6 +17,7 @@ from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import jaccard_score, balanced_accuracy_score, precision_score, recall_score
 from scipy.interpolate import interp1d
 from scipy.ndimage import shift
+from sklearn.metrics import ConfusionMatrixDisplay
 
 from celldetective.io import locate_signal_model, get_position_pickle, get_position_table
 from celldetective.tracking import clean_trajectories, interpolate_nan_properties
@@ -1405,7 +1406,10 @@ class SignalDetectionModel(object):
 
 			if self.show_plots:
 				try:
-					plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
+					ConfusionMatrixDisplay.from_predictions(ground_truth, predictions, cmap="Blues", normalize="pred", display_labels=["event","no event","left censored"])
+					plt.savefig(os.sep.join([self.model_folder,"test_confusion_matrix.png"]),bbox_inches='tight',dpi=300)
+					plt.pause(3)
+					plt.close()
 				except Exception as e:
 					print(e)
 					pass
@@ -1434,8 +1438,12 @@ class SignalDetectionModel(object):
 
 			if self.show_plots:
 				try:
-					plot_confusion_matrix(results, ["dead","alive","miscellaneous"], output_dir=self.model_folder+os.sep, title=title)
-				except:
+					ConfusionMatrixDisplay.from_predictions(ground_truth, predictions, cmap="Blues", normalize="pred", display_labels=["event","no event","left censored"])
+					plt.savefig(os.sep.join([self.model_folder,"validation_confusion_matrix.png"]),bbox_inches='tight',dpi=300)
+					plt.pause(3)
+					plt.close()
+				except Exception as e:
+					print(e)
 					pass
 			print("Validation set: ",classification_report(ground_truth,predictions))
 

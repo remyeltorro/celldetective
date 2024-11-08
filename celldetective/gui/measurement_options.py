@@ -154,7 +154,7 @@ class ConfigMeasurements(QMainWindow, Styles):
 
 		grid = QGridLayout(self.iso_frame)
 
-		self.iso_lbl = QLabel("ISOTROPIC MEASUREMENTS")
+		self.iso_lbl = QLabel("Position-based measurements".upper())
 		self.iso_lbl.setStyleSheet("""
 			font-weight: bold;
 			padding: 0px;
@@ -171,7 +171,7 @@ class ConfigMeasurements(QMainWindow, Styles):
 
 		grid = QGridLayout(self.features_frame)
 
-		self.feature_lbl = QLabel("FEATURES")
+		self.feature_lbl = QLabel("Mask-based measurements".upper())
 		self.feature_lbl.setStyleSheet("""
 			font-weight: bold;
 			padding: 0px;
@@ -262,7 +262,7 @@ class ConfigMeasurements(QMainWindow, Styles):
 		self.add_feature_btn.setToolTip("Add feature")
 		self.add_feature_btn.setIconSize(QSize(20, 20))
 
-		self.features_list = ListWidget(FeatureChoice, initial_features=['area', 'intensity_mean', ])
+		self.features_list = ListWidget(FeatureChoice, initial_features=['area', 'intensity_nanmean', ])
 
 		self.del_feature_btn.clicked.connect(self.features_list.removeSel)
 		self.add_feature_btn.clicked.connect(self.features_list.addItem)

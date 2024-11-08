@@ -25,6 +25,7 @@ Contents
    overview
    acknowledegments
    get-started
+   preprocessing
    segment
    track
    measure

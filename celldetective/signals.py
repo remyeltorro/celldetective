@@ -3079,7 +3079,7 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 		class_value = [class_value]
 
 	if forced_max_duration is None:
-		max_duration = ceil(np.amax(df.groupby(['position','TRACK_ID']).size().values))
+		max_duration = int(df['FRAME'].max())+1 #ceil(np.amax(df.groupby(['position','TRACK_ID']).size().values))
 	else:
 		max_duration = forced_max_duration
 	
@@ -3115,9 +3115,12 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 		else:
 			signal = track_group[signal_name].to_numpy()
 
+		if ref_time <=0:
+			ref_time = 0
+
 		timeline = track_group['FRAME'].unique().astype(int)
 		timeline_shifted = timeline - ref_time + max_duration
-		signal_matrix[trackid,timeline_shifted] = signal
+		signal_matrix[trackid,timeline_shifted.astype(int)] = signal
 		trackid+=1
 	
 	mean_signal, std_signal = columnwise_mean(signal_matrix, min_nbr_values=min_nbr_values)

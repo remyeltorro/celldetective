@@ -6,12 +6,13 @@ from tqdm import tqdm
 import numpy as np
 import os
 from celldetective.io import get_config, get_experiment_wells, interpret_wells_and_positions, extract_well_name_and_number, get_positions_in_well, extract_position_name, get_position_movie_path, load_frames, auto_load_number_of_frames
-from celldetective.utils import estimate_unreliable_edge, unpad, ConfigSectionMap, _extract_channel_indices_from_config, _extract_nbr_channels_from_config, _get_img_num_per_channel
+from celldetective.utils import interpolate_nan, estimate_unreliable_edge, unpad, ConfigSectionMap, _extract_channel_indices_from_config, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from celldetective.segmentation import filter_image, threshold_image
 from csbdeep.io import save_tiff_imagej_compatible
 from gc import collect
 from lmfit import Parameters, Model
 import tifffile.tifffile as tiff
+from scipy.ndimage import shift
 
 def estimate_background_per_condition(experiment, threshold_on_std=1, well_option='*', target_channel="channel_name", frame_range=[0,5], mode="timeseries", activation_protocol=[['gauss',2],['std',4]], show_progress_per_pos=False, show_progress_per_well=True):
 	
@@ -879,7 +880,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 
 	stack_length_auto = auto_load_number_of_frames(stack_path)
 	if stack_length_auto is None and stack_length is None:
-		print('stack length not provided')
+		print('Stack length not provided...')
 		return None
 	if stack_length_auto is not None:
 		stack_length = stack_length_auto
@@ -899,6 +900,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 				
 				frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 				target_img = frames[:,:,target_channel_index].copy()
+				
 				correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
 				frames[:,:,target_channel_index] = correction.copy()
 
@@ -919,6 +921,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 			
 			frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
 			target_img = frames[:,:,target_channel_index].copy()
+			
 			correction = field_correction(target_img, threshold_on_std=threshold_on_std, operation=operation, model=model, clip=clip, activation_protocol=activation_protocol)
 			frames[:,:,target_channel_index] = correction.copy()
 
@@ -981,6 +984,8 @@ def field_correction(img, threshold_on_std=1, operation='divide', model='parabol
 	"""
 
 	target_copy = img.copy().astype(float)
+	if np.percentile(target_copy.flatten(),99.9)==0.0:
+		return target_copy
 
 	std_frame = filter_image(target_copy,filters=activation_protocol)
 	edge = estimate_unreliable_edge(activation_protocol)
@@ -1051,3 +1056,167 @@ def fit_background_model(img, cell_masks=None, model='paraboloid', edge_exclusio
 		bg = np.array(bg)
 
 	return bg
+
+
+def correct_channel_offset(
+						   experiment, 
+						   well_option='*',
+						   position_option='*',
+						   target_channel="channel_name",
+						   correction_horizontal = 0,
+						   correction_vertical = 0,
+						   show_progress_per_well = True,
+						   show_progress_per_pos = False,
+						   export = False,
+						   return_stacks = False,
+						   movie_prefix=None,
+						   export_prefix='Corrected',
+						   return_stack = True,
+						   **kwargs,
+						   ):
+
+
+	config = get_config(experiment)
+	wells = get_experiment_wells(experiment)
+	len_movie = float(ConfigSectionMap(config,"MovieSettings")["len_movie"])
+	if movie_prefix is None:
+		movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]	
+
+	well_indices, position_indices = interpret_wells_and_positions(experiment, well_option, position_option)
+	channel_indices = _extract_channel_indices_from_config(config, [target_channel])
+	nbr_channels = _extract_nbr_channels_from_config(config)
+	img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
+	
+	stacks = []
+
+	for k, well_path in enumerate(tqdm(wells[well_indices], disable=not show_progress_per_well)):
+		
+		well_name, _ = extract_well_name_and_number(well_path)
+		positions = get_positions_in_well(well_path)
+		selection = positions[position_indices]
+		if isinstance(selection[0],np.ndarray):
+			selection = selection[0]
+
+		for pidx,pos_path in enumerate(tqdm(selection, disable=not show_progress_per_pos)):
+			
+			stack_path = get_position_movie_path(pos_path, prefix=movie_prefix)
+			print(f'Applying the correction to position {extract_position_name(pos_path)}...')
+			len_movie_auto = auto_load_number_of_frames(stack_path)
+			if len_movie_auto is not None:
+				len_movie = len_movie_auto
+				img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
+
+			corrected_stack = correct_channel_offset_single_stack(stack_path, 
+														target_channel_index=channel_indices[0],
+														nbr_channels=nbr_channels,
+														stack_length=len_movie,
+														correction_vertical=correction_vertical,
+														correction_horizontal=correction_horizontal,
+														export=export,
+														prefix=export_prefix,
+														return_stacks = return_stacks,
+													  )
+			print('Correction successful.')
+			if return_stacks:
+				stacks.append(corrected_stack)
+			else:
+				del corrected_stack
+			collect()
+
+	if return_stacks:
+		return stacks
+
+
+def correct_channel_offset_single_stack(stack_path,
+										target_channel_index=0,
+										nbr_channels=1,
+										stack_length=45,
+										correction_vertical=0,
+										correction_horizontal=0,
+										export=False,
+										prefix="Corrected",
+										return_stacks=True,
+											):
+
+	assert os.path.exists(stack_path),f"The stack {stack_path} does not exist... Abort."
+
+	stack_length_auto = auto_load_number_of_frames(stack_path)
+	if stack_length_auto is None and stack_length is None:
+		print('Stack length not provided...')
+		return None
+	if stack_length_auto is not None:
+		stack_length = stack_length_auto
+
+	corrected_stack = []
+
+	if export:
+		path,file = os.path.split(stack_path)
+		if prefix is None:
+			newfile = 'temp_'+file
+		else:
+			newfile = '_'.join([prefix,file])
+		
+		with tiff.TiffWriter(os.sep.join([path,newfile]),imagej=True) as tif:
+
+			for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
+				
+				frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
+				target_img = frames[:,:,target_channel_index].copy()
+
+				if np.percentile(target_img.flatten(), 99.9)==0.0:
+					correction = target_img
+				elif np.any(target_img.flatten()!=target_img.flatten()):
+					# Routine to interpolate NaN for the spline filter then mask it again
+					target_interp = interpolate_nan(target_img)
+					correction = shift(target_interp, [correction_vertical, correction_horizontal])
+					correction_nan = shift(target_img, [correction_vertical, correction_horizontal], prefilter=False)
+					nan_i, nan_j = np.where(correction_nan!=correction_nan)
+					correction[nan_i, nan_j] = np.nan
+				else:
+					correction = shift(target_img, [correction_vertical, correction_horizontal])					
+
+				frames[:,:,target_channel_index] = correction.copy()
+
+				if return_stacks:
+					corrected_stack.append(frames)
+
+				if export:
+					tif.write(np.moveaxis(frames,-1,0).astype(np.dtype('f')), contiguous=True)
+				del frames
+				del target_img
+				del correction
+				collect()
+
+		if prefix is None:
+			os.replace(os.sep.join([path,newfile]), os.sep.join([path,file]))
+	else:
+		for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
+			
+			frames = load_frames(list(np.arange(i,(i+nbr_channels))), stack_path, normalize_input=False).astype(float)
+			target_img = frames[:,:,target_channel_index].copy()
+			
+			if np.percentile(target_img.flatten(), 99.9)==0.0:
+				correction = target_img
+			elif np.any(target_img.flatten()!=target_img.flatten()):
+				# Routine to interpolate NaN for the spline filter then mask it again
+				target_interp = interpolate_nan(target_img)
+				correction = shift(target_interp, [correction_vertical, correction_horizontal])
+				correction_nan = shift(target_img, [correction_vertical, correction_horizontal], prefilter=False)
+				nan_i, nan_j = np.where(correction_nan!=correction_nan)
+				correction[nan_i, nan_j] = np.nan
+			else:
+				correction = shift(target_img, [correction_vertical, correction_horizontal])
+
+			frames[:,:,target_channel_index] = correction.copy()
+
+			corrected_stack.append(frames)
+
+			del frames
+			del target_img
+			del correction
+			collect()
+
+	if return_stacks:
+		return np.array(corrected_stack)
+	else:
+		return None

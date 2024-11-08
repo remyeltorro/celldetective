@@ -2347,12 +2347,12 @@ def download_zenodo_file(file, output_dir):
 	if len(file_to_rename)>0 and not file_to_rename[0].endswith(os.sep) and not file.startswith('demo'):
 		os.rename(file_to_rename[0], os.sep.join([output_dir,file,file]))
 
-	if file.startswith('db_'):
-		os.rename(os.sep.join([output_dir,file.replace('db_','')]), os.sep.join([output_dir,file]))
-	if file=='db-si-NucPI':
-		os.rename(os.sep.join([output_dir,'db2-NucPI']), os.sep.join([output_dir,file]))
-	if file=='db-si-NucCondensation':
-		os.rename(os.sep.join([output_dir,'db1-NucCondensation']), os.sep.join([output_dir,file]))
+	#if file.startswith('db_'):
+	#	os.rename(os.sep.join([output_dir,file.replace('db_','')]), os.sep.join([output_dir,file]))
+	#if file=='db-si-NucPI':
+	#	os.rename(os.sep.join([output_dir,'db2-NucPI']), os.sep.join([output_dir,file]))
+	#if file=='db-si-NucCondensation':
+	#	os.rename(os.sep.join([output_dir,'db1-NucCondensation']), os.sep.join([output_dir,file]))
 
 	os.remove(path_to_zip_file)
 

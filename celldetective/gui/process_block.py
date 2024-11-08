@@ -30,10 +30,10 @@ import json
 import psutil
 from celldetective.neighborhood import compute_neighborhood_at_position, compute_contact_neighborhood_at_position
 from celldetective.gui.gui_utils import FigureCanvas
-from celldetective.preprocessing import correct_background_model_free, correct_background_model
+from celldetective.preprocessing import correct_background_model_free, correct_background_model, correct_channel_offset
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 from celldetective.gui.gui_utils import ThresholdLineEdit, QuickSliderLayout, help_generic
-from celldetective.gui.layouts import CellposeParamsWidget, StarDistParamsWidget, BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout
+from celldetective.gui.layouts import CellposeParamsWidget, StarDistParamsWidget, BackgroundModelFreeCorrectionLayout, ProtocolDesignerLayout, BackgroundFitCorrectionLayout, ChannelOffsetOptionsLayout
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location
 
@@ -166,10 +166,10 @@ class ProcessPanel(QFrame, Styles):
 		self.generate_signal_analysis_options()
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
-		self.view_tab_btn = QPushButton("View table")
+		self.view_tab_btn = QPushButton("Explore table")
 		self.view_tab_btn.setStyleSheet(self.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
-		self.view_tab_btn.setToolTip('View table')
+		self.view_tab_btn.setToolTip('Explore table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
 		#self.view_tab_btn.setEnabled(False)
@@ -177,7 +177,7 @@ class ProcessPanel(QFrame, Styles):
 
 		self.grid_contents.addWidget(QHSeperationLine(), 9, 0, 1, 4)
 		self.submit_btn = QPushButton("Submit")
-		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.process_population)
 		self.grid_contents.addWidget(self.submit_btn, 11, 0, 1, 4)
 
@@ -228,7 +228,7 @@ class ProcessPanel(QFrame, Styles):
 
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
-		self.signal_analysis_action = QCheckBox("SIGNAL ANALYSIS")
+		self.signal_analysis_action = QCheckBox("DETECT EVENTS")
 		self.signal_analysis_action.setStyleSheet("""
 			font-size: 10px;
 			padding-left: 10px;
@@ -1283,10 +1283,10 @@ class NeighPanel(QFrame, Styles):
 		self.grid_contents.addLayout(signal_layout, 7, 0, 1, 4)
 		self.grid_contents.addWidget(QHSeperationLine(), 11, 0, 1, 4)
 
-		self.view_tab_btn = QPushButton("View table")
+		self.view_tab_btn = QPushButton("Explore table")
 		self.view_tab_btn.setStyleSheet(self.button_style_sheet_2)
 		self.view_tab_btn.clicked.connect(self.view_table_ui)
-		self.view_tab_btn.setToolTip('View table')
+		self.view_tab_btn.setToolTip('Explore table')
 		self.view_tab_btn.setIcon(icon(MDI6.table,color="#1565c0"))
 		self.view_tab_btn.setIconSize(QSize(20, 20))
 		#self.view_tab_btn.setEnabled(False)
@@ -1295,7 +1295,7 @@ class NeighPanel(QFrame, Styles):
 		#self.grid_contents.addWidget(QLabel(''), 12, 0, 1, 4)
 
 		self.submit_btn = QPushButton("Submit")
-		self.submit_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.setToolTip("Compute the neighborhoods of the selected positions.")
 		self.submit_btn.clicked.connect(self.process_neighborhood)
 		self.grid_contents.addWidget(self.submit_btn, 14, 0, 1, 4)
@@ -1657,11 +1657,32 @@ class PreprocessingPanel(QFrame, Styles):
 
 		self.protocol_layout.title_layout.addWidget(self.help_background_btn, 5, alignment=Qt.AlignRight)
 
+		
+		self.channel_offset_correction_layout = QVBoxLayout()
+
+		self.channel_shift_lbl = QLabel("CHANNEL OFFSET CORRECTION")
+		self.channel_shift_lbl.setStyleSheet("""
+			font-weight: bold;
+			padding: 0px;
+			""")
+		self.channel_offset_correction_layout.addWidget(self.channel_shift_lbl, alignment=Qt.AlignCenter)
+
+		self.channel_offset_options_layout = ChannelOffsetOptionsLayout(self)
+		self.channel_offset_correction_layout.addLayout(self.channel_offset_options_layout)
+		
+		self.protocol_layout.correction_layout.addWidget(QLabel(''))
+		self.protocol_layout.correction_layout.addLayout(self.channel_offset_correction_layout)
+
 		self.grid_contents.addLayout(self.protocol_layout,0,0,1,4)
+
 		self.submit_preprocessing_btn = QPushButton("Submit")
-		self.submit_preprocessing_btn.setStyleSheet(self.button_style_sheet_2)
+		self.submit_preprocessing_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_preprocessing_btn.clicked.connect(self.launch_preprocessing)
+		
 		self.grid_contents.addWidget(self.submit_preprocessing_btn, 1,0,1,4)
+
+	def add_offset_instructions_to_parent_list(self):
+		print('adding instructions')
 
 
 	def launch_preprocessing(self):
@@ -1712,7 +1733,7 @@ class PreprocessingPanel(QFrame, Styles):
 				export_prefix = None
 
 			if correction_protocol['correction_type']=='model-free':
-
+				print(f'Model-free correction; {movie_prefix=} {export_prefix=}')
 				correct_background_model_free(self.exp_dir, 
 								   well_option=well_option,
 								   position_option=pos_option,
@@ -1726,8 +1747,21 @@ class PreprocessingPanel(QFrame, Styles):
 								)
 			
 			elif correction_protocol['correction_type']=='fit':
-
+				print(f'Fit correction; {movie_prefix=} {export_prefix=} {correction_protocol=}')
 				correct_background_model(self.exp_dir,
+								   well_option=well_option,
+								   position_option=pos_option,
+								   export= True,
+								   return_stacks=False,
+								   show_progress_per_well = True,
+								   show_progress_per_pos = True,
+								   movie_prefix = movie_prefix,
+								   export_prefix = export_prefix,
+								   **correction_protocol,
+								)
+			elif correction_protocol['correction_type']=='offset':
+				print(f'Offset correction; {movie_prefix=} {export_prefix=} {correction_protocol=}')
+				correct_channel_offset(self.exp_dir,
 								   well_option=well_option,
 								   position_option=pos_option,
 								   export= True,

@@ -125,6 +125,13 @@ class ConfigSurvival(QWidget, Styles):
 		select_layout.addWidget(self.query_le, 66)
 		main_layout.addLayout(select_layout)
 
+		time_cut_layout = QHBoxLayout()
+		time_cut_layout.addWidget(QLabel('cut observation time [min]: '), 33)
+		self.query_time_cut = QLineEdit()
+		self.query_time_cut.setValidator(self.float_validator)
+		time_cut_layout.addWidget(self.query_time_cut, 66)
+		main_layout.addLayout(time_cut_layout)
+
 		self.cbs[0].setCurrentIndex(0)
 		self.cbs[1].setCurrentText('t_firstdetection')
 
@@ -259,17 +266,27 @@ class ConfigSurvival(QWidget, Styles):
 
 	def compute_survival_functions(self):
 
+		cut_observation_time = None
+		try:
+			cut_observation_time = float(self.query_time_cut.text()) / self.FrameToMin
+			if not 0<cut_observation_time<=(self.df['FRAME'].max()):
+				print('Invalid cut time (larger than movie length)... Not applied.')
+				cut_observation_time = None		
+		except Exception as e:
+			pass
+		print(f"{cut_observation_time=}")
+
 		# Per position survival
 		for block,movie_group in self.df.groupby(['well','position']):
 
-			ks = compute_survival(movie_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin)
+			ks = compute_survival(movie_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin, cut_observation_time=cut_observation_time)
 			if ks is not None:
 				self.df_pos_info.loc[self.df_pos_info['pos_path']==block[1],'survival_fit'] = ks
 
 		# Per well survival
 		for well,well_group in self.df.groupby('well'):
 
-			ks = compute_survival(well_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin)
+			ks = compute_survival(well_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin, cut_observation_time=cut_observation_time)
 			if ks is not None:
 				self.df_well_info.loc[self.df_well_info['well_path']==well,'survival_fit'] = ks
 

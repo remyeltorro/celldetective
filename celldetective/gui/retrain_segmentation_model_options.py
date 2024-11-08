@@ -8,7 +8,7 @@ from superqt import QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from celldetective.utils import get_software_location
-from celldetective.io import get_segmentation_datasets_list, locate_segmentation_dataset
+from celldetective.io import get_segmentation_datasets_list, locate_segmentation_dataset, get_segmentation_models_list
 from celldetective.segmentation import train_segmentation_model
 from celldetective.gui.layouts import CellposeParamsWidget
 import numpy as np
@@ -85,8 +85,11 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		self.submit_btn.clicked.connect(self.prep_model)
 		self.main_layout.addWidget(self.submit_btn)
 		self.submit_btn.setEnabled(False)
+		self.submit_warning = QLabel('')
+		self.main_layout.addWidget(self.submit_warning)
 
 		self.spatial_calib_le.textChanged.connect(self.activate_train_btn)
+		self.modelname_le.setText(f"Untitled_model_{datetime.today().strftime('%Y-%m-%d')}")
 
 		#self.populate_left_panel()
 		#grid.addLayout(self.left_side, 0, 0, 1, 1)
@@ -273,6 +276,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		modelname_layout.addWidget(QLabel('Model name: '), 30)
 		self.modelname_le = QLineEdit()
 		self.modelname_le.setText(f"Untitled_model_{datetime.today().strftime('%Y-%m-%d')}")
+		self.modelname_le.textChanged.connect(self.activate_train_btn)
 		modelname_layout.addWidget(self.modelname_le, 70)
 		layout.addLayout(modelname_layout)
 
@@ -317,13 +321,21 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		spatial_calib_layout.addWidget(self.spatial_calib_le, 70)
 		layout.addLayout(spatial_calib_layout)
 
-
-
 	def activate_train_btn(self):
-		if self.spatial_calib_le.text()=='':
-			self.submit_btn.setEnabled(False)
-		elif not np.all([cb.currentText()=='--' for cb in self.ch_norm.channel_cbs]):
+
+		current_name = self.modelname_le.text()
+		models = get_segmentation_models_list(mode=self.mode, return_path=False)
+		if not current_name in models and not self.spatial_calib_le.text()=='' and not np.all([cb.currentText()=='--' for cb in self.ch_norm.channel_cbs]):
 			self.submit_btn.setEnabled(True)
+			self.submit_warning.setText('')
+		else:
+			self.submit_btn.setEnabled(False)
+			if current_name in models:
+				self.submit_warning.setText('A model with this name already exists... Please pick another.')
+			elif self.spatial_calib_le.text()=='':
+				self.submit_warning.setText('Please provide a valid spatial calibration...')
+			elif np.all([cb.currentText()=='--' for cb in self.ch_norm.channel_cbs]):
+				self.submit_warning.setText('Please provide valid channels...')
 
 	def rescale_slider(self):
 		if self.stardist_model.isChecked():
@@ -336,11 +348,13 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 
 	def showDialog_pretrained(self):
 
-		try:
-			self.cancel_pretrained.click()
-		except:
-			pass
+		# try:
+		# 	self.cancel_pretrained.click()
+		# except Exception as e:
+		# 	print(e)
+		# 	pass
 
+		self.clear_pretrained()
 		self.pretrained_model = None
 		self.pretrained_model = QFileDialog.getExistingDirectory(
 						self, "Open Directory",

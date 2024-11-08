@@ -21,14 +21,14 @@ Black screen
 
 A potential fix is to create a symbolic link to libraries not found by *napari* in your python environment (here a conda environment named celldetective):
 
-.. code-block:: bash
+.. code-block:: console
 
-    cd ~/anaconda3/envs/celldetective/lib
-    mkdir backup 
-    mv libstd* backup
-    cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6  ./ 
-    ln -s libstdc++.so.6 libstdc++.so
-    ln -s libstdc++.so.6 libstdc++.so.6.0.19
+    $ cd ~/anaconda3/envs/celldetective/lib
+    $ mkdir backup 
+    $ mv libstd* backup
+    $ cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6  ./ 
+    $ ln -s libstdc++.so.6 libstdc++.so
+    $ ln -s libstdc++.so.6 libstdc++.so.6.0.19
 
 Deep learning libraries
 -----------------------
@@ -76,9 +76,9 @@ A potential fix is to install Tensorflow through `mamba <https://mamba.readthedo
 
 .. code-block:: console
 
-    conda remove tensorflow
-    mamba remove tensorflow
-    mamba install tensorflow
+    $ conda remove tensorflow
+    $ mamba remove tensorflow
+    $ mamba install tensorflow
 
 StarDist
 ~~~~~~~~
@@ -93,7 +93,7 @@ Try to install the missing pocl library as:
 
 .. code-block:: console
 
-    pip install pocl-binary-distribution
+    $ pip install pocl-binary-distribution
 
 Multithreading
 --------------

@@ -496,7 +496,7 @@ class TableUI(QMainWindow, Styles):
 			self.plot_inst_action.setShortcut("Ctrl+i")
 			self.fileMenu.addAction(self.plot_inst_action)	
 
-			self.groupby_action = QAction("&Group by tracks...", self)
+			self.groupby_action = QAction("&Collapse tracks...", self)
 			self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
 			self.groupby_action.setShortcut("Ctrl+g")
 			self.fileMenu.addAction(self.groupby_action)
@@ -504,13 +504,18 @@ class TableUI(QMainWindow, Styles):
 				self.groupby_action.setEnabled(False)
 
 			if self.population=='pairs':
-				self.groupby_neigh_action = QAction("&Group by neighbors...", self)
-				self.groupby_neigh_action.triggered.connect(self.set_projection_mode_neigh)
-				self.fileMenu.addAction(self.groupby_neigh_action)	
 
-				self.groupby_ref_action = QAction("&Group by reference...", self)
-				self.groupby_ref_action.triggered.connect(self.set_projection_mode_ref)
-				self.fileMenu.addAction(self.groupby_ref_action)	
+				self.groupby_pairs_in_neigh_action = QAction("&Collapse pairs in neighborhood...", self)
+				self.groupby_pairs_in_neigh_action.triggered.connect(self.collapse_pairs_in_neigh)
+				self.fileMenu.addAction(self.groupby_pairs_in_neigh_action)	
+
+				# self.groupby_neigh_action = QAction("&Group by neighbors...", self)
+				# self.groupby_neigh_action.triggered.connect(self.set_projection_mode_neigh)
+				# self.fileMenu.addAction(self.groupby_neigh_action)	
+
+				# self.groupby_ref_action = QAction("&Group by reference...", self)
+				# self.groupby_ref_action.triggered.connect(self.set_projection_mode_ref)
+				# self.fileMenu.addAction(self.groupby_ref_action)	
 
 
 			self.groupby_time_action = QAction("&Group by frames...", self)
@@ -553,15 +558,115 @@ class TableUI(QMainWindow, Styles):
 			#self.onehot_action.setShortcut("Ctrl+D")
 			self.mathMenu.addAction(self.onehot_action)		
 
+	def collapse_pairs_in_neigh(self):
+
+		self.selectNeighWidget = QWidget()
+		self.selectNeighWidget.setMinimumWidth(480)
+		self.selectNeighWidget.setWindowTitle('Set neighborhood of interest')
+		
+		layout = QVBoxLayout()
+		self.selectNeighWidget.setLayout(layout)
+
+		self.reference_lbl = QLabel('reference population: ')
+		self.reference_pop_cb = QComboBox()
+		ref_pops = self.data['reference_population'].unique()
+		self.reference_pop_cb.addItems(ref_pops)
+		self.reference_pop_cb.currentIndexChanged.connect(self.update_neighborhoods)
+
+		reference_hbox = QHBoxLayout()
+		reference_hbox.addWidget(self.reference_lbl, 33)
+		reference_hbox.addWidget(self.reference_pop_cb, 66)
+		layout.addLayout(reference_hbox)
+
+		self.neigh_lbl = QLabel('neighborhod: ')
+		self.neigh_cb = QComboBox()
+		neigh_cols = [c.replace('status_','') for c in list(self.data.loc[self.data['reference_population']==self.reference_pop_cb.currentText()].columns) if c.startswith('status_neighborhood')]
+		self.neigh_cb.addItems(neigh_cols)
+
+		neigh_hbox = QHBoxLayout()
+		neigh_hbox.addWidget(self.neigh_lbl, 33)
+		neigh_hbox.addWidget(self.neigh_cb, 66)
+		layout.addLayout(neigh_hbox)
+
+		self.groupby_pair_rb = QRadioButton('Group by pair')
+		self.groupby_reference_rb = QRadioButton('Group by reference')
+		self.groupby_pair_rb.setChecked(True)
+
+		groupby_hbox = QHBoxLayout()
+		groupby_hbox.addWidget(QLabel('Collapse option: '), 33)
+		groupby_hbox.addWidget(self.groupby_pair_rb, (100-33)//2)
+		groupby_hbox.addWidget(self.groupby_reference_rb, (100-33)//2)
+		layout.addLayout(groupby_hbox)
+
+		self.apply_neigh_btn = QPushButton('Set')
+		self.apply_neigh_btn.setStyleSheet(self.button_style_sheet)
+		self.apply_neigh_btn.clicked.connect(self.prepare_table_at_neighborhood)
+
+		apply_hbox = QHBoxLayout()
+		apply_hbox.addWidget(QLabel(''),33)
+		apply_hbox.addWidget(self.apply_neigh_btn,33)
+		apply_hbox.addWidget(QLabel(''),33)
+		layout.addLayout(apply_hbox)
+
+		self.selectNeighWidget.show()
+		center_window(self.selectNeighWidget)
+
+	def prepare_table_at_neighborhood(self):
+
+		ref_pop = self.reference_pop_cb.currentText()
+		neighborhood = self.neigh_cb.currentText()
+		status_neigh = 'status_'+neighborhood
+		if 'self' in neighborhood:
+			neighbor_pop = ref_pop
+		elif ref_pop=='targets':
+			neighbor_pop = 'effectors'
+		elif ref_pop=='effectors':
+			neighbor_pop = "targets"
+
+		# isolate the data at the neighborhood of interest
+		data = self.data.loc[(self.data['reference_population']==ref_pop)&(self.data['neighbor_population']==neighbor_pop)&(self.data[status_neigh]==1)]
+		
+		if self.groupby_pair_rb.isChecked():
+			self.groupby_cols = ['position', 'REFERENCE_ID', 'NEIGHBOR_ID']
+		elif self.groupby_reference_rb.isChecked():
+			self.groupby_cols = ['position', 'REFERENCE_ID']
+
+		self.current_data = data
+		skip_projection = False
+		if 'reference_tracked' in list(self.current_data.columns):
+			if np.all(self.current_data['reference_tracked'].astype(bool)==False):
+				# reference not tracked
+				if self.groupby_reference_rb.isChecked():
+					self.groupby_cols = ['position', 'FRAME', 'REFERENCE_ID']
+				elif self.groupby_pair_rb.isChecked():
+					print('The reference cells seem to not be tracked. No collapse can be performed.')
+					skip_projection=True
+			else:
+				if np.all(self.current_data['neighbors_tracked'].astype(bool)==False):
+					# neighbors not tracked
+					if self.groupby_pair_rb.isChecked():
+						print('The neighbor cells seem to not be tracked. No collapse can be performed.')
+						skip_projection=True				
+					elif self.groupby_reference_rb.isChecked():
+						self.groupby_cols = ['position', 'REFERENCE_ID'] # think about what would be best
+
+		if not skip_projection:
+			self.set_projection_mode_tracks()
+
+	def update_neighborhoods(self):
+		
+		neigh_cols = [c.replace('status_','') for c in list(self.data.loc[self.data['reference_population']==self.reference_pop_cb.currentText()].columns) if c.startswith('status_neighborhood')]
+		self.neigh_cb.clear()
+		self.neigh_cb.addItems(neigh_cols)		
+
 	def merge_tables(self):
 
 		expanded_table = []
 		
 		for neigh, group in self.data.groupby(['reference_population','neighbor_population']):
-			print(f'{neigh=}')
+			
 			ref_pop = neigh[0]; neigh_pop = neigh[1];
 			for pos,pos_group in group.groupby('position'):
-				print(f'{pos=}')
 				
 				ref_tab = os.sep.join([pos,'output','tables',f'trajectories_{ref_pop}.csv'])
 				neigh_tab = os.sep.join([pos,'output','tables',f'trajectories_{neigh_pop}.csv'])
@@ -590,9 +695,7 @@ class TableUI(QMainWindow, Styles):
 				neigh_merge_cols = ['neighbor_'+c for c in neigh_merge_cols]
 
 				merge_ref = pos_group.merge(df_ref, how='outer', left_on=['REFERENCE_ID','FRAME'], right_on=ref_merge_cols, suffixes=('', '_reference'))
-				print(f'{merge_ref.columns=}')
 				merge_neigh = merge_ref.merge(df_neigh, how='outer', left_on=['NEIGHBOR_ID','FRAME'], right_on=neigh_merge_cols, suffixes=('_reference', '_neighbor'))
-				print(f'{merge_neigh.columns=}')
 				expanded_table.append(merge_neigh)
 
 		df_expanded = pd.concat(expanded_table, axis=0, ignore_index = True)
@@ -735,11 +838,13 @@ class TableUI(QMainWindow, Styles):
 	def set_projection_mode_neigh(self):
 
 		self.groupby_cols = ['position', 'reference_population', 'neighbor_population', 'NEIGHBOR_ID', 'FRAME']
+		self.current_data = self.data
 		self.set_projection_mode_tracks()
 
 	def set_projection_mode_ref(self):
 		
 		self.groupby_cols = ['position', 'reference_population', 'neighbor_population', 'REFERENCE_ID', 'FRAME']
+		self.current_data = self.data
 		self.set_projection_mode_tracks()
 
 	def set_projection_mode_tracks(self):
@@ -1117,12 +1222,12 @@ class TableUI(QMainWindow, Styles):
 		if self.projection_option.isChecked():
 
 			self.projection_mode = self.projection_op_cb.currentText()
-			op = getattr(self.data.groupby(self.groupby_cols), self.projection_mode)
-			group_table = op(self.data.groupby(self.groupby_cols))
+			op = getattr(self.current_data.groupby(self.groupby_cols), self.projection_mode)
+			group_table = op(self.current_data.groupby(self.groupby_cols))
 
 			for c in self.static_columns:
 				try:
-					group_table[c] = self.data.groupby(self.groupby_cols)[c].apply(lambda x: x.unique()[0])
+					group_table[c] = self.current_data.groupby(self.groupby_cols)[c].apply(lambda x: x.unique()[0])
 				except Exception as e:
 					print(e)
 					pass
@@ -1144,7 +1249,7 @@ class TableUI(QMainWindow, Styles):
 			time_of_interest = self.event_times_cb.currentText()
 			self.projection_mode = f"measurements at {time_of_interest}"
 			new_table = []
-			for tid,group in self.data.groupby(self.groupby_cols):
+			for tid,group in self.current_data.groupby(self.groupby_cols):
 				time = group[time_of_interest].values[0]
 				if time==time:
 					time = floor(time) # floor for onset
@@ -1153,7 +1258,7 @@ class TableUI(QMainWindow, Styles):
 				frames = group['FRAME'].values
 				values = group.loc[group['FRAME']==time,:].to_numpy()
 				if len(values)>0:
-					values = dict(zip(list(self.data.columns), values[0]))
+					values = dict(zip(list(self.current_data.columns), values[0]))
 					for k,c in enumerate(self.groupby_cols):
 						values.update({c: tid[k]})
 					new_table.append(values)
@@ -1174,7 +1279,7 @@ class TableUI(QMainWindow, Styles):
 
 		elif self.per_status_option.isChecked():
 			self.projection_mode = self.status_operation.currentText()
-			group_table = collapse_trajectories_by_status(self.data, status=self.per_status_cb.currentText(),population=self.population, projection=self.status_operation.currentText(), groupby_columns=self.groupby_cols)
+			group_table = collapse_trajectories_by_status(self.current_data, status=self.per_status_cb.currentText(),population=self.population, projection=self.status_operation.currentText(), groupby_columns=self.groupby_cols)
 
 		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
 		self.subtable.show()

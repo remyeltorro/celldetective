@@ -24,6 +24,54 @@ import concurrent.futures
 from tifffile import imwrite
 from stardist import fill_label_holes
 
+def extract_experiment_from_well(well_path):
+	if not well_path.endswith(os.sep):
+		well_path += os.sep
+	exp_path_blocks = well_path.split(os.sep)[:-2]
+	experiment = os.sep.join(exp_path_blocks)
+	return experiment
+
+def extract_well_from_position(pos_path):
+	if not pos_path.endswith(os.sep):
+		pos_path += os.sep
+	well_path_blocks = pos_path.split(os.sep)[:-2]
+	well_path = os.sep.join(well_path_blocks)+os.sep
+	return well_path
+
+def extract_experiment_from_position(pos_path):
+	if not pos_path.endswith(os.sep):
+		pos_path += os.sep
+	exp_path_blocks = pos_path.split(os.sep)[:-3]
+	experiment = os.sep.join(exp_path_blocks)
+	return experiment
+
+def collect_experiment_metadata(pos_path=None, well_path=None):
+	
+	if pos_path is not None:
+		if not pos_path.endswith(os.sep):
+			pos_path += os.sep
+		experiment = extract_experiment_from_position(pos_path)
+		well_path = extract_well_from_position(pos_path)
+	elif well_path is not None:
+		if not well_path.endswith(os.sep):
+			well_path += os.sep
+		experiment = extract_experiment_from_well(well_path)
+		
+	wells = list(get_experiment_wells(experiment))
+	idx = wells.index(well_path)
+	well_name, well_nbr = extract_well_name_and_number(well_path)
+	if pos_path is not None:
+		pos_name = extract_position_name(pos_path)
+	else:
+		pos_name = 0
+	concentrations = get_experiment_concentrations(experiment, dtype=float)
+	cell_types = get_experiment_cell_types(experiment)
+	antibodies = get_experiment_antibodies(experiment)
+	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
+	
+	return {"pos_path": pos_path, "pos_name": pos_name, "well_path": well_path, "well_name": well_name, "well_nbr": well_nbr, "experiment": experiment, "antibody": antibodies[idx], "concentration": concentrations[idx], "cell_type": cell_types[idx], "pharmaceutical_agent": pharmaceutical_agents[idx]}
+
+
 def get_experiment_wells(experiment):
 	
 	"""

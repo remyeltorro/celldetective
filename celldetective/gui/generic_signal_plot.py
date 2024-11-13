@@ -5,7 +5,11 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator
 
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ExportPlotBtn
+from celldetective.gui.tableUI import TableUI
+from celldetective.io import collect_experiment_metadata
+
 from superqt.fonticon import icon
+from superqt import QLabeledSlider
 from fonticon_mdi6 import MDI6
 import numpy as np
 import json
@@ -16,7 +20,9 @@ from glob import glob
 from matplotlib.cm import tab10
 from celldetective.gui import Styles
 import matplotlib.cm as mcm
+import pandas as pd
 
+from lifelines.utils import qth_survival_times
 
 class GenericSignalPlotWidget(QWidget, Styles):
 
@@ -135,6 +141,14 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.export_btn = ExportPlotBtn(self.fig, export_dir=self.parent_window.exp_dir)
 		plot_buttons_hbox.addWidget(self.export_btn, 5, alignment=Qt.AlignRight)
 		self.layout.addLayout(plot_buttons_hbox)
+
+		self.export_tabular_btn = QPushButton('')
+		self.export_tabular_btn.setIcon(icon(MDI6.table,color="black"))
+		self.export_tabular_btn.setStyleSheet(self.button_select_all)
+		self.export_tabular_btn.setToolTip('Tabulate survival values.')
+		self.export_tabular_btn.setIconSize(QSize(20, 20))
+		plot_buttons_hbox.addWidget(self.export_tabular_btn, 5, alignment=Qt.AlignRight)
+		self.export_tabular_btn.hide()
 
 		self.ax.set_prop_cycle('color',[self.cmap(i) for i in np.linspace(0, 1, len(self.parent_window.well_indices))])
 
@@ -671,7 +685,9 @@ class SurvivalPlotWidget(GenericSignalPlotWidget):
 		self.class_selection_widget.hide()
 		self.rescale_widget.hide()
 		self.cell_lines_alpha_wdg.hide()
-		
+		self.export_tabular_btn.show()
+		self.export_tabular_btn.clicked.connect(self.set_table_options)
+
 	def switch_to_log(self):
 
 		"""
@@ -791,3 +807,147 @@ class SurvivalPlotWidget(GenericSignalPlotWidget):
 		# Plot a signal
 		if line==line:
 			line.plot_survival_function(ci_show=ci_option, ax=self.ax, legend=legend, color=color, label=label, xlabel='timeline [min]')
+
+	def set_table_options(self):
+
+		self.config_table_wg = QWidget()
+		self.config_table_wg.setMinimumWidth(480)
+		self.config_table_wg.setWindowTitle('Survival data')
+		
+		layout = QVBoxLayout()
+		self.config_table_wg.setLayout(layout)
+
+		self.all_values_rb = QRadioButton('tabulate all values')
+		self.single_timepoint_rb = QRadioButton('survival at single timepoint [min]: ')
+		self.ec_rb = QRadioButton(r'EC N% survival: ')
+		self.all_values_rb.toggled.connect(self.activate_sliders)
+		self.single_timepoint_rb.toggled.connect(self.activate_sliders)
+
+		self.single_timepoint_slider = QLabeledSlider()
+		self.single_timepoint_slider.setRange(0, int(self.df['FRAME'].max()*self.parent_window.FrameToMin))
+		self.single_timepoint_slider.setValue(int(self.df['FRAME'].max()*self.parent_window.FrameToMin))
+
+		self.ec_slider = QLabeledSlider()
+		self.ec_slider.setRange(0, 100)
+		self.ec_slider.setValue(50)
+
+		self.ec_rb.toggled.connect(self.activate_sliders)
+		self.all_values_rb.click()
+
+		self.set_btn = QPushButton('Set')
+		self.set_btn.setStyleSheet(self.button_style_sheet)
+		self.set_btn.clicked.connect(self.assemble_survival_data)
+
+		layout.addWidget(self.all_values_rb)
+
+		single_tp_layout = QHBoxLayout()
+		single_tp_layout.addWidget(self.single_timepoint_rb, 33)
+		single_tp_layout.addWidget(self.single_timepoint_slider, 66)
+		layout.addLayout(single_tp_layout)
+
+		ec_layout = QHBoxLayout()
+		ec_layout.addWidget(self.ec_rb, 33)
+		ec_layout.addWidget(self.ec_slider, 66)
+		layout.addLayout(ec_layout)
+
+		layout.addWidget(self.set_btn)
+		center_window(self.config_table_wg)
+		self.config_table_wg.show()
+
+	def activate_sliders(self):
+		if self.all_values_rb.isChecked():
+			self.single_timepoint_slider.setEnabled(False)
+			self.ec_slider.setEnabled(False)
+		elif self.single_timepoint_rb.isChecked():
+			self.single_timepoint_slider.setEnabled(True)
+			self.ec_slider.setEnabled(False)
+		elif self.ec_rb.isChecked():
+			self.ec_slider.setEnabled(True)
+			self.single_timepoint_slider.setEnabled(False)
+
+	def assemble_survival_data(self):
+
+		if self.plot_options[0].isChecked():
+			data = self.df_well_info
+			groupby = ['well_path']
+		if self.plot_options[1].isChecked():
+			data = self.df_pos_info
+			groupby = ['pos_path']
+		if self.plot_options[2].isChecked():
+			print('Not implemented yet... Please select "well" or "position" as grouping...')
+			return None	
+
+		if self.all_values_rb.isChecked():
+
+			survival_table = []
+			tid=0
+			for name,group in data.groupby(groupby):
+				print(name)
+				if groupby[0]=="pos_path":
+					metadata = collect_experiment_metadata(pos_path=name[0])
+				elif groupby[0]=="well_path":
+					metadata = collect_experiment_metadata(well_path=name[0])					
+				ks_estimator = group['survival_fit'].values[0]
+				if ks_estimator!=ks_estimator:
+					continue
+				timeline = list(ks_estimator.survival_function_.index)
+				survival = ks_estimator.survival_function_['KM_estimate'].values
+				lower_error = ks_estimator.confidence_interval_['KM_estimate_lower_0.95'].values
+				upper_error = ks_estimator.confidence_interval_['KM_estimate_upper_0.95'].values
+				for k in range(len(timeline)):
+					dico = metadata.copy()
+					dico.update({'TRACK_ID': tid,'FRAME': int(timeline[k] / self.parent_window.FrameToMin),'timeline': timeline[k], 'survival': survival[k], 'KM_estimate_lower_0.95': lower_error[k], 'KM_estimate_upper_0.95': upper_error[k]})
+					survival_table.append(dico)
+				tid+=1
+			
+			survival_table = pd.DataFrame(survival_table)
+			self.table = TableUI(survival_table, f"Survival data", plot_mode="plot_track_signals")
+			self.table.show()		
+
+		elif self.single_timepoint_rb.isChecked():
+
+			survival_table = []
+			tid=0
+			for name,group in data.groupby(groupby):
+				print(name)
+				if groupby[0]=="pos_path":
+					metadata = collect_experiment_metadata(pos_path=name[0])
+				elif groupby[0]=="well_path":
+					metadata = collect_experiment_metadata(well_path=name[0])					
+				ks_estimator = group['survival_fit'].values[0]
+				if ks_estimator!=ks_estimator:
+					continue
+				survival = ks_estimator.survival_function_at_times(self.single_timepoint_slider.value()).values[0]
+				dico = metadata.copy()
+				dico.update({'timepoint': self.single_timepoint_slider.value(), 'survival': survival})
+				survival_table.append(dico)
+				tid+=1
+		
+			survival_table = pd.DataFrame(survival_table)
+			self.table = TableUI(survival_table, f"Survival data", plot_mode="static")
+			self.table.show()
+
+		elif self.ec_rb.isChecked():
+			
+			survival_table = []
+			tid=0
+			for name,group in data.groupby(groupby):
+				print(name)
+				if groupby[0]=="pos_path":
+					metadata = collect_experiment_metadata(pos_path=name[0])
+				elif groupby[0]=="well_path":
+					metadata = collect_experiment_metadata(well_path=name[0])					
+				ks_estimator = group['survival_fit'].values[0]
+				if ks_estimator!=ks_estimator:
+					continue
+				survival = ks_estimator.survival_function_
+				ecN = qth_survival_times(float(self.ec_slider.value())/100.0, survival)
+				print(float(self.ec_slider.value())/100.0, "ecN", ecN)
+				dico = metadata.copy()
+				dico.update({"qth": int(self.ec_slider.value()), f'EC{int(self.ec_slider.value())}%': ecN})
+				survival_table.append(dico)
+				tid+=1
+		
+			survival_table = pd.DataFrame(survival_table)
+			self.table = TableUI(survival_table, f"Survival data", plot_mode="static")
+			self.table.show()

@@ -612,14 +612,8 @@ class TableUI(QMainWindow, Styles):
 		self.apply_neigh_btn.clicked.connect(self.prepare_table_at_neighborhood)
 
 		apply_hbox = QHBoxLayout()
-
-		apply_sublayout = QHBoxLayout()
-		apply_sublayout.addWidget(QLabel(''),33)
-		apply_sublayout.addWidget(self.apply_neigh_btn,33)
-		apply_sublayout.addWidget(QLabel(''),33)
-
 		apply_hbox.addWidget(QLabel(''),33)
-		apply_hbox.addLayout(apply_sublayout,66)
+		apply_hbox.addWidget(self.apply_neigh_btn,66)
 		layout.addLayout(apply_hbox)
 
 		self.selectNeighWidget.show()

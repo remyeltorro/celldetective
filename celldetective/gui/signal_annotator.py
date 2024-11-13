@@ -1118,6 +1118,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		try:
 			min_values = []
 			max_values = []
+			feats = []
 			for i in range(len(self.signal_choice_cb)):
 				signal = self.signal_choice_cb[i].currentText()
 				if signal == '--':
@@ -1127,9 +1128,26 @@ class SignalAnnotator(QMainWindow, Styles):
 					minn = np.nanpercentile(self.df_tracks.loc[:, signal].to_numpy().flatten(), 1)
 					min_values.append(minn)
 					max_values.append(maxx)
+					feats.append(signal)
+
+			smallest_value = np.amin(min_values)
+			feat_smallest_value = feats[np.argmin(min_values)]
+			min_feat = self.df_tracks[feat_smallest_value].min()
+			max_feat = self.df_tracks[feat_smallest_value].max()
+			pad_small = (max_feat - min_feat) * 0.05
+			if pad_small==0:
+				pad_small = 0.05
+
+			largest_value = np.amax(max_values)
+			feat_largest_value = feats[np.argmax(max_values)]
+			min_feat = self.df_tracks[feat_largest_value].min()
+			max_feat = self.df_tracks[feat_largest_value].max()
+			pad_large = (max_feat - min_feat) * 0.05
+			if pad_large==0:
+				pad_large = 0.05
 
 			if len(min_values) > 0:
-				self.cell_ax.set_ylim(np.amin(min_values), np.amax(max_values))
+				self.cell_ax.set_ylim(smallest_value - pad_small, largest_value + pad_large)
 		except Exception as e:
 			pass
 

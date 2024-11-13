@@ -1207,28 +1207,19 @@ class NeighPanel(QFrame, Styles):
 		self.measure_pairs_action.setToolTip("Measure the relative quantities defined for the cell pairs, for all neighborhoods.")
 		rel_layout.addWidget(self.measure_pairs_action, 90)
 
-		# self.visu_btn = QPushButton()
-		# self.visu_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
-		# self.visu_btn.setIconSize(QSize(20, 20))
-		# self.visu_btn.clicked.connect(self.check_measurements2)
-		# self.visu_btn.setToolTip("Open measurement annotator for two populations.")
-		# self.visu_btn.setStyleSheet(self.button_select_all)
-		# self.grid_contents.addWidget(self.visu_btn, 1,1,1,1,alignment=Qt.AlignRight)
-		# rel_layout.addWidget(self.visu_btn, 6)
+		self.classify_pairs_btn = QPushButton()
+		self.classify_pairs_btn.setIcon(icon(MDI6.scatter_plot, color="black"))
+		self.classify_pairs_btn.setIconSize(QSize(20, 20))
+		self.classify_pairs_btn.setToolTip("Classify data.")
+		self.classify_pairs_btn.setStyleSheet(self.button_select_all)
+		self.classify_pairs_btn.clicked.connect(self.open_classifier_ui_pairs)
+		rel_layout.addWidget(self.classify_pairs_btn, 5) #4,2,1,1, alignment=Qt.AlignRight
 
-		# self.config_rel_annotator_btn = QPushButton()
-		# self.config_rel_annotator_btn.setIcon(icon(MDI6.cog_outline, color="black"))
-		# self.config_rel_annotator_btn.setIconSize(QSize(20, 20))
-		# self.config_rel_annotator_btn.setToolTip("Configure the animation of the annotation tool.")
-		# self.config_rel_annotator_btn.setStyleSheet(self.button_select_all)
-		# self.config_rel_annotator_btn.clicked.connect(self.open_signal_annotator_configuration_ui)
-		# # self.grid_contents.addWidget(self.config_rel_annotator_btn, 1,2,1,1, alignment=Qt.AlignRight)
-		# rel_layout.addWidget(self.config_rel_annotator_btn, 6)
 		self.grid_contents.addLayout(rel_layout, 6, 0, 1, 4)
 
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
-		self.signal_analysis_action = QCheckBox("PAIR SIGNAL ANALYSIS")
+		self.signal_analysis_action = QCheckBox("DETECT PAIR EVENTS")
 		self.signal_analysis_action.setStyleSheet("""
 		font-size: 10px;
 		padding-left: 10px;
@@ -1303,6 +1294,26 @@ class NeighPanel(QFrame, Styles):
 		self.neigh_action.toggled.connect(self.activate_neigh_options)
 		self.neigh_action.setChecked(True)
 		self.neigh_action.setChecked(False)
+
+	def open_classifier_ui_pairs(self):
+		
+		self.mode = "pairs"
+		self.load_available_tables()
+		if self.df is None:
+
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("No table was found...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+			else:
+				return None
+		else:
+			self.ClassifierWidget = ClassifierWidget(self)
+			self.ClassifierWidget.show()
 
 
 	def help_neighborhood(self):

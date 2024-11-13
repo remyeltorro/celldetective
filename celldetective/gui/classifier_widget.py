@@ -253,6 +253,24 @@ class ClassifierWidget(QWidget, Styles):
 
 	def update_props_scatter(self, feature_changed=True):
 
+		try:
+			if np.any(self.df[self.features_cb[0].currentText()].to_numpy() <= 0.):
+				if self.ax_props.get_yscale()=='log':
+					self.log_btns[0].click()
+				self.log_btns[0].setEnabled(False)
+			else:
+				self.log_btns[0].setEnabled(True)
+
+			if np.any(self.df[self.features_cb[1].currentText()].to_numpy() <= 0.):
+				if self.ax_props.get_xscale()=='log':
+					self.log_btns[1].click()
+				self.log_btns[1].setEnabled(False)
+			else:
+				self.log_btns[1].setEnabled(True)
+		except Exception as e:
+			#print(e)
+			pass
+
 		class_name = self.class_name
 
 		try:
@@ -279,11 +297,24 @@ class ClassifierWidget(QWidget, Styles):
 				max_x = self.df.dropna(subset=feat_x)[feat_x].max()
 				min_y = self.df.dropna(subset=feat_y)[feat_y].min()
 				max_y = self.df.dropna(subset=feat_y)[feat_y].max()
+				
+				x_padding = (max_x - min_x) * 0.05
+				y_padding = (max_y - min_y) * 0.05
+				if x_padding==0:
+					x_padding = 0.05
+				if y_padding==0:
+					y_padding = 0.05
 
 				if min_x==min_x and max_x==max_x:
-					self.ax_props.set_xlim(min_x, max_x)
+					if self.ax_props.get_xscale()=='linear':
+						self.ax_props.set_xlim(min_x - x_padding, max_x + x_padding)
+					else:
+						self.ax_props.set_xlim(min_x, max_x)
 				if min_y==min_y and max_y==max_y:
-					self.ax_props.set_ylim(min_y, max_y)
+					if self.ax_props.get_yscale()=='linear':
+						self.ax_props.set_ylim(min_y - y_padding, max_y + y_padding)
+					else:
+						self.ax_props.set_ylim(min_y, max_y)						
 			
 				self.propscanvas.canvas.toolbar.update()
 
@@ -452,22 +483,39 @@ class ClassifierWidget(QWidget, Styles):
 
 		if i==1:
 			try:
+				feat_x = self.features_cb[1].currentText()
+				min_x = self.df.dropna(subset=feat_x)[feat_x].min()
+				max_x = self.df.dropna(subset=feat_x)[feat_x].max()
+				x_padding = (max_x - min_x) * 0.05
+				if x_padding==0:
+					x_padding = 0.05
+
 				if self.ax_props.get_xscale()=='linear':
+					self.ax_props.set_xlim(min_x, max_x)
 					self.ax_props.set_xscale('log')
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="#1565c0"))
 				else:
 					self.ax_props.set_xscale('linear')
+					self.ax_props.set_xlim(min_x - x_padding, max_x + x_padding)
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
 			except Exception as e:
 				print(e)
 		elif i==0:
 			try:
+				feat_y = self.features_cb[0].currentText()
+				min_y = self.df.dropna(subset=feat_y)[feat_y].min()
+				max_y = self.df.dropna(subset=feat_y)[feat_y].max()
+				y_padding = (max_y - min_y) * 0.05
+				if y_padding==0:
+					y_padding = 0.05
+
 				if self.ax_props.get_yscale()=='linear':
-					ymin,ymax = self.ax_props.get_ylim()
+					self.ax_props.set_ylim(min_y, max_y)
 					self.ax_props.set_yscale('log')
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="#1565c0"))
 				else:
 					self.ax_props.set_yscale('linear')
+					self.ax_props.set_ylim(min_y - y_padding, max_y + y_padding)
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
 			except Exception as e:
 				print(e)

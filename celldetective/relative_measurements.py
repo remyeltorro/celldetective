@@ -642,4 +642,92 @@ def extract_neighborhood_settings(neigh_string, population='targets'):
 	return neigh_protocol
 
 
+def expand_pair_table(data):
 
+	"""
+	Expands a pair table by merging reference and neighbor trajectory data from CSV files based on the specified 
+	reference and neighbor populations, and their associated positions and frames.
+
+	Parameters
+	----------
+	data : pandas.DataFrame
+		DataFrame containing the pair table, which should include the columns:
+		- 'reference_population': The reference population type.
+		- 'neighbor_population': The neighbor population type.
+		- 'position': The position identifier for each pair.
+
+	Returns
+	-------
+	pandas.DataFrame
+		Expanded DataFrame that includes merged reference and neighbor data, sorted by position, reference population, 
+		neighbor population, and frame. Rows without values in 'REFERENCE_ID', 'NEIGHBOR_ID', 'reference_population', 
+		or 'neighbor_population' are dropped.
+
+	Notes
+	-----
+	- For each unique pair of `reference_population` and `neighbor_population`, the function identifies corresponding 
+	  trajectories CSV files based on the position identifier.
+	- The function reads the trajectories CSV files, prefixes columns with 'reference_' or 'neighbor_' to avoid 
+	  conflicts, and merges data from reference and neighbor tables based on `TRACK_ID` or `ID`, and `FRAME`.
+	- Merges are performed in an outer join manner to retain all rows, regardless of missing values in the target files.
+	- The final DataFrame is sorted and cleaned to ensure only valid pairings are included.
+
+	Example
+	-------
+	>>> expanded_df = expand_pair_table(pair_table)
+	>>> expanded_df.head()
+
+	Raises
+	------
+	AssertionError
+		If 'reference_population' or 'neighbor_population' is not found in the columns of `data`.
+	"""
+
+	assert 'reference_population' in list(data.columns),"Please provide a valid pair table..."
+	assert 'neighbor_population' in list(data.columns),"Please provide a valid pair table..."
+
+	expanded_table = []
+	
+	for neigh, group in data.groupby(['reference_population','neighbor_population']):
+		
+		ref_pop = neigh[0]; neigh_pop = neigh[1];
+
+		for pos,pos_group in group.groupby('position'):
+			
+			ref_tab = os.sep.join([pos,'output','tables',f'trajectories_{ref_pop}.csv'])
+			neigh_tab = os.sep.join([pos,'output','tables',f'trajectories_{neigh_pop}.csv'])
+			
+			if os.path.exists(ref_tab):
+				df_ref = pd.read_csv(ref_tab)
+				if 'TRACK_ID' in df_ref.columns:
+					if not np.all(df_ref['TRACK_ID'].isnull()):
+						ref_merge_cols = ['TRACK_ID','FRAME']
+					else:
+						ref_merge_cols = ['ID','FRAME']
+				else:
+					ref_merge_cols = ['ID','FRAME']
+
+			if os.path.exists(neigh_tab):
+				df_neigh = pd.read_csv(neigh_tab)
+				if 'TRACK_ID' in df_neigh.columns:
+					if not np.all(df_neigh['TRACK_ID'].isnull()):
+						neigh_merge_cols = ['TRACK_ID','FRAME']
+					else:
+						neigh_merge_cols = ['ID','FRAME']
+				else:
+					neigh_merge_cols = ['ID','FRAME']
+
+			df_ref = df_ref.add_prefix('reference_',axis=1)
+			df_neigh = df_neigh.add_prefix('neighbor_',axis=1)
+			ref_merge_cols = ['reference_'+c for c in ref_merge_cols]
+			neigh_merge_cols = ['neighbor_'+c for c in neigh_merge_cols]
+
+			merge_ref = pos_group.merge(df_ref, how='outer', left_on=['REFERENCE_ID','FRAME'], right_on=ref_merge_cols, suffixes=('', '_reference'))
+			merge_neigh = merge_ref.merge(df_neigh, how='outer', left_on=['NEIGHBOR_ID','FRAME'], right_on=neigh_merge_cols, suffixes=('_reference', '_neighbor'))
+			expanded_table.append(merge_neigh)
+
+	df_expanded = pd.concat(expanded_table, axis=0, ignore_index = True)
+	df_expanded = df_expanded.sort_values(by=['position', 'reference_population','neighbor_population','REFERENCE_ID','NEIGHBOR_ID','FRAME'])
+	df_expanded = df_expanded.dropna(axis=0, subset=['REFERENCE_ID','NEIGHBOR_ID','reference_population','neighbor_population'])
+
+	return df_expanded

@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine
 from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status, test_2samp_generic
+from celldetective.neighborhood import extract_neighborhood_in_pair_table
+from celldetective.relative_measurements import expand_pair_table
 import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
@@ -15,6 +17,7 @@ from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from math import floor
+import re
 
 from matplotlib import colormaps
 
@@ -588,12 +591,18 @@ class TableUI(QMainWindow, Styles):
 		neigh_hbox.addWidget(self.neigh_cb, 66)
 		layout.addLayout(neigh_hbox)
 
+		contact_hbox = QHBoxLayout()
+		self.contact_only_check = QCheckBox('keep only pairs in contact')
+		self.contact_only_check.setChecked(True)
+		contact_hbox.addWidget(self.contact_only_check, alignment=Qt.AlignLeft)
+		layout.addLayout(contact_hbox)
+
 		self.groupby_pair_rb = QRadioButton('Group by pair')
 		self.groupby_reference_rb = QRadioButton('Group by reference')
 		self.groupby_pair_rb.setChecked(True)
 
 		groupby_hbox = QHBoxLayout()
-		groupby_hbox.addWidget(QLabel('Collapse option: '), 33)
+		groupby_hbox.addWidget(QLabel('collapse option: '), 33)
 		groupby_hbox.addWidget(self.groupby_pair_rb, (100-33)//2)
 		groupby_hbox.addWidget(self.groupby_reference_rb, (100-33)//2)
 		layout.addLayout(groupby_hbox)
@@ -603,9 +612,14 @@ class TableUI(QMainWindow, Styles):
 		self.apply_neigh_btn.clicked.connect(self.prepare_table_at_neighborhood)
 
 		apply_hbox = QHBoxLayout()
+
+		apply_sublayout = QHBoxLayout()
+		apply_sublayout.addWidget(QLabel(''),33)
+		apply_sublayout.addWidget(self.apply_neigh_btn,33)
+		apply_sublayout.addWidget(QLabel(''),33)
+
 		apply_hbox.addWidget(QLabel(''),33)
-		apply_hbox.addWidget(self.apply_neigh_btn,33)
-		apply_hbox.addWidget(QLabel(''),33)
+		apply_hbox.addLayout(apply_sublayout,66)
 		layout.addLayout(apply_hbox)
 
 		self.selectNeighWidget.show()
@@ -623,9 +637,8 @@ class TableUI(QMainWindow, Styles):
 		elif ref_pop=='effectors':
 			neighbor_pop = "targets"
 
-		# isolate the data at the neighborhood of interest
-		data = self.data.loc[(self.data['reference_population']==ref_pop)&(self.data['neighbor_population']==neighbor_pop)&(self.data[status_neigh]==1)]
-		
+		data = extract_neighborhood_in_pair_table(self.data, neighborhood_key=neighborhood, contact_only=self.contact_only_check.isChecked())
+
 		if self.groupby_pair_rb.isChecked():
 			self.groupby_cols = ['position', 'REFERENCE_ID', 'NEIGHBOR_ID']
 		elif self.groupby_reference_rb.isChecked():
@@ -661,46 +674,7 @@ class TableUI(QMainWindow, Styles):
 
 	def merge_tables(self):
 
-		expanded_table = []
-		
-		for neigh, group in self.data.groupby(['reference_population','neighbor_population']):
-			
-			ref_pop = neigh[0]; neigh_pop = neigh[1];
-			for pos,pos_group in group.groupby('position'):
-				
-				ref_tab = os.sep.join([pos,'output','tables',f'trajectories_{ref_pop}.csv'])
-				neigh_tab = os.sep.join([pos,'output','tables',f'trajectories_{neigh_pop}.csv'])
-				if os.path.exists(ref_tab):
-					df_ref = pd.read_csv(ref_tab)
-					if 'TRACK_ID' in df_ref.columns:
-						if not np.all(df_ref['TRACK_ID'].isnull()):
-							ref_merge_cols = ['TRACK_ID','FRAME']
-						else:
-							ref_merge_cols = ['ID','FRAME']
-					else:
-						ref_merge_cols = ['ID','FRAME']
-				if os.path.exists(neigh_tab):
-					df_neigh = pd.read_csv(neigh_tab)
-					if 'TRACK_ID' in df_neigh.columns:
-						if not np.all(df_neigh['TRACK_ID'].isnull()):
-							neigh_merge_cols = ['TRACK_ID','FRAME']
-						else:
-							neigh_merge_cols = ['ID','FRAME']
-					else:
-						neigh_merge_cols = ['ID','FRAME']
-
-				df_ref = df_ref.add_prefix('reference_',axis=1)
-				df_neigh = df_neigh.add_prefix('neighbor_',axis=1)
-				ref_merge_cols = ['reference_'+c for c in ref_merge_cols]
-				neigh_merge_cols = ['neighbor_'+c for c in neigh_merge_cols]
-
-				merge_ref = pos_group.merge(df_ref, how='outer', left_on=['REFERENCE_ID','FRAME'], right_on=ref_merge_cols, suffixes=('', '_reference'))
-				merge_neigh = merge_ref.merge(df_neigh, how='outer', left_on=['NEIGHBOR_ID','FRAME'], right_on=neigh_merge_cols, suffixes=('_reference', '_neighbor'))
-				expanded_table.append(merge_neigh)
-
-		df_expanded = pd.concat(expanded_table, axis=0, ignore_index = True)
-		df_expanded = df_expanded.sort_values(by=['position', 'reference_population','neighbor_population','REFERENCE_ID','NEIGHBOR_ID','FRAME'])
-		df_expanded = df_expanded.dropna(axis=0, subset=['REFERENCE_ID','NEIGHBOR_ID','reference_population','neighbor_population'])
+		df_expanded = expand_pair_table(self.data)
 		self.subtable = TableUI(df_expanded, 'merge', plot_mode = "static", population='pairs')
 		self.subtable.show()	
 

@@ -1303,6 +1303,90 @@ def compute_contact_neighborhood_at_position(pos, distance, population=['targets
 		return df_A, df_B
 
 
+def extract_neighborhood_in_pair_table(df, distance=None, reference_population="targets", neighbor_population="effectors",  mode="circle", neighborhood_key=None, contact_only=True,):
+
+	"""
+	Extracts data from a pair table that matches specific neighborhood criteria based on reference and neighbor 
+	populations, distance, and mode of neighborhood computation (e.g., circular or contact-based).
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		DataFrame containing the pair table, which includes columns for 'reference_population', 'neighbor_population', 
+		and a column for neighborhood status.
+	distance : int, optional
+		Radius in pixels for neighborhood calculation, used only if `neighborhood_key` is not provided.
+	reference_population : str, default="targets"
+		The reference population to consider. Must be either "targets" or "effectors".
+	neighbor_population : str, default="effectors"
+		The neighbor population to consider. Must be either "targets" or "effectors", used only if `neighborhood_key` is not provided.
+	mode : str, default="circle"
+		Neighborhood computation mode. Options are "circle" for radius-based or "contact" for contact-based neighborhood, used only if `neighborhood_key` is not provided.
+	neighborhood_key : str, optional
+		A precomputed neighborhood key to identify specific neighborhoods. If provided, this key overrides `distance`, 
+		`mode`, and `neighbor_population`.
+	contact_only : bool, default=True
+		If True, only rows indicating contact with the neighbor population (status=1) are kept; if False, both 
+		contact (status=1) and no-contact (status=0) rows are included.
+
+	Returns
+	-------
+	pandas.DataFrame
+		Filtered DataFrame containing rows that meet the specified neighborhood criteria.
+
+	Notes
+	-----
+	- When `neighborhood_key` is None, the neighborhood column is generated based on the provided `reference_population`, 
+	  `neighbor_population`, `distance`, and `mode`.
+	- The function uses `status_<neigh_col>` to filter rows based on `contact_only` criteria.
+	- Ensures that `reference_population` and `neighbor_population` are valid inputs and consistent with the neighborhood 
+	  mode and key.
+
+	Example
+	-------
+	>>> neighborhood_data = extract_neighborhood_in_pair_table(df, distance=50, reference_population="targets", 
+															   neighbor_population="effectors", mode="circle")
+	>>> neighborhood_data.head()
+
+	Raises
+	------
+	AssertionError
+		If `reference_population` or `neighbor_population` is not valid, or if the required neighborhood status 
+		column does not exist in `df`.
+	"""
+
+
+	assert reference_population in ["targets", "effectors"], "Please set a valid reference population ('targets' or 'effectors')"
+	if neighborhood_key is None:
+		assert neighbor_population in ["targets", "effectors"], "Please set a valid neighbor population ('targets' or 'effectors')"
+		assert mode in ["circle", "contact"], "Please set a valid neighborhood computation mode ('circle' or 'contact')"
+		if reference_population==neighbor_population:
+			type = "self"
+		else:
+			type = "2"
+
+		neigh_col = f"neighborhood_{type}_{mode}_{distance}_px"
+	else:
+		neigh_col = neighborhood_key.replace('status_','')
+		if 'self' in neigh_col:
+			neighbor_population = reference_population
+		else:
+			if reference_population=="effectors":
+				neighbor_population=='targets'
+			else:
+				neighbor_population=='effectors'
+
+	assert "status_"+neigh_col in list(df.columns),"The selected neighborhood does not appear in the data..."
+
+	if contact_only:
+		s_keep = [1]
+	else:
+		s_keep = [0,1]
+
+	data = df.loc[(df['reference_population']==reference_population)&(df['neighbor_population']==neighbor_population)&(df["status_"+neigh_col].isin(s_keep))]
+
+	return data
+
 
 # def mask_intersection_neighborhood(setA, labelsA, setB, labelsB, threshold_iou=0.5, viewpoint='B'):
 # 	# do whatever to match objects in A and B

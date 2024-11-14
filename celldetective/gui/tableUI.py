@@ -928,6 +928,7 @@ class TableUI(QMainWindow, Styles):
 		self.kde_check = QCheckBox('KDE plot')
 		self.count_check = QCheckBox('countplot')
 		self.ecdf_check = QCheckBox('ECDF plot')
+		self.line_check = QCheckBox('line plot')
 		self.scat_check = QCheckBox('scatter plot')
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
@@ -943,6 +944,7 @@ class TableUI(QMainWindow, Styles):
 		layout.addWidget(self.kde_check)
 		layout.addWidget(self.count_check)
 		layout.addWidget(self.ecdf_check)
+		layout.addWidget(self.line_check)
 		layout.addWidget(self.scat_check)
 		layout.addWidget(self.swarm_check)
 		layout.addWidget(self.violin_check)
@@ -1082,7 +1084,15 @@ class TableUI(QMainWindow, Styles):
 				legend = False
 			else:
 				pass
-						
+				
+		if self.line_check.isChecked():
+			if self.x_option:
+				sns.lineplot(data=self.data, x=self.x,y=self.y, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors)
+				legend = False
+			else:
+				print('please provide a -x variable...')
+				pass
+
 		if self.scat_check.isChecked():
 			if self.x_option:
 				sns.scatterplot(data=self.data, x=self.x,y=self.y, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors)

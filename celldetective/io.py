@@ -1,4 +1,5 @@
 from natsort import natsorted
+from PyQt5.QtWidgets import QMessageBox
 from glob import glob
 from tifffile import imread, TiffFile
 import numpy as np
@@ -23,6 +24,7 @@ from celldetective.utils import interpolate_nan
 import concurrent.futures
 from tifffile import imwrite
 from stardist import fill_label_holes
+from magicgui.widgets import Dialog
 
 def extract_experiment_from_well(well_path):
 	if not well_path.endswith(os.sep):
@@ -1319,16 +1321,58 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 
 	vertices = data[:, [1,-2,-1]]
 
+	# def change_id_of_current_cell():
+	# 	print("plugin started!")
+	# 	print(dir(viewer))
+	# 	print(viewer.cursor)
+
+	# @magicgui(call_button='Relabel widget')
+	# def relabel_widget():
+	# 	return change_id_of_current_cell()	
+
 	viewer = napari.Viewer()
 	if stack is not None:
 		viewer.add_image(stack, channel_axis=-1, colormap=["gray"] * stack.shape[-1])
 	if labels is not None:
-		viewer.add_labels(labels.astype(int), name='segmentation', opacity=0.4)
+		labels_layer = viewer.add_labels(labels.astype(int), name='segmentation', opacity=0.4)
 	viewer.add_points(vertices, size=4, name='points', opacity=0.3)
 	if data.shape[1]==4:
 		viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
 	else:
 		viewer.add_tracks(data[:,[0,1,3,4]], properties=properties, graph=graph, name='tracks')     
+	
+	@labels_layer.mouse_double_click_callbacks.append
+	def on_second_click_of_double_click(layer, event):
+		
+		print(viewer.layers['tracks'])
+
+		frame, x, y = event.position
+		try:
+			value_under = viewer.layers['segmentation'].data[int(frame), int(x), int(y)] #labels[0,int(y),int(x)]
+			if value_under==0:
+				return None
+		except:
+			print('Invalid mask value...')
+			return None
+
+		target_track_id = viewer.layers['segmentation'].selected_label
+
+		msgBox = QMessageBox()
+		msgBox.setIcon(QMessageBox.Question)
+		msgBox.setText(f"Do you want to propagate track {target_track_id} to the cell under the mouse, track {value_under}?")
+		msgBox.setWindowTitle("Info")
+		msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+		returnValue = msgBox.exec()
+		if returnValue == QMessageBox.No:
+			return None
+		else:
+			for f in viewer.layers['segmentation'].data[int(frame):]:
+				f[np.where(f==value_under)] = target_track_id
+
+
+
+	# viewer.window.add_dock_widget(relabel_widget, area='right')
+	# viewer.bind_key('R', relabel_widget)
 	viewer.show(block=True)
 
 	if flush_memory:

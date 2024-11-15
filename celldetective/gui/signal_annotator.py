@@ -35,7 +35,10 @@ class SignalAnnotator(QMainWindow, Styles):
 	def __init__(self, parent_window=None):
 
 		super().__init__()
+		
 		center_window(self)
+		self.proceed = True
+		self.setAttribute(Qt.WA_DeleteOnClose)
 
 		self.parent_window = parent_window
 		self.setWindowTitle("Signal annotator")
@@ -65,18 +68,19 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.status_name = 'status'
 
 		self.locate_stack()
-		self.load_annotator_config()
-		self.locate_tracks()
-		self.prepare_stack()
+		if not self.proceed:
+			self.close()
+		else:
+			self.load_annotator_config()
+			self.locate_tracks()
+			self.prepare_stack()
 
-		self.generate_signal_choices()
-		self.frame_lbl = QLabel('frame: ')
-		self.looped_animation()
-		self.create_cell_signal_canvas()
+			self.generate_signal_choices()
+			self.frame_lbl = QLabel('frame: ')
+			self.looped_animation()
+			self.create_cell_signal_canvas()
 
-		self.populate_widget()
-
-		self.setAttribute(Qt.WA_DeleteOnClose)
+			self.populate_widget()
 
 	def populate_widget(self):
 
@@ -645,11 +649,14 @@ class SignalAnnotator(QMainWindow, Styles):
 		if len(movies) == 0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("No movies are detected in the experiment folder. Cannot load an image to test Haralick.")
+			msgBox.setText("No movie is detected in the experiment folder.\nPlease check the stack prefix...")
 			msgBox.setWindowTitle("Warning")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Yes:
+			if returnValue == QMessageBox.Ok:
+				self.proceed = False
+				self.close()
+			else:
 				self.close()
 		else:
 			self.stack_path = movies[0]
@@ -977,15 +984,17 @@ class SignalAnnotator(QMainWindow, Styles):
 				self.stack[np.where(self.stack > 0.)] = np.log(self.stack[np.where(self.stack > 0.)])
 
 	def closeEvent(self, event):
-
-		self.stop()
-		# result = QMessageBox.question(self,
-		# 			  "Confirm Exit...",
-		# 			  "Are you sure you want to exit ?",
-		# 			  QMessageBox.Yes| QMessageBox.No,
-		# 			  )
-		del self.stack
-		gc.collect()
+		try:
+			self.stop()
+			# result = QMessageBox.question(self,
+			# 			  "Confirm Exit...",
+			# 			  "Are you sure you want to exit ?",
+			# 			  QMessageBox.Yes| QMessageBox.No,
+			# 			  )
+			del self.stack
+			gc.collect()
+		except:
+			pass
 
 	def looped_animation(self):
 
@@ -2440,11 +2449,11 @@ class MeasureAnnotator(SignalAnnotator):
 		if len(movies) == 0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("No movies are detected in the experiment folder. Cannot load an image to test Haralick.")
+			msgBox.setText("No movie is detected in the experiment folder.\nPlease check the stack prefix...")
 			msgBox.setWindowTitle("Warning")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Yes:
+			if returnValue == QMessageBox.Ok:
 				self.close()
 		else:
 			self.stack_path = movies[0]

@@ -896,7 +896,7 @@ class SurvivalPlotWidget(GenericSignalPlotWidget):
 				upper_error = ks_estimator.confidence_interval_['KM_estimate_upper_0.95'].values
 				for k in range(len(timeline)):
 					dico = metadata.copy()
-					dico.update({'TRACK_ID': tid,'FRAME': int(timeline[k] / self.parent_window.FrameToMin),'timeline': timeline[k], 'survival': survival[k], 'KM_estimate_lower_0.95': lower_error[k], 'KM_estimate_upper_0.95': upper_error[k]})
+					dico.update({'TRACK_ID': tid,'FRAME': int(timeline[k] / self.parent_window.FrameToMin),'timeline': timeline[k], 'survival': survival[k], "event_fraction": 1-survival[k], 'KM_estimate_lower_0.95': lower_error[k], 'KM_estimate_upper_0.95': upper_error[k]})
 					survival_table.append(dico)
 				tid+=1
 			
@@ -919,7 +919,7 @@ class SurvivalPlotWidget(GenericSignalPlotWidget):
 					continue
 				survival = ks_estimator.survival_function_at_times(self.single_timepoint_slider.value()).values[0]
 				dico = metadata.copy()
-				dico.update({'timepoint': self.single_timepoint_slider.value(), 'survival': survival})
+				dico.update({'timepoint': self.single_timepoint_slider.value(), 'survival': survival, 'event_fraction': 1 - survival})
 				survival_table.append(dico)
 				tid+=1
 		
@@ -942,9 +942,8 @@ class SurvivalPlotWidget(GenericSignalPlotWidget):
 					continue
 				survival = ks_estimator.survival_function_
 				ecN = qth_survival_times(float(self.ec_slider.value())/100.0, survival)
-				print(float(self.ec_slider.value())/100.0, "ecN", ecN)
 				dico = metadata.copy()
-				dico.update({"qth": int(self.ec_slider.value()), f'EC{int(self.ec_slider.value())}%': ecN})
+				dico.update({"qth": int(self.ec_slider.value()), f'EC{int(self.ec_slider.value())}% [min]': ecN})
 				survival_table.append(dico)
 				tid+=1
 		

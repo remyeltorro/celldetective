@@ -481,7 +481,7 @@ class PivotTableUI(QWidget):
 
 class TableUI(QMainWindow, Styles):
 
-	def __init__(self, data, title, population='targets',plot_mode="plot_track_signals", *args, **kwargs):
+	def __init__(self, data, title, population='targets',plot_mode="plot_track_signals", save_inplace_option=False, collapse_tracks_option=True, *args, **kwargs):
 
 		QMainWindow.__init__(self, *args, **kwargs)
 
@@ -494,6 +494,8 @@ class TableUI(QMainWindow, Styles):
 		self.numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
 		self.groupby_cols = ['position', 'TRACK_ID']
 		self.tracks = False
+		self.save_inplace_option = save_inplace_option
+		self.collapse_tracks_option = collapse_tracks_option
 
 		if self.population=='pairs':
 			self.groupby_cols = ['position','reference_population', 'neighbor_population','REFERENCE_ID', 'NEIGHBOR_ID']
@@ -502,6 +504,8 @@ class TableUI(QMainWindow, Styles):
 			if 'TRACK_ID' in data.columns:
 				if not np.all(data['TRACK_ID'].isnull()):
 					self.tracks = True
+		
+		self.data = data
 
 		self._createMenuBar()
 		self._createActions()
@@ -510,7 +514,6 @@ class TableUI(QMainWindow, Styles):
 		self.setCentralWidget(self.table_view)
 
 		# Set the model for the table view
-		self.data = data
 
 		self.model = PandasModel(data)
 		self.table_view.setModel(self.model)
@@ -520,92 +523,85 @@ class TableUI(QMainWindow, Styles):
 
 	def _createActions(self):
 
-			self.save_as = QAction("&Save as...", self)
-			self.save_as.triggered.connect(self.save_as_csv)
-			self.save_as.setShortcut("Ctrl+s")
-			self.fileMenu.addAction(self.save_as)
+		self.save_as = QAction("&Save as...", self)
+		self.save_as.triggered.connect(self.save_as_csv)
+		self.save_as.setShortcut("Ctrl+s")
+		self.fileMenu.addAction(self.save_as)
 
+		if self.save_inplace_option:
 			self.save_inplace = QAction("&Save inplace...", self)
 			self.save_inplace.triggered.connect(self.save_as_csv_inplace_per_pos)
 			#self.save_inplace.setShortcut("Ctrl+s")
 			self.fileMenu.addAction(self.save_inplace)
 
-			self.plot_action = QAction("&Plot...", self)
-			self.plot_action.triggered.connect(self.plot)
-			self.plot_action.setShortcut("Ctrl+p")
-			self.fileMenu.addAction(self.plot_action)		
+		self.plot_action = QAction("&Plot...", self)
+		self.plot_action.triggered.connect(self.plot)
+		self.plot_action.setShortcut("Ctrl+p")
+		self.fileMenu.addAction(self.plot_action)		
 
-			self.plot_inst_action = QAction("&Plot instantaneous...", self)
-			self.plot_inst_action.triggered.connect(self.plot_instantaneous)
-			self.plot_inst_action.setShortcut("Ctrl+i")
-			self.fileMenu.addAction(self.plot_inst_action)	
+		self.plot_inst_action = QAction("&Plot instantaneous...", self)
+		self.plot_inst_action.triggered.connect(self.plot_instantaneous)
+		self.plot_inst_action.setShortcut("Ctrl+i")
+		self.fileMenu.addAction(self.plot_inst_action)	
 
-			self.groupby_action = QAction("&Collapse tracks...", self)
-			self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
-			self.groupby_action.setShortcut("Ctrl+g")
-			self.fileMenu.addAction(self.groupby_action)
-			if not self.tracks:
-				self.groupby_action.setEnabled(False)
+		self.groupby_action = QAction("&Collapse tracks...", self)
+		self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
+		self.groupby_action.setShortcut("Ctrl+g")
+		self.fileMenu.addAction(self.groupby_action)
+		if not self.tracks or not self.collapse_tracks_option:
+			self.groupby_action.setEnabled(False)
 
-			if self.population=='pairs':
+		if self.population=='pairs':
 
-				self.groupby_pairs_in_neigh_action = QAction("&Collapse pairs in neighborhood...", self)
-				self.groupby_pairs_in_neigh_action.triggered.connect(self.collapse_pairs_in_neigh)
-				self.fileMenu.addAction(self.groupby_pairs_in_neigh_action)	
+			self.groupby_pairs_in_neigh_action = QAction("&Collapse pairs in neighborhood...", self)
+			self.groupby_pairs_in_neigh_action.triggered.connect(self.collapse_pairs_in_neigh)
+			self.fileMenu.addAction(self.groupby_pairs_in_neigh_action)
 
-				# self.groupby_neigh_action = QAction("&Group by neighbors...", self)
-				# self.groupby_neigh_action.triggered.connect(self.set_projection_mode_neigh)
-				# self.fileMenu.addAction(self.groupby_neigh_action)	
-
-				# self.groupby_ref_action = QAction("&Group by reference...", self)
-				# self.groupby_ref_action.triggered.connect(self.set_projection_mode_ref)
-				# self.fileMenu.addAction(self.groupby_ref_action)	
-
-
+		if 'FRAME' in list(self.data.columns):
 			self.groupby_time_action = QAction("&Group by frames...", self)
 			self.groupby_time_action.triggered.connect(self.groupby_time_table)
 			self.groupby_time_action.setShortcut("Ctrl+t")
 			self.fileMenu.addAction(self.groupby_time_action)
 
-			self.query_action = QAction('Query...', self)
-			self.query_action.triggered.connect(self.perform_query)
-			self.fileMenu.addAction(self.query_action)
+		self.query_action = QAction('Query...', self)
+		self.query_action.triggered.connect(self.perform_query)
+		self.fileMenu.addAction(self.query_action)
 
-			self.delete_action = QAction('&Delete...', self)
-			self.delete_action.triggered.connect(self.delete_columns)
-			self.delete_action.setShortcut(Qt.Key_Delete)
-			self.editMenu.addAction(self.delete_action)
+		self.delete_action = QAction('&Delete...', self)
+		self.delete_action.triggered.connect(self.delete_columns)
+		self.delete_action.setShortcut(Qt.Key_Delete)
+		self.editMenu.addAction(self.delete_action)
 
-			self.rename_col_action = QAction('&Rename...', self)
-			self.rename_col_action.triggered.connect(self.rename_column)
+		self.rename_col_action = QAction('&Rename...', self)
+		self.rename_col_action.triggered.connect(self.rename_column)
+		#self.rename_col_action.setShortcut(Qt.Key_Delete)
+		self.editMenu.addAction(self.rename_col_action)
+
+		if self.population=='pairs':
+			self.merge_action = QAction('&Merge...', self)
+			self.merge_action.triggered.connect(self.merge_tables)
 			#self.rename_col_action.setShortcut(Qt.Key_Delete)
-			self.editMenu.addAction(self.rename_col_action)
+			self.editMenu.addAction(self.merge_action)
 
-			if self.population=='pairs':
-				self.merge_action = QAction('&Merge...', self)
-				self.merge_action.triggered.connect(self.merge_tables)
-				#self.rename_col_action.setShortcut(Qt.Key_Delete)
-				self.editMenu.addAction(self.merge_action)
+		self.derivative_action = QAction('&Differentiate...', self)
+		self.derivative_action.triggered.connect(self.differenciate_selected_feature)
+		self.derivative_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.derivative_action)
 
-			self.derivative_action = QAction('&Differentiate...', self)
-			self.derivative_action.triggered.connect(self.differenciate_selected_feature)
-			self.derivative_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.derivative_action)
+		self.abs_action = QAction('&Absolute value...', self)
+		self.abs_action.triggered.connect(self.take_abs_of_selected_feature)
+		#self.derivative_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.abs_action)
 
-			self.abs_action = QAction('&Absolute value...', self)
-			self.abs_action.triggered.connect(self.take_abs_of_selected_feature)
-			#self.derivative_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.abs_action)
+		self.log_action = QAction('&Log (decimal)...', self)
+		self.log_action.triggered.connect(self.take_log_of_selected_feature)
+		#self.derivative_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.log_action)						
 
-			self.log_action = QAction('&Log (decimal)...', self)
-			self.log_action.triggered.connect(self.take_log_of_selected_feature)
-			#self.derivative_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.log_action)						
-
-			self.onehot_action = QAction('&One hot to categorical...', self)
-			self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
-			#self.onehot_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.onehot_action)		
+		self.onehot_action = QAction('&One hot to categorical...', self)
+		self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
+		#self.onehot_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.onehot_action)		
 
 	def collapse_pairs_in_neigh(self):
 
@@ -880,6 +876,8 @@ class TableUI(QMainWindow, Styles):
 		self.set_projection_mode_tracks()
 
 	def set_projection_mode_tracks(self):
+		
+		self.current_data = self.data
 
 		self.projectionWidget = QWidget()
 		self.projectionWidget.setMinimumWidth(500)
@@ -1323,7 +1321,7 @@ class TableUI(QMainWindow, Styles):
 			self.projection_mode = self.status_operation.currentText()
 			group_table = collapse_trajectories_by_status(self.current_data, status=self.per_status_cb.currentText(),population=self.population, projection=self.status_operation.currentText(), groupby_columns=self.groupby_cols)
 
-		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
+		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static", collapse_tracks_option=False)
 		self.subtable.show()
 
 		self.projectionWidget.close()

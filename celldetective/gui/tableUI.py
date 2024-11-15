@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine
-from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status, test_2samp_generic
+from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status, test_2samp_generic, safe_log
 from celldetective.neighborhood import extract_neighborhood_in_pair_table
 from celldetective.relative_measurements import expand_pair_table
 import numpy as np
@@ -297,6 +297,47 @@ class AbsColWidget(QWidget, Styles):
 		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
 
+class LogColWidget(QWidget, Styles):
+
+	def __init__(self, parent_window, column=None):
+
+		super().__init__()
+		self.parent_window = parent_window
+		self.column = column
+
+		self.setWindowTitle("log10(.)")
+		# Create the QComboBox and add some items
+		center_window(self)
+		
+		layout = QVBoxLayout(self)
+		layout.setContentsMargins(30,30,30,30)
+
+		self.measurements_cb = QComboBox()
+		self.measurements_cb.addItems(list(self.parent_window.data.columns))
+		if self.column is not None:
+			idx = self.measurements_cb.findText(self.column)
+			self.measurements_cb.setCurrentIndex(idx)
+
+		measurement_layout = QHBoxLayout()
+		measurement_layout.addWidget(QLabel('measurements: '), 25)
+		measurement_layout.addWidget(self.measurements_cb, 75)
+		layout.addLayout(measurement_layout)
+
+		self.submit_btn = QPushButton('Compute')
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
+		self.submit_btn.clicked.connect(self.compute_log_and_add_new_column)
+		layout.addWidget(self.submit_btn, 30)
+
+		self.setAttribute(Qt.WA_DeleteOnClose)
+
+	def compute_log_and_add_new_column(self):
+
+		self.parent_window.data['log10('+self.measurements_cb.currentText()+')'] = safe_log(self.parent_window.data[self.measurements_cb.currentText()].values)
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
+		self.close()	
+
+
 class RenameColWidget(QWidget):
 
 	def __init__(self, parent_window, column=None):
@@ -554,7 +595,12 @@ class TableUI(QMainWindow, Styles):
 			self.abs_action = QAction('&Absolute value...', self)
 			self.abs_action.triggered.connect(self.take_abs_of_selected_feature)
 			#self.derivative_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.abs_action)			
+			self.mathMenu.addAction(self.abs_action)
+
+			self.log_action = QAction('&Log (decimal)...', self)
+			self.log_action.triggered.connect(self.take_log_of_selected_feature)
+			#self.derivative_action.setShortcut("Ctrl+D")
+			self.mathMenu.addAction(self.log_action)						
 
 			self.onehot_action = QAction('&One hot to categorical...', self)
 			self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
@@ -738,6 +784,24 @@ class TableUI(QMainWindow, Styles):
 
 		self.diffWidget = DifferentiateColWidget(self, selected_col)
 		self.diffWidget.show()
+
+	def take_log_of_selected_feature(self):
+		
+		# check only one col selected and assert is numerical
+		# open widget to select window parameters, directionality
+		# create new col
+		
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		if col_idx!=0:
+			cols = np.array(list(self.data.columns))
+			selected_col = str(cols[col_idx][0])
+		else:
+			selected_col = None
+
+		self.LogWidget = LogColWidget(self, selected_col)
+		self.LogWidget.show()
+
 
 	def take_abs_of_selected_feature(self):
 		

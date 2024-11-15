@@ -920,7 +920,7 @@ class ProcessPanel(QFrame, Styles):
 			plot_mode = 'plot_track_signals'
 			if 'TRACK_ID' not in list(self.df.columns):
 				plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population=self.mode, plot_mode=plot_mode)
+			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population=self.mode, plot_mode=plot_mode, save_inplace_option=True)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')
@@ -1371,7 +1371,7 @@ class NeighPanel(QFrame, Styles):
 
 		if self.df is not None:
 			plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population='pairs', plot_mode=plot_mode)
+			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population='pairs', plot_mode=plot_mode, save_inplace_option=True)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')

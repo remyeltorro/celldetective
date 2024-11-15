@@ -7,6 +7,8 @@ from celldetective.utils import contour_of_instance_segmentation, extract_identi
 from scipy.spatial.distance import cdist
 from celldetective.io import locate_labels, get_position_pickle, get_position_table
 
+import matplotlib.pyplot as plt
+
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 
@@ -818,10 +820,7 @@ def contact_neighborhood(labelsA, labelsB=None, border=3, connectivity=2):
 	if labelsB is not None:
 		labelsB = labelsB.astype(float)
 
-	print(f"Border = {border}")
-
 	if border > 0:
-		print(labelsA.shape, border * (-1))
 		labelsA_edge = contour_of_instance_segmentation(label=labelsA, distance=border * (-1)).astype(float)
 		labelsA[np.where(labelsA_edge > 0)] = labelsA_edge[np.where(labelsA_edge > 0)]
 		if labelsB is not None:
@@ -851,6 +850,7 @@ def contact_neighborhood(labelsA, labelsB=None, border=3, connectivity=2):
 	return neighs
 
 def merge_labels(labelsA, labelsB):
+
 	labelsA = labelsA.astype(float)
 	labelsB = labelsB.astype(float)
 
@@ -861,6 +861,7 @@ def merge_labels(labelsA, labelsB):
 
 
 def find_contact_neighbors(labels, connectivity=2):
+	
 	assert labels.ndim == 2, "Wrong dimension for labels..."
 	g, nodes = pixel_graph(labels, mask=labels.astype(bool), connectivity=connectivity)
 	g.eliminate_zeros()
@@ -906,6 +907,15 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 	"""
 
 	# Check live_status option
+	# if setA is not None:
+	# 	setA_id = extract_identity_col(setA)
+	# 	if setA_id=="TRACK_ID":
+	# 		setA = setA.loc[~setA['TRACK_ID'].isnull(),:].copy()
+	# if setB is not None:
+	# 	setB_id = extract_identity_col(setB)
+	# 	if setB_id=="TRACK_ID":
+	# 		setB = setB.loc[~setB['TRACK_ID'].isnull(),:].copy()
+
 	if setA is not None and setB is not None:
 		setA, setB, status = set_live_status(setA, setB, status, not_status_option)
 	else:
@@ -915,6 +925,25 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 	if not isinstance(distance, list):
 		distance = [distance]
 
+	cl = []
+	for s in [setA, setB]:
+
+		# Check whether data can be tracked
+		temp_column_labels = column_labels.copy()
+
+		id_col = extract_identity_col(s)
+		temp_column_labels.update({'track': id_col})
+		if id_col=='ID':
+			compute_cum_sum = False
+		
+		cl.append(temp_column_labels)
+	
+	setA = setA.loc[~setA[cl[0]['track']].isnull(),:].copy()
+	setB = setB.loc[~setB[cl[1]['track']].isnull(),:].copy()
+
+	if labelsB is None:
+		labelsB = [None] * len(labelsA)
+
 	for d in distance:
 		# loop over each provided distance
 
@@ -923,22 +952,11 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 		elif mode == 'self':
 			neigh_col = f'neighborhood_self_contact_{d}_px'
 
-		cl = []
-		for s in [setA, setB]:
+		setA[neigh_col] = np.nan
+		setA[neigh_col] = setA[neigh_col].astype(object)
 
-			# Check whether data can be tracked
-			temp_column_labels = column_labels.copy()
-
-			id_col = extract_identity_col(s)
-			temp_column_labels.update({'track': id_col})
-			if id_col=='ID':
-				compute_cum_sum = False  # if no tracking data then cum_sum is not relevant
-			cl.append(temp_column_labels)
-
-			# Remove nan tracks (cells that do not belong to a track)
-			s[neigh_col] = np.nan
-			s[neigh_col] = s[neigh_col].astype(object)
-			s.dropna(subset=[cl[-1]['track']], inplace=True)
+		setB[neigh_col] = np.nan
+		setB[neigh_col] = setB[neigh_col].astype(object)
 
 		# Loop over each available timestep
 		timeline = np.unique(np.concatenate([setA[cl[0]['time']].to_numpy(), setB[cl[1]['time']].to_numpy()])).astype(
@@ -946,36 +964,28 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 		for t in tqdm(timeline):
 
 			index_A = list(setA.loc[setA[cl[0]['time']] == t].index)
-			coordinates_A = setA.loc[setA[cl[0]['time']] == t, [cl[0]['x'], cl[0]['y']]].to_numpy()
-			ids_A = setA.loc[setA[cl[0]['time']] == t, cl[0]['track']].to_numpy()
-			mask_ids_A = setA.loc[setA[cl[0]['time']] == t, cl[0]['mask_id']].to_numpy()
-			status_A = setA.loc[setA[cl[0]['time']] == t, status[0]].to_numpy()
+			dataA = setA.loc[setA[cl[0]['time']] == t, [cl[0]['x'], cl[0]['y'], cl[0]['track'], cl[0]['mask_id'], status[0]]].to_numpy()
+			coordinates_A = dataA[:,[0,1]]; ids_A = dataA[:,2]; mask_ids_A = dataA[:,3]; status_A = dataA[:,4];
 
 			index_B = list(setB.loc[setB[cl[1]['time']] == t].index)
-			coordinates_B = setB.loc[setB[cl[1]['time']] == t, [cl[1]['x'], cl[1]['y']]].to_numpy()
-			ids_B = setB.loc[setB[cl[1]['time']] == t, cl[1]['track']].to_numpy()
-			mask_ids_B = setB.loc[setB[cl[1]['time']] == t, cl[1]['mask_id']].to_numpy()
-			status_B = setB.loc[setB[cl[1]['time']] == t, status[1]].to_numpy()
+			dataB = setB.loc[setB[cl[1]['time']] == t, [cl[1]['x'], cl[1]['y'], cl[1]['track'], cl[1]['mask_id'], status[1]]].to_numpy()
+			coordinates_B = dataB[:,[0,1]]; ids_B = dataB[:,2]; mask_ids_B = dataB[:,3]; status_B = dataB[:,4]
 
-			print(f"Frame {t}")
-			print(f"{mask_ids_A=}", f"{mask_ids_B}")
-
-			if len(ids_A) > 0 and len(ids_B) > 0:
+			if len(coordinates_A) > 0 and len(coordinates_B) > 0:
 
 				# compute distance matrix
 				dist_map = cdist(coordinates_A, coordinates_B, metric="euclidean")
 
 				# Do the mask contact computation
-				if labelsB is not None:
-					lblB = labelsB[t]
-				else:
-					lblB = labelsB
+				lblA = labelsA[t]
+				lblA = np.where(np.isin(lblA, mask_ids_A), lblA, 0.)
+				
+				lblB = labelsB[t]
+				if lblB is not None:
+					lblB = np.where(np.isin(lblB, mask_ids_B), lblB, 0.)
 
-				print(f"Distance {d} for contact as border")
-				contact_pairs = contact_neighborhood(labelsA[t], labelsB=lblB, border=d, connectivity=2)
+				contact_pairs = contact_neighborhood(lblA, labelsB=lblB, border=d, connectivity=2)
 
-				print(t, f"{np.unique(labelsA[t])=}")
-				print(f"Frame {t}: found the following contact pairs: {contact_pairs}...")
 				# Put infinite distance to all non-contact pairs (something like this)
 				plot_map = False
 
@@ -985,28 +995,22 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 					indices_to_keep = []
 					for cp in contact_pairs:
 
-						if np.any(cp < 0):
-							if cp[0] < 0:
-								mask_A = cp[1]
-								mask_B = np.abs(cp[0])
-							else:
-								mask_A = cp[0]
-								mask_B = np.abs(cp[1])
-						else:
-							mask_A = cp[0]
-							mask_B = cp[1]
+						# if np.any(cp < 0):
+						# 	if cp[0] < 0:
+						# 		mask_A = np.abs(cp[0])
+						# 		mask_B = cp[1]
+						# 	else:
+						# 		mask_A = cp[0]
+						# 		mask_B = np.abs(cp[1])
+						# else:
 
-						try:
+						cp = np.abs(cp)
+						mask_A, mask_B = cp
+						idx_A = np.where(mask_ids_A == int(mask_A))[0][0]
+						idx_B = np.where(mask_ids_B == int(mask_B))[0][0]
+						indices_to_keep.append([idx_A,idx_B])
+						print(f'Ref cell #{ids_A[idx_A]} matched with neigh. cell #{ids_B[idx_B]}...')
 
-							idx_A = np.where(mask_ids_A == int(mask_A))[0][0]
-							idx_B = np.where(mask_ids_B == int(mask_B))[0][0]
-							print(idx_A, idx_B)
-							indices_to_keep.append([idx_A,idx_B])
-						except Exception as e:
-							print(f'{e} {t=} error something happened!!')
-							pass
-
-					print(f'Indices to keep: {indices_to_keep}...')
 					if len(indices_to_keep) > 0:
 						indices_to_keep = np.array(indices_to_keep)
 						mask[indices_to_keep[:, 0], indices_to_keep[:, 1]] = False
@@ -1018,14 +1022,6 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 						dist_map[:,:] = 1.0E06
 				else:
 					dist_map[:, :] = 1.0E06
-
-				# PROCEED all the same?? --> I guess so
-				# if plot_map:
-				# 	import matplotlib.pyplot as plt
-				# 	print(indices_to_keep)
-				# 	plt.imshow(dist_map)
-				# 	plt.pause(5)
-				# 	plt.close()
 
 				d_filter = 1.0E05
 				if attention_weight:

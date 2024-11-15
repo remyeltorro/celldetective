@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QMessageBox, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
 	QPushButton, QLabel, QHBoxLayout, QCheckBox, QFileDialog
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QAbstractTableModel
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from celldetective.gui import Styles
@@ -15,6 +15,91 @@ import celldetective.extra_properties as extra_properties
 from inspect import getmembers, isfunction
 from celldetective.filters import *
 from os import sep
+
+class PandasModel(QAbstractTableModel):
+
+	"""
+	from https://stackoverflow.com/questions/31475965/fastest-way-to-populate-qtableview-from-pandas-data-frame
+	"""
+
+	def __init__(self, data):
+		QAbstractTableModel.__init__(self)
+		self._data = data
+		self.colors = dict()
+
+	def rowCount(self, parent=None):
+		return self._data.shape[0]
+
+	def columnCount(self, parent=None):
+		return self._data.shape[1]
+
+	def data(self, index, role=Qt.DisplayRole):
+		if index.isValid():
+			if role == Qt.DisplayRole:
+				return str(self._data.iloc[index.row(), index.column()])
+			if role == Qt.BackgroundRole:
+				color = self.colors.get((index.row(), index.column()))
+				if color is not None:
+					return color
+		return None
+
+	def headerData(self, rowcol, orientation, role):
+		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+			return self._data.columns[rowcol]
+		if orientation == Qt.Vertical and role == Qt.DisplayRole:
+			return self._data.index[rowcol]
+		return None
+
+	def change_color(self, row, column, color):
+		ix = self.index(row, column)
+		self.colors[(row, column)] = color
+		self.dataChanged.emit(ix, ix, (Qt.BackgroundRole,))
+
+
+class GenericOpColWidget(QWidget, Styles):
+
+	def __init__(self, parent_window, column=None, title=''):
+
+		super().__init__()
+		
+		self.parent_window = parent_window
+		self.column = column
+		self.title = title
+
+		self.setWindowTitle(self.title)
+		# Create the QComboBox and add some items
+		
+		layout = QVBoxLayout(self)
+		layout.setContentsMargins(30,30,30,30)
+
+		self.measurements_cb = QComboBox()
+		self.measurements_cb.addItems(list(self.parent_window.data.columns))
+		if self.column is not None:
+			idx = self.measurements_cb.findText(self.column)
+			self.measurements_cb.setCurrentIndex(idx)
+
+		measurement_layout = QHBoxLayout()
+		measurement_layout.addWidget(QLabel('measurements: '), 25)
+		measurement_layout.addWidget(self.measurements_cb, 75)
+		layout.addLayout(measurement_layout)
+
+		self.submit_btn = QPushButton('Compute')
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
+		self.submit_btn.clicked.connect(self.launch_operation)
+		layout.addWidget(self.submit_btn, 30)
+
+		self.setAttribute(Qt.WA_DeleteOnClose)		
+		center_window(self)
+
+	def launch_operation(self):
+
+		self.compute()
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
+		self.close()	
+
+	def compute(self):
+		pass
 
 
 class QuickSliderLayout(QHBoxLayout):

@@ -4,7 +4,7 @@ from PyQt5.QtGui import QBrush, QColor
 import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
-from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine
+from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine, GenericOpColWidget, PandasModel
 from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status, test_2samp_generic, safe_log
 from celldetective.neighborhood import extract_neighborhood_in_pair_table
 from celldetective.relative_measurements import expand_pair_table
@@ -21,45 +21,6 @@ import re
 
 from matplotlib import colormaps
 
-class PandasModel(QAbstractTableModel):
-
-	"""
-	from https://stackoverflow.com/questions/31475965/fastest-way-to-populate-qtableview-from-pandas-data-frame
-	"""
-
-	def __init__(self, data):
-		QAbstractTableModel.__init__(self)
-		self._data = data
-		self.colors = dict()
-
-	def rowCount(self, parent=None):
-		return self._data.shape[0]
-
-	def columnCount(self, parent=None):
-		return self._data.shape[1]
-
-	def data(self, index, role=Qt.DisplayRole):
-		if index.isValid():
-			if role == Qt.DisplayRole:
-				return str(self._data.iloc[index.row(), index.column()])
-			if role == Qt.BackgroundRole:
-				color = self.colors.get((index.row(), index.column()))
-				if color is not None:
-					return color
-		return None
-
-	def headerData(self, rowcol, orientation, role):
-		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-			return self._data.columns[rowcol]
-		if orientation == Qt.Vertical and role == Qt.DisplayRole:
-			return self._data.index[rowcol]
-		return None
-
-	def change_color(self, row, column, color):
-		ix = self.index(row, column)
-		self.colors[(row, column)] = color
-		self.dataChanged.emit(ix, ix, (Qt.BackgroundRole,))
-
 
 class QueryWidget(QWidget):
 
@@ -69,9 +30,7 @@ class QueryWidget(QWidget):
 		self.parent_window = parent_window
 		self.setWindowTitle("Filter table")
 		# Create the QComboBox and add some items
-		center_window(self)
 
-		
 		layout = QHBoxLayout(self)
 		layout.setContentsMargins(30,30,30,30)
 		self.query_le = QLineEdit()
@@ -81,6 +40,7 @@ class QueryWidget(QWidget):
 		self.submit_btn.clicked.connect(self.filter_table)
 		layout.addWidget(self.submit_btn, 30)
 		self.setAttribute(Qt.WA_DeleteOnClose)
+		center_window(self)
 
 	def filter_table(self):
 		try:
@@ -255,87 +215,24 @@ class DifferentiateColWidget(QWidget, Styles):
 		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
 
-class AbsColWidget(QWidget, Styles):
 
-	def __init__(self, parent_window, column=None):
+class AbsColWidget(GenericOpColWidget):
+	
+	def __init__(self, *args, **kwargs):
 
-		super().__init__()
-		self.parent_window = parent_window
-		self.column = column
+		super().__init__(title="abs(.)", *args, **kwargs)
 
-		self.setWindowTitle("abs(.)")
-		# Create the QComboBox and add some items
-		center_window(self)
-		
-		layout = QVBoxLayout(self)
-		layout.setContentsMargins(30,30,30,30)
-
-		self.measurements_cb = QComboBox()
-		self.measurements_cb.addItems(list(self.parent_window.data.columns))
-		if self.column is not None:
-			idx = self.measurements_cb.findText(self.column)
-			self.measurements_cb.setCurrentIndex(idx)
-
-		measurement_layout = QHBoxLayout()
-		measurement_layout.addWidget(QLabel('measurements: '), 25)
-		measurement_layout.addWidget(self.measurements_cb, 75)
-		layout.addLayout(measurement_layout)
-
-		self.submit_btn = QPushButton('Compute')
-		self.submit_btn.setStyleSheet(self.button_style_sheet)
-		self.submit_btn.clicked.connect(self.compute_abs_and_add_new_column)
-		layout.addWidget(self.submit_btn, 30)
-
-		self.setAttribute(Qt.WA_DeleteOnClose)
-
-
-	def compute_abs_and_add_new_column(self):
-		
-
+	def compute(self):
 		self.parent_window.data['|'+self.measurements_cb.currentText()+'|'] = self.parent_window.data[self.measurements_cb.currentText()].abs()
-		self.parent_window.model = PandasModel(self.parent_window.data)
-		self.parent_window.table_view.setModel(self.parent_window.model)
-		self.close()
 
-class LogColWidget(QWidget, Styles):
+class LogColWidget(GenericOpColWidget):
+	
+	def __init__(self, *args, **kwargs):
 
-	def __init__(self, parent_window, column=None):
+		super().__init__(title="log10(.)", *args, **kwargs)
 
-		super().__init__()
-		self.parent_window = parent_window
-		self.column = column
-
-		self.setWindowTitle("log10(.)")
-		# Create the QComboBox and add some items
-		center_window(self)
-		
-		layout = QVBoxLayout(self)
-		layout.setContentsMargins(30,30,30,30)
-
-		self.measurements_cb = QComboBox()
-		self.measurements_cb.addItems(list(self.parent_window.data.columns))
-		if self.column is not None:
-			idx = self.measurements_cb.findText(self.column)
-			self.measurements_cb.setCurrentIndex(idx)
-
-		measurement_layout = QHBoxLayout()
-		measurement_layout.addWidget(QLabel('measurements: '), 25)
-		measurement_layout.addWidget(self.measurements_cb, 75)
-		layout.addLayout(measurement_layout)
-
-		self.submit_btn = QPushButton('Compute')
-		self.submit_btn.setStyleSheet(self.button_style_sheet)
-		self.submit_btn.clicked.connect(self.compute_log_and_add_new_column)
-		layout.addWidget(self.submit_btn, 30)
-
-		self.setAttribute(Qt.WA_DeleteOnClose)
-
-	def compute_log_and_add_new_column(self):
-
+	def compute(self):
 		self.parent_window.data['log10('+self.measurements_cb.currentText()+')'] = safe_log(self.parent_window.data[self.measurements_cb.currentText()].values)
-		self.parent_window.model = PandasModel(self.parent_window.data)
-		self.parent_window.table_view.setModel(self.parent_window.model)
-		self.close()	
 
 
 class RenameColWidget(QWidget):

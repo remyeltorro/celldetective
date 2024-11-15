@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QRadioButton, QButtonGroup, QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox, QMessageBox
 from PyQt5.QtCore import Qt, QAbstractTableModel
-from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtGui import QBrush, QColor, QDoubleValidator
 import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
@@ -215,6 +215,63 @@ class DifferentiateColWidget(QWidget, Styles):
 		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
 
+class CalibrateColWidget(GenericOpColWidget):
+	
+	def __init__(self, *args, **kwargs):
+
+		super().__init__(title="Calibrate data", *args, **kwargs)	
+
+		self.floatValidator = QDoubleValidator()
+		self.calibration_factor_le = QLineEdit('1')
+		self.calibration_factor_le.setPlaceholderText('multiplicative calibration factor...')
+		self.calibration_factor_le.setValidator(self.floatValidator)
+
+		self.units_le = QLineEdit('um')
+		self.units_le.setPlaceholderText('units...')
+
+		self.calibration_factor_le.textChanged.connect(self.check_valid_params)
+		self.units_le.textChanged.connect(self.check_valid_params)
+
+		calib_layout = QHBoxLayout()
+		calib_layout.addWidget(QLabel('calibration factor: '), 33)
+		calib_layout.addWidget(self.calibration_factor_le, 66)
+		self.sublayout.addLayout(calib_layout)
+
+		units_layout = QHBoxLayout()
+		units_layout.addWidget(QLabel('units: '), 33)
+		units_layout.addWidget(self.units_le, 66)
+		self.sublayout.addLayout(units_layout)
+
+		# info_layout = QHBoxLayout()
+		# info_layout.addWidget(QLabel('For reference: '))
+		# self.sublayout.addLayout(info_layout)
+
+		# info_layout2 = QHBoxLayout()
+		# info_layout2.addWidget(QLabel(f'PxToUm = {self.parent_window.parent_window.parent_window.PxToUm}'), 50)
+		# info_layout2.addWidget(QLabel(f'FrameToMin = {self.parent_window.parent_window.parent_window.FrameToMin}'), 50)
+		# self.sublayout.addLayout(info_layout2)
+
+	def check_valid_params(self):
+		
+		try:
+			factor = float(self.calibration_factor_le.text().replace(',','.'))
+			factor_valid = True
+		except Exception as e:
+			factor_valid = False
+
+		if self.units_le.text()=='':
+			units_valid = False
+		else:
+			units_valid = True
+
+		if factor_valid and units_valid:
+			self.submit_btn.setEnabled(True)
+		else:
+			self.submit_btn.setEnabled(False)
+
+	def compute(self):
+		self.parent_window.data[self.measurements_cb.currentText()+f'[{self.units_le.text()}]'] = self.parent_window.data[self.measurements_cb.currentText()] * float(self.calibration_factor_le.text().replace(',','.'))
+		
 
 class AbsColWidget(GenericOpColWidget):
 	
@@ -480,6 +537,11 @@ class TableUI(QMainWindow, Styles):
 			#self.rename_col_action.setShortcut(Qt.Key_Delete)
 			self.editMenu.addAction(self.merge_action)
 
+		self.calibrate_action = QAction('&Calibrate...', self)
+		self.calibrate_action.triggered.connect(self.calibrate_selected_feature)
+		self.calibrate_action.setShortcut("Ctrl+C")
+		self.mathMenu.addAction(self.calibrate_action)
+
 		self.derivative_action = QAction('&Differentiate...', self)
 		self.derivative_action.triggered.connect(self.differenciate_selected_feature)
 		self.derivative_action.setShortcut("Ctrl+D")
@@ -694,6 +756,19 @@ class TableUI(QMainWindow, Styles):
 
 		self.LogWidget = LogColWidget(self, selected_col)
 		self.LogWidget.show()
+
+	def calibrate_selected_feature(self):
+		
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		if col_idx!=0:
+			cols = np.array(list(self.data.columns))
+			selected_col = str(cols[col_idx][0])
+		else:
+			selected_col = None
+
+		self.calWidget = CalibrateColWidget(self, selected_col)
+		self.calWidget.show()
 
 
 	def take_abs_of_selected_feature(self):

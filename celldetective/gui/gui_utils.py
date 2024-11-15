@@ -69,8 +69,10 @@ class GenericOpColWidget(QWidget, Styles):
 		self.setWindowTitle(self.title)
 		# Create the QComboBox and add some items
 		
-		layout = QVBoxLayout(self)
-		layout.setContentsMargins(30,30,30,30)
+		self.layout = QVBoxLayout(self)
+		self.layout.setContentsMargins(30,30,30,30)
+
+		self.sublayout = QVBoxLayout()
 
 		self.measurements_cb = QComboBox()
 		self.measurements_cb.addItems(list(self.parent_window.data.columns))
@@ -81,12 +83,14 @@ class GenericOpColWidget(QWidget, Styles):
 		measurement_layout = QHBoxLayout()
 		measurement_layout.addWidget(QLabel('measurements: '), 25)
 		measurement_layout.addWidget(self.measurements_cb, 75)
-		layout.addLayout(measurement_layout)
+		self.sublayout.addLayout(measurement_layout)
 
+		self.layout.addLayout(self.sublayout)
+		
 		self.submit_btn = QPushButton('Compute')
 		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.launch_operation)
-		layout.addWidget(self.submit_btn, 30)
+		self.layout.addWidget(self.submit_btn, 30)
 
 		self.setAttribute(Qt.WA_DeleteOnClose)		
 		center_window(self)

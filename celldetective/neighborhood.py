@@ -975,6 +975,7 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 
 				# compute distance matrix
 				dist_map = cdist(coordinates_A, coordinates_B, metric="euclidean")
+				intersection_map = np.zeros_like(dist_map).astype(float)
 
 				# Do the mask contact computation
 				lblA = labelsA[t]
@@ -988,6 +989,8 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 
 				# Put infinite distance to all non-contact pairs (something like this)
 				plot_map = False
+				flatA = lblA.flatten()
+				flatB = lblB.flatten()
 
 				if len(contact_pairs) > 0:
 					mask = np.ones_like(dist_map).astype(bool)
@@ -995,21 +998,18 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 					indices_to_keep = []
 					for cp in contact_pairs:
 
-						# if np.any(cp < 0):
-						# 	if cp[0] < 0:
-						# 		mask_A = np.abs(cp[0])
-						# 		mask_B = cp[1]
-						# 	else:
-						# 		mask_A = cp[0]
-						# 		mask_B = np.abs(cp[1])
-						# else:
-
 						cp = np.abs(cp)
 						mask_A, mask_B = cp
 						idx_A = np.where(mask_ids_A == int(mask_A))[0][0]
 						idx_B = np.where(mask_ids_B == int(mask_B))[0][0]
-						indices_to_keep.append([idx_A,idx_B])
+						
+						intersection = 0
+						if lblB is not None:
+							intersection = len(flatA[(flatA==int(mask_A))&(flatB==int(mask_B))])
+
+						indices_to_keep.append([idx_A,idx_B, intersection])
 						print(f'Ref cell #{ids_A[idx_A]} matched with neigh. cell #{ids_B[idx_B]}...')
+						print(f'Computed intersection: {intersection} px...')
 
 					if len(indices_to_keep) > 0:
 						indices_to_keep = np.array(indices_to_keep)
@@ -1017,6 +1017,7 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 						if mode == 'self':
 							mask[indices_to_keep[:, 1], indices_to_keep[:, 0]] = False
 						dist_map[mask] = 1.0E06
+						intersection_map[indices_to_keep[:,0], indices_to_keep[:,1]] = indices_to_keep[:,2]
 						plot_map=True
 					else:
 						dist_map[:,:] = 1.0E06
@@ -1032,11 +1033,14 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 				for k in range(dist_map.shape[0]):
 
 					col = dist_map[k, :]
+					col_inter = intersection_map[k, :]
 					col[col == 0.] = 1.0E06
 
 					neighs_B = np.array([ids_B[i] for i in np.where((col <= d_filter))[0]])
 					status_neigh_B = np.array([status_B[i] for i in np.where((col <= d_filter))[0]])
 					dist_B = [round(col[i], 2) for i in np.where((col <= d_filter))[0]]
+					intersect_B = [round(col_inter[i], 2) for i in np.where((col <= d_filter))[0]]
+
 					if len(dist_B) > 0:
 						closest_B_cell = neighs_B[np.argmin(dist_B)]
 
@@ -1076,14 +1080,14 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 							else:
 								closest_b = False
 							if isinstance(sym_neigh, list):
-								sym_neigh.append({'id': ids_A[k], 'distance': dist_B[n], 'status': status_A[k]})
+								sym_neigh.append({'id': ids_A[k], 'distance': dist_B[n], 'status': status_A[k], 'intersection': intersect_B[n]})
 							else:
-								sym_neigh = [{'id': ids_A[k], 'distance': dist_B[n], 'status': status_A[k]}]
+								sym_neigh = [{'id': ids_A[k], 'distance': dist_B[n], 'status': status_A[k], 'intersection': intersect_B[n]}]
 							if attention_weight:
 								sym_neigh[-1].update({'weight': weight_A, 'closest': closest_b})
 
 						# Write the minimum info about neighborhing cell B
-						neigh_dico = {'id': neighs_B[n], 'distance': dist_B[n], 'status': status_neigh_B[n]}
+						neigh_dico = {'id': neighs_B[n], 'distance': dist_B[n], 'status': status_neigh_B[n], 'intersection': intersect_B[n]}
 						if attention_weight:
 							neigh_dico.update({'weight': weights[n_index], 'closest': closest})
 

@@ -205,6 +205,10 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 			neighbor_dicts = group.loc[: , f'{neighborhood_description}'].values
 			timeline_reference = group['FRAME'].to_numpy()
 			coords_reference = group[['POSITION_X', 'POSITION_Y']].to_numpy()
+			if "area" in list(group.columns):
+				ref_area = group['area'].to_numpy()
+			else:
+				ref_area = [np.nan]*len(coords_reference)
 
 			neighbor_ids = []
 			neighbor_ids_per_t = []
@@ -243,6 +247,11 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				
 				coords_neighbor = group_neigh[['POSITION_X', 'POSITION_Y']].to_numpy()
 				timeline_neighbor = group_neigh['FRAME'].to_numpy()
+				if "area" in list(group_neigh.columns):
+					neigh_area = group_neigh['area'].to_numpy()
+				else:
+					neigh_area = [np.nan]*len(timeline_neighbor)
+
 
 				# # Perform timeline matching to have same start-end points and no gaps
 				full_timeline, _, _ = timeline_matching(timeline_reference, timeline_neighbor)
@@ -340,6 +349,14 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 						else:
 							inter = inter[0]
 
+						neigh_inter_fraction = np.nan
+						if inter==inter and neigh_area[t]==neigh_area[t]:
+							neigh_inter_fraction = inter / neigh_area[t]
+
+						ref_inter_fraction = np.nan
+						if inter==inter and ref_area[t]==ref_area[t]:
+							ref_inter_fraction = inter / ref_area[t]						
+
 						if nc in neighbor_ids_per_t[idx_reference]:
 
 							cum_sum+=1
@@ -347,7 +364,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 									'reference_population': reference_population,
 									'neighbor_population': neighbor_population,
-									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter,
+									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter, 'reference_frac_area_intersection': ref_inter_fraction, 'neighbor_frac_area_intersection': neigh_inter_fraction,
 									'velocity': rel_velocity[t],
 									'velocity_smooth': rel_velocity_long_timescale[t], 
 									'angle': angle[t] * 180 / np.pi,
@@ -368,7 +385,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 									'reference_population': reference_population,
 									'neighbor_population': neighbor_population,
-									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter,
+									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter, 'reference_frac_area_intersection': ref_inter_fraction, 'neighbor_frac_area_intersection': neigh_inter_fraction,
 									'velocity': rel_velocity[t], 
 									'velocity_smooth': rel_velocity_long_timescale[t],
 									'angle': angle[t] * 180 / np.pi,

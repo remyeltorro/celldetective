@@ -3077,6 +3077,10 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 	assert signal_name in list(df.columns),"The signal you want to plot is not one of the measured features."
 	if isinstance(class_value,int):
 		class_value = [class_value]
+	elif class_value is None or class_col is None:
+		class_col = 'class_temp'
+		df['class_temp'] = 1
+		class_value = [1]
 
 	if forced_max_duration is None:
 		max_duration = int(df['FRAME'].max())+1 #ceil(np.amax(df.groupby(['position','TRACK_ID']).size().values))

@@ -140,17 +140,22 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		self.button_widget = QWidget()
 		main_layout = QHBoxLayout()
+		main_layout.setSpacing(30)
+
 		self.button_widget.setLayout(main_layout)
 
 		main_layout.setContentsMargins(30,30,30,30)
 		self.left_panel = QVBoxLayout()
-		self.left_panel.setContentsMargins(30,30,30,30)
-		self.left_panel.setSpacing(10)
+		self.left_panel.setContentsMargins(5,5,5,5)
+		self.left_panel.setSpacing(5)
 
 		self.right_panel = QVBoxLayout()
+		self.right_panel.setSpacing(0)
+		self.right_panel.setContentsMargins(5,5,5,5)
 
 		#NEIGHBORHOOD
 		neigh_hbox = QHBoxLayout()
+		neigh_hbox.setContentsMargins(0,0,0,0)
 		neigh_hbox.addWidget(QLabel('neighborhood: '), 25)
 		self.neighborhood_choice_cb = QComboBox()
 		self.neighborhood_choice_cb.addItems(self.neighborhood_cols)
@@ -193,17 +198,17 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.relative_del_class_btn.clicked.connect(self.del_relative_event_class)
 		subclass_hbox.addWidget(self.relative_del_class_btn, 5)
 		class_hbox.addLayout(subclass_hbox, 75)
-
-
 		self.left_panel.addLayout(class_hbox)
 
 		self.cell_events_hbox = QHBoxLayout()
+		self.cell_events_hbox.setContentsMargins(0,0,0,0)
 		self.cell_events_hbox.addWidget(QLabel('reference event: '), 25)
 		self.reference_event_choice_cb = QComboBox()
 		self.cell_events_hbox.addWidget(self.reference_event_choice_cb, 75)
 		
 		#if 'self' not in self.neighborhood_choice_cb.currentText():
 		self.neigh_cell_events_hbox = QHBoxLayout()
+		self.neigh_cell_events_hbox.setContentsMargins(0,0,0,0)
 		self.neigh_lab=QLabel('neighbor event: ')
 		self.neigh_cell_events_hbox.addWidget(self.neigh_lab, 25)
 		self.neighbor_event_choice_cb = QComboBox()
@@ -214,7 +219,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		# Text information about selected cells
 		self.cell_info_hbox = QHBoxLayout()
-		self.cell_info_hbox.setContentsMargins(30,30,30,30)
+		self.cell_info_hbox.setContentsMargins(30,0,30,0)
 
 		reference_layout = QVBoxLayout()
 		reference_layout.addWidget(self.reference_cell_info)
@@ -232,7 +237,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		# Annotation buttons
 		options_hbox = QHBoxLayout()
-		options_hbox.setContentsMargins(150, 30, 50, 0)
+		options_hbox.setContentsMargins(150, 0, 50, 0)
 		self.event_btn = QRadioButton('event')
 		self.event_btn.setStyleSheet(self.button_style_sheet_2)
 		self.event_btn.toggled.connect(self.enable_time_of_interest)
@@ -256,7 +261,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.left_panel.addLayout(options_hbox)
 
 		time_option_hbox = QHBoxLayout()
-		time_option_hbox.setContentsMargins(100, 30, 100, 30)
+		time_option_hbox.setContentsMargins(100, 0, 100, 0)
 		self.time_of_interest_label = QLabel('time of interest: ')
 		time_option_hbox.addWidget(self.time_of_interest_label, 30)
 		self.time_of_interest_le = QLineEdit()
@@ -264,6 +269,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.left_panel.addLayout(time_option_hbox)
 
 		main_action_hbox = QHBoxLayout()
+		main_action_hbox.setContentsMargins(100, 0, 100, 0)
 		self.correct_btn = QPushButton('correct')
 		self.correct_btn.setIcon(icon(MDI6.redo_variant, color="white"))
 		self.correct_btn.setIconSize(QSize(20, 20))
@@ -320,7 +326,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.left_panel.addLayout(plot_buttons_hbox)
 
 		signal_choice_grid = QVBoxLayout()
-		signal_choice_grid.setContentsMargins(30,0,30,50)
+		signal_choice_grid.setContentsMargins(30,0,70,5)
 
 		header_layout = QHBoxLayout()
 		header_layout.addWidget(QLabel('reference'), 23, alignment=Qt.AlignCenter)
@@ -332,31 +338,13 @@ class SignalAnnotator2(QMainWindow,Styles):
 		for i in range(self.n_signals):
 			
 			h_layout = QHBoxLayout()
+			if i==(self.n_signals-1):
+				h_layout.setContentsMargins(0,0,0,0)
 			h_layout.addWidget(self.reference_pop_option_buttons[i], 23, alignment=Qt.AlignCenter)
 			h_layout.addWidget(self.neighbor_pop_option_buttons[i], 23, alignment=Qt.AlignCenter)
 			h_layout.addWidget(self.relative_pop_option_buttons[i], 23, alignment=Qt.AlignCenter)
 			h_layout.addWidget(self.signal_choices[i], 30)
 			signal_choice_grid.addLayout(h_layout)
-
-		# signal_choice_vbox = QVBoxLayout()
-		# signal_choice_vbox.setContentsMargins(30,0,30,50)
-		# for i in range(len(self.signal_choices)):
-		# 	signal_choice_grid.addWidget(self.signal_choices[i],i+1,3)
-		# 	# hlayout = QHBoxLayout()
-		# 	#
-		# 	# #hlayout.addLayout(self.signal_labels[i], 20)
-		# 	# #hlayout.addLayout(self.signal_choices[i], 75)
-		# 	# # if i==0:
-		# 	# #     hlayout.addWidget(self.signal_choices[i], 75,alignment=Qt.AlignBottom)
-		# 	# # else:
-		# 	# hlayout.addWidget(self.signal_choices[i], 75)
-		# 	# #hlayout.addWidget(self.log_btns[i], 5)
-		# 	# signal_choice_vbox.addLayout(hlayout)
-
-			# self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
-			# self.log_btns[i].setStyleSheet(self.parent.parent.parent.button_select_all)
-			# self.log_btns[i].clicked.connect(lambda ch, i=i: self.switch_to_log(i))
-		#signal_choice_hbox.addLayout(signal_choice_vbox,alignment=Qt.AlignCenter)
 
 		self.left_panel.addLayout(signal_choice_grid)
 
@@ -376,7 +364,6 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		# Animation
 		animation_buttons_box = QHBoxLayout()
-
 
 		animation_buttons_box.addWidget(self.frame_lbl, 20, alignment=Qt.AlignLeft)
 

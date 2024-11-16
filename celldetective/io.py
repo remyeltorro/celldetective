@@ -760,12 +760,17 @@ def fix_missing_labels(position, population='target', prefix='Aligned'):
 
 	if population.lower() == "target" or population.lower() == "targets":
 		label_path = natsorted(glob(position + os.sep.join(["labels_targets", "*.tif"])))
+		path = position + os.sep + "labels_targets"
 	elif population.lower() == "effector" or population.lower() == "effectors":
 		label_path = natsorted(glob(position + os.sep.join(["labels_effectors", "*.tif"])))
+		path = position + os.sep + "labels_effectors"
 
-	path = os.path.split(label_path[0])[0]
-	int_valid = [int(lbl.split(os.sep)[-1].split('.')[0]) for lbl in label_path]
-	to_create = [x for x in all_frames if x not in int_valid]
+	if label_path!=[]:
+		#path = os.path.split(label_path[0])[0]
+		int_valid = [int(lbl.split(os.sep)[-1].split('.')[0]) for lbl in label_path]
+		to_create = [x for x in all_frames if x not in int_valid]
+	else:
+		to_create = all_frames
 	to_create = [str(x).zfill(4)+'.tif' for x in to_create]
 	for file in to_create:
 		imwrite(os.sep.join([path, file]), template)

@@ -181,7 +181,13 @@ class ControlPanel(QMainWindow, Styles):
 		exp_hbox = QHBoxLayout()
 		exp_hbox.addWidget(experiment_label, 25, alignment=Qt.AlignRight)
 		exp_subhbox = QHBoxLayout()
-		exp_subhbox.addWidget(QLabel(name), 90, alignment=Qt.AlignLeft)
+		if len(name)>thresh:
+			name_cut = name[:thresh - 3]+'...'
+		else:
+			name_cut = name
+		exp_name_lbl = QLabel(name_cut)
+		exp_name_lbl.setToolTip(name)
+		exp_subhbox.addWidget(exp_name_lbl, 90, alignment=Qt.AlignLeft)
 		exp_subhbox.addWidget(self.folder_exp_btn, 5, alignment=Qt.AlignRight)
 		exp_subhbox.addWidget(self.edit_config_button, 5, alignment=Qt.AlignRight)
 		exp_hbox.addLayout(exp_subhbox, 75)

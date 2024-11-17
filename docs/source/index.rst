@@ -24,7 +24,9 @@ Contents
 
    overview
    acknowledegments
+   cite
    get-started
+   first-experiment
    preprocessing
    segment
    track

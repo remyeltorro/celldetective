@@ -96,7 +96,7 @@ class ConfigSignalPlot(QWidget, Styles):
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
 		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: '), QLabel('cmap: ')]
-		self.cb_options = [['targets','effectors'],['class'], ['t0'], []]
+		self.cb_options = [['targets','effectors'],[], [], []]
 		self.cbs = [QComboBox() for i in range(len(labels))]
 		self.cbs[-1] = QColormapComboBox()
 		
@@ -182,6 +182,11 @@ class ConfigSignalPlot(QWidget, Styles):
 			print('columns not found')
 			self.auto_close = True
 			return None
+		
+		if 'class' in self.all_columns:
+			class_columns.append("class")
+		if 't0' in self.all_columns:
+			time_columns.append('t0')
 		
 		self.cbs[2].clear()
 		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
@@ -339,7 +344,7 @@ class ConfigSignalPlot(QWidget, Styles):
 
 		for block,movie_group in self.df.groupby(['well','position']):
 
-			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
+			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=None, return_matrix=True, forced_max_duration=max_time)
 			well_signal_event, well_std_event, timeline_event, matrix_event = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)		
 			well_signal_no_event, well_std_no_event, timeline_no_event, matrix_no_event = mean_signal(movie_group, self.feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
 			self.mean_plots_timeline = timeline_all
@@ -354,7 +359,7 @@ class ConfigSignalPlot(QWidget, Styles):
 		# Per well
 		for well,well_group in self.df.groupby('well'):
 
-			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0,1], return_matrix=True, forced_max_duration=max_time)
+			well_signal_mean, well_std_mean, timeline_all, matrix_all = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=None, return_matrix=True, forced_max_duration=max_time)
 			well_signal_event, well_std_event, timeline_event, matrix_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[0], return_matrix=True, forced_max_duration=max_time)			
 			well_signal_no_event, well_std_no_event, timeline_no_event, matrix_no_event = mean_signal(well_group, self.feature_selected, class_col, time_col=time_col, class_value=[1], return_matrix=True, forced_max_duration=max_time)
 			

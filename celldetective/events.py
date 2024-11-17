@@ -104,6 +104,8 @@ def switch_to_events(classes, event_times, max_times, origin_times=None, left_ce
 							pass
 				elif c==1:
 					delta_t = mt - ot
+					if cut_observation_time is not None:
+						delta_t = cut_observation_time - ot
 					if delta_t>0:
 						events.append(0)
 						survival_times.append(delta_t)

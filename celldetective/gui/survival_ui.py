@@ -126,13 +126,15 @@ class ConfigSurvival(QWidget, Styles):
 		main_layout.addLayout(select_layout)
 
 		time_cut_layout = QHBoxLayout()
-		time_cut_layout.addWidget(QLabel('cut observation time [min]: '), 33)
+		cut_time_lbl = QLabel('cut obs.\ntime [min]: ')
+		cut_time_lbl.setToolTip('Filter out later events from\nthe analysis (in absolute time).')
+		time_cut_layout.addWidget(cut_time_lbl, 33)
 		self.query_time_cut = QLineEdit()
 		self.query_time_cut.setValidator(self.float_validator)
 		time_cut_layout.addWidget(self.query_time_cut, 66)
 		main_layout.addLayout(time_cut_layout)
 
-		self.cbs[0].setCurrentIndex(0)
+		self.set_classes_and_times()
 		self.cbs[1].setCurrentText('t_firstdetection')
 
 		time_calib_layout = QHBoxLayout()
@@ -174,6 +176,8 @@ class ConfigSurvival(QWidget, Styles):
 			print('no column starts with t')
 			self.auto_close = True
 			return None
+		if 't0' in self.all_columns:
+			time_columns.append('t0')
 
 		self.cbs[1].clear()
 		self.cbs[1].addItems(np.unique(self.cb_options[1]+time_columns))
@@ -268,7 +272,7 @@ class ConfigSurvival(QWidget, Styles):
 
 		cut_observation_time = None
 		try:
-			cut_observation_time = float(self.query_time_cut.text()) / self.FrameToMin
+			cut_observation_time = float(self.query_time_cut.text().replace(',','.')) / self.FrameToMin
 			if not 0<cut_observation_time<=(self.df['FRAME'].max()):
 				print('Invalid cut time (larger than movie length)... Not applied.')
 				cut_observation_time = None		

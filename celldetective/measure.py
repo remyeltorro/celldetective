@@ -1025,6 +1025,7 @@ def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], 
 
 	df = df.sort_values(by=sort_cols,ignore_index=True)
 	df = df.reset_index(drop=True)
+	max_time = df['FRAME'].max()
 
 
 	for tid,group in df.loc[df[class_attr].isin(class_of_interest)].groupby(sort_cols):
@@ -1053,6 +1054,8 @@ def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], 
 
 		if r2 > float(r2_threshold):
 			t0 = popt[0]
+			if t0>=max_time:
+				t0 = max_time - 1
 			df.loc[indices, class_attr.replace('class','t')] = t0
 			df.loc[indices, class_attr] = 0.0
 		else:

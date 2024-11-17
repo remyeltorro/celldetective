@@ -990,7 +990,8 @@ def mask_contact_neighborhood(setA, setB, labelsA, labelsB, distance, mode='two-
 				# Put infinite distance to all non-contact pairs (something like this)
 				plot_map = False
 				flatA = lblA.flatten()
-				flatB = lblB.flatten()
+				if lblB is not None:
+					flatB = lblB.flatten()
 
 				if len(contact_pairs) > 0:
 					mask = np.ones_like(dist_map).astype(bool)

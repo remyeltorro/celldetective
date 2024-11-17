@@ -2332,8 +2332,8 @@ class MeasureAnnotator(SignalAnnotator):
 		else:
 			self.current_stack = self.current_stack[0]
 			if self.log_option:
-				self.current_stack[np.where(self.current_stack > 0.)] = np.log(
-					self.current_stack[np.where(self.current_stack > 0.)])
+				self.current_stack[np.where((self.current_stack > 0.)&(self.current_stack==self.current_stack))] = np.log(
+					self.current_stack[np.where((self.current_stack > 0.)&(self.current_stack==self.current_stack))])
 
 	def changed_channel(self):
 

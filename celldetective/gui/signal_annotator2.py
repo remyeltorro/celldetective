@@ -1804,7 +1804,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		else:
 			self.stack = self.stack[0]
 			if self.log_option:
-				self.stack[np.where(self.stack>0.)] = np.log(self.stack[np.where(self.stack>0.)])
+				self.stack[np.where((self.stack>0.)&(self.stack==self.stack))] = np.log(self.stack[np.where((self.stack>0.))&(self.stack==self.stack)])
 
 		print(f'Load stack of shape: {self.stack.shape}.')
 

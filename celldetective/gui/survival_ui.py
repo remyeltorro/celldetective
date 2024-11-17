@@ -126,7 +126,9 @@ class ConfigSurvival(QWidget, Styles):
 		main_layout.addLayout(select_layout)
 
 		time_cut_layout = QHBoxLayout()
-		time_cut_layout.addWidget(QLabel('cut obs.\ntime [min]: '), 33)
+		cut_time_lbl = QLabel('cut obs.\ntime [min]: ')
+		cut_time_lbl.setToolTip('Filter out later events from\nthe analysis (in absolute time).')
+		time_cut_layout.addWidget(cut_time_lbl, 33)
 		self.query_time_cut = QLineEdit()
 		self.query_time_cut.setValidator(self.float_validator)
 		time_cut_layout.addWidget(self.query_time_cut, 66)
@@ -270,7 +272,7 @@ class ConfigSurvival(QWidget, Styles):
 
 		cut_observation_time = None
 		try:
-			cut_observation_time = float(self.query_time_cut.text()) / self.FrameToMin
+			cut_observation_time = float(self.query_time_cut.text().replace(',','.')) / self.FrameToMin
 			if not 0<cut_observation_time<=(self.df['FRAME'].max()):
 				print('Invalid cut time (larger than movie length)... Not applied.')
 				cut_observation_time = None		

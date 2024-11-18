@@ -645,6 +645,7 @@ class SpotDetectionVisualizer(StackVisualizer):
 		self.parent_channel_cb = parent_channel_cb
 		self.parent_diameter_le = parent_diameter_le
 		self.parent_threshold_le = parent_threshold_le
+		self.spot_sizes = []
 
 		self.floatValidator = QDoubleValidator()
 		self.init_scatter()
@@ -654,12 +655,43 @@ class SpotDetectionVisualizer(StackVisualizer):
 		self.load_labels()
 		self.change_frame(self.mid_time)
 
+		self.ax.callbacks.connect('xlim_changed', self.update_marker_sizes)
+		self.ax.callbacks.connect('ylim_changed', self.update_marker_sizes)
 
 		self.apply_diam_btn.clicked.connect(self.detect_and_display_spots)
 		self.apply_thresh_btn.clicked.connect(self.detect_and_display_spots)
 		
 		self.channels_cb.setCurrentIndex(self.target_channel)
 		self.detection_channel_cb.setCurrentIndex(self.target_channel)
+
+	def update_marker_sizes(self, event=None):
+		
+		# Get axis bounds
+		xlim = self.ax.get_xlim()
+		ylim = self.ax.get_ylim()
+
+		# Data-to-pixel scale
+		ax_width_in_pixels = self.ax.bbox.width
+		ax_height_in_pixels = self.ax.bbox.height
+
+		x_scale = (xlim[1] - xlim[0]) / ax_width_in_pixels
+		y_scale = (ylim[1] - ylim[0]) / ax_height_in_pixels
+
+		# Choose the smaller scale for square pixels
+		scale = min(x_scale, y_scale)
+
+		# Convert radius_px to data units
+		if len(self.spot_sizes)>0:
+
+			radius_data_units = self.spot_sizes / scale
+
+			# Convert to scatter `s` size (points squared)
+			radius_pts = radius_data_units * (72. / self.fig.dpi )
+			size = np.pi * (radius_pts ** 2)
+
+			# Update scatter sizes
+			self.spot_scat.set_sizes(size)
+			self.fig.canvas.draw_idle()
 
 	def init_scatter(self):
 		self.spot_scat = self.ax.scatter([],[], s=50, facecolors='none', edgecolors='tab:red',zorder=100)
@@ -687,10 +719,15 @@ class SpotDetectionVisualizer(StackVisualizer):
 		blobs_filtered = extract_blobs_in_image(self.target_img, self.init_label,threshold=self.thresh, diameter=self.diameter)
 		if blobs_filtered is not None:
 			self.spot_positions = np.array([[x,y] for y,x,_ in blobs_filtered])
+			
 			self.spot_sizes = np.sqrt(2)*np.array([sig for _,_,sig in blobs_filtered])
-			self.spot_sizes = [(np.pi*s*72./self.fig.dpi)**2 for s in self.spot_sizes]
+			print(f"{self.spot_sizes=}")
+			#radius_pts = self.spot_sizes * (self.fig.dpi / 72.0)
+			#sizes = np.pi*(radius_pts**2)
+
 			self.spot_scat.set_offsets(self.spot_positions)
-			self.spot_scat.set_sizes(self.spot_sizes)
+			#self.spot_scat.set_sizes(sizes)
+			self.update_marker_sizes()
 			self.canvas.canvas.draw()
 
 	def reset_detection(self):

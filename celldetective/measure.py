@@ -369,22 +369,18 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 		intensity_features_test = [('intensity' in s and 'centroid' not in s and 'peripheral' not in s) for s in
 								   features]
 		intensity_features = list(np.array(features)[np.array(intensity_features_test)])
-		# intensity_extra = [(s in extra_props_list)for s in intensity_features]
-		# print(intensity_extra)
 		intensity_extra = []
 		for s in intensity_features:
 			if s in extra_props:
 				intensity_extra.append(getattr(extra_properties, s))
 				intensity_features.remove(s)
-		# print(intensity_features)
-		# If no intensity feature was passed still measure mean intensity
+
 		if len(intensity_features) == 0:
 			if verbose:
 				print('No intensity feature was passed... Adding mean intensity for edge measurement...')
 			intensity_features = np.append(intensity_features, 'intensity_mean')
 		intensity_features = list(np.append(intensity_features, 'label'))
 
-		# Remove extra intensity properties from border measurements
 		new_intensity_features = intensity_features.copy()
 		for int_feat in intensity_features:
 			if int_feat in extra_props:
@@ -421,8 +417,9 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	if haralick_options is not None:
 		try:
 			df_haralick = compute_haralick_features(img, label, channels=channels, **haralick_options)
-			df_props = df_props.merge(df_haralick, left_on='label',right_on='cell_id')
-			#df_props = df_props.drop(columns=['cell_label'])
+			df_haralick = df_haralick.rename(columns={"cell_id": "label"})
+			df_props = df_props.merge(df_haralick, how='outer', on='label', suffixes=('_delme', ''))
+			df_props = df_props[[c for c in df_props.columns if not c.endswith('_delme')]]
 		except Exception as e:
 			print(e)
 			pass

@@ -652,6 +652,8 @@ class SpotDetectionVisualizer(StackVisualizer):
 		self.generate_spot_detection_params()
 		self.generate_add_measurement_btn()
 		self.load_labels()
+		self.change_frame(self.mid_time)
+
 
 		self.apply_diam_btn.clicked.connect(self.detect_and_display_spots)
 		self.apply_thresh_btn.clicked.connect(self.detect_and_display_spots)
@@ -685,7 +687,10 @@ class SpotDetectionVisualizer(StackVisualizer):
 		blobs_filtered = extract_blobs_in_image(self.target_img, self.init_label,threshold=self.thresh, diameter=self.diameter)
 		if blobs_filtered is not None:
 			self.spot_positions = np.array([[x,y] for y,x,_ in blobs_filtered])
+			self.spot_sizes = np.sqrt(2)*np.array([sig for _,_,sig in blobs_filtered])
+			self.spot_sizes = [(np.pi*s*72./self.fig.dpi)**2 for s in self.spot_sizes]
 			self.spot_scat.set_offsets(self.spot_positions)
+			self.spot_scat.set_sizes(self.spot_sizes)
 			self.canvas.canvas.draw()
 
 	def reset_detection(self):

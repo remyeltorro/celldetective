@@ -939,7 +939,8 @@ def blob_detection(image, label, diameter, threshold=0., channel_name=None, targ
 				n_spots = len(blobs_in_cell)
 				binary_blobs = np.zeros_like(label)
 				for blob in blobs_in_cell:
-					y, x, r = blob
+					y, x, sig = blob
+					r = np.sqrt(2)*sig
 					rr, cc = dsk((y, x), r, shape=binary_blobs.shape)
 					binary_blobs[rr, cc] = 1    
 				intensity_mean = np.nanmean(image[binary_blobs==1].flatten())

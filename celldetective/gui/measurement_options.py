@@ -956,7 +956,8 @@ class ConfigMeasurements(QMainWindow, Styles):
 		self.spot_viewer_btn.clicked.connect(self.spot_preview)
 		self.spot_viewer_btn.setIcon(icon(MDI6.image_check, color="k"))
 		self.spot_viewer_btn.setStyleSheet(self.button_select_all)
-		layout.addWidget(self.spot_viewer_btn, 1, 2, 1, 1)
+		self.spot_viewer_btn.setToolTip('Set detection parameters visually.')
+		layout.addWidget(self.spot_viewer_btn, 1, 1, 1, 1, alignment=Qt.AlignRight)
 
 		self.spot_detection_widgets = [self.spot_channel, self.spot_channel_lbl, self.diameter_value, self.diameter_lbl, self.threshold_value, self.threshold_lbl, self.spot_viewer_btn]
 		for wg in self.spot_detection_widgets:
@@ -994,7 +995,7 @@ class ConfigMeasurements(QMainWindow, Styles):
 				#								 mask=self.test_mask, parent_window=self)
 
 	def enable_spot_detection(self):
-		
+
 		if self.spot_check.isChecked():
 			for wg in self.spot_detection_widgets:
 				wg.setEnabled(True)

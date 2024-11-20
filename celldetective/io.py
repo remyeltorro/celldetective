@@ -674,10 +674,20 @@ def locate_stack(position, prefix='Aligned'):
 	stack_path = glob(position + os.sep.join(['movie', f'{prefix}*.tif']))
 	assert len(stack_path) > 0, f"No movie with prefix {prefix} found..."
 	stack = imread(stack_path[0].replace('\\', '/'))
+	stack_length = auto_load_number_of_frames(stack_path[0])
+
 	if stack.ndim == 4:
 		stack = np.moveaxis(stack, 1, -1)
 	elif stack.ndim == 3:
-		stack = stack[:, :, :, np.newaxis]
+		if min(stack.shape)!=stack_length:
+			channel_axis = np.argmin(stack.shape)
+			if channel_axis!=(stack.ndim-1):
+				stack = np.moveaxis(stack, channel_axis, -1)
+			stack = stack[np.newaxis, :, :, :]
+		else:
+			stack = stack[:, :, :, np.newaxis]
+	elif stack.ndim==2:
+		stack = stack[np.newaxis, :, :, np.newaxis]
 
 	return stack
 
@@ -912,6 +922,7 @@ def auto_load_number_of_frames(stack_path):
 		return None
 
 	stack_path = stack_path.replace('\\','/')
+	n_channels=1
 
 	with TiffFile(stack_path) as tif:
 		try:
@@ -921,7 +932,8 @@ def auto_load_number_of_frames(stack_path):
 				tif_tags[name] = value
 			img_desc = tif_tags["ImageDescription"]
 			attr = img_desc.split("\n")
-		except:
+			n_channels = int(attr[np.argmax([s.startswith("channels") for s in attr])].split("=")[-1])
+		except Exception as e:
 			pass
 		try:
 			# Try nframes
@@ -948,6 +960,10 @@ def auto_load_number_of_frames(stack_path):
 	if 'len_movie' not in locals():
 		stack = imread(stack_path)
 		len_movie = len(stack)
+		if len_movie==n_channels and stack.ndim==3:
+			len_movie = 1
+		if stack.ndim==2:
+			len_movie = 1
 		del stack
 	gc.collect()
 
@@ -1645,6 +1661,7 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		population += 's'
 	output_folder = position + f'labels_{population}{os.sep}'
 
+	print(f"{stack.shape}")
 	viewer = napari.Viewer()
 	viewer.add_image(stack, channel_axis=-1, colormap=["gray"] * stack.shape[-1])
 	viewer.add_labels(labels.astype(int), name='segmentation', opacity=0.4)

@@ -14,7 +14,7 @@ from btrack.datasets import cell_config
 from magicgui import magicgui
 from csbdeep.io import save_tiff_imagej_compatible
 from pathlib import Path, PurePath
-from shutil import copyfile
+from shutil import copyfile, rmtree
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
 import json
 from skimage.measure import regionprops_table
@@ -1832,9 +1832,23 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 
 	available_models = natsorted(glob(modelpath + '*/'))
 	available_models = [m.replace('\\', '/').split('/')[-2] for m in available_models]
+
+	# Auto model cleanup
+	to_remove = []
+	for model in available_models:
+		path = modelpath + model
+		files = glob(path+os.sep+"*")
+		if path+os.sep+"config_input.json" not in files:
+			rmtree(path)
+			to_remove.append(model)
+	for m in to_remove:
+		available_models.remove(m)
+
+
 	for rm in repository_models:
 		if rm not in available_models:
 			available_models.append(rm)
+
 
 	if not return_path:
 		return available_models

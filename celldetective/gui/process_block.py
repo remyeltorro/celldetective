@@ -906,6 +906,49 @@ class ProcessPanel(QFrame, Styles):
 		if self.df is None:
 			print('No table could be found...')
 
+	def set_cellpose_scale(self):
+
+		scale = self.parent_window.PxToUm * float(self.diamWidget.diameter_le.get_threshold()) / 30.0
+		if self.model_name=="CP_nuclei":
+			scale = self.parent_window.PxToUm * float(self.diamWidget.diameter_le.get_threshold()) / 17.0
+		flow_thresh = self.diamWidget.flow_slider.value()
+		cellprob_thresh = self.diamWidget.cellprob_slider.value()
+		model_complete_path = locate_segmentation_model(self.model_name)
+		input_config_path = model_complete_path+"config_input.json"
+		new_channels = [self.diamWidget.cellpose_channel_cb[i].currentText() for i in range(2)]
+		print(new_channels)
+		with open(input_config_path) as config_file:
+			input_config = json.load(config_file)
+
+		input_config['spatial_calibration'] = scale
+		input_config['channels'] = new_channels
+		input_config['flow_threshold'] = flow_thresh
+		input_config['cellprob_threshold'] = cellprob_thresh
+		with open(input_config_path, 'w') as f:
+			json.dump(input_config, f, indent=4)
+
+		self.cellpose_calibrated = True
+		print('model scale automatically computed: ', scale)
+		self.diamWidget.close()
+		self.process_population()
+
+	def set_stardist_scale(self):
+
+		model_complete_path = locate_segmentation_model(self.model_name)
+		input_config_path = model_complete_path+"config_input.json"
+		new_channels = [self.diamWidget.stardist_channel_cb[i].currentText() for i in range(len(self.diamWidget.stardist_channel_cb))]
+		with open(input_config_path) as config_file:
+			input_config = json.load(config_file)
+
+		input_config['channels'] = new_channels
+		with open(input_config_path, 'w') as f:
+			json.dump(input_config, f, indent=4)
+
+		self.stardist_calibrated = True
+		self.diamWidget.close()
+		self.process_population()
+
+
 
 class NeighPanel(QFrame, Styles):
 	def __init__(self, parent_window):

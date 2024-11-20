@@ -128,13 +128,8 @@ class StackVisualizer(QWidget, Styles):
 
 	def locate_image_virtual(self):
 		# Locate the stack of images if provided as a file
-		self.stack_length = auto_load_number_of_frames(self.stack_path)
-		if self.stack_length is None:
-			stack = imread(self.stack_path)
-			self.stack_length = len(stack)
-			del stack
-			gc.collect()
 
+		self.stack_length = auto_load_number_of_frames(self.stack_path)
 		self.mid_time = self.stack_length // 2
 		self.img_num_per_channel = _get_img_num_per_channel(np.arange(self.n_channels), self.stack_length, self.n_channels)
 

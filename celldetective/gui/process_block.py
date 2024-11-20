@@ -291,6 +291,7 @@ class ProcessPanel(QFrame, Styles):
 		self.signal_models_list.addItems(signal_models)
 
 	def generate_tracking_options(self):
+		
 		grid_track = QHBoxLayout()
 
 		self.track_action = QCheckBox("TRACK")
@@ -303,16 +304,6 @@ class ProcessPanel(QFrame, Styles):
 			padding-top: 5px;
 			""")
 		grid_track.addWidget(self.track_action, 75)
-		#self.to_disable.append(self.track_action_tc)
-
-		# self.show_track_table_btn = QPushButton()
-		# self.show_track_table_btn.setIcon(icon(MDI6.table,color="black"))
-		# self.show_track_table_btn.setIconSize(QSize(20, 20))
-		# self.show_track_table_btn.setToolTip("Show trajectories table.")
-		# self.show_track_table_btn.setStyleSheet(self.button_select_all)
-		# #self.show_track_table_btn.clicked.connect(self.display_trajectory_table)
-		# self.show_track_table_btn.setEnabled(False)
-		# grid_track.addWidget(self.show_track_table_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
 
 		self.delete_tracks_btn = QPushButton()
 		self.delete_tracks_btn.setIcon(icon(MDI6.trash_can,color="black"))
@@ -640,25 +631,6 @@ class ProcessPanel(QFrame, Styles):
 
 		self.seg_model_list.insertSeparator(len(self.models_truncated))
 
-
-		#if ("live_nuclei_channel" in self.exp_channels)*("dead_nuclei_channel" in self.exp_channels):
-		# 	print("both channels found")
-		# 	index = self.tc_seg_model_list.findText("MCF7_Hoescht_PI_w_primary_NK", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-		# elif ("live_nuclei_channel" in self.exp_channels)*("dead_nuclei_channel" not in self.exp_channels):
-		# 	index = self.tc_seg_model_list.findText("MCF7_Hoescht_w_primary_NK", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-		# elif ("live_nuclei_channel" not in self.exp_channels)*("dead_nuclei_channel" in self.exp_channels):
-		# 	index = self.tc_seg_model_list.findText("MCF7_PI_w_primary_NK", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-		# elif ("live_nuclei_channel" not in self.exp_channels)*("dead_nuclei_channel" not in self.exp_channels)*("adhesion_channel" in self.exp_channels):
-		# 	index = self.tc_seg_model_list.findText("RICM", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-
 	def tick_all_actions(self):
 		self.switch_all_ticks_option()
 		if self.all_ticked:
@@ -884,28 +856,7 @@ class ProcessPanel(QFrame, Styles):
 		if self.segment_action.isChecked():
 			self.segment_action.setChecked(False)
 
-		# QApplication.restoreOverrideCursor()
-		# self.unfreeze()
-
-	# def view_current_stack_with_scale_bar(self):
-
-	# 	self.parent_window.locate_image()
-	# 	if self.parent_window.current_stack is not None:
-	# 		self.viewer = CellSizeViewer(
-	# 									  initial_diameter = float(self.diameter_le.text().replace(',', '.')),
-	# 			parent_le = self.diameter_le,
-	# 									  stack_path=self.parent_window.current_stack,
-	# 									  window_title=f'Position {self.parent_window.position_list.currentText()}',
-	# 									  frame_slider = True,
-	# 									  contrast_slider = True,
-	# 									  channel_cb = True,
-	# 									  channel_names = self.parent_window.exp_channels,
-	# 									  n_channels = self.parent_window.nbr_channels,
-	# 									  PxToUm = 1,
-	# 									 )
-	# 		self.viewer.show()
-
-
+		self.cellpose_calibrated = False
 
 	def open_napari_tracking(self):
 		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')
@@ -933,24 +884,6 @@ class ProcessPanel(QFrame, Styles):
 			if returnValue == QMessageBox.Ok:
 				return None
 
-	# def interpret_pos_location(self):
-
-	# 	"""
-	# 	Read the well/position selection from the control panel to decide which data to load
-	# 	Set position_indices to None if all positions must be taken
-
-	# 	"""
-
-	# 	if self.well_option==len(self.wells):
-	# 		self.well_indices = np.arange(len(self.wells))
-	# 	else:
-	# 		self.well_indices = np.array([self.well_option],dtype=int)
-
-	# 	if self.position_option==0:
-	# 		self.position_indices = None
-	# 	else:
-	# 		self.position_indices = np.array([self.position_option],dtype=int)
-
 	def load_available_tables(self):
 
 		"""
@@ -972,48 +905,6 @@ class ProcessPanel(QFrame, Styles):
 		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.mode, return_pos_info=True)
 		if self.df is None:
 			print('No table could be found...')
-
-	def set_cellpose_scale(self):
-
-		scale = self.parent_window.PxToUm * float(self.diamWidget.diameter_le.get_threshold()) / 30.0
-		if self.model_name=="CP_nuclei":
-			scale = self.parent_window.PxToUm * float(self.diamWidget.diameter_le.get_threshold()) / 17.0
-		flow_thresh = self.diamWidget.flow_slider.value()
-		cellprob_thresh = self.diamWidget.cellprob_slider.value()
-		model_complete_path = locate_segmentation_model(self.model_name)
-		input_config_path = model_complete_path+"config_input.json"
-		new_channels = [self.diamWidget.cellpose_channel_cb[i].currentText() for i in range(2)]
-		print(new_channels)
-		with open(input_config_path) as config_file:
-			input_config = json.load(config_file)
-
-		input_config['spatial_calibration'] = scale
-		input_config['channels'] = new_channels
-		input_config['flow_threshold'] = flow_thresh
-		input_config['cellprob_threshold'] = cellprob_thresh
-		with open(input_config_path, 'w') as f:
-			json.dump(input_config, f, indent=4)
-
-		self.cellpose_calibrated = True
-		print('model scale automatically computed: ', scale)
-		self.diamWidget.close()
-		self.process_population()
-
-	def set_stardist_scale(self):
-
-		model_complete_path = locate_segmentation_model(self.model_name)
-		input_config_path = model_complete_path+"config_input.json"
-		new_channels = [self.diamWidget.stardist_channel_cb[i].currentText() for i in range(len(self.diamWidget.stardist_channel_cb))]
-		with open(input_config_path) as config_file:
-			input_config = json.load(config_file)
-
-		input_config['channels'] = new_channels
-		with open(input_config_path, 'w') as f:
-			json.dump(input_config, f, indent=4)
-
-		self.stardist_calibrated = True
-		self.diamWidget.close()
-		self.process_population()
 
 
 class NeighPanel(QFrame, Styles):
@@ -1523,34 +1414,11 @@ class NeighPanel(QFrame, Styles):
 					rel_measure_at_position(self.pos)
 
 				if self.signal_analysis_action.isChecked():
-					
-					# df_targets = get_position_pickle(self.pos, population='targets')
-					# df_effectors = get_position_pickle(self.pos, population='effectors')
-					# self.dataframes = {
-					# 	'targets': df_targets,
-					# 	'effectors': df_effectors,
-					# }
 
-					# df_pairs = get_position_table(self.pos, population='pairs')
-
-					# # Need to identify expected reference / neighbor tables
-					# model_path = locate_signal_model(self.pair_signal_models_list.currentText(), pairs=True)
-					# print(f'Looking for model in {model_path}...')
-					# complete_path = model_path
-					# complete_path = rf"{complete_path}"
-					# model_config_path = os.sep.join([complete_path, 'config_input.json'])
-					# model_config_path = rf"{model_config_path}"
-					# f = open(model_config_path)
-					# model_config_path = json.load(f)
-
-					# reference_population = model_config_path['reference_population']
-					# neighbor_population = model_config_path['neighbor_population']
-
-					# analyze_pair_signals(df_pairs, self.dataframes[reference_population], self.dataframes[neighbor_population], model=self.pair_signal_models_list.currentText())
 					analyze_pair_signals_at_position(self.pos, self.pair_signal_models_list.currentText(), use_gpu=self.parent_window.parent_window.use_gpu)
+
 		self.parent_window.update_position_options()
 		print('Done.')
-
 
 	def check_signals2(self):
 

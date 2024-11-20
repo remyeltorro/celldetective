@@ -450,8 +450,8 @@ class ControlPanel(QMainWindow, Styles):
 			self.view_stack_btn.setEnabled(False)
 			self.ProcessEffectors.signal_analysis_action.setEnabled(True)
 			self.ProcessTargets.signal_analysis_action.setEnabled(True)
-
-			self.delete_tracks_btn.hide()
+			if hasattr(self,'delete_tracks_btn'):
+				self.delete_tracks_btn.hide()
 			self.ProcessTargets.delete_tracks_btn.hide()
 			self.ProcessEffectors.delete_tracks_btn.hide()
 		else:

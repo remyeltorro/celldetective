@@ -1601,6 +1601,8 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 
 			for k, sq in enumerate(squares):
 				print(f"ROI: {sq}")
+				pad_to_256=False
+
 				xmin = int(sq[0, 1])
 				xmax = int(sq[2, 1])
 				if xmax < xmin:
@@ -1612,8 +1614,9 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 				print(f"{xmin=};{xmax=};{ymin=};{ymax=}")
 				frame = viewer.layers['Image'].data[t][xmin:xmax, ymin:ymax]
 				if frame.shape[1] < 256 or frame.shape[0] < 256:
-					print("crop too small!")
-					continue
+					pad_to_256 = True
+					print("Crop too small! Padding with zeros to reach 256*256 pixels...")
+					#continue
 				multichannel = [frame]
 				for i in range(len(channel_indices) - 1):
 					try:
@@ -1621,8 +1624,21 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 						multichannel.append(frame)
 					except:
 						pass
-				multichannel = np.array(multichannel)        
-				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", labels_layer[xmin:xmax,ymin:ymax].astype(np.int16), axes='YX')
+				multichannel = np.array(multichannel)
+				lab = labels_layer[xmin:xmax,ymin:ymax].astype(np.int16)
+				if pad_to_256:
+					shape = multichannel.shape
+					pad_length_x = max([0,256 - multichannel.shape[1]])
+					if pad_length_x>0 and pad_length_x%2==1:
+						pad_length_x += 1
+					pad_length_y = max([0,256 - multichannel.shape[2]])
+					if pad_length_y>0 and pad_length_y%2==1:
+						pad_length_y += 1
+					padded_image = np.array([np.pad(im, ((pad_length_x//2,pad_length_x//2), (pad_length_y//2,pad_length_y//2)), mode='constant') for im in multichannel])
+					padded_label = np.pad(lab,((pad_length_x//2,pad_length_x//2), (pad_length_y//2,pad_length_y//2)), mode='constant')
+					lab = padded_label; multichannel = padded_image;
+
+				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", lab, axes='YX')
 				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.tif", multichannel, axes='CYX')
 				info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names), 'cell_type': ct, 'antibody': ab, 'concentration': conc, 'pharmaceutical_agent': pa}
 				info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.json"

@@ -15,6 +15,7 @@ import subprocess
 from math import ceil
 
 from skimage.draw import disk as dsk
+from skimage.feature import blob_dog, blob_log
 
 from celldetective.utils import rename_intensity_column, create_patch_mask, remove_redundant_features, \
 	remove_trajectory_measurements, contour_of_instance_segmentation, extract_cols_from_query, step_function, interpolate_nan
@@ -23,6 +24,8 @@ import celldetective.extra_properties as extra_properties
 from celldetective.extra_properties import *
 from inspect import getmembers, isfunction
 from skimage.morphology import disk
+
+import matplotlib.pyplot as plt
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
@@ -325,12 +328,7 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 			for index, channel in enumerate(channels):
 				if channel == spot_detection['channel']:
 					ind = index
-					blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
-								   threshold=spot_detection['threshold'])
-					df_spots = pd.DataFrame.from_dict(blobs, orient='index',
-													  columns=['count', 'spot_mean_intensity']).reset_index()
-			# Rename columns
-			df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
+					df_spots = blob_detection(img, label, diameter=spot_detection['diameter'],threshold=spot_detection['threshold'], channel_name=spot_detection['channel'], target_channel=ind)
 		
 		if normalisation_list:
 			for norm in normalisation_list:
@@ -362,47 +360,27 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	props = regionprops_table(label, intensity_image=img, properties=feats, extra_properties=extra_props_list)
 	df_props = pd.DataFrame(props)
 	if spot_detection is not None:
-		df_props = df_props.merge(df_spots, how='outer', on='label')
-		df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0).infer_objects(copy=False)
-		df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0).infer_objects(copy=False)
-
-
-
-	# if spot_detection is not None:
-	#     for index, channel in enumerate(channels):
-	#         if channel == spot_detection['channel']:
-	#             ind = index
-	#     blobs = blob_detection(img[:, :, ind], label, diameter=spot_detection['diameter'],
-	#                            threshold=spot_detection['threshold'])
-	#     df_spots = pd.DataFrame.from_dict(blobs, orient='index', columns=['count', 'spot_mean_intensity']).reset_index()
-	#     # Rename columns
-	#     df_spots.columns = ['label', 'spot_count', 'spot_mean_intensity']
-	#     df_props = df_props.merge(df_spots, how='outer', on='label')
-	#     df_props['spot_count'] = df_props['spot_count'].replace(np.nan, 0)
-	#     df_props['spot_mean_intensity'] = df_props['spot_mean_intensity'].replace(np.nan, 0)
-
+		if df_spots is not None:
+			df_props = df_props.merge(df_spots, how='outer', on='label',suffixes=('_delme', ''))
+			df_props = df_props[[c for c in df_props.columns if not c.endswith('_delme')]]
 
 	if border_dist is not None:
 		# automatically drop all non intensity features
 		intensity_features_test = [('intensity' in s and 'centroid' not in s and 'peripheral' not in s) for s in
 								   features]
 		intensity_features = list(np.array(features)[np.array(intensity_features_test)])
-		# intensity_extra = [(s in extra_props_list)for s in intensity_features]
-		# print(intensity_extra)
 		intensity_extra = []
 		for s in intensity_features:
 			if s in extra_props:
 				intensity_extra.append(getattr(extra_properties, s))
 				intensity_features.remove(s)
-		# print(intensity_features)
-		# If no intensity feature was passed still measure mean intensity
+
 		if len(intensity_features) == 0:
 			if verbose:
 				print('No intensity feature was passed... Adding mean intensity for edge measurement...')
 			intensity_features = np.append(intensity_features, 'intensity_mean')
 		intensity_features = list(np.append(intensity_features, 'label'))
 
-		# Remove extra intensity properties from border measurements
 		new_intensity_features = intensity_features.copy()
 		for int_feat in intensity_features:
 			if int_feat in extra_props:
@@ -439,8 +417,9 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	if haralick_options is not None:
 		try:
 			df_haralick = compute_haralick_features(img, label, channels=channels, **haralick_options)
-			df_props = df_props.merge(df_haralick, left_on='label',right_on='cell_id')
-			#df_props = df_props.drop(columns=['cell_label'])
+			df_haralick = df_haralick.rename(columns={"cell_id": "label"})
+			df_props = df_props.merge(df_haralick, how='outer', on='label', suffixes=('_delme', ''))
+			df_props = df_props[[c for c in df_props.columns if not c.endswith('_delme')]]
 		except Exception as e:
 			print(e)
 			pass
@@ -916,67 +895,125 @@ def normalise_by_cell(image, labels, distance=5, model='median', operation='subt
 	return normalised_frame
 
 
-def blob_detection(image, label, threshold, diameter):
-	"""
-	Perform blob detection on an image based on labeled regions.
+def extract_blobs_in_image(image, label, diameter, threshold=0., method="log"):
+	
+	if np.percentile(image.flatten(),99.9)==0.0:
+		return None
 
-	Parameters:
-	- image (numpy.ndarray): The input image data.
-	- label (numpy.ndarray): An array specifying labeled regions in the image.
-	- threshold (float): The threshold value for blob detection.
-	- diameter (float): The expected diameter of blobs.
-
-	Returns:
-	- dict: A dictionary containing information about detected blobs.
-
-	This function performs blob detection on an image based on labeled regions. It iterates over each labeled region
-	and detects blobs within the region using the Difference of Gaussians (DoG) method. Detected blobs are filtered
-	based on the specified threshold and expected diameter. The function returns a dictionary containing the number of
-	detected blobs and their mean intensity for each labeled region.
-
-	Example:
-	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-	>>> label = np.array([[0, 1, 1], [2, 2, 0], [3, 3, 0]])
-	>>> threshold = 0.1
-	>>> diameter = 5.0
-	>>> result = blob_detection(image, label, threshold, diameter)
-	>>> print(result)
-	{1: [1, 4.0], 2: [0, nan], 3: [0, nan]}
-
-	Note:
-	- Blobs are detected using the Difference of Gaussians (DoG) method.
-	- Detected blobs are filtered based on the specified threshold and expected diameter.
-	- The returned dictionary contains information about the number of detected blobs and their mean intensity
-	  for each labeled region.
-	"""
-	blob_labels = {}
 	dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
-	for mask_index in np.unique(label):
-		if mask_index == 0:
-			continue
-		removed_background = image.copy()
-		one_mask = label.copy()
-		one_mask[np.where(label != mask_index)] = 0
-		dilated_copy = dilated_image.copy()
-		dilated_copy[np.where(dilated_image != mask_index)] = 0
-		removed_background[np.where(dilated_copy == 0)] = 0
-		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
-		max_sigma = math.sqrt(2) * min_sigma
-		blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
-										 max_sigma=max_sigma)
 
-		mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])
-		if not np.any(mask):
-			continue
+	masked_image = image.copy()
+	masked_image[np.where((dilated_image == 0)|(image!=image))] = 0
+	min_sigma = (1 / (1 + math.sqrt(2))) * diameter
+	max_sigma = math.sqrt(2) * min_sigma
+	if method=="dog":
+		blobs = blob_dog(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)
+	elif method=="log":
+		blobs = blob_log(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)		
+	# Exclude spots outside of cell masks
+	mask = np.array([label[int(y), int(x)] != 0 for y, x, _ in blobs])
+	if np.any(mask):
 		blobs_filtered = blobs[mask]
-		binary_blobs = np.zeros_like(label)
-		for blob in blobs_filtered:
-			y, x, r = blob
-			rr, cc = dsk((y, x), r, shape=binary_blobs.shape)
-			binary_blobs[rr, cc] = 1
-		spot_intensity = regionprops_table(binary_blobs, removed_background, ['intensity_mean'])
-		blob_labels[mask_index] = [blobs_filtered.shape[0], spot_intensity['intensity_mean'][0]]
-	return blob_labels
+	else:
+		blobs_filtered=[]
+
+	return blobs_filtered
+
+
+def blob_detection(image, label, diameter, threshold=0., channel_name=None, target_channel=0, method="log"):
+	
+	image = image[:, :, target_channel].copy()
+	if np.percentile(image.flatten(),99.9)==0.0:
+		return None
+
+	detections = []
+	blobs_filtered = extract_blobs_in_image(image, label, diameter, threshold=threshold)
+
+	for lbl in np.unique(label):
+		if lbl>0:
+			
+			blob_selection = np.array([label[int(y), int(x)] == lbl for y, x, _ in blobs_filtered])
+			if np.any(blob_selection):
+				# if any spot
+				blobs_in_cell = blobs_filtered[blob_selection]
+				n_spots = len(blobs_in_cell)
+				binary_blobs = np.zeros_like(label)
+				for blob in blobs_in_cell:
+					y, x, sig = blob
+					r = np.sqrt(2)*sig
+					rr, cc = dsk((y, x), r, shape=binary_blobs.shape)
+					binary_blobs[rr, cc] = 1    
+				intensity_mean = np.nanmean(image[binary_blobs==1].flatten())
+			else:
+				n_spots = 0
+				intensity_mean = np.nan
+			detections.append({'label': lbl, f'{channel_name}_spot_count': n_spots, f'{channel_name}_mean_spot_intensity': intensity_mean})
+	detections = pd.DataFrame(detections)
+
+	return detections
+
+
+# def blob_detectionv0(image, label, threshold, diameter):
+# 	"""
+# 	Perform blob detection on an image based on labeled regions.
+
+# 	Parameters:
+# 	- image (numpy.ndarray): The input image data.
+# 	- label (numpy.ndarray): An array specifying labeled regions in the image.
+# 	- threshold (float): The threshold value for blob detection.
+# 	- diameter (float): The expected diameter of blobs.
+
+# 	Returns:
+# 	- dict: A dictionary containing information about detected blobs.
+
+# 	This function performs blob detection on an image based on labeled regions. It iterates over each labeled region
+# 	and detects blobs within the region using the Difference of Gaussians (DoG) method. Detected blobs are filtered
+# 	based on the specified threshold and expected diameter. The function returns a dictionary containing the number of
+# 	detected blobs and their mean intensity for each labeled region.
+
+# 	Example:
+# 	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+# 	>>> label = np.array([[0, 1, 1], [2, 2, 0], [3, 3, 0]])
+# 	>>> threshold = 0.1
+# 	>>> diameter = 5.0
+# 	>>> result = blob_detection(image, label, threshold, diameter)
+# 	>>> print(result)
+# 	{1: [1, 4.0], 2: [0, nan], 3: [0, nan]}
+
+# 	Note:
+# 	- Blobs are detected using the Difference of Gaussians (DoG) method.
+# 	- Detected blobs are filtered based on the specified threshold and expected diameter.
+# 	- The returned dictionary contains information about the number of detected blobs and their mean intensity
+# 	  for each labeled region.
+# 	"""
+# 	blob_labels = {}
+# 	dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
+# 	for mask_index in np.unique(label):
+# 		if mask_index == 0:
+# 			continue
+# 		removed_background = image.copy()
+# 		one_mask = label.copy()
+# 		one_mask[np.where(label != mask_index)] = 0
+# 		dilated_copy = dilated_image.copy()
+# 		dilated_copy[np.where(dilated_image != mask_index)] = 0
+# 		removed_background[np.where(dilated_copy == 0)] = 0
+# 		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
+# 		max_sigma = math.sqrt(2) * min_sigma
+# 		blobs = blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
+# 										 max_sigma=max_sigma)
+
+# 		mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])
+# 		if not np.any(mask):
+# 			continue
+# 		blobs_filtered = blobs[mask]
+# 		binary_blobs = np.zeros_like(label)
+# 		for blob in blobs_filtered:
+# 			y, x, r = blob
+# 			rr, cc = dsk((y, x), r, shape=binary_blobs.shape)
+# 			binary_blobs[rr, cc] = 1
+# 		spot_intensity = regionprops_table(binary_blobs, removed_background, ['intensity_mean'])
+# 		blob_labels[mask_index] = [blobs_filtered.shape[0], spot_intensity['intensity_mean'][0]]
+# 	return blob_labels
 
 ### Classification ####
 

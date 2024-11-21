@@ -14,7 +14,7 @@ from btrack.datasets import cell_config
 from magicgui import magicgui
 from csbdeep.io import save_tiff_imagej_compatible
 from pathlib import Path, PurePath
-from shutil import copyfile
+from shutil import copyfile, rmtree
 from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
 import json
 from skimage.measure import regionprops_table
@@ -674,10 +674,20 @@ def locate_stack(position, prefix='Aligned'):
 	stack_path = glob(position + os.sep.join(['movie', f'{prefix}*.tif']))
 	assert len(stack_path) > 0, f"No movie with prefix {prefix} found..."
 	stack = imread(stack_path[0].replace('\\', '/'))
+	stack_length = auto_load_number_of_frames(stack_path[0])
+
 	if stack.ndim == 4:
 		stack = np.moveaxis(stack, 1, -1)
 	elif stack.ndim == 3:
-		stack = stack[:, :, :, np.newaxis]
+		if min(stack.shape)!=stack_length:
+			channel_axis = np.argmin(stack.shape)
+			if channel_axis!=(stack.ndim-1):
+				stack = np.moveaxis(stack, channel_axis, -1)
+			stack = stack[np.newaxis, :, :, :]
+		else:
+			stack = stack[:, :, :, np.newaxis]
+	elif stack.ndim==2:
+		stack = stack[np.newaxis, :, :, np.newaxis]
 
 	return stack
 
@@ -912,6 +922,7 @@ def auto_load_number_of_frames(stack_path):
 		return None
 
 	stack_path = stack_path.replace('\\','/')
+	n_channels=1
 
 	with TiffFile(stack_path) as tif:
 		try:
@@ -921,7 +932,8 @@ def auto_load_number_of_frames(stack_path):
 				tif_tags[name] = value
 			img_desc = tif_tags["ImageDescription"]
 			attr = img_desc.split("\n")
-		except:
+			n_channels = int(attr[np.argmax([s.startswith("channels") for s in attr])].split("=")[-1])
+		except Exception as e:
 			pass
 		try:
 			# Try nframes
@@ -948,6 +960,10 @@ def auto_load_number_of_frames(stack_path):
 	if 'len_movie' not in locals():
 		stack = imread(stack_path)
 		len_movie = len(stack)
+		if len_movie==n_channels and stack.ndim==3:
+			len_movie = 1
+		if stack.ndim==2:
+			len_movie = 1
 		del stack
 	gc.collect()
 
@@ -1585,6 +1601,8 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 
 			for k, sq in enumerate(squares):
 				print(f"ROI: {sq}")
+				pad_to_256=False
+
 				xmin = int(sq[0, 1])
 				xmax = int(sq[2, 1])
 				if xmax < xmin:
@@ -1596,8 +1614,9 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 				print(f"{xmin=};{xmax=};{ymin=};{ymax=}")
 				frame = viewer.layers['Image'].data[t][xmin:xmax, ymin:ymax]
 				if frame.shape[1] < 256 or frame.shape[0] < 256:
-					print("crop too small!")
-					continue
+					pad_to_256 = True
+					print("Crop too small! Padding with zeros to reach 256*256 pixels...")
+					#continue
 				multichannel = [frame]
 				for i in range(len(channel_indices) - 1):
 					try:
@@ -1605,8 +1624,21 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 						multichannel.append(frame)
 					except:
 						pass
-				multichannel = np.array(multichannel)        
-				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", labels_layer[xmin:xmax,ymin:ymax].astype(np.int16), axes='YX')
+				multichannel = np.array(multichannel)
+				lab = labels_layer[xmin:xmax,ymin:ymax].astype(np.int16)
+				if pad_to_256:
+					shape = multichannel.shape
+					pad_length_x = max([0,256 - multichannel.shape[1]])
+					if pad_length_x>0 and pad_length_x%2==1:
+						pad_length_x += 1
+					pad_length_y = max([0,256 - multichannel.shape[2]])
+					if pad_length_y>0 and pad_length_y%2==1:
+						pad_length_y += 1
+					padded_image = np.array([np.pad(im, ((pad_length_x//2,pad_length_x//2), (pad_length_y//2,pad_length_y//2)), mode='constant') for im in multichannel])
+					padded_label = np.pad(lab,((pad_length_x//2,pad_length_x//2), (pad_length_y//2,pad_length_y//2)), mode='constant')
+					lab = padded_label; multichannel = padded_image;
+
+				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}_labelled.tif", lab, axes='YX')
 				save_tiff_imagej_compatible(annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.tif", multichannel, axes='CYX')
 				info = {"spatial_calibration": spatial_calibration, "channels": list(channel_names), 'cell_type': ct, 'antibody': ab, 'concentration': conc, 'pharmaceutical_agent': pa}
 				info_name = annotation_folder + f"{exp_name}_{position.split(os.sep)[-2]}_{str(t).zfill(4)}_roi_{xmin}_{xmax}_{ymin}_{ymax}.json"
@@ -1645,6 +1677,7 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 		population += 's'
 	output_folder = position + f'labels_{population}{os.sep}'
 
+	print(f"{stack.shape}")
 	viewer = napari.Viewer()
 	viewer.add_image(stack, channel_axis=-1, colormap=["gray"] * stack.shape[-1])
 	viewer.add_labels(labels.astype(int), name='segmentation', opacity=0.4)
@@ -1832,9 +1865,23 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 
 	available_models = natsorted(glob(modelpath + '*/'))
 	available_models = [m.replace('\\', '/').split('/')[-2] for m in available_models]
+
+	# Auto model cleanup
+	to_remove = []
+	for model in available_models:
+		path = modelpath + model
+		files = glob(path+os.sep+"*")
+		if path+os.sep+"config_input.json" not in files:
+			rmtree(path)
+			to_remove.append(model)
+	for m in to_remove:
+		available_models.remove(m)
+
+
 	for rm in repository_models:
 		if rm not in available_models:
 			available_models.append(rm)
+
 
 	if not return_path:
 		return available_models

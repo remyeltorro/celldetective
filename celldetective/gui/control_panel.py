@@ -181,7 +181,13 @@ class ControlPanel(QMainWindow, Styles):
 		exp_hbox = QHBoxLayout()
 		exp_hbox.addWidget(experiment_label, 25, alignment=Qt.AlignRight)
 		exp_subhbox = QHBoxLayout()
-		exp_subhbox.addWidget(QLabel(name), 90, alignment=Qt.AlignLeft)
+		if len(name)>thresh:
+			name_cut = name[:thresh - 3]+'...'
+		else:
+			name_cut = name
+		exp_name_lbl = QLabel(name_cut)
+		exp_name_lbl.setToolTip(name)
+		exp_subhbox.addWidget(exp_name_lbl, 90, alignment=Qt.AlignLeft)
 		exp_subhbox.addWidget(self.folder_exp_btn, 5, alignment=Qt.AlignRight)
 		exp_subhbox.addWidget(self.edit_config_button, 5, alignment=Qt.AlignRight)
 		exp_hbox.addLayout(exp_subhbox, 75)
@@ -444,8 +450,8 @@ class ControlPanel(QMainWindow, Styles):
 			self.view_stack_btn.setEnabled(False)
 			self.ProcessEffectors.signal_analysis_action.setEnabled(True)
 			self.ProcessTargets.signal_analysis_action.setEnabled(True)
-
-			self.delete_tracks_btn.hide()
+			if hasattr(self,'delete_tracks_btn'):
+				self.delete_tracks_btn.hide()
 			self.ProcessTargets.delete_tracks_btn.hide()
 			self.ProcessEffectors.delete_tracks_btn.hide()
 		else:

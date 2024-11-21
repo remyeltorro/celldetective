@@ -131,7 +131,7 @@ class AppInitWindow(QMainWindow):
 		helpMenu = QMenu("Help", self)
 		helpMenu.clear()
 		helpMenu.addAction(self.DocumentationAction)
-		helpMenu.addAction(self.SoftwareAction)
+		#helpMenu.addAction(self.SoftwareAction)
 		helpMenu.addSeparator()
 		helpMenu.addAction(self.AboutAction)
 		menuBar.addMenu(helpMenu)
@@ -144,7 +144,7 @@ class AppInitWindow(QMainWindow):
 		#self.newAction = QAction(self)
 		#self.newAction.setText("&New")
 		# Creating actions using the second constructor
-		self.openAction = QAction('Open...', self)
+		self.openAction = QAction('Open Project', self)
 		self.openAction.setShortcut("Ctrl+O")
 		self.openAction.setShortcutVisibleInContextMenu(True)
 
@@ -152,9 +152,9 @@ class AppInitWindow(QMainWindow):
 		self.openSpreadingAssayDemo = QAction('Spreading Assay Demo', self)
 		self.openCytotoxicityAssayDemo = QAction('Cytotoxicity Assay Demo', self)
 
-		self.MemoryAndThreadsAction = QAction('Memory & Threads...')
+		self.MemoryAndThreadsAction = QAction('Threads')
 
-		self.CorrectAnnotationAction = QAction('Correct a segmentation annotation...')
+		self.CorrectAnnotationAction = QAction('Correct a segmentation annotation')
 
 		self.newExpAction = QAction('New', self)
 		self.newExpAction.setShortcut("Ctrl+N")
@@ -165,14 +165,14 @@ class AppInitWindow(QMainWindow):
 		self.openModels.setShortcut("Ctrl+L")
 		self.openModels.setShortcutVisibleInContextMenu(True)
 
-		self.OpenRecentAction = QMenu('Open Recent')
+		self.OpenRecentAction = QMenu('Open Recent Project')
 		self.reload_previous_experiments()
 
 		self.DocumentationAction = QAction("Documentation", self)
 		self.DocumentationAction.setShortcut("Ctrl+D")
 		self.DocumentationAction.setShortcutVisibleInContextMenu(True)
 
-		self.SoftwareAction = QAction("Software", self) #1st arg icon(MDI6.information)
+		#self.SoftwareAction = QAction("Software", self) #1st arg icon(MDI6.information)
 		self.AboutAction = QAction("About celldetective", self)
 
 		#self.DocumentationAction.triggered.connect(self.load_previous_config)
@@ -189,7 +189,7 @@ class AppInitWindow(QMainWindow):
 		self.openCytotoxicityAssayDemo.triggered.connect(self.download_cytotoxicity_assay_demo)
 
 	def download_spreading_assay_demo(self):
-		
+
 		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
 		if not os.path.exists(os.sep.join([self.target_dir,'demo_ricm'])):
 			self.output_dir = self.target_dir
@@ -206,7 +206,7 @@ class AppInitWindow(QMainWindow):
 		self.validate_button.click()
 
 	def download_cytotoxicity_assay_demo(self):
-		
+
 		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
 		if not os.path.exists(os.sep.join([self.target_dir,'demo_adcc'])):
 			download_zenodo_file('demo_adcc', self.target_dir)
@@ -294,7 +294,7 @@ class AppInitWindow(QMainWindow):
 
 
 	def open_experiment(self):
-		
+
 		self.browse_experiment_folder()
 		if self.experiment_path_selection.text()!='':
 			self.open_directory()

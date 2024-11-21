@@ -90,6 +90,10 @@ def measure_pairs(pos, neighborhood_protocol):
 				cosine_dot_vector[:] = np.nan
 
 				coords_neighbor = group_neigh[['POSITION_X', 'POSITION_Y']].to_numpy()[0]
+				intersection = np.nan
+				if 'intersection' in list(group_neigh.columns):
+					intersection = group_neigh['intersection'].values[0]
+
 				neighbor_vector[0] = coords_neighbor[0] - coords_reference[0]
 				neighbor_vector[1] = coords_neighbor[1] - coords_reference[1]
 
@@ -109,7 +113,7 @@ def measure_pairs(pos, neighborhood_protocol):
 							{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 							'reference_population': reference_population,
 							'neighbor_population': neighbor_population,
-							'FRAME': t, 'distance': relative_distance,
+							'FRAME': t, 'distance': relative_distance, 'intersection': intersection,
 							'angle': angle * 180 / np.pi,
 							f'status_{neighborhood_description}': 1,
 							f'class_{neighborhood_description}': 0,
@@ -201,9 +205,14 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 			neighbor_dicts = group.loc[: , f'{neighborhood_description}'].values
 			timeline_reference = group['FRAME'].to_numpy()
 			coords_reference = group[['POSITION_X', 'POSITION_Y']].to_numpy()
+			if "area" in list(group.columns):
+				ref_area = group['area'].to_numpy()
+			else:
+				ref_area = [np.nan]*len(coords_reference)
 
 			neighbor_ids = []
 			neighbor_ids_per_t = []
+			intersection_values = []
 
 			time_of_first_entrance_in_neighborhood = {}
 			t_departure={}
@@ -218,9 +227,15 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 					for neigh in neighbors_at_t:
 						if neigh['id'] not in neighbor_ids:
 							time_of_first_entrance_in_neighborhood[neigh['id']]=t
+						if 'intersection' in neigh:
+							intersection_values.append({"frame": t, "neigh_id": neigh['id'], "intersection": neigh['intersection']})
+						else:
+							intersection_values.append({"frame": t, "neigh_id": neigh['id'], "intersection": np.nan})
 						neighbor_ids.append(neigh['id'])
 						neighs_t.append(neigh['id'])
 				neighbor_ids_per_t.append(neighs_t)
+
+			intersection_values = pd.DataFrame(intersection_values)
 
 			#print(neighbor_ids_per_t)
 			unique_neigh = list(np.unique(neighbor_ids))
@@ -232,12 +247,20 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				
 				coords_neighbor = group_neigh[['POSITION_X', 'POSITION_Y']].to_numpy()
 				timeline_neighbor = group_neigh['FRAME'].to_numpy()
+				if "area" in list(group_neigh.columns):
+					neigh_area = group_neigh['area'].to_numpy()
+				else:
+					neigh_area = [np.nan]*len(timeline_neighbor)
+
 
 				# # Perform timeline matching to have same start-end points and no gaps
 				full_timeline, _, _ = timeline_matching(timeline_reference, timeline_neighbor)
 
 				neighbor_vector = np.zeros((len(full_timeline), 2))
 				neighbor_vector[:,:] = np.nan
+
+				intersection_vector = np.zeros((len(full_timeline)))
+				intersection_vector[:] = np.nan
 
 				centre_of_mass_columns = [(c,c.replace('POSITION_X','POSITION_Y')) for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_X')]
 				centre_of_mass_labels = [c.replace('_centre_of_mass_POSITION_X','') for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_X')]
@@ -319,7 +342,20 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 
 					if t in timeline_reference: # meaning position exists on both sides
 
-						idx_reference = list(timeline_reference).index(t) 
+						idx_reference = list(timeline_reference).index(t)
+						inter = intersection_values.loc[(intersection_values['neigh_id']==nc)&(intersection_values["frame"]==t),"intersection"].values
+						if len(inter)==0:
+							inter = np.nan
+						else:
+							inter = inter[0]
+
+						neigh_inter_fraction = np.nan
+						if inter==inter and neigh_area[t]==neigh_area[t]:
+							neigh_inter_fraction = inter / neigh_area[t]
+
+						ref_inter_fraction = np.nan
+						if inter==inter and ref_area[t]==ref_area[t]:
+							ref_inter_fraction = inter / ref_area[t]						
 
 						if nc in neighbor_ids_per_t[idx_reference]:
 
@@ -328,7 +364,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 									'reference_population': reference_population,
 									'neighbor_population': neighbor_population,
-									'FRAME': t, 'distance': relative_distance[t],
+									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter, 'reference_frac_area_intersection': ref_inter_fraction, 'neighbor_frac_area_intersection': neigh_inter_fraction,
 									'velocity': rel_velocity[t],
 									'velocity_smooth': rel_velocity_long_timescale[t], 
 									'angle': angle[t] * 180 / np.pi,
@@ -349,7 +385,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 									'reference_population': reference_population,
 									'neighbor_population': neighbor_population,
-									'FRAME': t, 'distance': relative_distance[t],
+									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter, 'reference_frac_area_intersection': ref_inter_fraction, 'neighbor_frac_area_intersection': neigh_inter_fraction,
 									'velocity': rel_velocity[t], 
 									'velocity_smooth': rel_velocity_long_timescale[t],
 									'angle': angle[t] * 180 / np.pi,
@@ -642,4 +678,92 @@ def extract_neighborhood_settings(neigh_string, population='targets'):
 	return neigh_protocol
 
 
+def expand_pair_table(data):
 
+	"""
+	Expands a pair table by merging reference and neighbor trajectory data from CSV files based on the specified 
+	reference and neighbor populations, and their associated positions and frames.
+
+	Parameters
+	----------
+	data : pandas.DataFrame
+		DataFrame containing the pair table, which should include the columns:
+		- 'reference_population': The reference population type.
+		- 'neighbor_population': The neighbor population type.
+		- 'position': The position identifier for each pair.
+
+	Returns
+	-------
+	pandas.DataFrame
+		Expanded DataFrame that includes merged reference and neighbor data, sorted by position, reference population, 
+		neighbor population, and frame. Rows without values in 'REFERENCE_ID', 'NEIGHBOR_ID', 'reference_population', 
+		or 'neighbor_population' are dropped.
+
+	Notes
+	-----
+	- For each unique pair of `reference_population` and `neighbor_population`, the function identifies corresponding 
+	  trajectories CSV files based on the position identifier.
+	- The function reads the trajectories CSV files, prefixes columns with 'reference_' or 'neighbor_' to avoid 
+	  conflicts, and merges data from reference and neighbor tables based on `TRACK_ID` or `ID`, and `FRAME`.
+	- Merges are performed in an outer join manner to retain all rows, regardless of missing values in the target files.
+	- The final DataFrame is sorted and cleaned to ensure only valid pairings are included.
+
+	Example
+	-------
+	>>> expanded_df = expand_pair_table(pair_table)
+	>>> expanded_df.head()
+
+	Raises
+	------
+	AssertionError
+		If 'reference_population' or 'neighbor_population' is not found in the columns of `data`.
+	"""
+
+	assert 'reference_population' in list(data.columns),"Please provide a valid pair table..."
+	assert 'neighbor_population' in list(data.columns),"Please provide a valid pair table..."
+
+	expanded_table = []
+	
+	for neigh, group in data.groupby(['reference_population','neighbor_population']):
+		
+		ref_pop = neigh[0]; neigh_pop = neigh[1];
+
+		for pos,pos_group in group.groupby('position'):
+			
+			ref_tab = os.sep.join([pos,'output','tables',f'trajectories_{ref_pop}.csv'])
+			neigh_tab = os.sep.join([pos,'output','tables',f'trajectories_{neigh_pop}.csv'])
+			
+			if os.path.exists(ref_tab):
+				df_ref = pd.read_csv(ref_tab)
+				if 'TRACK_ID' in df_ref.columns:
+					if not np.all(df_ref['TRACK_ID'].isnull()):
+						ref_merge_cols = ['TRACK_ID','FRAME']
+					else:
+						ref_merge_cols = ['ID','FRAME']
+				else:
+					ref_merge_cols = ['ID','FRAME']
+
+			if os.path.exists(neigh_tab):
+				df_neigh = pd.read_csv(neigh_tab)
+				if 'TRACK_ID' in df_neigh.columns:
+					if not np.all(df_neigh['TRACK_ID'].isnull()):
+						neigh_merge_cols = ['TRACK_ID','FRAME']
+					else:
+						neigh_merge_cols = ['ID','FRAME']
+				else:
+					neigh_merge_cols = ['ID','FRAME']
+
+			df_ref = df_ref.add_prefix('reference_',axis=1)
+			df_neigh = df_neigh.add_prefix('neighbor_',axis=1)
+			ref_merge_cols = ['reference_'+c for c in ref_merge_cols]
+			neigh_merge_cols = ['neighbor_'+c for c in neigh_merge_cols]
+
+			merge_ref = pos_group.merge(df_ref, how='outer', left_on=['REFERENCE_ID','FRAME'], right_on=ref_merge_cols, suffixes=('', '_reference'))
+			merge_neigh = merge_ref.merge(df_neigh, how='outer', left_on=['NEIGHBOR_ID','FRAME'], right_on=neigh_merge_cols, suffixes=('_reference', '_neighbor'))
+			expanded_table.append(merge_neigh)
+
+	df_expanded = pd.concat(expanded_table, axis=0, ignore_index = True)
+	df_expanded = df_expanded.sort_values(by=['position', 'reference_population','neighbor_population','REFERENCE_ID','NEIGHBOR_ID','FRAME'])
+	df_expanded = df_expanded.dropna(axis=0, subset=['REFERENCE_ID','NEIGHBOR_ID','reference_population','neighbor_population'])
+
+	return df_expanded

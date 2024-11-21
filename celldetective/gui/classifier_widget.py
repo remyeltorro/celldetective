@@ -120,9 +120,11 @@ class ClassifierWidget(QWidget, Styles):
 		self.property_query_le = QLineEdit()
 		self.property_query_le.setPlaceholderText('classify points using a query such as: area > 100 or eccentricity > 0.95')
 		self.property_query_le.setToolTip('Classify points using a query on measurements.\nYou can use "and" and "or" conditions to combine\nmeasurements (e.g. "area > 100 or eccentricity > 0.95").')
+		self.property_query_le.textChanged.connect(self.activate_submit_btn)
 		hbox_classify.addWidget(self.property_query_le, 70)
 		self.submit_query_btn = QPushButton('Submit...')
 		self.submit_query_btn.clicked.connect(self.apply_property_query)
+		self.submit_query_btn.setEnabled(False)
 		hbox_classify.addWidget(self.submit_query_btn, 20)
 		layout.addLayout(hbox_classify)
 
@@ -182,14 +184,23 @@ class ClassifierWidget(QWidget, Styles):
 
 		layout.addWidget(QLabel())
 
-
 		self.submit_btn = QPushButton('apply')
 		self.submit_btn.setStyleSheet(self.button_style_sheet)
 		self.submit_btn.clicked.connect(self.submit_classification)
+		self.submit_btn.setEnabled(False)
 		layout.addWidget(self.submit_btn, 30)
 
 		self.frame_slider.valueChanged.connect(self.set_frame)
 		self.alpha_slider.valueChanged.connect(self.set_transparency)
+
+	def activate_submit_btn(self):
+
+		if self.property_query_le.text()=='':
+			self.submit_query_btn.setEnabled(False)
+			self.submit_btn.setEnabled(False)
+		else:
+			self.submit_query_btn.setEnabled(True)
+			self.submit_btn.setEnabled(True)
 
 	def activate_r2(self):
 		if self.irreversible_event_btn.isChecked() and self.time_corr.isChecked():
@@ -242,6 +253,24 @@ class ClassifierWidget(QWidget, Styles):
 
 	def update_props_scatter(self, feature_changed=True):
 
+		try:
+			if np.any(self.df[self.features_cb[0].currentText()].to_numpy() <= 0.):
+				if self.ax_props.get_yscale()=='log':
+					self.log_btns[0].click()
+				self.log_btns[0].setEnabled(False)
+			else:
+				self.log_btns[0].setEnabled(True)
+
+			if np.any(self.df[self.features_cb[1].currentText()].to_numpy() <= 0.):
+				if self.ax_props.get_xscale()=='log':
+					self.log_btns[1].click()
+				self.log_btns[1].setEnabled(False)
+			else:
+				self.log_btns[1].setEnabled(True)
+		except Exception as e:
+			#print(e)
+			pass
+
 		class_name = self.class_name
 
 		try:
@@ -250,32 +279,45 @@ class ClassifierWidget(QWidget, Styles):
 				self.scat_props.set_offsets(self.df.loc[self.df['FRAME']==self.currentFrame,[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
 				colors = [color_from_status(c) for c in self.df.loc[self.df['FRAME']==self.currentFrame,class_name].to_numpy()]
 				self.scat_props.set_facecolor(colors)
-				self.scat_props.set_alpha(self.currentAlpha)
-				self.ax_props.set_xlabel(self.features_cb[1].currentText())
-				self.ax_props.set_ylabel(self.features_cb[0].currentText())
 			else:
 				self.scat_props.set_offsets(self.df[[self.features_cb[1].currentText(),self.features_cb[0].currentText()]].to_numpy())
 				colors = [color_from_status(c) for c in self.df[class_name].to_numpy()]
 				self.scat_props.set_facecolor(colors)
-				self.scat_props.set_alpha(self.currentAlpha)
+			
+			self.scat_props.set_alpha(self.currentAlpha)
+
+			if feature_changed:
+	
 				self.ax_props.set_xlabel(self.features_cb[1].currentText())
 				self.ax_props.set_ylabel(self.features_cb[0].currentText())
 
+				feat_x = self.features_cb[1].currentText()
+				feat_y = self.features_cb[0].currentText()
+				min_x = self.df.dropna(subset=feat_x)[feat_x].min()
+				max_x = self.df.dropna(subset=feat_x)[feat_x].max()
+				min_y = self.df.dropna(subset=feat_y)[feat_y].min()
+				max_y = self.df.dropna(subset=feat_y)[feat_y].max()
+				
+				x_padding = (max_x - min_x) * 0.05
+				y_padding = (max_y - min_y) * 0.05
+				if x_padding==0:
+					x_padding = 0.05
+				if y_padding==0:
+					y_padding = 0.05
 
-			feat_x = self.features_cb[1].currentText()
-			feat_y = self.features_cb[0].currentText()
-			min_x = self.df.dropna(subset=feat_x)[feat_x].min()
-			max_x = self.df.dropna(subset=feat_x)[feat_x].max()
-			min_y = self.df.dropna(subset=feat_y)[feat_y].min()
-			max_y = self.df.dropna(subset=feat_y)[feat_y].max()
-
-			if min_x==min_x and max_x==max_x:
-				self.ax_props.set_xlim(min_x, max_x)
-			if min_y==min_y and max_y==max_y:
-				self.ax_props.set_ylim(min_y, max_y)
+				if min_x==min_x and max_x==max_x:
+					if self.ax_props.get_xscale()=='linear':
+						self.ax_props.set_xlim(min_x - x_padding, max_x + x_padding)
+					else:
+						self.ax_props.set_xlim(min_x, max_x)
+				if min_y==min_y and max_y==max_y:
+					if self.ax_props.get_yscale()=='linear':
+						self.ax_props.set_ylim(min_y - y_padding, max_y + y_padding)
+					else:
+						self.ax_props.set_ylim(min_y, max_y)						
 			
-			if feature_changed:
 				self.propscanvas.canvas.toolbar.update()
+
 			self.propscanvas.canvas.draw_idle()
 		
 		except Exception as e:
@@ -284,7 +326,20 @@ class ClassifierWidget(QWidget, Styles):
 	def apply_property_query(self):
 		
 		query = self.property_query_le.text()
-		self.df = classify_cells_from_query(self.df, self.name_le.text(), query)
+		
+		try:
+			self.df = classify_cells_from_query(self.df, self.name_le.text(), query)
+		except Exception as e:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText(f"The query could not be understood. No filtering was applied. {e}")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				self.auto_close = False
+				return None
+
 		self.class_name = "status_"+self.name_le.text()
 		if self.df is None:
 			msgBox = QMessageBox()
@@ -294,8 +349,10 @@ class ClassifierWidget(QWidget, Styles):
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
 			if returnValue == QMessageBox.Ok:
+				self.auto_close = False
 				return None
-		self.update_props_scatter()
+
+		self.update_props_scatter(feature_changed=False)
 
 	def set_frame(self, value):
 		xlim=self.ax_props.get_xlim()
@@ -329,12 +386,14 @@ class ClassifierWidget(QWidget, Styles):
 			self.project_times_btn.setIcon(icon(MDI6.math_integral_box,color="black"))
 			self.project_times_btn.setIconSize(QSize(20, 20))
 			self.frame_slider.setEnabled(False)
-		self.update_props_scatter()
+		self.update_props_scatter(feature_changed=False)
 
 	def submit_classification(self):
 		
-		print('submit')
+		self.auto_close = True
 		self.apply_property_query()
+		if not self.auto_close:
+			return None
 
 		if self.time_corr.isChecked():
 			self.class_name_user = 'class_'+self.name_le.text()
@@ -424,22 +483,39 @@ class ClassifierWidget(QWidget, Styles):
 
 		if i==1:
 			try:
+				feat_x = self.features_cb[1].currentText()
+				min_x = self.df.dropna(subset=feat_x)[feat_x].min()
+				max_x = self.df.dropna(subset=feat_x)[feat_x].max()
+				x_padding = (max_x - min_x) * 0.05
+				if x_padding==0:
+					x_padding = 0.05
+
 				if self.ax_props.get_xscale()=='linear':
+					self.ax_props.set_xlim(min_x, max_x)
 					self.ax_props.set_xscale('log')
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="#1565c0"))
 				else:
 					self.ax_props.set_xscale('linear')
+					self.ax_props.set_xlim(min_x - x_padding, max_x + x_padding)
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
 			except Exception as e:
 				print(e)
 		elif i==0:
 			try:
+				feat_y = self.features_cb[0].currentText()
+				min_y = self.df.dropna(subset=feat_y)[feat_y].min()
+				max_y = self.df.dropna(subset=feat_y)[feat_y].max()
+				y_padding = (max_y - min_y) * 0.05
+				if y_padding==0:
+					y_padding = 0.05
+
 				if self.ax_props.get_yscale()=='linear':
-					ymin,ymax = self.ax_props.get_ylim()
+					self.ax_props.set_ylim(min_y, max_y)
 					self.ax_props.set_yscale('log')
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="#1565c0"))
 				else:
 					self.ax_props.set_yscale('linear')
+					self.ax_props.set_ylim(min_y - y_padding, max_y + y_padding)
 					self.log_btns[i].setIcon(icon(MDI6.math_log,color="black"))
 			except Exception as e:
 				print(e)

@@ -1,11 +1,13 @@
 from PyQt5.QtWidgets import QRadioButton, QButtonGroup, QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox, QMessageBox
 from PyQt5.QtCore import Qt, QAbstractTableModel
-from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtGui import QBrush, QColor, QDoubleValidator
 import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
-from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine
-from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status, test_2samp_generic
+from celldetective.gui.gui_utils import FigureCanvas, center_window, QHSeperationLine, GenericOpColWidget, PandasModel
+from celldetective.utils import differentiate_per_track, collapse_trajectories_by_status, test_2samp_generic, safe_log
+from celldetective.neighborhood import extract_neighborhood_in_pair_table
+from celldetective.relative_measurements import expand_pair_table
 import numpy as np
 import seaborn as sns
 import matplotlib.cm as mcm
@@ -15,47 +17,9 @@ from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from math import floor
+import re
 
 from matplotlib import colormaps
-
-class PandasModel(QAbstractTableModel):
-
-	"""
-	from https://stackoverflow.com/questions/31475965/fastest-way-to-populate-qtableview-from-pandas-data-frame
-	"""
-
-	def __init__(self, data):
-		QAbstractTableModel.__init__(self)
-		self._data = data
-		self.colors = dict()
-
-	def rowCount(self, parent=None):
-		return self._data.shape[0]
-
-	def columnCount(self, parent=None):
-		return self._data.shape[1]
-
-	def data(self, index, role=Qt.DisplayRole):
-		if index.isValid():
-			if role == Qt.DisplayRole:
-				return str(self._data.iloc[index.row(), index.column()])
-			if role == Qt.BackgroundRole:
-				color = self.colors.get((index.row(), index.column()))
-				if color is not None:
-					return color
-		return None
-
-	def headerData(self, rowcol, orientation, role):
-		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-			return self._data.columns[rowcol]
-		if orientation == Qt.Vertical and role == Qt.DisplayRole:
-			return self._data.index[rowcol]
-		return None
-
-	def change_color(self, row, column, color):
-		ix = self.index(row, column)
-		self.colors[(row, column)] = color
-		self.dataChanged.emit(ix, ix, (Qt.BackgroundRole,))
 
 
 class QueryWidget(QWidget):
@@ -66,9 +30,7 @@ class QueryWidget(QWidget):
 		self.parent_window = parent_window
 		self.setWindowTitle("Filter table")
 		# Create the QComboBox and add some items
-		center_window(self)
 
-		
 		layout = QHBoxLayout(self)
 		layout.setContentsMargins(30,30,30,30)
 		self.query_le = QLineEdit()
@@ -78,6 +40,7 @@ class QueryWidget(QWidget):
 		self.submit_btn.clicked.connect(self.filter_table)
 		layout.addWidget(self.submit_btn, 30)
 		self.setAttribute(Qt.WA_DeleteOnClose)
+		center_window(self)
 
 	def filter_table(self):
 		try:
@@ -252,47 +215,82 @@ class DifferentiateColWidget(QWidget, Styles):
 		self.parent_window.table_view.setModel(self.parent_window.model)
 		self.close()
 
-class AbsColWidget(QWidget, Styles):
+class CalibrateColWidget(GenericOpColWidget):
+	
+	def __init__(self, *args, **kwargs):
 
-	def __init__(self, parent_window, column=None):
+		super().__init__(title="Calibrate data", *args, **kwargs)	
 
-		super().__init__()
-		self.parent_window = parent_window
-		self.column = column
+		self.floatValidator = QDoubleValidator()
+		self.calibration_factor_le = QLineEdit('1')
+		self.calibration_factor_le.setPlaceholderText('multiplicative calibration factor...')
+		self.calibration_factor_le.setValidator(self.floatValidator)
 
-		self.setWindowTitle("abs(.)")
-		# Create the QComboBox and add some items
-		center_window(self)
+		self.units_le = QLineEdit('um')
+		self.units_le.setPlaceholderText('units...')
+
+		self.calibration_factor_le.textChanged.connect(self.check_valid_params)
+		self.units_le.textChanged.connect(self.check_valid_params)
+
+		calib_layout = QHBoxLayout()
+		calib_layout.addWidget(QLabel('calibration factor: '), 33)
+		calib_layout.addWidget(self.calibration_factor_le, 66)
+		self.sublayout.addLayout(calib_layout)
+
+		units_layout = QHBoxLayout()
+		units_layout.addWidget(QLabel('units: '), 33)
+		units_layout.addWidget(self.units_le, 66)
+		self.sublayout.addLayout(units_layout)
+
+		# info_layout = QHBoxLayout()
+		# info_layout.addWidget(QLabel('For reference: '))
+		# self.sublayout.addLayout(info_layout)
+
+		# info_layout2 = QHBoxLayout()
+		# info_layout2.addWidget(QLabel(f'PxToUm = {self.parent_window.parent_window.parent_window.PxToUm}'), 50)
+		# info_layout2.addWidget(QLabel(f'FrameToMin = {self.parent_window.parent_window.parent_window.FrameToMin}'), 50)
+		# self.sublayout.addLayout(info_layout2)
+
+	def check_valid_params(self):
 		
-		layout = QVBoxLayout(self)
-		layout.setContentsMargins(30,30,30,30)
+		try:
+			factor = float(self.calibration_factor_le.text().replace(',','.'))
+			factor_valid = True
+		except Exception as e:
+			factor_valid = False
 
-		self.measurements_cb = QComboBox()
-		self.measurements_cb.addItems(list(self.parent_window.data.columns))
-		if self.column is not None:
-			idx = self.measurements_cb.findText(self.column)
-			self.measurements_cb.setCurrentIndex(idx)
+		if self.units_le.text()=='':
+			units_valid = False
+		else:
+			units_valid = True
 
-		measurement_layout = QHBoxLayout()
-		measurement_layout.addWidget(QLabel('measurements: '), 25)
-		measurement_layout.addWidget(self.measurements_cb, 75)
-		layout.addLayout(measurement_layout)
+		if factor_valid and units_valid:
+			self.submit_btn.setEnabled(True)
+		else:
+			self.submit_btn.setEnabled(False)
 
-		self.submit_btn = QPushButton('Compute')
-		self.submit_btn.setStyleSheet(self.button_style_sheet)
-		self.submit_btn.clicked.connect(self.compute_abs_and_add_new_column)
-		layout.addWidget(self.submit_btn, 30)
-
-		self.setAttribute(Qt.WA_DeleteOnClose)
-
-
-	def compute_abs_and_add_new_column(self):
+	def compute(self):
+		self.parent_window.data[self.measurements_cb.currentText()+f'[{self.units_le.text()}]'] = self.parent_window.data[self.measurements_cb.currentText()] * float(self.calibration_factor_le.text().replace(',','.'))
 		
 
+class AbsColWidget(GenericOpColWidget):
+	
+	def __init__(self, *args, **kwargs):
+
+		super().__init__(title="abs(.)", *args, **kwargs)
+
+	def compute(self):
 		self.parent_window.data['|'+self.measurements_cb.currentText()+'|'] = self.parent_window.data[self.measurements_cb.currentText()].abs()
-		self.parent_window.model = PandasModel(self.parent_window.data)
-		self.parent_window.table_view.setModel(self.parent_window.model)
-		self.close()
+
+class LogColWidget(GenericOpColWidget):
+	
+	def __init__(self, *args, **kwargs):
+
+		super().__init__(title="log10(.)", *args, **kwargs)
+
+	def compute(self):
+		self.parent_window.data['log10('+self.measurements_cb.currentText()+')'] = safe_log(self.parent_window.data[self.measurements_cb.currentText()].values)
+
 
 class RenameColWidget(QWidget):
 
@@ -437,7 +435,7 @@ class PivotTableUI(QWidget):
 
 class TableUI(QMainWindow, Styles):
 
-	def __init__(self, data, title, population='targets',plot_mode="plot_track_signals", *args, **kwargs):
+	def __init__(self, data, title, population='targets',plot_mode="plot_track_signals", save_inplace_option=False, collapse_tracks_option=True, *args, **kwargs):
 
 		QMainWindow.__init__(self, *args, **kwargs)
 
@@ -450,6 +448,8 @@ class TableUI(QMainWindow, Styles):
 		self.numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
 		self.groupby_cols = ['position', 'TRACK_ID']
 		self.tracks = False
+		self.save_inplace_option = save_inplace_option
+		self.collapse_tracks_option = collapse_tracks_option
 
 		if self.population=='pairs':
 			self.groupby_cols = ['position','reference_population', 'neighbor_population','REFERENCE_ID', 'NEIGHBOR_ID']
@@ -458,6 +458,8 @@ class TableUI(QMainWindow, Styles):
 			if 'TRACK_ID' in data.columns:
 				if not np.all(data['TRACK_ID'].isnull()):
 					self.tracks = True
+		
+		self.data = data
 
 		self._createMenuBar()
 		self._createActions()
@@ -466,7 +468,6 @@ class TableUI(QMainWindow, Styles):
 		self.setCentralWidget(self.table_view)
 
 		# Set the model for the table view
-		self.data = data
 
 		self.model = PandasModel(data)
 		self.table_view.setModel(self.model)
@@ -476,128 +477,199 @@ class TableUI(QMainWindow, Styles):
 
 	def _createActions(self):
 
-			self.save_as = QAction("&Save as...", self)
-			self.save_as.triggered.connect(self.save_as_csv)
-			self.save_as.setShortcut("Ctrl+s")
-			self.fileMenu.addAction(self.save_as)
+		self.save_as = QAction("&Save as...", self)
+		self.save_as.triggered.connect(self.save_as_csv)
+		self.save_as.setShortcut("Ctrl+s")
+		self.fileMenu.addAction(self.save_as)
 
+		if self.save_inplace_option:
 			self.save_inplace = QAction("&Save inplace...", self)
 			self.save_inplace.triggered.connect(self.save_as_csv_inplace_per_pos)
 			#self.save_inplace.setShortcut("Ctrl+s")
 			self.fileMenu.addAction(self.save_inplace)
 
-			self.plot_action = QAction("&Plot...", self)
-			self.plot_action.triggered.connect(self.plot)
-			self.plot_action.setShortcut("Ctrl+p")
-			self.fileMenu.addAction(self.plot_action)		
+		self.plot_action = QAction("&Plot...", self)
+		self.plot_action.triggered.connect(self.plot)
+		self.plot_action.setShortcut("Ctrl+p")
+		self.fileMenu.addAction(self.plot_action)		
 
-			self.plot_inst_action = QAction("&Plot instantaneous...", self)
-			self.plot_inst_action.triggered.connect(self.plot_instantaneous)
-			self.plot_inst_action.setShortcut("Ctrl+i")
-			self.fileMenu.addAction(self.plot_inst_action)	
+		self.plot_inst_action = QAction("&Plot instantaneous...", self)
+		self.plot_inst_action.triggered.connect(self.plot_instantaneous)
+		self.plot_inst_action.setShortcut("Ctrl+i")
+		self.fileMenu.addAction(self.plot_inst_action)	
 
-			self.groupby_action = QAction("&Group by tracks...", self)
-			self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
-			self.groupby_action.setShortcut("Ctrl+g")
-			self.fileMenu.addAction(self.groupby_action)
-			if not self.tracks:
-				self.groupby_action.setEnabled(False)
+		self.groupby_action = QAction("&Collapse tracks...", self)
+		self.groupby_action.triggered.connect(self.set_projection_mode_tracks)
+		self.groupby_action.setShortcut("Ctrl+g")
+		self.fileMenu.addAction(self.groupby_action)
+		if not self.tracks or not self.collapse_tracks_option:
+			self.groupby_action.setEnabled(False)
 
-			if self.population=='pairs':
-				self.groupby_neigh_action = QAction("&Group by neighbors...", self)
-				self.groupby_neigh_action.triggered.connect(self.set_projection_mode_neigh)
-				self.fileMenu.addAction(self.groupby_neigh_action)	
+		if self.population=='pairs':
 
-				self.groupby_ref_action = QAction("&Group by reference...", self)
-				self.groupby_ref_action.triggered.connect(self.set_projection_mode_ref)
-				self.fileMenu.addAction(self.groupby_ref_action)	
+			self.groupby_pairs_in_neigh_action = QAction("&Collapse pairs in neighborhood...", self)
+			self.groupby_pairs_in_neigh_action.triggered.connect(self.collapse_pairs_in_neigh)
+			self.fileMenu.addAction(self.groupby_pairs_in_neigh_action)
 
-
+		if 'FRAME' in list(self.data.columns):
 			self.groupby_time_action = QAction("&Group by frames...", self)
 			self.groupby_time_action.triggered.connect(self.groupby_time_table)
 			self.groupby_time_action.setShortcut("Ctrl+t")
 			self.fileMenu.addAction(self.groupby_time_action)
 
-			self.query_action = QAction('Query...', self)
-			self.query_action.triggered.connect(self.perform_query)
-			self.fileMenu.addAction(self.query_action)
+		self.query_action = QAction('Query...', self)
+		self.query_action.triggered.connect(self.perform_query)
+		self.fileMenu.addAction(self.query_action)
 
-			self.delete_action = QAction('&Delete...', self)
-			self.delete_action.triggered.connect(self.delete_columns)
-			self.delete_action.setShortcut(Qt.Key_Delete)
-			self.editMenu.addAction(self.delete_action)
+		self.delete_action = QAction('&Delete...', self)
+		self.delete_action.triggered.connect(self.delete_columns)
+		self.delete_action.setShortcut(Qt.Key_Delete)
+		self.editMenu.addAction(self.delete_action)
 
-			self.rename_col_action = QAction('&Rename...', self)
-			self.rename_col_action.triggered.connect(self.rename_column)
+		self.rename_col_action = QAction('&Rename...', self)
+		self.rename_col_action.triggered.connect(self.rename_column)
+		#self.rename_col_action.setShortcut(Qt.Key_Delete)
+		self.editMenu.addAction(self.rename_col_action)
+
+		if self.population=='pairs':
+			self.merge_action = QAction('&Merge...', self)
+			self.merge_action.triggered.connect(self.merge_tables)
 			#self.rename_col_action.setShortcut(Qt.Key_Delete)
-			self.editMenu.addAction(self.rename_col_action)
+			self.editMenu.addAction(self.merge_action)
 
-			if self.population=='pairs':
-				self.merge_action = QAction('&Merge...', self)
-				self.merge_action.triggered.connect(self.merge_tables)
-				#self.rename_col_action.setShortcut(Qt.Key_Delete)
-				self.editMenu.addAction(self.merge_action)
+		self.calibrate_action = QAction('&Calibrate...', self)
+		self.calibrate_action.triggered.connect(self.calibrate_selected_feature)
+		self.calibrate_action.setShortcut("Ctrl+C")
+		self.mathMenu.addAction(self.calibrate_action)
 
-			self.derivative_action = QAction('&Differentiate...', self)
-			self.derivative_action.triggered.connect(self.differenciate_selected_feature)
-			self.derivative_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.derivative_action)
+		self.derivative_action = QAction('&Differentiate...', self)
+		self.derivative_action.triggered.connect(self.differenciate_selected_feature)
+		self.derivative_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.derivative_action)
 
-			self.abs_action = QAction('&Absolute value...', self)
-			self.abs_action.triggered.connect(self.take_abs_of_selected_feature)
-			#self.derivative_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.abs_action)			
+		self.abs_action = QAction('&Absolute value...', self)
+		self.abs_action.triggered.connect(self.take_abs_of_selected_feature)
+		#self.derivative_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.abs_action)
 
-			self.onehot_action = QAction('&One hot to categorical...', self)
-			self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
-			#self.onehot_action.setShortcut("Ctrl+D")
-			self.mathMenu.addAction(self.onehot_action)		
+		self.log_action = QAction('&Log (decimal)...', self)
+		self.log_action.triggered.connect(self.take_log_of_selected_feature)
+		#self.derivative_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.log_action)						
+
+		self.onehot_action = QAction('&One hot to categorical...', self)
+		self.onehot_action.triggered.connect(self.transform_one_hot_cols_to_categorical)
+		#self.onehot_action.setShortcut("Ctrl+D")
+		self.mathMenu.addAction(self.onehot_action)		
+
+	def collapse_pairs_in_neigh(self):
+
+		self.selectNeighWidget = QWidget()
+		self.selectNeighWidget.setMinimumWidth(480)
+		self.selectNeighWidget.setWindowTitle('Set neighborhood of interest')
+		
+		layout = QVBoxLayout()
+		self.selectNeighWidget.setLayout(layout)
+
+		self.reference_lbl = QLabel('reference population: ')
+		self.reference_pop_cb = QComboBox()
+		ref_pops = self.data['reference_population'].unique()
+		self.reference_pop_cb.addItems(ref_pops)
+		self.reference_pop_cb.currentIndexChanged.connect(self.update_neighborhoods)
+
+		reference_hbox = QHBoxLayout()
+		reference_hbox.addWidget(self.reference_lbl, 33)
+		reference_hbox.addWidget(self.reference_pop_cb, 66)
+		layout.addLayout(reference_hbox)
+
+		self.neigh_lbl = QLabel('neighborhod: ')
+		self.neigh_cb = QComboBox()
+		neigh_cols = [c.replace('status_','') for c in list(self.data.loc[self.data['reference_population']==self.reference_pop_cb.currentText()].columns) if c.startswith('status_neighborhood')]
+		self.neigh_cb.addItems(neigh_cols)
+
+		neigh_hbox = QHBoxLayout()
+		neigh_hbox.addWidget(self.neigh_lbl, 33)
+		neigh_hbox.addWidget(self.neigh_cb, 66)
+		layout.addLayout(neigh_hbox)
+
+		contact_hbox = QHBoxLayout()
+		self.contact_only_check = QCheckBox('keep only pairs in contact')
+		self.contact_only_check.setChecked(True)
+		contact_hbox.addWidget(self.contact_only_check, alignment=Qt.AlignLeft)
+		layout.addLayout(contact_hbox)
+
+		self.groupby_pair_rb = QRadioButton('Group by pair')
+		self.groupby_reference_rb = QRadioButton('Group by reference')
+		self.groupby_pair_rb.setChecked(True)
+
+		groupby_hbox = QHBoxLayout()
+		groupby_hbox.addWidget(QLabel('collapse option: '), 33)
+		groupby_hbox.addWidget(self.groupby_pair_rb, (100-33)//2)
+		groupby_hbox.addWidget(self.groupby_reference_rb, (100-33)//2)
+		layout.addLayout(groupby_hbox)
+
+		self.apply_neigh_btn = QPushButton('Set')
+		self.apply_neigh_btn.setStyleSheet(self.button_style_sheet)
+		self.apply_neigh_btn.clicked.connect(self.prepare_table_at_neighborhood)
+
+		apply_hbox = QHBoxLayout()
+		apply_hbox.addWidget(QLabel(''),33)
+		apply_hbox.addWidget(self.apply_neigh_btn,66)
+		layout.addLayout(apply_hbox)
+
+		self.selectNeighWidget.show()
+		center_window(self.selectNeighWidget)
+
+	def prepare_table_at_neighborhood(self):
+
+		ref_pop = self.reference_pop_cb.currentText()
+		neighborhood = self.neigh_cb.currentText()
+		status_neigh = 'status_'+neighborhood
+		if 'self' in neighborhood:
+			neighbor_pop = ref_pop
+		elif ref_pop=='targets':
+			neighbor_pop = 'effectors'
+		elif ref_pop=='effectors':
+			neighbor_pop = "targets"
+
+		data = extract_neighborhood_in_pair_table(self.data, neighborhood_key=neighborhood, contact_only=self.contact_only_check.isChecked())
+
+		if self.groupby_pair_rb.isChecked():
+			self.groupby_cols = ['position', 'REFERENCE_ID', 'NEIGHBOR_ID']
+		elif self.groupby_reference_rb.isChecked():
+			self.groupby_cols = ['position', 'REFERENCE_ID']
+
+		self.current_data = data
+		skip_projection = False
+		if 'reference_tracked' in list(self.current_data.columns):
+			if np.all(self.current_data['reference_tracked'].astype(bool)==False):
+				# reference not tracked
+				if self.groupby_reference_rb.isChecked():
+					self.groupby_cols = ['position', 'FRAME', 'REFERENCE_ID']
+				elif self.groupby_pair_rb.isChecked():
+					print('The reference cells seem to not be tracked. No collapse can be performed.')
+					skip_projection=True
+			else:
+				if np.all(self.current_data['neighbors_tracked'].astype(bool)==False):
+					# neighbors not tracked
+					if self.groupby_pair_rb.isChecked():
+						print('The neighbor cells seem to not be tracked. No collapse can be performed.')
+						skip_projection=True				
+					elif self.groupby_reference_rb.isChecked():
+						self.groupby_cols = ['position', 'REFERENCE_ID'] # think about what would be best
+
+		if not skip_projection:
+			self.set_projection_mode_tracks()
+
+	def update_neighborhoods(self):
+		
+		neigh_cols = [c.replace('status_','') for c in list(self.data.loc[self.data['reference_population']==self.reference_pop_cb.currentText()].columns) if c.startswith('status_neighborhood')]
+		self.neigh_cb.clear()
+		self.neigh_cb.addItems(neigh_cols)		
 
 	def merge_tables(self):
 
-		expanded_table = []
-		
-		for neigh, group in self.data.groupby(['reference_population','neighbor_population']):
-			print(f'{neigh=}')
-			ref_pop = neigh[0]; neigh_pop = neigh[1];
-			for pos,pos_group in group.groupby('position'):
-				print(f'{pos=}')
-				
-				ref_tab = os.sep.join([pos,'output','tables',f'trajectories_{ref_pop}.csv'])
-				neigh_tab = os.sep.join([pos,'output','tables',f'trajectories_{neigh_pop}.csv'])
-				if os.path.exists(ref_tab):
-					df_ref = pd.read_csv(ref_tab)
-					if 'TRACK_ID' in df_ref.columns:
-						if not np.all(df_ref['TRACK_ID'].isnull()):
-							ref_merge_cols = ['TRACK_ID','FRAME']
-						else:
-							ref_merge_cols = ['ID','FRAME']
-					else:
-						ref_merge_cols = ['ID','FRAME']
-				if os.path.exists(neigh_tab):
-					df_neigh = pd.read_csv(neigh_tab)
-					if 'TRACK_ID' in df_neigh.columns:
-						if not np.all(df_neigh['TRACK_ID'].isnull()):
-							neigh_merge_cols = ['TRACK_ID','FRAME']
-						else:
-							neigh_merge_cols = ['ID','FRAME']
-					else:
-						neigh_merge_cols = ['ID','FRAME']
-
-				df_ref = df_ref.add_prefix('reference_',axis=1)
-				df_neigh = df_neigh.add_prefix('neighbor_',axis=1)
-				ref_merge_cols = ['reference_'+c for c in ref_merge_cols]
-				neigh_merge_cols = ['neighbor_'+c for c in neigh_merge_cols]
-
-				merge_ref = pos_group.merge(df_ref, how='outer', left_on=['REFERENCE_ID','FRAME'], right_on=ref_merge_cols, suffixes=('', '_reference'))
-				print(f'{merge_ref.columns=}')
-				merge_neigh = merge_ref.merge(df_neigh, how='outer', left_on=['NEIGHBOR_ID','FRAME'], right_on=neigh_merge_cols, suffixes=('_reference', '_neighbor'))
-				print(f'{merge_neigh.columns=}')
-				expanded_table.append(merge_neigh)
-
-		df_expanded = pd.concat(expanded_table, axis=0, ignore_index = True)
-		df_expanded = df_expanded.sort_values(by=['position', 'reference_population','neighbor_population','REFERENCE_ID','NEIGHBOR_ID','FRAME'])
-		df_expanded = df_expanded.dropna(axis=0, subset=['REFERENCE_ID','NEIGHBOR_ID','reference_population','neighbor_population'])
+		df_expanded = expand_pair_table(self.data)
 		self.subtable = TableUI(df_expanded, 'merge', plot_mode = "static", population='pairs')
 		self.subtable.show()	
 
@@ -668,6 +740,37 @@ class TableUI(QMainWindow, Styles):
 		self.diffWidget = DifferentiateColWidget(self, selected_col)
 		self.diffWidget.show()
 
+	def take_log_of_selected_feature(self):
+		
+		# check only one col selected and assert is numerical
+		# open widget to select window parameters, directionality
+		# create new col
+		
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		if col_idx!=0:
+			cols = np.array(list(self.data.columns))
+			selected_col = str(cols[col_idx][0])
+		else:
+			selected_col = None
+
+		self.LogWidget = LogColWidget(self, selected_col)
+		self.LogWidget.show()
+
+	def calibrate_selected_feature(self):
+		
+		x = self.table_view.selectedIndexes()
+		col_idx = np.unique(np.array([l.column() for l in x]))
+		if col_idx!=0:
+			cols = np.array(list(self.data.columns))
+			selected_col = str(cols[col_idx][0])
+		else:
+			selected_col = None
+
+		self.calWidget = CalibrateColWidget(self, selected_col)
+		self.calWidget.show()
+
+
 	def take_abs_of_selected_feature(self):
 		
 		# check only one col selected and assert is numerical
@@ -735,14 +838,18 @@ class TableUI(QMainWindow, Styles):
 	def set_projection_mode_neigh(self):
 
 		self.groupby_cols = ['position', 'reference_population', 'neighbor_population', 'NEIGHBOR_ID', 'FRAME']
+		self.current_data = self.data
 		self.set_projection_mode_tracks()
 
 	def set_projection_mode_ref(self):
 		
 		self.groupby_cols = ['position', 'reference_population', 'neighbor_population', 'REFERENCE_ID', 'FRAME']
+		self.current_data = self.data
 		self.set_projection_mode_tracks()
 
 	def set_projection_mode_tracks(self):
+		
+		self.current_data = self.data
 
 		self.projectionWidget = QWidget()
 		self.projectionWidget.setMinimumWidth(500)
@@ -855,6 +962,7 @@ class TableUI(QMainWindow, Styles):
 		self.kde_check = QCheckBox('KDE plot')
 		self.count_check = QCheckBox('countplot')
 		self.ecdf_check = QCheckBox('ECDF plot')
+		self.line_check = QCheckBox('line plot')
 		self.scat_check = QCheckBox('scatter plot')
 		self.swarm_check = QCheckBox('swarm')
 		self.violin_check = QCheckBox('violin')
@@ -870,6 +978,7 @@ class TableUI(QMainWindow, Styles):
 		layout.addWidget(self.kde_check)
 		layout.addWidget(self.count_check)
 		layout.addWidget(self.ecdf_check)
+		layout.addWidget(self.line_check)
 		layout.addWidget(self.scat_check)
 		layout.addWidget(self.swarm_check)
 		layout.addWidget(self.violin_check)
@@ -1009,7 +1118,15 @@ class TableUI(QMainWindow, Styles):
 				legend = False
 			else:
 				pass
-						
+				
+		if self.line_check.isChecked():
+			if self.x_option:
+				sns.lineplot(data=self.data, x=self.x,y=self.y, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors)
+				legend = False
+			else:
+				print('please provide a -x variable...')
+				pass
+
 		if self.scat_check.isChecked():
 			if self.x_option:
 				sns.scatterplot(data=self.data, x=self.x,y=self.y, hue=self.hue_variable,legend=legend, ax=self.ax, palette=colors)
@@ -1117,12 +1234,12 @@ class TableUI(QMainWindow, Styles):
 		if self.projection_option.isChecked():
 
 			self.projection_mode = self.projection_op_cb.currentText()
-			op = getattr(self.data.groupby(self.groupby_cols), self.projection_mode)
-			group_table = op(self.data.groupby(self.groupby_cols))
+			op = getattr(self.current_data.groupby(self.groupby_cols), self.projection_mode)
+			group_table = op(self.current_data.groupby(self.groupby_cols))
 
 			for c in self.static_columns:
 				try:
-					group_table[c] = self.data.groupby(self.groupby_cols)[c].apply(lambda x: x.unique()[0])
+					group_table[c] = self.current_data.groupby(self.groupby_cols)[c].apply(lambda x: x.unique()[0])
 				except Exception as e:
 					print(e)
 					pass
@@ -1144,7 +1261,7 @@ class TableUI(QMainWindow, Styles):
 			time_of_interest = self.event_times_cb.currentText()
 			self.projection_mode = f"measurements at {time_of_interest}"
 			new_table = []
-			for tid,group in self.data.groupby(self.groupby_cols):
+			for tid,group in self.current_data.groupby(self.groupby_cols):
 				time = group[time_of_interest].values[0]
 				if time==time:
 					time = floor(time) # floor for onset
@@ -1153,7 +1270,7 @@ class TableUI(QMainWindow, Styles):
 				frames = group['FRAME'].values
 				values = group.loc[group['FRAME']==time,:].to_numpy()
 				if len(values)>0:
-					values = dict(zip(list(self.data.columns), values[0]))
+					values = dict(zip(list(self.current_data.columns), values[0]))
 					for k,c in enumerate(self.groupby_cols):
 						values.update({c: tid[k]})
 					new_table.append(values)
@@ -1174,9 +1291,9 @@ class TableUI(QMainWindow, Styles):
 
 		elif self.per_status_option.isChecked():
 			self.projection_mode = self.status_operation.currentText()
-			group_table = collapse_trajectories_by_status(self.data, status=self.per_status_cb.currentText(),population=self.population, projection=self.status_operation.currentText(), groupby_columns=self.groupby_cols)
+			group_table = collapse_trajectories_by_status(self.current_data, status=self.per_status_cb.currentText(),population=self.population, projection=self.status_operation.currentText(), groupby_columns=self.groupby_cols)
 
-		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static")
+		self.subtable = TableUI(group_table,f"Group by tracks: {self.projection_mode}", plot_mode="static", collapse_tracks_option=False)
 		self.subtable.show()
 
 		self.projectionWidget.close()

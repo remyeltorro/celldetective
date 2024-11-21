@@ -1,7 +1,7 @@
 import numpy as np
 from lifelines import KaplanMeierFitter
 
-def switch_to_events(classes, event_times, max_times, origin_times=None, left_censored=True, FrameToMin=None):
+def switch_to_events(classes, event_times, max_times, origin_times=None, left_censored=True, FrameToMin=None, cut_observation_time=None):
 	
 
 	"""
@@ -29,6 +29,8 @@ def switch_to_events(classes, event_times, max_times, origin_times=None, left_ce
 	FrameToMin : float, optional
 		A conversion factor to transform survival times from frames (or any other unit) to minutes. If None, no conversion 
 		is applied (default is None).
+	cut_observation_time : float or None, optional
+		A cutoff time to artificially reduce the observation window and exclude late events. If None, uses all available data (default is None).
 
 	Returns
 	-------
@@ -70,15 +72,40 @@ def switch_to_events(classes, event_times, max_times, origin_times=None, left_ce
 			if ot>=0. and ot==ot:
 				# origin time is larger than zero, no censorship
 				if c==0 and t>0:
+					
 					delta_t = t - ot
-					if delta_t>0:
-						events.append(1)
-						survival_times.append(delta_t)
-					else:
-						# negative delta t, invalid cell
-						pass
+
+					# Special case: observation cut at arbitrary time
+					if cut_observation_time is not None:
+						if t>=cut_observation_time:
+							# event time larger than cut, becomes no event
+							delta_t = cut_observation_time - ot # new time
+							if delta_t > 0:
+								events.append(0)
+								survival_times.append(delta_t)
+							else:
+								# negative delta t, invalid cell
+								pass
+						else:
+							# still event
+							if delta_t > 0:
+								events.append(1)
+								survival_times.append(delta_t)	
+							else:
+								# negative delta t, invalid cell
+								pass				
+					else: 
+						# standard mode
+						if delta_t>0:
+							events.append(1)
+							survival_times.append(delta_t)
+						else:
+							# negative delta t, invalid cell
+							pass
 				elif c==1:
 					delta_t = mt - ot
+					if cut_observation_time is not None:
+						delta_t = cut_observation_time - ot
 					if delta_t>0:
 						events.append(0)
 						survival_times.append(delta_t)
@@ -93,10 +120,20 @@ def switch_to_events(classes, event_times, max_times, origin_times=None, left_ce
 
 		else:
 			if c==0 and t>0:
-				events.append(1)
-				survival_times.append(t - ot)
+				if cut_observation_time is not None:
+					if t>cut_observation_time:
+						events.append(0)
+						survival_times.append(cut_observation_time - ot)
+					else:
+						events.append(1)
+						survival_times.append(t - ot)						
+				else:				
+					events.append(1)
+					survival_times.append(t - ot)
 			elif c==1:
 				events.append(0)
+				if cut_observation_time is not None:
+					mt = cut_observation_time
 				survival_times.append(mt - ot)
 			else:
 				pass
@@ -106,7 +143,47 @@ def switch_to_events(classes, event_times, max_times, origin_times=None, left_ce
 		survival_times = [s*FrameToMin for s in survival_times]
 	return events, survival_times
 
-def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMin=1):
+def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMin=1, cut_observation_time=None):
+
+	"""
+	Computes survival analysis for a specific class of interest within a dataset, returning a fitted Kaplan-Meier 
+	survival curve based on event and reference times.
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		The dataset containing tracking data, event times, and other relevant columns for survival analysis.
+	class_of_interest : str
+		The name of the column that specifies the class for which survival analysis is to be computed.
+	t_event : str
+		The column indicating the time of the event of interest (e.g., cell death or migration stop).
+	t_reference : str or None, optional
+		The reference column indicating the start or origin time for each track (e.g., detection time). If None, 
+		events are not left-censored (default is None).
+	FrameToMin : float, optional
+		Conversion factor to scale the frame time to minutes (default is 1, assuming no scaling).
+	cut_observation_time : float or None, optional
+		A cutoff time to artificially reduce the observation window and exclude late events. If None, uses all available data (default is None).
+	Returns
+	-------
+	ks : lifelines.KaplanMeierFitter or None
+		A fitted Kaplan-Meier estimator object. If there are no events, returns None.
+
+	Notes
+	-----
+	- The function groups the data by 'position' and 'TRACK_ID', extracting the minimum `class_of_interest` and `t_event` 
+	  values for each track.
+	- If `t_reference` is provided, the analysis assumes left-censoring and will use `t_reference` as the origin time for 
+	  each track.
+	- The function calls `switch_to_events` to determine the event occurrences and their associated survival times.
+	- A Kaplan-Meier estimator (`KaplanMeierFitter`) is fitted to the data to compute the survival curve.
+
+	Example
+	-------
+	>>> ks = compute_survival(df, class_of_interest="class_custom", t_event="time_custom", t_reference="t_firstdetection")
+	>>> ks.plot_survival_function()
+	
+	"""
 
 	cols = list(df.columns)
 	assert class_of_interest in cols,"The requested class cannot be found in the dataframe..."
@@ -127,7 +204,7 @@ def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMi
 		assert t_reference in cols,"The reference time cannot be found in the dataframe..."
 		first_detections = df.groupby(['position','TRACK_ID'])[t_reference].max().values
 	
-	events, survival_times = switch_to_events(classes, event_times, max_times, origin_times=first_detections, left_censored=left_censored, FrameToMin=FrameToMin)
+	events, survival_times = switch_to_events(classes, event_times, max_times, origin_times=first_detections, left_censored=left_censored, FrameToMin=FrameToMin, cut_observation_time=cut_observation_time)
 	ks = KaplanMeierFitter()
 	if len(events)>0:
 		ks.fit(survival_times, event_observed=events)

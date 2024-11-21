@@ -13,14 +13,16 @@ We provide two demo experiments in `Zenodo`_ :
 #. an ADCC experiment: we imaged a co-culture of MCF-7 and human primary NK cells, in the presence of antibodies
 #. a RICM experiment: we imaged human primary NK cells spreading on a surface covered with antibodies 
 
-Unzip the file, extract the content. The resulting folder, containing a well ``W1/`` and a ``config.ini`` file is the experiment folder. Open Celldetective, load this experiment folder. Here, we show the analysis steps for the ADCC demo. 
+To grab the demo, either:
+1) Open the software, go to ``File > Open Demo > Cytotoxicity Assay Demo``. The project will be downloaded automatically to the folder of your choice.
+2) Download the ``demo_adcc.zip`` file from Zenodo and put it anywhere in your computer. Extract the content. Point towards this project in Celldetective.
 
 Segment
 -------
 
 At the top part of the control panel, select the ``W1`` well and ``100`` position option to process the first position only.
 
-First, expand the ``PROCESS TARGETS`` block. Tick the ``SEGMENT`` option, select the ``MCF7_h_versatile`` model in the segmentation model zoo. Click on ``Submit`` to segment. The terminal will show the segmentation progress and the GUI will freeze. This step will take a few minutes. Upon completion the eye icon becomes active. Click on it to see the segmentation result in napari.
+First, expand the ``PROCESS TARGETS`` block. Tick the ``SEGMENT`` option, select the ``mcf7_nuc_stardist_transfer`` model in the segmentation model zoo. Click on ``Submit`` to segment. The terminal will show the segmentation progress and the GUI will freeze (about 10 minutes on CPU, around a minute for a GPU). Upon completion the eye icon becomes active. Click on it to see the segmentation result in napari.
 
 
 Track
@@ -31,7 +33,7 @@ Click on the settings button of the tracking module. Make sure that features are
 Measure
 -------
 
-Tick the ``MEASURE`` and ``SIGNAL ANALYSIS`` options. Select ``lysis_PI_area`` in the signal analysis model zoo, to automatically detect lysis events. Submit. At the end of the process, you can configure the signal annotator visualizer by clicking on the settings button of the signal analysis module. Configure the RGB representation and save. Click on the eye to visualize the tracked cells and their signals.
+Tick the ``MEASURE`` and ``DETECT EVENTS`` options. Select ``lysis_PI_area`` in the signal analysis model zoo, to automatically detect lysis events. Submit. At the end of the process, you can configure the signal annotator visualizer by clicking on the settings button of the signal analysis module. Configure the RGB representation and save. Click on the eye to visualize the tracked cells and their signals.
 
 .. figure:: _static/signal-annotator.gif
     :width: 800px

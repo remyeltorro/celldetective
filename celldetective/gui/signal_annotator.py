@@ -50,6 +50,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.soft_path = get_software_location()
 		self.recently_modified = False
 		self.selection = []
+
 		if self.mode == "targets":
 			self.instructions_path = self.exp_dir + os.sep.join(['configs', 'signal_annotator_config_targets.json'])
 			self.trajectories_path = self.pos + os.sep.join(['output','tables','trajectories_targets.csv'])
@@ -505,6 +506,11 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.df_tracks['class_color'] = [color_from_class(i) for i in self.df_tracks[self.class_name].to_numpy()]
 
 		self.extract_scatter_from_trajectories()
+		if len(self.selection)>0:
+			self.select_single_cell(self.selection[0][0], self.selection[0][1])
+
+		self.fcanvas.canvas.draw()
+
 
 	def contrast_slider_action(self):
 
@@ -1068,6 +1074,8 @@ class SignalAnnotator(QMainWindow, Styles):
 
 	def on_scatter_pick(self, event):
 
+		self.event = event
+
 		self.correct_btn.disconnect()
 		self.correct_btn.clicked.connect(self.show_annotation_buttons)
 
@@ -1082,35 +1090,41 @@ class SignalAnnotator(QMainWindow, Styles):
 			ind = [ind[np.argmin(dist)]]
 
 		if len(ind) > 0 and (len(self.selection) == 0):
-			ind = ind[0]
-			self.selection.append(ind)
-			self.correct_btn.setEnabled(True)
-			self.cancel_btn.setEnabled(True)
-			self.del_shortcut.setEnabled(True)
-			self.no_event_shortcut.setEnabled(True)
-
-			self.track_of_interest = self.tracks[self.framedata][ind]
-			print(f'You selected cell #{self.track_of_interest}...')
-			self.give_cell_information()
-			self.plot_signals()
-
-			self.loc_t = []
-			self.loc_idx = []
-			for t in range(len(self.tracks)):
-				indices = np.where(self.tracks[t] == self.track_of_interest)[0]
-				if len(indices) > 0:
-					self.loc_t.append(t)
-					self.loc_idx.append(indices[0])
-
-			self.previous_color = []
-			for t, idx in zip(self.loc_t, self.loc_idx):
-				self.previous_color.append(self.colors[t][idx].copy())
-				self.colors[t][idx] = 'lime'
+			
+			self.selection.append([ind[0],self.framedata])
+			self.select_single_cell(ind[0], self.framedata)
 
 		elif len(ind) > 0 and len(self.selection) == 1:
 			self.cancel_btn.click()
 		else:
 			pass
+
+	def select_single_cell(self, index, timepoint):
+
+		self.correct_btn.setEnabled(True)
+		self.cancel_btn.setEnabled(True)
+		self.del_shortcut.setEnabled(True)
+		self.no_event_shortcut.setEnabled(True)
+
+		self.track_of_interest = self.tracks[timepoint][index]
+		print(f'You selected cell #{self.track_of_interest}...')
+		self.give_cell_information()
+		self.plot_signals()
+
+		self.loc_t = []
+		self.loc_idx = []
+		for t in range(len(self.tracks)):
+			indices = np.where(self.tracks[t] == self.track_of_interest)[0]
+			if len(indices) > 0:
+				self.loc_t.append(t)
+				self.loc_idx.append(indices[0])
+
+		self.previous_color = []
+		for t, idx in zip(self.loc_t, self.loc_idx):
+			self.previous_color.append(self.colors[t][idx].copy())
+			self.colors[t][idx] = 'lime'
+
+
 
 	def shortcut_suppr(self):
 		self.correct_btn.click()
@@ -2423,6 +2437,8 @@ class MeasureAnnotator(SignalAnnotator):
 			# self.colors[t][idx, 1] = self.previous_color[k][1]
 		except Exception as e:
 			print("cancel_selection: ",f'{e=}')
+
+		self.event = None
 
 	def locate_stack(self):
 

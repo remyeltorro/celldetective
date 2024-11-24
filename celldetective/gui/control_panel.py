@@ -18,6 +18,133 @@ from celldetective.utils import extract_experiment_channels
 from celldetective.gui import Styles
 import pandas as pd
 
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+
+class CheckableComboBox(QComboBox):
+
+	"""
+	adapted from https://stackoverflow.com/questions/22775095/pyqt-how-to-set-combobox-items-be-checkable
+	"""
+
+	def __init__(self, obj='', parent_window=None, *args, **kwargs):
+		
+		super().__init__(parent_window, *args, **kwargs)
+
+		self.setTitle('')
+		self.view().pressed.connect(self.handleItemPressed)
+		self.setModel(QtGui.QStandardItemModel(self))
+		self.obj = obj
+		self.toolButton = QtWidgets.QToolButton(parent_window)
+		self.toolButton.setText('')
+		self.toolMenu = QtWidgets.QMenu(parent_window)
+		self.toolButton.setMenu(self.toolMenu)
+		self.toolButton.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+		self.anySelected = False
+
+	def handleItemPressed(self, index):
+
+		idx = index.row()
+		actions = self.toolMenu.actions()
+
+		item = self.model().itemFromIndex(index)
+		if item.checkState() == QtCore.Qt.Checked:
+			item.setCheckState(QtCore.Qt.Unchecked)
+			actions[idx].setChecked(False)
+		else:
+			item.setCheckState(QtCore.Qt.Checked)
+			actions[idx].setChecked(True)
+			self.anySelected = True
+
+		options_checked = np.array([a.isChecked() for a in actions])
+		if len(options_checked[options_checked]) > 1:
+			self.setTitle(f'Multiple {self.obj+"s"} selected...')
+		elif len(options_checked[options_checked])==1:
+			idx_selected = np.where(options_checked)[0][0]
+			if idx_selected!=idx:
+				item = self.model().item(idx_selected)
+			self.setTitle(item.text())
+		elif len(options_checked[options_checked])==0:
+			self.setTitle(f"No {self.obj} selected...")
+			self.anySelected = False
+
+	def setCurrentIndex(self, index):
+
+		super().setCurrentIndex(index)
+		item = self.model().item(index)
+		modelIndex = self.model().indexFromItem(item)
+		self.handleItemPressed(modelIndex)
+
+	def selectAll(self):
+
+		actions = self.toolMenu.actions()
+		for i,a in enumerate(actions):
+			if not a.isChecked():
+				self.setCurrentIndex(i)
+		self.anySelected = True
+
+	def unselectAll(self):
+		
+		actions = self.toolMenu.actions()
+		for i,a in enumerate(actions):
+			if a.isChecked():
+				self.setCurrentIndex(i)
+		self.anySelected = False
+
+	def title(self):
+		return self._title
+
+	def setTitle(self, title):
+		self._title = title
+		self.repaint()
+
+	def paintEvent(self, event):
+
+		painter = QtWidgets.QStylePainter(self)
+		painter.setPen(self.palette().color(QtGui.QPalette.Text))
+		opt = QtWidgets.QStyleOptionComboBox()
+		self.initStyleOption(opt)
+		opt.currentText = self._title
+		painter.drawComplexControl(QtWidgets.QStyle.CC_ComboBox, opt)
+		painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, opt)
+
+	def addItem(self, item, tooltip=None):
+
+		super().addItem(item)
+		idx = self.findText(item)
+		if tooltip is not None:
+			self.setItemData(idx, tooltip, Qt.ToolTipRole)
+		item2 = self.model().item(idx, 0)
+		item2.setCheckState(QtCore.Qt.Unchecked)
+		action = self.toolMenu.addAction(item)
+		action.setCheckable(True)	
+
+	def addItems(self, items):
+
+		super().addItems(items)
+
+		for item in items:
+
+			idx = self.findText(item)
+			item2 = self.model().item(idx, 0)
+			item2.setCheckState(QtCore.Qt.Unchecked)
+			action = self.toolMenu.addAction(item)
+			action.setCheckable(True)
+
+	def getSelectedIndices(self):
+		
+		actions = self.toolMenu.actions()
+		options_checked = np.array([a.isChecked() for a in actions])		
+		idx_selected = np.where(options_checked)[0]
+
+		return list(idx_selected)
+
+	def currentText(self):
+
+		return self.title()
+
+
 class ControlPanel(QMainWindow, Styles):
 
 	def __init__(self, parent_window=None, exp_dir=""):
@@ -138,15 +265,13 @@ class ControlPanel(QMainWindow, Styles):
 		self.edit_config_button.clicked.connect(self.open_config_editor)
 		self.edit_config_button.setStyleSheet(self.button_select_all)
 
-		self.well_list = QComboBox()
+		self.well_list = CheckableComboBox(obj='well', parent_window=self)
 		thresh = 32
-		self.well_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.well_labels]		
-		self.well_list.addItems(self.well_truncated) #self.well_labels
-		for i in range(len(self.well_labels)):
-			self.well_list.setItemData(i, self.well_labels[i], Qt.ToolTipRole)
-		self.well_list.addItems(["*"])
+		self.well_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.well_labels]
+		for i in range(len(self.well_truncated)):
+			self.well_list.addItem(self.well_truncated[i], tooltip=self.well_labels[i])
+		self.well_list.setCurrentIndex(0)
 		self.well_list.activated.connect(self.display_positions)
-		self.to_disable.append(self.well_list)
 
 		self.position_list = QComboBox()
 		self.position_list.addItems(["*"])
@@ -162,6 +287,14 @@ class ControlPanel(QMainWindow, Styles):
 		self.view_stack_btn.setIconSize(QSize(20, 20))
 		self.view_stack_btn.clicked.connect(self.view_current_stack)
 		self.view_stack_btn.setEnabled(False)
+
+		self.select_all_wells_btn = QPushButton()
+		self.select_all_wells_btn.setIcon(icon(MDI6.select_all,color="black"))
+		self.select_all_wells_btn.setIconSize(QSize(20, 20))
+		self.select_all_wells_btn.setToolTip("Select all wells.")
+		self.select_all_wells_btn.clicked.connect(self.select_all_wells)
+		self.select_all_wells_btn.setStyleSheet(self.button_select_all)
+		self.select_all_wells_option = False
 
 		well_lbl = QLabel('Well: ')
 		well_lbl.setAlignment(Qt.AlignRight)
@@ -196,7 +329,10 @@ class ControlPanel(QMainWindow, Styles):
 		# Well row
 		well_hbox = QHBoxLayout()
 		well_hbox.addWidget(well_lbl, 25, alignment=Qt.AlignVCenter)
-		well_hbox.addWidget(self.well_list, 75)
+		well_subhbox = QHBoxLayout()
+		well_subhbox.addWidget(self.well_list, 95)
+		well_subhbox.addWidget(self.select_all_wells_btn, 5)
+		well_hbox.addLayout(well_subhbox, 75)
 		vbox.addLayout(well_hbox)
 
 		# Position row
@@ -209,6 +345,21 @@ class ControlPanel(QMainWindow, Styles):
 		vbox.addLayout(position_hbox)
 
 		vbox.addWidget(hsep)
+
+	def select_all_wells(self):
+
+		if not self.select_all_wells_option:
+			self.well_list.selectAll()
+			self.select_all_wells_option = True
+			self.select_all_wells_btn.setIcon(icon(MDI6.select_all,color=self.celldetective_blue))
+			self.select_all_wells_btn.setIconSize(QSize(20, 20))
+			self.display_positions()
+		else:
+			self.well_list.unselectAll()
+			self.select_all_wells_option = False
+			self.select_all_wells_btn.setIcon(icon(MDI6.select_all,color="black"))
+			self.select_all_wells_btn.setIconSize(QSize(20, 20))
+			self.display_positions()
 
 	def locate_image(self):
 
@@ -341,14 +492,16 @@ class ControlPanel(QMainWindow, Styles):
 		Show the positions as the well is changed.
 		"""
 
-		if self.well_list.currentText()=="*":
+		if self.well_list.currentText().startswith('Multiple'):
 			self.position_list.clear()
 			self.position_list.addItems(["*"])
 			position_linspace = np.linspace(0,len(self.positions[0])-1,len(self.positions[0]),dtype=int)
 			position_linspace = [str(s) for s in position_linspace]
 			self.position_list.addItems(position_linspace)
+		elif self.well_list.currentText().startswith('No'):
+			pass
 		else:
-			pos_index = self.well_list.currentIndex()
+			pos_index = self.well_list.getSelectedIndices()[0]
 			self.position_list.clear()
 			self.position_list.addItems(["*"])
 			self.position_list.addItems(self.positions[pos_index])
@@ -366,7 +519,7 @@ class ControlPanel(QMainWindow, Styles):
 
 		"""
 
-		if self.well_list.currentText()=="*":
+		if self.well_list.currentText().startswith('Multiple'):
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Critical)
 			msgBox.setText("Please select a single well...")
@@ -376,7 +529,7 @@ class ControlPanel(QMainWindow, Styles):
 			if returnValue == QMessageBox.Ok:
 				return False
 		else:
-			self.well_index = [self.well_list.currentIndex()]
+			self.well_index = self.well_list.getSelectedIndices() #[self.well_list.currentIndex()]
 
 		for w_idx in self.well_index:
 
@@ -443,7 +596,7 @@ class ControlPanel(QMainWindow, Styles):
 			self.ProcessEffectors.delete_tracks_btn.hide()
 
 			self.view_stack_btn.setEnabled(False)
-		elif self.well_list.currentText()=='*':
+		elif self.well_list.currentText().startswith('Multiple'):
 			self.ProcessTargets.view_tab_btn.setEnabled(True)
 			self.ProcessEffectors.view_tab_btn.setEnabled(True)	
 			self.NeighPanel.view_tab_btn.setEnabled(True)
@@ -455,7 +608,7 @@ class ControlPanel(QMainWindow, Styles):
 			self.ProcessTargets.delete_tracks_btn.hide()
 			self.ProcessEffectors.delete_tracks_btn.hide()
 		else:
-			if not self.well_list.currentText()=="*":
+			if not self.well_list.currentText().startswith('No'):
 				self.locate_selected_position()
 				self.view_stack_btn.setEnabled(True)
 				# if os.path.exists(os.sep.join([self.pos,'labels_effectors', os.sep])):

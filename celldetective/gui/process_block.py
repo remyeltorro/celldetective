@@ -698,11 +698,24 @@ class ProcessPanel(QFrame, Styles):
 
 	def process_population(self):
 
-		if self.parent_window.well_list.currentText()=="*":
-			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
-		else:
-			self.well_index = [self.parent_window.well_list.currentIndex()]
-			print(f"Processing well {self.parent_window.well_list.currentText()}...")
+		# if self.parent_window.well_list.currentText().startswith('Multiple'):
+		# 	self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
+		# else:
+		
+		self.well_index = self.parent_window.well_list.getSelectedIndices()
+		if len(self.well_index)==0:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select at least one well first...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+			else:
+				return None
+
+		print(f"Processing {self.parent_window.well_list.currentText()}...")
 
 		# self.freeze()
 		# QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -871,7 +884,7 @@ class ProcessPanel(QFrame, Styles):
 			plot_mode = 'plot_track_signals'
 			if 'TRACK_ID' not in list(self.df.columns):
 				plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population=self.mode, plot_mode=plot_mode, save_inplace_option=True)
+			self.tab_ui = TableUI(self.df, f"{self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population=self.mode, plot_mode=plot_mode, save_inplace_option=True)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')
@@ -891,7 +904,7 @@ class ProcessPanel(QFrame, Styles):
 
 		"""
 
-		self.well_option = self.parent_window.well_list.currentIndex()
+		self.well_option = self.parent_window.well_list.getSelectedIndices()
 		if self.well_option==len(self.wells):
 			wo = '*'
 		else:
@@ -1282,7 +1295,7 @@ class NeighPanel(QFrame, Styles):
 
 		"""
 
-		self.well_option = self.parent_window.well_list.currentIndex()
+		self.well_option = self.parent_window.well_list.getSelectedIndices()
 		if self.well_option==len(self.wells):
 			wo = '*'
 		else:
@@ -1305,7 +1318,7 @@ class NeighPanel(QFrame, Styles):
 
 		if self.df is not None:
 			plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population='pairs', plot_mode=plot_mode, save_inplace_option=True)
+			self.tab_ui = TableUI(self.df, f"{self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population='pairs', plot_mode=plot_mode, save_inplace_option=True)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')
@@ -1382,11 +1395,11 @@ class NeighPanel(QFrame, Styles):
 
 	def process_neighborhood(self):
 
-		if self.parent_window.well_list.currentText()=="*":
-			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
-		else:
-			self.well_index = [self.parent_window.well_list.currentIndex()]
-			print(f"Processing well {self.parent_window.well_list.currentText()}...")
+		# if self.parent_window.well_list.currentText().startswith('Multiple'):
+		# 	self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
+		# else:
+		self.well_index = self.parent_window.well_list.getSelectedIndices()
+		print(f"Processing well {self.parent_window.well_list.currentText()}...")
 
 		# self.freeze()
 		# QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -1618,7 +1631,7 @@ class PreprocessingPanel(QFrame, Styles):
 		if returnValue == QMessageBox.Cancel:
 			return None
 		elif returnValue == QMessageBox.Yes:
-			self.parent_window.well_list.setCurrentIndex(self.parent_window.well_list.count()-1)
+			self.parent_window.well_list.selectAll()
 			self.parent_window.position_list.setCurrentIndex(0)
 		elif returnValue == QMessageBox.No:
 			msgBox2 = QMessageBox()
@@ -1634,10 +1647,10 @@ class PreprocessingPanel(QFrame, Styles):
 
 		print('Proceed with correction...')
 
-		if self.parent_window.well_list.currentText()=='*':
-			well_option = "*"
-		else:
-			well_option = self.parent_window.well_list.currentIndex()
+		# if self.parent_window.well_list.currentText()=='*':
+		# 	well_option = "*"
+		# else:
+		well_option = self.parent_window.well_list.getSelectedIndices()
 
 		if self.parent_window.position_list.currentText()=='*':
 			pos_option = "*"

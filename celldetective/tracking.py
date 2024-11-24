@@ -959,32 +959,27 @@ def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time':
 		indices = track_group.index
 		detection = track_group[column_labels['x']].values
 		timeline = track_group[column_labels['time']].values
-		if len(timeline)>1:
-			dt = 1
-			if np.any(detection==detection):
-				t_first = timeline[detection==detection][0]
-				cclass = 0
-				if t_first<=0:
-					t_first = -1
-					cclass = 2
-				else:
-					t_first =  float(t_first) - float(dt)
-					if t_first==0:
-						t_first += 0.01
-					# if t_first<=0:
-					# 	t_first = -1
-					# 	cclass = 2
-			else:
+		dt = 1
+		
+		# Initialize
+		cclass = 2; t_first = np.nan;
+
+		if np.any(detection==detection):
+			t_first = timeline[detection==detection][0]
+			cclass = 0
+			if t_first<=0:
 				t_first = -1
 				cclass = 2
-
-			tab.loc[indices, 'class_firstdetection'] = cclass
-			tab.loc[indices, 't_firstdetection'] = t_first
+			else:
+				t_first =  float(t_first) - float(dt)
+				if t_first==0:
+					t_first += 0.01
 		else:
-			print(f"exception detected for track {tid=}")
-			pass
-			#tab.loc[indices, 'class_firstdetection'] = cclass
-			#tab.loc[indices, 't_firstdetection'] = t_first
+			t_first = -1
+			cclass = 2
+
+		tab.loc[indices, 'class_firstdetection'] = cclass
+		tab.loc[indices, 't_firstdetection'] = t_first
 
 	return tab
 

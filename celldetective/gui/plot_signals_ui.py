@@ -184,11 +184,21 @@ class ConfigSignalPlot(QWidget, Styles):
 		if 't0' in self.all_columns:
 			time_columns.append('t0')
 		
+		self.class_columns = np.unique(class_columns)
+		self.time_columns = np.unique(time_columns)
+		thresh = 18
+		self.class_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.class_columns]
+		self.time_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.time_columns]
+
 		self.cbs[2].clear()
-		self.cbs[2].addItems(np.unique(self.cb_options[2]+time_columns))
+		self.cbs[2].addItems(self.time_truncated)
+		for i in range(len(self.time_columns)):
+			self.cbs[2].setItemData(i, self.time_columns[i], Qt.ToolTipRole)
 
 		self.cbs[1].clear()
-		self.cbs[1].addItems(np.unique(self.cb_options[1]+class_columns))
+		self.cbs[1].addItems(self.class_truncated)
+		for i in range(len(self.class_columns)):
+			self.cbs[1].setItemData(i, self.class_columns[i], Qt.ToolTipRole)
 
 	def ask_for_feature(self):
 
@@ -269,7 +279,8 @@ class ConfigSignalPlot(QWidget, Styles):
 
 		# read instructions from combobox options
 		self.load_available_tables()
-		class_col = self.cbs[1].currentText()	
+		class_col = self.class_columns[self.cbs[1].currentIndex()]
+		print(f"{class_col=}")	
 
 		if self.df is not None:
 
@@ -325,8 +336,8 @@ class ConfigSignalPlot(QWidget, Styles):
 
 		# Per position signal
 		max_time = int(self.df.FRAME.max()) + 1
-		class_col = self.cbs[1].currentText()
-		time_col = self.cbs[2].currentText()
+		class_col = self.class_columns[self.cbs[1].currentIndex()]
+		time_col = self.time_columns[self.cbs[2].currentIndex()]
 		if self.abs_time_checkbox.isChecked():
 			time_col = self.frame_slider.value()
 
@@ -363,6 +374,9 @@ class ConfigSignalPlot(QWidget, Styles):
 		if isinstance(cclass,int):
 			cclass = [cclass]
 
+		class_col = self.class_columns[self.cbs[1].currentIndex()]
+		time_col = self.time_columns[self.cbs[2].currentIndex()]
+
 		n_cells = len(well_group.groupby(['position','TRACK_ID']))
 		depth = int(2*max_time + 3)
 		matrix = np.zeros((n_cells, depth))
@@ -370,14 +384,14 @@ class ConfigSignalPlot(QWidget, Styles):
 		mapping = np.arange(-max_time-1, max_time+2)
 		cid=0
 		for block,movie_group in well_group.groupby('position'):
-			for tid,track_group in movie_group.loc[movie_group[self.cbs[1].currentText()].isin(cclass)].groupby('TRACK_ID'):
+			for tid,track_group in movie_group.loc[movie_group[class_col].isin(cclass)].groupby('TRACK_ID'):
 				try:
 					timeline = track_group['FRAME'].to_numpy().astype(int)
 					feature = track_group[feature_selected].to_numpy()
 					if self.checkBox_feature.isChecked():
 						second_feature=track_group[self.second_feature_selected].to_numpy()
 					if self.cbs[2].currentText().startswith('t') and not self.abs_time_checkbox.isChecked():
-						t0 = math.floor(track_group[self.cbs[2].currentText()].to_numpy()[0])
+						t0 = math.floor(track_group[time_col].to_numpy()[0])
 						timeline -= t0
 					elif self.cbs[2].currentText()=='first detection' and not self.abs_time_checkbox.isChecked():
 
@@ -389,7 +403,6 @@ class ConfigSignalPlot(QWidget, Styles):
 
 						first_detection = timeline[feat==feat][0]
 						timeline -= first_detection
-						print(first_detection, timeline)
 
 					elif self.abs_time_checkbox.isChecked():
 						timeline -= int(self.frame_slider.value())
@@ -398,7 +411,6 @@ class ConfigSignalPlot(QWidget, Styles):
 					matrix[cid,loc_t] = feature
 					if second_feature:
 						matrix[cid,loc_t+1]=second_feature
-					print(timeline, loc_t)
 
 					cid+=1
 				except:

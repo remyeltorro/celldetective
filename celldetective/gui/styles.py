@@ -147,6 +147,18 @@ class Styles(object):
 			}
 		'''
 
+		self.menu_check_style = '''
+			QCheckBox {
+				font-size: 10px;
+				padding-left: 10px;
+				padding-top: 5px;
+			}
+			QCheckBox::indicator:unchecked:hover {
+				background-color : rgba(189, 189, 189, 1);
+				opacity : 0.3;
+			}
+		'''
+
 		self.button_add = '''
 			QPushButton {
 				background-color: transparent;

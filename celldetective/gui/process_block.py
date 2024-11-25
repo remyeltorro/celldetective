@@ -186,11 +186,8 @@ class ProcessPanel(QFrame, Styles):
 		measure_layout = QHBoxLayout()
 
 		self.measure_action = QCheckBox("MEASURE")
-		self.measure_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			padding-top: 5px;
-			""")
+		self.measure_action.setStyleSheet(self.menu_check_style)
+
 		self.measure_action.setIcon(icon(MDI6.eyedropper,color="black"))
 		self.measure_action.setIconSize(QSize(20, 20))
 		self.measure_action.setToolTip("Measure.")
@@ -229,11 +226,7 @@ class ProcessPanel(QFrame, Styles):
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
 		self.signal_analysis_action = QCheckBox("DETECT EVENTS")
-		self.signal_analysis_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			padding-top: 5px;
-			""")
+		self.signal_analysis_action.setStyleSheet(self.menu_check_style)
 		self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative,color="black"))
 		self.signal_analysis_action.setIconSize(QSize(20, 20))
 		self.signal_analysis_action.setToolTip("Detect events in single-cell signals.")
@@ -295,14 +288,10 @@ class ProcessPanel(QFrame, Styles):
 		grid_track = QHBoxLayout()
 
 		self.track_action = QCheckBox("TRACK")
+		self.track_action.setStyleSheet(self.menu_check_style)
 		self.track_action.setIcon(icon(MDI6.chart_timeline_variant,color="black"))
 		self.track_action.setIconSize(QSize(20, 20))
 		self.track_action.setToolTip("Track the target cells using bTrack.")
-		self.track_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			padding-top: 5px;
-			""")
 		grid_track.addWidget(self.track_action, 75)
 
 		self.delete_tracks_btn = QPushButton()
@@ -372,10 +361,7 @@ class ProcessPanel(QFrame, Styles):
 		grid_segment.setSpacing(0)
 
 		self.segment_action = QCheckBox("SEGMENT")
-		self.segment_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			""")
+		self.segment_action.setStyleSheet(self.menu_check_style)
 		self.segment_action.setIcon(icon(MDI6.bacteria, color='black'))
 		self.segment_action.setToolTip(f"Segment the {self.mode} cells on the images.")
 		self.segment_action.toggled.connect(self.enable_segmentation_model_list)
@@ -1028,11 +1014,8 @@ class NeighPanel(QFrame, Styles):
 		# Button to compute the neighborhoods
 		neigh_option_hbox = QHBoxLayout()
 		self.neigh_action = QCheckBox('NEIGHBORHOODS')
-		self.neigh_action.setStyleSheet("""
-					font-size: 10px;
-					padding-left: 10px;
-					padding-top: 5px;
-					""")
+		self.neigh_action.setStyleSheet(self.menu_check_style)
+
 		#self.neigh_action.setIcon(icon(MDI6.eyedropper, color="black"))
 		#self.neigh_action.setIconSize(QSize(20, 20))
 		self.neigh_action.setToolTip(
@@ -1132,11 +1115,8 @@ class NeighPanel(QFrame, Styles):
 
 		rel_layout = QHBoxLayout()
 		self.measure_pairs_action = QCheckBox("MEASURE PAIRS")
-		self.measure_pairs_action.setStyleSheet("""
-					font-size: 10px;
-					padding-left: 10px;
-					padding-top: 5px;
-					""")
+		self.measure_pairs_action.setStyleSheet(self.menu_check_style)
+
 		self.measure_pairs_action.setIcon(icon(MDI6.eyedropper, color="black"))
 		self.measure_pairs_action.setIconSize(QSize(20, 20))
 		self.measure_pairs_action.setToolTip("Measure the relative quantities defined for the cell pairs, for all neighborhoods.")
@@ -1155,10 +1135,7 @@ class NeighPanel(QFrame, Styles):
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
 		self.signal_analysis_action = QCheckBox("DETECT PAIR EVENTS")
-		self.signal_analysis_action.setStyleSheet("""
-		font-size: 10px;
-		padding-left: 10px;
-		padding-top: 5px;""")
+		self.signal_analysis_action.setStyleSheet(self.menu_check_style)
 
 		self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
 		self.signal_analysis_action.setIconSize(QSize(20, 20))

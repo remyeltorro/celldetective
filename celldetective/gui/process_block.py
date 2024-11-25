@@ -748,10 +748,10 @@ class ProcessPanel(QFrame, Styles):
 
 		loop_iter=0
 
-		if self.parent_window.position_list.currentText()=="*":
+		if self.parent_window.position_list.isMultipleSelection():
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
-			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
+			msgBox.setText("If you continue, several positions will be processed.\nDo you want to proceed?")
 			msgBox.setWindowTitle("Info")
 			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
 			returnValue = msgBox.exec()
@@ -780,12 +780,8 @@ class ProcessPanel(QFrame, Styles):
 		for w_idx in self.well_index:
 
 			pos = self.parent_window.positions[w_idx]
-			if self.parent_window.position_list.currentText()=="*":
-				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
-				print("Processing all positions...")
-			else:
-				pos_indices = natsorted([pos.index(self.parent_window.position_list.currentText())])
-				print(f"Processing position {self.parent_window.position_list.currentText()}...")
+			pos_indices = self.parent_window.position_list.getSelectedIndices()
+			#print(f"Processing position {self.parent_window.position_list.currentText()}...")
 
 			well = self.parent_window.wells[w_idx]
 
@@ -801,7 +797,7 @@ class ProcessPanel(QFrame, Styles):
 
 				if self.segment_action.isChecked():
 
-					if len(glob(os.sep.join([self.pos, f'labels_{self.mode}','*.tif'])))>0 and self.parent_window.position_list.currentText()!="*":
+					if len(glob(os.sep.join([self.pos, f'labels_{self.mode}','*.tif'])))>0 and not self.parent_window.position_list.isMultipleSelection():
 						msgBox = QMessageBox()
 						msgBox.setIcon(QMessageBox.Question)
 						msgBox.setText("Labels have already been produced for this position. Do you want to segment again?")
@@ -828,7 +824,7 @@ class ProcessPanel(QFrame, Styles):
 						segment_at_position(self.pos, self.mode, self.model_name, stack_prefix=self.parent_window.movie_prefix, use_gpu=self.parent_window.parent_window.use_gpu, threads=self.parent_window.parent_window.n_threads)
 
 				if self.track_action.isChecked():
-					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent_window.position_list.currentText()!="*":
+					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and not self.parent_window.position_list.isMultipleSelection():
 						msgBox = QMessageBox()
 						msgBox.setIcon(QMessageBox.Question)
 						msgBox.setText("A trajectory set already exists. Previously annotated data for\nthis position will be lost. Do you want to proceed?")
@@ -852,7 +848,7 @@ class ProcessPanel(QFrame, Styles):
 						print(cols, 'class_color in cols')
 						colors = list(table['class_color'].to_numpy())
 						if 'tab:orange' in colors or 'tab:cyan' in colors:
-							if self.parent_window.position_list.currentText()!="*":
+							if not self.parent_window.position_list.isMultipleSelection():
 								msgBox = QMessageBox()
 								msgBox.setIcon(QMessageBox.Question)
 								msgBox.setText("The signals of the cells in the position appear to have been annotated... Do you want to proceed?")
@@ -905,17 +901,9 @@ class ProcessPanel(QFrame, Styles):
 		"""
 
 		self.well_option = self.parent_window.well_list.getSelectedIndices()
-		if self.well_option==len(self.wells):
-			wo = '*'
-		else:
-			wo = self.well_option
-		self.position_option = self.parent_window.position_list.currentIndex()
-		if self.position_option==0:
-			po = '*'
-		else:
-			po = self.position_option - 1
+		self.position_option = self.parent_window.position_list.getSelectedIndices()
 
-		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.mode, return_pos_info=True)
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=self.well_option, position_option=self.position_option, population=self.mode, return_pos_info=True)
 		if self.df is None:
 			print('No table could be found...')
 
@@ -1296,17 +1284,9 @@ class NeighPanel(QFrame, Styles):
 		"""
 
 		self.well_option = self.parent_window.well_list.getSelectedIndices()
-		if self.well_option==len(self.wells):
-			wo = '*'
-		else:
-			wo = self.well_option
-		self.position_option = self.parent_window.position_list.currentIndex()
-		if self.position_option==0:
-			po = '*'
-		else:
-			po = self.position_option - 1
+		self.position_option = self.parent_window.position_list.getSelectedIndices()
 
-		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population="pairs", return_pos_info=True)
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=self.well_option, position_option=self.position_option, population="pairs", return_pos_info=True)
 		if self.df is None:
 			print('No table could be found...')
 
@@ -1406,7 +1386,7 @@ class NeighPanel(QFrame, Styles):
 
 		loop_iter=0
 
-		if self.parent_window.position_list.currentText()=="*":
+		if self.parent_window.position_list.isMultipleSelection():
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
 			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
@@ -1419,12 +1399,7 @@ class NeighPanel(QFrame, Styles):
 		for w_idx in self.well_index:
 
 			pos = self.parent_window.positions[w_idx]
-			if self.parent_window.position_list.currentText()=="*":
-				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
-				print("Processing all positions...")
-			else:
-				pos_indices = natsorted([pos.index(self.parent_window.position_list.currentText())])
-				print(f"Processing position {self.parent_window.position_list.currentText()}...")
+			pos_indices = self.parent_window.position_list.getSelectedIndices()
 
 			well = self.parent_window.wells[w_idx]
 
@@ -1632,7 +1607,7 @@ class PreprocessingPanel(QFrame, Styles):
 			return None
 		elif returnValue == QMessageBox.Yes:
 			self.parent_window.well_list.selectAll()
-			self.parent_window.position_list.setCurrentIndex(0)
+			self.parent_window.position_list.selectAll()
 		elif returnValue == QMessageBox.No:
 			msgBox2 = QMessageBox()
 			msgBox2.setIcon(QMessageBox.Question)
@@ -1651,12 +1626,7 @@ class PreprocessingPanel(QFrame, Styles):
 		# 	well_option = "*"
 		# else:
 		well_option = self.parent_window.well_list.getSelectedIndices()
-
-		if self.parent_window.position_list.currentText()=='*':
-			pos_option = "*"
-		else:
-			pos_option = self.parent_window.position_list.currentIndex()-1
-
+		position_option = self.parent_window.position_list.getSelectedIndices()
 
 		for k,correction_protocol in enumerate(self.protocol_layout.protocols):
 
@@ -1671,7 +1641,7 @@ class PreprocessingPanel(QFrame, Styles):
 				print(f'Model-free correction; {movie_prefix=} {export_prefix=}')
 				correct_background_model_free(self.exp_dir, 
 								   well_option=well_option,
-								   position_option=pos_option,
+								   position_option=position_option,
 								   export = True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
@@ -1685,7 +1655,7 @@ class PreprocessingPanel(QFrame, Styles):
 				print(f'Fit correction; {movie_prefix=} {export_prefix=} {correction_protocol=}')
 				correct_background_model(self.exp_dir,
 								   well_option=well_option,
-								   position_option=pos_option,
+								   position_option=position_option,
 								   export= True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
@@ -1698,7 +1668,7 @@ class PreprocessingPanel(QFrame, Styles):
 				print(f'Offset correction; {movie_prefix=} {export_prefix=} {correction_protocol=}')
 				correct_channel_offset(self.exp_dir,
 								   well_option=well_option,
-								   position_option=pos_option,
+								   position_option=position_option,
 								   export= True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
@@ -1716,6 +1686,7 @@ class PreprocessingPanel(QFrame, Styles):
 		Load the first frame of the first movie found in the experiment folder as a sample.
 		"""
 
+		print(f"{self.parent_window.pos}")
 		movies = glob(self.parent_window.pos + os.sep.join(['movie', f"{self.parent_window.movie_prefix}*.tif"]))
 
 		if len(movies) == 0:

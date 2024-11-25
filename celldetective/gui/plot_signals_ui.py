@@ -47,8 +47,8 @@ class ConfigSignalPlot(QWidget, Styles):
 		self.ax2=None
 		self.auto_close = False
 
-		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
-		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
+		self.well_option = self.parent_window.parent_window.well_list.getSelectedIndices()
+		self.position_option = self.parent_window.parent_window.position_list.getSelectedIndices()
 		self.interpret_pos_location()
 
 		self.screen_height = self.parent_window.parent_window.parent_window.screen_height
@@ -67,15 +67,11 @@ class ConfigSignalPlot(QWidget, Styles):
 
 		"""
 		
-		if self.well_option==len(self.wells):
-			self.well_indices = np.arange(len(self.wells))
-		else:
-			self.well_indices = np.array([self.well_option],dtype=int)
-
-		if self.position_option==0:
+		self.well_indices = self.parent_window.parent_window.well_list.getSelectedIndices()
+		self.position_indices = self.parent_window.parent_window.position_list.getSelectedIndices()
+		if not self.parent_window.parent_window.position_list.isAnySelected():
 			self.position_indices = None
-		else:
-			self.position_indices = np.array([self.position_option],dtype=int)
+
 
 	def populate_widget(self):
 
@@ -300,18 +296,10 @@ class ConfigSignalPlot(QWidget, Styles):
 
 		"""
 
-		self.well_option = self.parent_window.parent_window.well_list.currentIndex()
-		if self.well_option==len(self.wells):
-			wo = '*'
-		else:
-			wo = self.well_option
-		self.position_option = self.parent_window.parent_window.position_list.currentIndex()
-		if self.position_option==0:
-			po = '*'
-		else:
-			po = self.position_option - 1
+		self.well_option = self.parent_window.parent_window.well_list.getSelectedIndices()		
+		self.position_option = self.parent_window.parent_window.position_list.getSelectedIndices()
 
-		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.cbs[0].currentText(), return_pos_info=True)
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=self.well_option, position_option=self.position_option, population=self.cbs[0].currentText(), return_pos_info=True)
 
 		if self.df is None:
 			

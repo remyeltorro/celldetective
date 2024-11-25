@@ -33,7 +33,7 @@ def test_app(app, qtbot):
 	qtbot.mouseClick(app.validate_button, QtCore.Qt.LeftButton)
 
 	# Set a position
-	app.control_panel.position_list.setCurrentIndex(1)
+	app.control_panel.position_list.setCurrentIndex(0)
 	app.control_panel.update_position_options()
 
 	# View stacl

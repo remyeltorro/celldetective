@@ -188,6 +188,9 @@ class AppInitWindow(QMainWindow):
 	def download_spreading_assay_demo(self):
 		
 		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
+		if self.target_dir=='':
+			return None
+		
 		if not os.path.exists(os.sep.join([self.target_dir,'demo_ricm'])):
 			download_zenodo_file('demo_ricm', self.target_dir)
 		self.experiment_path_selection.setText(os.sep.join([self.target_dir, 'demo_ricm']))
@@ -196,6 +199,9 @@ class AppInitWindow(QMainWindow):
 	def download_cytotoxicity_assay_demo(self):
 		
 		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
+		if self.target_dir=='':
+			return None
+
 		if not os.path.exists(os.sep.join([self.target_dir,'demo_adcc'])):
 			download_zenodo_file('demo_adcc', self.target_dir)
 		self.experiment_path_selection.setText(os.sep.join([self.target_dir, 'demo_adcc']))

@@ -408,7 +408,7 @@ class AppInitWindow(QMainWindow, Styles):
 			self.experiment_path_selection.setText(self.foldername)
 		else:
 			return None
-		if not os.path.exists(self.foldername+"/config.ini"):
+		if not os.path.exists(os.sep.join([self.foldername,"config.ini"])):
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
 			msgBox.setText("No configuration can be found in the selected folder...")

@@ -826,12 +826,9 @@ class ProcessPanel(QFrame, Styles):
 
 				table = os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])
 				if self.signal_analysis_action.isChecked() and os.path.exists(table):
-					print('table exists')
 					table = pd.read_csv(table)
 					cols = list(table.columns)
-					print(table, cols)
 					if 'class_color' in cols:
-						print(cols, 'class_color in cols')
 						colors = list(table['class_color'].to_numpy())
 						if 'tab:orange' in colors or 'tab:cyan' in colors:
 							if not self.parent_window.position_list.isMultipleSelection():

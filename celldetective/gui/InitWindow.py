@@ -1,48 +1,49 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow
-from celldetective.utils import get_software_location, download_zenodo_file
 import os
+
+from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QIcon, QDesktopServices, QIntValidator
+
 from glob import glob
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
-import gc
-from celldetective.gui import Styles, ControlPanel, ConfigNewExperiment
-from celldetective.gui.gui_utils import center_window
-import subprocess
-import os
+
 from celldetective.gui.about import AboutWidget
 from celldetective.io import correct_annotation
-import psutil
-import subprocess
+from celldetective.utils import download_zenodo_file
+from celldetective.gui.gui_utils import center_window
+from celldetective.gui import Styles, ControlPanel, ConfigNewExperiment
+
+import gc
+from subprocess import check_output, Popen
+from psutil import cpu_count
 import json
 
-class AppInitWindow(QMainWindow):
+class AppInitWindow(QMainWindow, Styles):
 
 	"""
 	Initial window to set the experiment folder or create a new one.
 	"""
 
-	def __init__(self, parent_window=None):
+	def __init__(self, parent_window=None, software_location=None):
+
 		super().__init__()
 
 		self.parent_window = parent_window
-		self.Styles = Styles()
-		self.init_styles()
 		self.setWindowTitle("celldetective")
 
-		self.n_threads = min([1,psutil.cpu_count()])
+		self.n_threads = min([1,cpu_count()])
 
 		try:
-			subprocess.check_output('nvidia-smi')
+			check_output('nvidia-smi')
 			print('NVIDIA GPU detected (activate or disable in Memory & Threads)...')
 			self.use_gpu = True
 		except Exception: # this command not being found can raise quite a few different errors depending on the configuration
 			print('No NVIDIA GPU detected...')
 			self.use_gpu = False
 			
-		self.soft_path = get_software_location()
+		self.soft_path = software_location
 		self.onlyInt = QIntValidator()
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','logo.png'])))
 		center_window(self)
@@ -65,6 +66,7 @@ class AppInitWindow(QMainWindow):
 		self.show()
 	
 	def closeEvent(self, event):
+
 		QApplication.closeAllWindows()
 		event.accept()
 		gc.collect()
@@ -308,18 +310,16 @@ class AppInitWindow(QMainWindow):
 		QDesktopServices.openUrl(doc_url)
 
 	def open_models_folder(self):
+		
 		path = os.sep.join([self.soft_path,'celldetective','models',os.sep])
 		try:
-			subprocess.Popen(f'explorer {os.path.realpath(path)}')
+			Popen(f'explorer {os.path.realpath(path)}')
 		except:
 
 			try:
 				os.system('xdg-open "%s"' % path)
 			except:
 				return None
-
-
-		#os.system(f'start {os.path.realpath(path)}')
 
 	def create_buttons_hbox(self):
 
@@ -350,18 +350,6 @@ class AppInitWindow(QMainWindow):
 		else:
 			self.validate_button.setEnabled(False)
 
-	def init_styles(self):
-
-		"""
-		Initialize styles.
-		"""
-		
-		self.qtab_style = self.Styles.qtab_style
-		self.button_style_sheet = self.Styles.button_style_sheet
-		self.button_style_sheet_2 = self.Styles.button_style_sheet_2
-		self.button_style_sheet_2_not_done = self.Styles.button_style_sheet_2_not_done
-		self.button_style_sheet_3 = self.Styles.button_style_sheet_3
-		self.button_select_all = self.Styles.button_select_all
 
 	def set_experiment_path(self, path):
 		self.experiment_path_selection.setText(path)

@@ -16,9 +16,11 @@ if __name__ == "__main__":
 	App = QApplication(sys.argv)
 	App.setStyle("Fusion")
 
+	software_location = get_software_location()
+
 	if splash:
 		start = time()
-		splash_pix = QPixmap(sep.join([get_software_location(),'celldetective','icons','splash.png']))
+		splash_pix = QPixmap(sep.join([software_location,'celldetective','icons','splash.png']))
 		splash = QSplashScreen(splash_pix)
 		splash.setMask(splash_pix.mask())
 		splash.show()
@@ -56,7 +58,7 @@ if __name__ == "__main__":
 
 	print('Libraries successfully loaded...')
 
-	window = AppInitWindow(App)
+	window = AppInitWindow(App, software_location=software_location)
 
 	if splash:
 		splash.finish(window)

@@ -69,7 +69,7 @@ def collect_experiment_metadata(pos_path=None, well_path=None):
 	antibodies = get_experiment_antibodies(experiment)
 	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
 	
-	return {"pos_path": pos_path, "pos_name": pos_name, "well_path": well_path, "well_name": well_name, "well_nbr": well_nbr, "experiment": experiment, "antibody": antibodies[idx], "concentration": concentrations[idx], "cell_type": cell_types[idx], "pharmaceutical_agent": pharmaceutical_agents[idx]}
+	return {"pos_path": pos_path, "position": pos_path, "pos_name": pos_name, "well_path": well_path, "well_name": well_name, "well_nbr": well_nbr, "experiment": experiment, "antibody": antibodies[idx], "concentration": concentrations[idx], "cell_type": cell_types[idx], "pharmaceutical_agent": pharmaceutical_agents[idx]}
 
 
 def get_experiment_wells(experiment):

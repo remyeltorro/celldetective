@@ -43,9 +43,11 @@ class BaseSegmentProcess(Process):
 
 	def write_folders(self):
 
-		if self.mode.lower()=="target" or self.mode.lower()=="targets":
+		self.mode = self.mode.lower()
+
+		if self.mode=="target" or self.mode=="targets":
 			self.label_folder = "labels_targets"
-		elif self.mode.lower()=="effector" or self.mode.lower()=="effectors":
+		elif self.mode=="effector" or self.mode=="effectors":
 			self.label_folder = "labels_effectors"
 
 		print('Erasing previous segmentation folder.')
@@ -77,8 +79,8 @@ class BaseSegmentProcess(Process):
 
 		try:
 			self.file = glob(self.pos+f"movie/{self.movie_prefix}*.tif")[0]
-		except IndexError:
-			print('Movie could not be found. Check the prefix.')
+		except Exception as e:
+			print(f'Error {e}.\nMovie could not be found. Check the prefix.')
 			self.abort_process()
 
 		len_movie_auto = auto_load_number_of_frames(self.file)
@@ -154,7 +156,7 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 			print('Model could not be found. Abort.')
 			self.abort_process()
 		else:
-			print(f'Model successfully located in {self.model_complete_path}')
+			print(f'Model successfully located in {self.model_complete_path}...')
 		
 		if not os.path.exists(self.model_complete_path+"config_input.json"):
 			print('The configuration for the inputs to the model could not be located. Abort.')
@@ -180,7 +182,6 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 				scale_model = self.scale
 
 			elif self.model_type=='cellpose':
-
 
 				import torch
 				if not self.use_gpu:
@@ -235,6 +236,11 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 
 				save_tiff_imagej_compatible(self.pos+os.sep.join([self.label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
 				
+				del f;
+				del template;
+				del Y_pred;
+				gc.collect()
+				
 				# Send signal for progress bar
 				self.sum_done+=1/self.len_movie*100
 				mean_exec_per_step = (time.time() - self.t0) / (t+1)
@@ -243,6 +249,13 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 
 		except Exception as e:
 			print(e)
+
+		try:
+			del model
+		except:
+			pass		
+		
+		gc.collect()
 
 		# Send end signal
 		self.queue.put("finished")

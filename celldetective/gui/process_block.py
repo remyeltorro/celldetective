@@ -760,13 +760,13 @@ class ProcessPanel(QFrame, Styles):
 			self.model_name = self.seg_models[self.seg_model_list.currentIndex()]
 		print(self.model_name, self.seg_model_list.currentIndex())
 
-		if self.model_name.startswith('CP') and self.model_name in self.seg_models_generic and not self.cellpose_calibrated:
+		if self.segment_action.isChecked() and self.model_name.startswith('CP') and self.model_name in self.seg_models_generic and not self.cellpose_calibrated:
 
 			self.diamWidget = CellposeParamsWidget(self, model_name=self.model_name)
 			self.diamWidget.show()
 			return None
 
-		if self.model_name.startswith('SD') and self.model_name in self.seg_models_generic and not self.stardist_calibrated:
+		if self.segment_action.isChecked() and self.model_name.startswith('SD') and self.model_name in self.seg_models_generic and not self.stardist_calibrated:
 
 			self.diamWidget = StarDistParamsWidget(self, model_name = self.model_name)
 			self.diamWidget.show()
@@ -890,8 +890,9 @@ class ProcessPanel(QFrame, Styles):
 
 			# self.stack = None
 		self.parent_window.update_position_options()
-		if self.segment_action.isChecked():
-			self.segment_action.setChecked(False)
+		for action in [self.segment_action, self.track_action, self.measure_action, self.signal_analysis_action]:
+			if action.isChecked():
+				action.setChecked(False)
 
 		self.cellpose_calibrated = False
 

@@ -24,7 +24,6 @@ from glob import glob
 from natsort import natsorted
 from tifffile import imread
 from pathlib import Path
-import gc
 
 from celldetective.gui.viewers import CellEdgeVisualizer, SpotDetectionVisualizer
 from celldetective.gui.layouts import ProtocolDesignerLayout, BackgroundFitCorrectionLayout, LocalCorrectionLayout
@@ -726,17 +725,9 @@ class ConfigMeasurements(QMainWindow, Styles):
 		else:
 			self.current_stack = movies[0]
 			self.stack_length = auto_load_number_of_frames(self.current_stack)
-			
-			if self.stack_length is None:
-				stack = imread(self.current_stack)
-				self.stack_length = len(stack)
-				del stack
-				gc.collect()
-			
 			self.mid_time = self.stack_length // 2
-			indices = self.mid_time + np.arange(len(self.channel_names))
+			indices = len(self.channel_names) * self.mid_time + np.arange(len(self.channel_names))
 			self.test_frame = load_frames(list(indices.astype(int)),self.current_stack, normalize_input=False)
-
 
 	def control_haralick_digitalization(self):
 
@@ -746,9 +737,10 @@ class ConfigMeasurements(QMainWindow, Styles):
 
 		"""
 
-		self.locate_image()
+		self.locate_image() # pb here
 		self.extract_haralick_options()
 		if self.test_frame is not None:
+
 			digitized_img = compute_haralick_features(self.test_frame, np.zeros(self.test_frame.shape[:2]),
 													  channels=self.channel_names, return_digit_image_only=True,
 													  **self.haralick_options

@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
-from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_status, help_generic, color_from_class
+from celldetective.gui.gui_utils import FigureCanvas, center_window, color_from_status, help_generic
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location
 from celldetective.measure import classify_cells_from_query, interpret_track_classification

@@ -1,12 +1,6 @@
-import math
-
-import skimage
 from PyQt5.QtWidgets import QAction, QMenu, QMainWindow, QMessageBox, QLabel, QWidget, QFileDialog, QHBoxLayout, \
 	QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton, QRadioButton, QButtonGroup
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
-from matplotlib.patches import Circle
-from scipy import ndimage
-from skimage.morphology import disk
 
 from celldetective.filters import std_filter, gauss_filter
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class, help_generic

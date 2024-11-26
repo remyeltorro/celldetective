@@ -5,7 +5,7 @@ Copright © 2022 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
 import argparse
 import os
 import json
-from celldetective.io import auto_load_number_of_frames, load_frames
+from celldetective.io import auto_load_number_of_frames, load_frames, fix_missing_labels, locate_labels
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
 from celldetective.utils import remove_redundant_features, remove_trajectory_measurements
 from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity
@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from natsort import natsorted
 from art import tprint
-from tifffile import imread
 import threading
 import datetime
 
@@ -165,6 +164,8 @@ else:
 	features += ['centroid']
 	do_iso_intensities = False
 
+# if 'centroid' not in features:
+# 	features += ['centroid']
 
 # if (features is not None) and (trajectories is not None):
 # 	features = remove_redundant_features(features, 
@@ -175,6 +176,12 @@ else:
 len_movie_auto = auto_load_number_of_frames(file)
 if len_movie_auto is not None:
 	len_movie = len_movie_auto
+
+if label_path is not None and file is not None:
+	test = len(label_path)==len_movie
+	if not test:
+		fix_missing_labels(pos, population=mode, prefix=movie_prefix)
+		label_path = natsorted(glob(os.sep.join([pos, label_folder, '*.tif'])))
 
 img_num_channels = _get_img_num_per_channel(channel_indices, len_movie, nbr_channels)
 
@@ -203,6 +210,8 @@ if trajectories is None:
 	if 'label' not in features:
 		features.append('label')
 
+if label_path is not None:
+	label_names = [os.path.split(lbl)[-1] for lbl in label_path]
 
 
 features_log=f'features: {features}'
@@ -228,7 +237,10 @@ def measure_index(indices):
 			img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
 
 		if label_path is not None:
-			lbl = imread(label_path[t])
+			
+			lbl = locate_labels(pos, population=mode, frames=t)
+			if lbl is None:
+				continue
 
 		if trajectories is not None:
 
@@ -286,16 +298,16 @@ for th in threads:
 
 
 if len(timestep_dataframes)>0:
+	
 	df = pd.concat(timestep_dataframes)	
-	df.reset_index(inplace=True, drop=True)
 
-	if trajectories is None:
+	if trajectories is not None:
+		df = df.sort_values(by=[column_labels['track'],column_labels['time']])
+		df = df.dropna(subset=[column_labels['track']])
+	else:
 		df['ID'] = np.arange(len(df))
 
-	if column_labels['track'] in df.columns:
-		df = df.sort_values(by=[column_labels['track'], column_labels['time']])
-	else:
-		df = df.sort_values(by=column_labels['time'])
+	df = df.reset_index(drop=True)
 
 	df.to_csv(pos+os.sep.join(["output", "tables", table_name]), index=False)
 	print(f'Measurements successfully written in table {pos+os.sep.join(["output", "tables", table_name])}')

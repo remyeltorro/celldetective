@@ -69,7 +69,7 @@ def collect_experiment_metadata(pos_path=None, well_path=None):
 	antibodies = get_experiment_antibodies(experiment)
 	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
 	
-	return {"pos_path": pos_path, "pos_name": pos_name, "well_path": well_path, "well_name": well_name, "well_nbr": well_nbr, "experiment": experiment, "antibody": antibodies[idx], "concentration": concentrations[idx], "cell_type": cell_types[idx], "pharmaceutical_agent": pharmaceutical_agents[idx]}
+	return {"pos_path": pos_path, "position": pos_path, "pos_name": pos_name, "well_path": well_path, "well_name": well_name, "well_nbr": well_nbr, "experiment": experiment, "antibody": antibodies[idx], "concentration": concentrations[idx], "cell_type": cell_types[idx], "pharmaceutical_agent": pharmaceutical_agents[idx]}
 
 
 def get_experiment_wells(experiment):
@@ -691,7 +691,7 @@ def locate_stack(position, prefix='Aligned'):
 
 	return stack
 
-def locate_labels(position, population='target'):
+def locate_labels(position, population='target', frames=None):
 
 	"""
 
@@ -732,7 +732,33 @@ def locate_labels(position, population='target'):
 		label_path = natsorted(glob(position + os.sep.join(["labels_targets", "*.tif"])))
 	elif population.lower() == "effector" or population.lower() == "effectors":
 		label_path = natsorted(glob(position + os.sep.join(["labels_effectors", "*.tif"])))
-	labels = np.array([imread(i.replace('\\', '/')) for i in label_path])
+
+	label_names = [os.path.split(lbl)[-1] for lbl in label_path]
+
+	if frames is None:
+
+		labels = np.array([imread(i.replace('\\', '/')) for i in label_path])
+	
+	elif isinstance(frames, (int,float, np.int_)):
+
+		tzfill = str(int(frames)).zfill(4)
+		idx = label_names.index(f"{tzfill}.tif")
+		if idx==-1:
+			labels = None
+		else:
+			labels = np.array(imread(label_path[idx].replace('\\', '/')))
+
+	elif isinstance(frames, (list,np.ndarray)):
+		labels = []
+		for f in frames:
+			tzfill = str(int(f)).zfill(4)
+			idx = label_names.index(f"{tzfill}.tif")
+			if idx==-1:
+				labels.append(None)
+			else:
+				labels.append(np.array(imread(label_path[idx].replace('\\', '/'))))
+	else:
+		print('Frames argument must be None, int or list...')
 
 	return labels
 
@@ -783,7 +809,8 @@ def fix_missing_labels(position, population='target', prefix='Aligned'):
 		to_create = all_frames
 	to_create = [str(x).zfill(4)+'.tif' for x in to_create]
 	for file in to_create:
-		imwrite(os.sep.join([path, file]), template)
+		save_tiff_imagej_compatible(os.sep.join([path, file]), template.astype(np.int16), axes='YX')
+		#imwrite(os.sep.join([path, file]), template.astype(int))
 
 
 def locate_stack_and_labels(position, prefix='Aligned', population="target"):

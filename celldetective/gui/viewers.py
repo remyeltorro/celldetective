@@ -22,11 +22,7 @@ from fonticon_mdi6 import MDI6
 from matplotlib_scalebar.scalebar import ScaleBar
 import gc
 from celldetective.utils import mask_edges
-from scipy.ndimage import shift, grey_dilation
-from skimage.feature import blob_dog
-import math
-from skimage.morphology import disk
-from matplotlib.patches import Circle
+from scipy.ndimage import shift
 
 class StackVisualizer(QWidget, Styles):
 

@@ -1,6 +1,7 @@
 import pytest
 from PyQt5 import QtCore
 from celldetective.gui.InitWindow import AppInitWindow
+from celldetective.utils import get_software_location
 import time
 import os
 
@@ -9,7 +10,8 @@ print(abs_path)
 
 @pytest.fixture
 def app(qtbot):
-	test_app = AppInitWindow()
+	software_location = get_software_location()
+	test_app = AppInitWindow(software_location=software_location)
 	qtbot.addWidget(test_app)
 	return test_app
 

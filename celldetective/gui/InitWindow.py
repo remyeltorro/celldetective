@@ -42,7 +42,8 @@ class AppInitWindow(QMainWindow, Styles):
 		except Exception: # this command not being found can raise quite a few different errors depending on the configuration
 			print('No NVIDIA GPU detected...')
 			self.use_gpu = False
-			
+		
+		print(f"{software_location=}")
 		self.soft_path = software_location
 		self.onlyInt = QIntValidator()
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','logo.png'])))

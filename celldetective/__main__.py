@@ -5,7 +5,6 @@ from PyQt5.QtGui import QPixmap
 from os import sep
 from celldetective.utils import get_software_location
 from time import time, sleep
-from celldetective import __version__
 
 #os.environ['QT_DEBUG_PLUGINS'] = '1'
 
@@ -32,6 +31,7 @@ if __name__ == "__main__":
 		
 		import requests
 		import re
+		from celldetective import __version__
 
 		package = 'celldetective'
 		response = requests.get(f'https://pypi.org/pypi/{package}/json')
@@ -52,8 +52,6 @@ if __name__ == "__main__":
 
 		print(f"{e=}")
 
-	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
-	from PyQt5.QtGui import QIcon, QDesktopServices, QIntValidator
 	from celldetective.gui.InitWindow import AppInitWindow
 
 	print('Libraries successfully loaded...')

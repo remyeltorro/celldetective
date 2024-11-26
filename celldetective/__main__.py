@@ -5,6 +5,8 @@ from PyQt5.QtGui import QPixmap
 from os import sep
 from celldetective.utils import get_software_location
 from time import time, sleep
+from celldetective import __version__
+
 #os.environ['QT_DEBUG_PLUGINS'] = '1'
 
 if __name__ == "__main__":
@@ -25,6 +27,30 @@ if __name__ == "__main__":
 		while time() - start < 1:
 			sleep(0.001)
 			App.processEvents()
+
+	try:
+		
+		import requests
+		import re
+
+		package = 'celldetective'
+		response = requests.get(f'https://pypi.org/pypi/{package}/json')
+		latest_version = response.json()['info']['version']
+
+		latest_version_num = re.sub('[^0-9]','', latest_version)
+		current_version_num = re.sub('[^0-9]','',__version__)
+
+		if len(latest_version_num)!=len(current_version_num):
+			max_length = max([len(latest_version_num),len(current_version_num)])
+			latest_version_num = int(latest_version_num.zfill(max_length - len(latest_version_num)))
+			current_version_num = int(current_version_num.zfill(max_length - len(current_version_num)))
+
+		if latest_version_num > current_version_num:
+			print('Update is available...\nPlease update using `pip install --upgrade celldetective`...')
+	
+	except Exception as e:
+
+		print(f"{e=}")
 
 	from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 	from PyQt5.QtGui import QIcon, QDesktopServices, QIntValidator

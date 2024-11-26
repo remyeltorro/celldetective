@@ -24,7 +24,6 @@ from glob import glob
 from natsort import natsorted
 from tifffile import imread
 from pathlib import Path
-import gc
 
 from celldetective.gui.viewers import CellEdgeVisualizer, SpotDetectionVisualizer
 from celldetective.gui.layouts import ProtocolDesignerLayout, BackgroundFitCorrectionLayout, LocalCorrectionLayout

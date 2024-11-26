@@ -23,6 +23,7 @@ class Styles(object):
 
 	def init_button_styles(self):
 
+
 		self.button_style_sheet = '''
 			QPushButton {
 				background-color: #1565c0;

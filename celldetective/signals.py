@@ -26,7 +26,7 @@ from natsort import natsorted
 from glob import glob
 import random
 from celldetective.utils import color_from_status, color_from_class
-from math import floor, ceil
+from math import floor
 from scipy.optimize import curve_fit
 import time
 import math

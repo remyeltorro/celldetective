@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from natsort import natsorted
 from art import tprint
-from tifffile import imread
 import threading
 import datetime
 

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, \
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, \
 	QTabWidget, QVBoxLayout, QMessageBox, QScrollArea, QDesktopWidget
 from PyQt5.QtCore import Qt, QSize
 from celldetective.gui.gui_utils import center_window, QHSeperationLine, QCheckableComboBox

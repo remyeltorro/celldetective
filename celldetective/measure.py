@@ -25,8 +25,6 @@ from celldetective.extra_properties import *
 from inspect import getmembers, isfunction
 from skimage.morphology import disk
 
-import matplotlib.pyplot as plt
-
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,

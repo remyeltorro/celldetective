@@ -7,8 +7,6 @@ from celldetective.utils import contour_of_instance_segmentation, extract_identi
 from scipy.spatial.distance import cdist
 from celldetective.io import locate_labels, get_position_pickle, get_position_table
 
-import matplotlib.pyplot as plt
-
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 

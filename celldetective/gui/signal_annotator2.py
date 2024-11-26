@@ -2213,10 +2213,13 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.index = ind[0]
 		elif len(ind)>1:
 			# More than one point in vicinity
-			datax,datay = [positions[self.framedata][i,0] for i in ind],[positions[self.framedata][i,1] for i in ind]
-			msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
-			dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
-			self.index = ind[np.argmin(dist)]
+			try:
+				datax,datay = [positions[self.framedata][i,0] for i in ind],[positions[self.framedata][i,1] for i in ind]
+				msx, msy = event.mouseevent.xdata, event.mouseevent.ydata
+				dist = np.sqrt((np.array(datax)-msx)**2+(np.array(datay)-msy)**2)
+				self.index = ind[np.argmin(dist)]
+			except Exception as e:
+				print(f"{e=}")
 		else:
 			self.index = None
 

@@ -25,8 +25,6 @@ from celldetective.extra_properties import *
 from inspect import getmembers, isfunction
 from skimage.morphology import disk
 
-import matplotlib.pyplot as plt
-
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,
@@ -417,9 +415,10 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	if haralick_options is not None:
 		try:
 			df_haralick = compute_haralick_features(img, label, channels=channels, **haralick_options)
-			df_haralick = df_haralick.rename(columns={"cell_id": "label"})
-			df_props = df_props.merge(df_haralick, how='outer', on='label', suffixes=('_delme', ''))
-			df_props = df_props[[c for c in df_props.columns if not c.endswith('_delme')]]
+			if df_haralick is not None:
+				df_haralick = df_haralick.rename(columns={"cell_id": "label"})
+				df_props = df_props.merge(df_haralick, how='outer', on='label', suffixes=('_delme', ''))
+				df_props = df_props[[c for c in df_props.columns if not c.endswith('_delme')]]
 		except Exception as e:
 			print(e)
 			pass
@@ -519,6 +518,10 @@ def compute_haralick_features(img, labels, channels=None, target_channel=0, scal
 	haralick_labels = ['haralick_'+h+"_"+modality for h in haralick_labels]
 	if len(img.shape)==3:
 		img = img[:,:,target_channel]
+
+	# Routine to skip black frames
+	if np.percentile(img.flatten(),99.9)==0.0:
+		return None
 
 	img = interpolate_nan(img)
 

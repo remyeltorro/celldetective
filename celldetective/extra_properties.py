@@ -29,6 +29,27 @@ from celldetective.utils import interpolate_nan, contour_of_instance_segmentatio
 
 # Percentiles
 
+def custom_area(regionmask):
+	return np.sum(regionmask)
+
+def intensity_area_under_one(regionmask, intensity_image):
+	
+	subregion = regionmask[intensity_image<1]
+	if len(subregion)>0:
+		return np.sum(subregion)
+	else:
+		return 0.0
+
+def intensity_fraction_of_area_under_one(regionmask, intensity_image):
+
+	subregion = regionmask[intensity_image<1]
+	area = np.sum(regionmask)
+
+	if len(subregion) > 0:
+		return float(np.sum(subregion)) / float(area)
+	else:
+		return 0.0
+
 def intensity_percentile_ninety_nine(regionmask, intensity_image):
 	return np.nanpercentile(intensity_image[regionmask],99)
 

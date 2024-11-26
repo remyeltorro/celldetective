@@ -4,12 +4,12 @@ from PyQt5.QtWidgets import QMessageBox,QGridLayout, QButtonGroup, \
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator
 
-from celldetective.gui.gui_utils import center_window, FigureCanvas, ExportPlotBtn
+from celldetective.gui.gui_utils import center_window, FigureCanvas, ExportPlotBtn, QuickSliderLayout
 from celldetective.gui.tableUI import TableUI
 from celldetective.io import collect_experiment_metadata
 
 from superqt.fonticon import icon
-from superqt import QLabeledSlider
+from superqt import QLabeledSlider, QLabeledDoubleSlider
 from fonticon_mdi6 import MDI6
 import numpy as np
 import json
@@ -81,16 +81,21 @@ class GenericSignalPlotWidget(QWidget, Styles):
 			radio_subhbox.addWidget(self.plot_options[i], 33, alignment=Qt.AlignCenter)
 
 		if self.parent_window.position_indices is not None:
+			# at least a position is selected
 			if len(self.parent_window.well_indices)>1 and len(self.parent_window.position_indices)==1:
+				# several wells but one position
 				self.plot_btn_group.buttons()[0].click()
-				for i in [1,2]:
-					self.plot_options[i].setEnabled(False)
+				# for i in [1,2]:
+				# 	self.plot_options[i].setEnabled(False)
 			elif len(self.parent_window.well_indices)>1:
 				self.plot_btn_group.buttons()[0].click()
 			elif len(self.parent_window.well_indices)==1 and len(self.parent_window.position_indices)==1:
 				self.plot_btn_group.buttons()[1].click()
 				for i in [0,2]:
 					self.plot_options[i].setEnabled(False)
+			elif len(self.parent_window.well_indices)==1 and len(self.parent_window.position_indices)>1:
+				# one well, several positions
+				self.plot_btn_group.buttons()[2].click()
 		else:
 			if len(self.parent_window.well_indices)>1:
 				self.plot_btn_group.buttons()[0].click()
@@ -212,17 +217,22 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		# Rescale 
 		self.cell_lines_alpha_wdg = QWidget()
 		alpha_hbox = QHBoxLayout()
+
+		self.alpha_slider = QLabeledDoubleSlider()
+		alpha_hbox = QuickSliderLayout(label='single-cell\nsignal alpha: ',
+										slider=self.alpha_slider,
+										slider_initial_value=0.8,
+										slider_range=(0,1),
+										decimal_option=True,
+										precision=1.0E-05,
+										)
+		self.alpha_slider.valueChanged.connect(self.submit_alpha)
 		self.cell_lines_alpha_wdg.setLayout(alpha_hbox)
 
-		alpha_hbox.addWidget(QLabel('single-cell\nsignal alpha: '), 25)
-		self.alpha_le = QLineEdit('0,8')
-		self.alpha_le.setValidator(self.float_validator)
-		alpha_hbox.addWidget(self.alpha_le, 65)
-
-		self.submit_alpha_btn = QPushButton('submit')
-		self.submit_alpha_btn.setStyleSheet(self.button_style_sheet_2)
-		self.submit_alpha_btn.clicked.connect(self.submit_alpha)
-		alpha_hbox.addWidget(self.submit_alpha_btn, 10)
+		# self.submit_alpha_btn = QPushButton('submit')
+		# self.submit_alpha_btn.setStyleSheet(self.button_style_sheet_2)
+		# self.submit_alpha_btn.clicked.connect(self.submit_alpha)
+		# alpha_hbox.addWidget(self.submit_alpha_btn, 10)
 		self.layout.addWidget(self.cell_lines_alpha_wdg)
 
 		self.select_option = [QRadioButton() for i in range(2)]
@@ -263,9 +273,9 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.generate_pos_selection_widget()
 		self.select_btn_group.buttons()[0].click()
 
-	def submit_alpha(self):
+	def submit_alpha(self, value):
 
-		alpha = self.alpha_le.text().replace(',','.')
+		alpha = value
 		try:
 			alpha = float(alpha)
 		except:
@@ -329,17 +339,21 @@ class GenericSignalPlotWidget(QWidget, Styles):
 				if name+':' in lbl:
 					self.usable_well_labels.append(lbl)
 
+		thresh = 20
+		self.well_name_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.usable_well_labels]
+
 		self.line_choice_widget = QWidget()
 		self.line_check_vbox = QGridLayout()
 		self.line_choice_widget.setLayout(self.line_check_vbox)
 
 		if len(self.parent_window.well_indices)>1:
-			self.well_display_options = [QCheckBox(self.usable_well_labels[i]) for i in range(len(self.usable_well_labels))]
+			self.well_display_options = [QCheckBox(self.well_name_truncated[i]) for i in range(len(self.well_name_truncated))]
 			for i in range(len(self.well_names)):
-				self.line_check_vbox.addWidget(self.well_display_options[i], i, 0, 1, 1, alignment=Qt.AlignLeft)
+				self.line_check_vbox.addWidget(self.well_display_options[i], i%4, i//4, 1, 1, alignment=Qt.AlignCenter)
 				self.well_display_options[i].setChecked(True)
 				self.well_display_options[i].setStyleSheet("font-size: 12px;")
 				self.well_display_options[i].toggled.connect(self.select_lines)
+				self.well_display_options[i].setToolTip(self.usable_well_labels[i])
 		else:
 			self.pos_display_options = [QCheckBox(self.pos_names[i]) for i in range(len(self.pos_names))]
 			for i in range(len(self.pos_names)):
@@ -648,7 +662,10 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		else:
 			self.ci_btn.setIcon(icon(MDI6.arrow_expand_horizontal,color=self.help_color))
 		self.show_ci = not self.show_ci
-		self.plot_signals(0)
+		try:
+			self.plot_signals(0)
+		except Exception as e:
+			print(f"{e=}")
 
 	def switch_cell_lines(self):
 

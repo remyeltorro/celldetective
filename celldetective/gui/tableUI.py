@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QRadioButton, QButtonGroup, QMainWindow, QTableView, QAction, QMenu,QFileDialog, QLineEdit, QHBoxLayout, QWidget, QPushButton, QVBoxLayout, QComboBox, QLabel, QCheckBox, QMessageBox
-from PyQt5.QtCore import Qt, QAbstractTableModel
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor, QDoubleValidator
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -17,7 +17,6 @@ from superqt import QColormapComboBox, QLabeledSlider, QSearchableComboBox
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 from math import floor
-import re
 
 from matplotlib import colormaps
 

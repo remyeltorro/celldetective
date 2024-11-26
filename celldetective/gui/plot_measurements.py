@@ -56,8 +56,8 @@ class ConfigMeasurementsPlot(QWidget,Styles):
 
         print('Parent wells: ', self.wells)
 
-        self.well_option = self.parent_window.parent_window.well_list.currentIndex()
-        self.position_option = self.parent_window.parent_window.position_list.currentIndex()
+        self.well_option = self.parent_window.parent_window.well_list.getSelectedIndices()
+        self.position_option = self.parent_window.parent_window.position_list.getSelectedIndices()
         self.interpret_pos_location()
         # self.load_available_tables()
         # self.config_path = self.exp_dir + self.config_name
@@ -526,18 +526,10 @@ class ConfigMeasurementsPlot(QWidget,Styles):
 
         """
 
-        self.well_option = self.parent_window.parent_window.well_list.currentIndex()
-        if self.well_option == len(self.wells):
-            wo = '*'
-        else:
-            wo = self.well_option
-        self.position_option = self.parent_window.parent_window.position_list.currentIndex()
-        if self.position_option == 0:
-            po = '*'
-        else:
-            po = self.position_option - 1
+        self.well_option = self.parent_window.parent_window.well_list.getSelectedIndices()
+        self.position_option = self.parent_window.parent_window.position_list.getSelectedIndices()
 
-        self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po,
+        self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=self.well_option, position_option=self.position_option,
                                                            population=self.cbs[0].currentText(), return_pos_info=True)
 
         if self.df is None:

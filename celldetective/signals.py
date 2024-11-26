@@ -27,7 +27,7 @@ from natsort import natsorted
 from glob import glob
 import random
 from celldetective.utils import color_from_status, color_from_class
-from math import floor, ceil
+from math import floor
 from scipy.optimize import curve_fit
 import time
 import math
@@ -193,73 +193,74 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 			signals[i,max(frames):,j] = signal[-1]
 
 	model = SignalDetectionModel(pretrained=complete_path)
+	if not model.pretrained is None:
 
-	classes = model.predict_class(signals)
-	times_recast = model.predict_time_of_interest(signals)
+		classes = model.predict_class(signals)
+		times_recast = model.predict_time_of_interest(signals)
 
-	if label is None:
-		class_col = 'class'
-		time_col = 't0'
-		status_col = 'status'
-	else:
-		class_col = 'class_'+label
-		time_col = 't_'+label
-		status_col = 'status_'+label
-
-	for i,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
-		indices = group.index
-		trajectories.loc[indices,class_col] = classes[i]
-		trajectories.loc[indices,time_col] = times_recast[i]
-	print('Done.')
-
-	for tid, group in trajectories.groupby(column_labels['track']):
-		
-		indices = group.index
-		t0 = group[time_col].to_numpy()[0]
-		cclass = group[class_col].to_numpy()[0]
-		timeline = group[column_labels['time']].to_numpy()
-		status = np.zeros_like(timeline)
-		if t0 > 0:
-			status[timeline>=t0] = 1.
-		if cclass==2:
-			status[:] = 2
-		if cclass>2:
-			status[:] = 42
-		status_color = [color_from_status(s) for s in status]
-		class_color = [color_from_class(cclass) for i in range(len(status))]
-
-		trajectories.loc[indices, status_col] = status
-		trajectories.loc[indices, 'status_color'] = status_color
-		trajectories.loc[indices, 'class_color'] = class_color
-
-	if plot_outcome:
-		fig,ax = plt.subplots(1,len(selected_signals), figsize=(10,5))
-		for i,s in enumerate(selected_signals):
-			for k,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
-				cclass = group[class_col].to_numpy()[0]
-				t0 = group[time_col].to_numpy()[0]
-				timeline = group[column_labels['time']].to_numpy()
-				if cclass==0:
-					if len(selected_signals)>1:
-						ax[i].plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
-					else:
-						ax.plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
-		if len(selected_signals)>1:				
-			for a,s in zip(ax,selected_signals):
-				a.set_title(s)
-				a.set_xlabel(r'time - t$_0$ [frame]')
-				a.spines['top'].set_visible(False)
-				a.spines['right'].set_visible(False)
+		if label is None:
+			class_col = 'class'
+			time_col = 't0'
+			status_col = 'status'
 		else:
-			ax.set_title(s)
-			ax.set_xlabel(r'time - t$_0$ [frame]')
-			ax.spines['top'].set_visible(False)
-			ax.spines['right'].set_visible(False)			
-		plt.tight_layout()
-		if output_dir is not None:
-			plt.savefig(output_dir+'signal_collapse.png',bbox_inches='tight',dpi=300)
-		plt.pause(3)
-		plt.close()
+			class_col = 'class_'+label
+			time_col = 't_'+label
+			status_col = 'status_'+label
+
+		for i,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
+			indices = group.index
+			trajectories.loc[indices,class_col] = classes[i]
+			trajectories.loc[indices,time_col] = times_recast[i]
+		print('Done.')
+
+		for tid, group in trajectories.groupby(column_labels['track']):
+			
+			indices = group.index
+			t0 = group[time_col].to_numpy()[0]
+			cclass = group[class_col].to_numpy()[0]
+			timeline = group[column_labels['time']].to_numpy()
+			status = np.zeros_like(timeline)
+			if t0 > 0:
+				status[timeline>=t0] = 1.
+			if cclass==2:
+				status[:] = 2
+			if cclass>2:
+				status[:] = 42
+			status_color = [color_from_status(s) for s in status]
+			class_color = [color_from_class(cclass) for i in range(len(status))]
+
+			trajectories.loc[indices, status_col] = status
+			trajectories.loc[indices, 'status_color'] = status_color
+			trajectories.loc[indices, 'class_color'] = class_color
+
+		if plot_outcome:
+			fig,ax = plt.subplots(1,len(selected_signals), figsize=(10,5))
+			for i,s in enumerate(selected_signals):
+				for k,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
+					cclass = group[class_col].to_numpy()[0]
+					t0 = group[time_col].to_numpy()[0]
+					timeline = group[column_labels['time']].to_numpy()
+					if cclass==0:
+						if len(selected_signals)>1:
+							ax[i].plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
+						else:
+							ax.plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
+			if len(selected_signals)>1:				
+				for a,s in zip(ax,selected_signals):
+					a.set_title(s)
+					a.set_xlabel(r'time - t$_0$ [frame]')
+					a.spines['top'].set_visible(False)
+					a.spines['right'].set_visible(False)
+			else:
+				ax.set_title(s)
+				ax.set_xlabel(r'time - t$_0$ [frame]')
+				ax.spines['top'].set_visible(False)
+				ax.spines['right'].set_visible(False)			
+			plt.tight_layout()
+			if output_dir is not None:
+				plt.savefig(output_dir+'signal_collapse.png',bbox_inches='tight',dpi=300)
+			plt.pause(3)
+			plt.close()
 
 	return trajectories
 
@@ -800,8 +801,12 @@ class SignalDetectionModel(object):
 
 
 		if self.pretrained is not None:
-			print(f"Load pretrained models from {path}...")
-			self.load_pretrained_model()
+			print(f"Load pretrained models from {pretrained}...")
+			test = self.load_pretrained_model()
+			if test is None:
+				self.pretrained = None
+				print('Pretrained model could not be loaded. Check the log for error. Abort...')
+				return None
 		else:
 			print("Create models from scratch...")
 			self.create_models_from_scratch()
@@ -828,6 +833,9 @@ class SignalDetectionModel(object):
 		- The configuration file is expected to be named "config_input.json" and located in the same directory as the models.
 		"""
 
+		if self.pretrained.endswith(os.sep):
+			self.pretrained = os.sep.join(self.pretrained.split(os.sep)[:-1])
+
 		try:
 			self.model_class = load_model(os.sep.join([self.pretrained,"classifier.h5"]),compile=False)
 			self.model_class.load_weights(os.sep.join([self.pretrained,"classifier.h5"]))
@@ -842,6 +850,9 @@ class SignalDetectionModel(object):
 		except Exception as e:
 			print(f"Error {e}...")
 			self.model_reg = None
+
+		if self.model_class is None and self.model_reg is None:
+			return None
 
 		# load config
 		with open(os.sep.join([self.pretrained,"config_input.json"])) as config_file:
@@ -867,6 +878,7 @@ class SignalDetectionModel(object):
 
 		assert self.model_class.layers[0].input_shape[0] == self.model_reg.layers[0].input_shape[0], f"mismatch between input shape of classification: {self.model_class.layers[0].input_shape[0]} and regression {self.model_reg.layers[0].input_shape[0]} models... Error."
 
+		return True
 
 	def create_models_from_scratch(self):
 

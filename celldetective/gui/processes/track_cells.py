@@ -175,6 +175,8 @@ class TrackingProcess(Process):
 
 	def parallel_job(self, indices):
 
+		props = []
+
 		try:
 
 			for t in tqdm(indices,desc="frame"):
@@ -188,23 +190,33 @@ class TrackingProcess(Process):
 				df_props.rename(columns={'centroid-1': 'x', 'centroid-0': 'y'},inplace=True)
 				df_props['t'] = int(t)
 
-				self.timestep_dataframes.append(df_props)
-				
+				props.append(df_props)
+
 				self.sum_done+=1/self.len_movie*50
 				mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 50 + 1)
 				pred_time = (self.len_movie - (self.sum_done*self.len_movie / 50 + 1)) * mean_exec_per_step + 30
 				self.queue.put([self.sum_done, pred_time])
-		
+				
+
 		except Exception as e:
 			print(e)
+
+		return props
 
 	def run(self):
 
 		self.indices = list(range(self.img_num_channels.shape[1]))
 		chunks = np.array_split(self.indices, self.n_threads)
 
-		with concurrent.futures.ThreadPoolExecutor() as executor:
-			executor.map(self.parallel_job, chunks)
+		self.timestep_dataframes = []
+		with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_threads) as executor:
+			result_futures = list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
+			for future in concurrent.futures.as_completed(result_futures):
+				try:
+					res = future.result()
+					self.timestep_dataframes.extend(res)
+				except Exception as e:
+					print('e is', e, type(e))
 
 		df = pd.concat(self.timestep_dataframes)	
 		df.reset_index(inplace=True, drop=True)

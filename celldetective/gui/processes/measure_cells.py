@@ -18,6 +18,7 @@ import pandas as pd
 from natsort import natsorted
 from art import tprint
 
+
 class MeasurementProcess(Process):
 
 	def __init__(self, queue=None, process_args=None):
@@ -33,7 +34,6 @@ class MeasurementProcess(Process):
 		self.column_labels = {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}
 
 		tprint("Measure")
-		self.timestep_dataframes = []
 
 		# Experiment		
 		self.prepare_folders()
@@ -235,6 +235,8 @@ class MeasurementProcess(Process):
 
 	def parallel_job(self, indices):
 
+		measurements = []
+
 		try:
 
 			for t in tqdm(indices,desc="frame"):
@@ -293,25 +295,40 @@ class MeasurementProcess(Process):
 				except Exception as e:
 					print(f"{e=}")
 
-				if measurements_at_t is not None:
-					measurements_at_t[self.column_labels['time']] = t
-					self.timestep_dataframes.append(measurements_at_t)
-				
+
 				self.sum_done+=1/self.len_movie*100
 				mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 100 + 1)
 				pred_time = (self.len_movie - (self.sum_done*self.len_movie / 100 + 1)) * mean_exec_per_step
 				self.queue.put([self.sum_done, pred_time])
+				
+				if measurements_at_t is not None:
+					measurements_at_t[self.column_labels['time']] = t
+				else:
+					measurements_at_t = pd.DataFrame()
+
+				measurements.append(measurements_at_t)
+				
 		
 		except Exception as e:
 			print(e)
 
+		return measurements
+
 	def run(self):
+
 
 		self.indices = list(range(self.img_num_channels.shape[1]))
 		chunks = np.array_split(self.indices, self.n_threads)
 
-		with concurrent.futures.ThreadPoolExecutor() as executor:
-			executor.map(self.parallel_job, chunks)
+		self.timestep_dataframes = []
+		with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_threads) as executor:
+			result_futures = list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
+			for future in concurrent.futures.as_completed(result_futures):
+				try:
+					res = future.result()
+					self.timestep_dataframes.extend(res)
+				except Exception as e:
+					print('e is', e, type(e))
 
 		if len(self.timestep_dataframes)>0:
 
@@ -322,6 +339,7 @@ class MeasurementProcess(Process):
 				df = df.dropna(subset=[self.column_labels['track']])
 			else:
 				df['ID'] = np.arange(len(df))
+				df = df.sort_values(by=[self.column_labels['time'], 'ID'])
 
 			df = df.reset_index(drop=True)
 

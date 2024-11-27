@@ -31,7 +31,6 @@ class ControlPanel(QMainWindow, Styles):
 		self.setWindowTitle("celldetective")
 		self.setWindowIcon(self.celldetective_icon)
 		self.parent_window = parent_window
-		center_window(self)
 
 		self.init_wells_and_positions()
 		self.load_configuration()
@@ -92,6 +91,10 @@ class ControlPanel(QMainWindow, Styles):
 		self.screen_height = desktop.screenGeometry().height()
 		self.screen_width = desktop.screenGeometry().width()
 		self.scroll.setMinimumWidth(440)
+		
+		self.setAttribute(Qt.WA_DeleteOnClose)
+		center_window(self)
+
 
 	def init_wells_and_positions(self):
 

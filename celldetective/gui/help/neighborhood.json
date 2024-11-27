@@ -1,15 +1,15 @@
 {
-  "Do you want to relate target and effector populations?": {
+  "Do you want to establish relationships between the target and effector cell populations?": {
     "yes": {
-      "Do you have the complete cell shape for both populations of interest?": {
-        "yes": "You may compute a mask-contact neighborhood. Set the reference and neighbor populations. Use the tolerance parameter to be more or less sensitive about the reference-cell / neighbor-cell contact.",
-        "no": "You may use an isotropic distance threshold. Set the reference and neighbor populations. Use a radius r > (R_ref + 1/2 * R_neigh) with R_ref the average reference cell radius and R_neigh the average neighbor cell radius."
+      "Do you have the complete shape information for both populations?": {
+        "yes": "You can calculate a mask-contact neighborhood. Define the reference and neighbor populations. Adjust the tolerance parameter to control how sensitive the analysis is to contact between reference and neighbor cells.",
+        "no": "You can use an isotropic distance threshold. Define the reference and neighbor populations. Set a radius \( r > (R_{\text{ref}} + 0.5 \times R_{\text{neigh}}) \), where \( R_{\text{ref}} \) is the average radius of reference cells and \( R_{\text{neigh}} \) is the average radius of neighbor cells."
       }
     },
     "no": {
-      "Do you have the complete cell shape for the population of interest?": {
-        "yes": "You may compute a mask-contact neighborhood. Set the same reference and neighbor population. Use the tolerance parameter to be more or less sensitive about the cell-cell contact.",
-        "no": "You may use an isotropic distance threshold. Set the same reference and neighbor population. Use a radius r > 1.5*R with R the average cell radius."
+      "Do you have the complete shape information for the population of interest?": {
+        "yes": "You can calculate a mask-contact neighborhood. Use the same population as both the reference and neighbor. Adjust the tolerance parameter to control sensitivity to cell-cell contact.",
+        "no": "You can use an isotropic distance threshold. Use the same population as both the reference and neighbor. Set a radius \( r > 1.5 \times R \), where \( R \) is the average cell radius."
       }
     }
   }

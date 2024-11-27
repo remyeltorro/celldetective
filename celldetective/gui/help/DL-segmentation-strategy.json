@@ -1,36 +1,36 @@
 {
-  "Blob-like cell": {
+  "Are the cells in your image blob-like?": {
     "yes": {
-      "Fluorescence image": {
+      "Do you have a fluorescence image of the cells?": {
         "yes": {
-          "Mixture of population": {
-            "yes": "train custom StarDist model",
+          "Is there a mixture of different cell populations in the image?": {
+            "yes": "to train custom StarDist model",
             "no": {
-              "Cells can be identified from a single channel": {
-                "yes": "Use StarDist versatile fluorescence",
-                "no" : "train custom StarDist model"
+              "Can the cells be identified using a single channel?": {
+                "yes": "to use the StarDist versatile fluorescence generalist model",
+                "no" : "to train a custom StarDist model using your multichannel data"
               }
             }
           }
         },
-        "no": "train custom StarDist model"
+        "no": "to train a custom StarDist model on your data"
       }
     },
     "no": {
-      "Mixture of population": {
-        "yes": "train custom cellpose model",
+      "Is there a mixture of different cell populations in your image?": {
+        "yes": "to train a custom cellpose model with your data, annotating one of the two populations selectively",
         "no": {
-          "Heterogeneity in cell sizes": {
-            "yes": "train custom cellpose model",
+          "Is there significant variation in cell sizes?": {
+            "yes": "to train a custom cellpose model using your data",
             "no": {
-              "Cells can be identified from at most 2-channels (one cyto-like and one nucleus-like)": {
+              "Can the cells be identified using at most two channels (one for cytoplasm and one for nucleus)?": {
                 "yes": {
-                  "cyto-like channel is brightfield": {
-                    "yes": "cellpose livecell",
-                    "no" : "cellpose cyto3"
+                  "Is the cytoplasm channel a brightfield image?": {
+                    "yes": "to use the cellpose livecell generalist model",
+                    "no" : "to use cellpose cyto3 generalist model"
                   }
                 },
-                "no": "train custom cellpose model"
+                "no": "to train a custom cellpose model using your multichannel data"
               }
             }
           }

@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QMessageBox, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
 	QPushButton, QLabel, QHBoxLayout, QCheckBox, QFileDialog, QToolButton, QMenu, QStylePainter, QStyleOptionComboBox, QStyle
-from PyQt5.QtCore import Qt, QSize, QAbstractTableModel
+from PyQt5.QtCore import Qt, QSize, QAbstractTableModel, QEvent, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QStandardItemModel, QPalette
 
 from celldetective.gui import Styles
@@ -23,12 +23,13 @@ class QCheckableComboBox(QComboBox):
 	adapted from https://stackoverflow.com/questions/22775095/pyqt-how-to-set-combobox-items-be-checkable
 	"""
 
+	activated = pyqtSignal(str)
+
 	def __init__(self, obj='', parent_window=None, *args, **kwargs):
 		
 		super().__init__(parent_window, *args, **kwargs)
 
 		self.setTitle('')
-		self.view().pressed.connect(self.handleItemPressed)
 		self.setModel(QStandardItemModel(self))
 		self.obj = obj
 		self.toolButton = QToolButton(parent_window)
@@ -37,6 +38,9 @@ class QCheckableComboBox(QComboBox):
 		self.toolButton.setMenu(self.toolMenu)
 		self.toolButton.setPopupMode(QToolButton.InstantPopup)
 		self.anySelected = False
+
+		self.view().viewport().installEventFilter(self)		
+		self.view().pressed.connect(self.handleItemPressed)
 
 	def clear(self):
 		
@@ -70,6 +74,8 @@ class QCheckableComboBox(QComboBox):
 		elif len(options_checked[options_checked])==0:
 			self.setTitle(f"No {self.obj} selected...")
 			self.anySelected = False
+		
+		self.activated.emit(self.title())
 
 	def setCurrentIndex(self, index):
 
@@ -101,6 +107,7 @@ class QCheckableComboBox(QComboBox):
 
 	def setTitle(self, title):
 		self._title = title
+		self.update()
 		self.repaint()
 
 	def paintEvent(self, event):
@@ -155,7 +162,12 @@ class QCheckableComboBox(QComboBox):
 
 	def isAnySelected(self):
 		return not self.title().startswith('No')
-
+	
+	def eventFilter(self, source, event):
+		if source is self.view().viewport():
+			if event.type() == QEvent.MouseButtonRelease:
+				return True  # Prevent the popup from closing
+		return super().eventFilter(source, event)
 
 class PandasModel(QAbstractTableModel):
 

@@ -259,13 +259,13 @@ def measure_index(indices):
 								 'y': column_labels['y']}
 			feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
 		
-		if do_iso_intensities:
+		if do_iso_intensities and not trajectories is None:
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
-		if do_iso_intensities and do_features:
+		if do_iso_intensities and do_features and not trajectories is None:
 			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
-		elif do_iso_intensities * (not do_features):
+		elif do_iso_intensities * (not do_features) * (not trajectories is None):
 			measurements_at_t = iso_table
 		elif do_features:
 			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))

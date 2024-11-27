@@ -237,80 +237,80 @@ class MeasurementProcess(Process):
 
 		measurements = []
 
-		try:
+		# try:
 
-			for t in tqdm(indices,desc="frame"):
+		for t in tqdm(indices,desc="frame"):
 
-				if self.file is not None:
-					img = load_frames(self.img_num_channels[:,t], self.file, scale=None, normalize_input=False)
+			if self.file is not None:
+				img = load_frames(self.img_num_channels[:,t], self.file, scale=None, normalize_input=False)
 
-				if self.label_path is not None:
-					
-					lbl = locate_labels(self.pos, population=self.mode, frames=t)
-					if lbl is None:
-						continue
-
-					#lbl = imread(self.label_path[t])
-
-				if self.trajectories is not None:
-
-					positions_at_t = self.trajectories.loc[self.trajectories[self.column_labels['time']]==t].copy()
-
-				if self.do_features:
-					feature_table = measure_features(img, lbl, features=self.features, border_dist=self.border_distances,
-													 channels=self.channel_names, haralick_options=self.haralick_options, verbose=False,
-													 normalisation_list=self.background_correction, spot_detection=self.spot_detection)
-					if self.trajectories is None:
-						positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
-						positions_at_t['ID'] = np.arange(len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
-						positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
-						positions_at_t['FRAME'] = int(t)
-						column_labels = {'track': "ID", 'time': self.column_labels['time'], 'x': self.column_labels['x'],
-										 'y': self.column_labels['y']}
-					feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
+			if self.label_path is not None:
 				
-				if self.do_iso_intensities:
-					iso_table = measure_isotropic_intensity(positions_at_t, img, channels=self.channel_names, intensity_measurement_radii=self.intensity_measurement_radii, column_labels=self.column_labels, operations=self.isotropic_operations, verbose=False)
+				lbl = locate_labels(self.pos, population=self.mode, frames=t)
+				if lbl is None:
+					continue
 
-				if self.do_iso_intensities and self.do_features:
-					measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
-					measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
-				elif self.do_iso_intensities * (not self.do_features):
-					measurements_at_t = iso_table
-				elif self.do_features:
-					measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
-					measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
+				#lbl = imread(self.label_path[t])
+
+			if self.trajectories is not None:
+
+				positions_at_t = self.trajectories.loc[self.trajectories[self.column_labels['time']]==t].copy()
+
+			if self.do_features:
+				feature_table = measure_features(img, lbl, features=self.features, border_dist=self.border_distances,
+												 channels=self.channel_names, haralick_options=self.haralick_options, verbose=False,
+												 normalisation_list=self.background_correction, spot_detection=self.spot_detection)
+				if self.trajectories is None:
+					positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
+					positions_at_t['ID'] = np.arange(len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
+					positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
+					positions_at_t['FRAME'] = int(t)
+					column_labels = {'track': "ID", 'time': self.column_labels['time'], 'x': self.column_labels['x'],
+									 'y': self.column_labels['y']}
+				feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
 			
-				center_of_mass_x_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_x')]
-				center_of_mass_y_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_y')]
-				for c in center_of_mass_x_cols:
-					measurements_at_t.loc[:,c.replace('_x','_POSITION_X')] = measurements_at_t[c] + measurements_at_t['POSITION_X']
-				for c in center_of_mass_y_cols:
-					measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
-				measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
-				
-				try:
-					measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[self.column_labels['x']] - img.shape[0] / 2) ** 2 + (
-							measurements_at_t[self.column_labels['y']] - img.shape[1] / 2) ** 2)
-				except Exception as e:
-					print(f"{e=}")
+			if self.do_iso_intensities and not self.trajectories is None:
+				iso_table = measure_isotropic_intensity(positions_at_t, img, channels=self.channel_names, intensity_measurement_radii=self.intensity_measurement_radii, column_labels=self.column_labels, operations=self.isotropic_operations, verbose=False)
 
-
-				self.sum_done+=1/self.len_movie*100
-				mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 100 + 1)
-				pred_time = (self.len_movie - (self.sum_done*self.len_movie / 100 + 1)) * mean_exec_per_step
-				self.queue.put([self.sum_done, pred_time])
-				
-				if measurements_at_t is not None:
-					measurements_at_t[self.column_labels['time']] = t
-				else:
-					measurements_at_t = pd.DataFrame()
-
-				measurements.append(measurements_at_t)
-				
+			if self.do_iso_intensities and self.do_features and not self.trajectories is None:
+				measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
+				measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
+			elif self.do_iso_intensities * (not self.do_features) * (not self.trajectories is None):
+				measurements_at_t = iso_table
+			elif self.do_features:
+				measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
+				measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
 		
-		except Exception as e:
-			print(e)
+			center_of_mass_x_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_x')]
+			center_of_mass_y_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_y')]
+			for c in center_of_mass_x_cols:
+				measurements_at_t.loc[:,c.replace('_x','_POSITION_X')] = measurements_at_t[c] + measurements_at_t['POSITION_X']
+			for c in center_of_mass_y_cols:
+				measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
+			measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
+			
+			try:
+				measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[self.column_labels['x']] - img.shape[0] / 2) ** 2 + (
+						measurements_at_t[self.column_labels['y']] - img.shape[1] / 2) ** 2)
+			except Exception as e:
+				print(f"{e=}")
+
+
+			self.sum_done+=1/self.len_movie*100
+			mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 100 + 1)
+			pred_time = (self.len_movie - (self.sum_done*self.len_movie / 100 + 1)) * mean_exec_per_step
+			self.queue.put([self.sum_done, pred_time])
+			
+			if measurements_at_t is not None:
+				measurements_at_t[self.column_labels['time']] = t
+			else:
+				measurements_at_t = pd.DataFrame()
+
+			measurements.append(measurements_at_t)
+			
+		
+		# except Exception as e:
+		# 	print(e)
 
 		return measurements
 

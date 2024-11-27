@@ -839,7 +839,7 @@ class FigureCanvas(QWidget):
 		if interactive:
 			self.toolbar = NavigationToolbar2QT(self.canvas)
 		self.layout = QVBoxLayout(self)
-		self.layout.addWidget(self.canvas)
+		self.layout.addWidget(self.canvas,90)
 		if interactive:
 			self.layout.addWidget(self.toolbar)
 

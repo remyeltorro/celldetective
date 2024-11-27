@@ -93,6 +93,9 @@ class ControlPanel(QMainWindow, Styles):
 		self.screen_width = desktop.screenGeometry().width()
 		self.scroll.setMinimumWidth(440)
 
+		self.well_list.setCurrentIndex(0)
+		#self.position_list.setCurrentIndex(0)
+
 	def init_wells_and_positions(self):
 
 		"""
@@ -151,10 +154,8 @@ class ControlPanel(QMainWindow, Styles):
 		#self.locate_selected_position()
 
 		self.well_list.activated.connect(self.display_positions)
-		self.well_list.setCurrentIndex(0)
 
 		self.position_list.activated.connect(self.update_position_options)
-		self.position_list.setCurrentIndex(0)
 
 		self.view_stack_btn = QPushButton()
 		self.view_stack_btn.setStyleSheet(self.button_select_all)

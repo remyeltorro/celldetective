@@ -279,6 +279,12 @@ def measure_index(indices):
 			measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
 		measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
 		
+		try:
+			measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[column_labels['x']] - img.shape[0] / 2) ** 2 + (
+					measurements_at_t[column_labels['y']] - img.shape[1] / 2) ** 2)
+		except Exception as e:
+			print(f"{e=}")
+		
 		if measurements_at_t is not None:
 			measurements_at_t[column_labels['time']] = t
 			timestep_dataframes.append(measurements_at_t)

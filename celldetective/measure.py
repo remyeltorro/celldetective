@@ -193,6 +193,12 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 		elif do_features*(trajectories is None):
 			measurements_at_t = positions_at_t
 
+		try:
+			measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[column_labels['x']] - img.shape[0] / 2) ** 2 + (
+					measurements_at_t[column_labels['y']] - img.shape[1] / 2) ** 2)
+		except Exception as e:
+			print(f"{e=}")
+		
 		timestep_dataframes.append(measurements_at_t)
 
 	measurements = pd.concat(timestep_dataframes)

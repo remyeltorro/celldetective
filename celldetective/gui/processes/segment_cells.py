@@ -352,8 +352,13 @@ class SegmentCellThresholdProcess(BaseSegmentProcess):
 		self.indices = list(range(self.img_num_channels.shape[1]))
 		chunks = np.array_split(self.indices, self.n_threads)
 
-		with concurrent.futures.ThreadPoolExecutor() as executor:
-			executor.map(self.parallel_job, chunks)
+		with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_threads) as executor:
+			result_futures = list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
+			for future in concurrent.futures.as_completed(result_futures):
+				try:
+					print(future.result())
+				except Exception as e:
+					print('e is', e, type(e))
 		
 		# Send end signal
 		self.queue.put("finished")

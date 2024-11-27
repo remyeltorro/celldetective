@@ -5,7 +5,7 @@ import os
 import json
 from pathlib import Path, PurePath
 
-from celldetective.io import auto_load_number_of_frames, load_frames
+from celldetective.io import auto_load_number_of_frames, load_frames, locate_labels
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel
 from celldetective.utils import remove_trajectory_measurements
 from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity
@@ -16,7 +16,6 @@ import numpy as np
 import concurrent.futures
 import pandas as pd
 from natsort import natsorted
-from tifffile import imread
 from art import tprint
 
 class MeasurementProcess(Process):
@@ -244,7 +243,12 @@ class MeasurementProcess(Process):
 					img = load_frames(self.img_num_channels[:,t], self.file, scale=None, normalize_input=False)
 
 				if self.label_path is not None:
-					lbl = imread(self.label_path[t])
+					
+					lbl = locate_labels(self.pos, population=self.mode, frames=t)
+					if lbl is None:
+						continue
+
+					#lbl = imread(self.label_path[t])
 
 				if self.trajectories is not None:
 
@@ -267,12 +271,12 @@ class MeasurementProcess(Process):
 					iso_table = measure_isotropic_intensity(positions_at_t, img, channels=self.channel_names, intensity_measurement_radii=self.intensity_measurement_radii, column_labels=self.column_labels, operations=self.isotropic_operations, verbose=False)
 
 				if self.do_iso_intensities and self.do_features:
-					measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
+					measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 					measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
 				elif self.do_iso_intensities * (not self.do_features):
 					measurements_at_t = iso_table
 				elif self.do_features:
-					measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
+					measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 					measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
 			
 				center_of_mass_x_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_x')]
@@ -283,6 +287,12 @@ class MeasurementProcess(Process):
 					measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
 				measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
 				
+				try:
+					measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[self.column_labels['x']] - img.shape[0] / 2) ** 2 + (
+							measurements_at_t[self.column_labels['y']] - img.shape[1] / 2) ** 2)
+				except Exception as e:
+					print(f"{e=}")
+
 				if measurements_at_t is not None:
 					measurements_at_t[self.column_labels['time']] = t
 					self.timestep_dataframes.append(measurements_at_t)
@@ -306,15 +316,14 @@ class MeasurementProcess(Process):
 		if len(self.timestep_dataframes)>0:
 
 			df = pd.concat(self.timestep_dataframes)	
-			df.reset_index(inplace=True, drop=True)
 
-			if self.trajectories is None:
+			if self.trajectories is not None:
+				df = df.sort_values(by=[self.column_labels['track'],self.column_labels['time']])
+				df = df.dropna(subset=[self.column_labels['track']])
+			else:
 				df['ID'] = np.arange(len(df))
 
-			if self.column_labels['track'] in df.columns:
-				df = df.sort_values(by=[self.column_labels['track'], self.column_labels['time']])
-			else:
-				df = df.sort_values(by=self.column_labels['time'])
+			df = df.reset_index(drop=True)
 
 			df.to_csv(self.pos+os.sep.join(["output", "tables", self.table_name]), index=False)
 			print(f'Measurements successfully written in table {self.pos+os.sep.join(["output", "tables", self.table_name])}')

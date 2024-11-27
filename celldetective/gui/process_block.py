@@ -274,7 +274,7 @@ class ProcessPanel(QFrame, Styles):
 		#self.to_disable.append(self.cell_models_list)
 
 		self.train_signal_model_btn = QPushButton("TRAIN")
-		self.train_signal_model_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
+		self.train_signal_model_btn.setToolTip("Train or retrain an event detection model\non newly annotated data.")
 		self.train_signal_model_btn.setIcon(icon(MDI6.redo_variant,color='black'))
 		self.train_signal_model_btn.setIconSize(QSize(20, 20))
 		self.train_signal_model_btn.setStyleSheet(self.button_style_sheet_3)
@@ -301,7 +301,7 @@ class ProcessPanel(QFrame, Styles):
 		self.track_action.setStyleSheet(self.menu_check_style)
 		self.track_action.setIcon(icon(MDI6.chart_timeline_variant,color="black"))
 		self.track_action.setIconSize(QSize(20, 20))
-		self.track_action.setToolTip("Track the target cells using bTrack.")
+		self.track_action.setToolTip(f"Track the {self.mode[:-1]} cells.")
 		grid_track.addWidget(self.track_action, 75)
 
 		self.delete_tracks_btn = QPushButton()
@@ -373,7 +373,7 @@ class ProcessPanel(QFrame, Styles):
 		self.segment_action = QCheckBox("SEGMENT")
 		self.segment_action.setStyleSheet(self.menu_check_style)
 		self.segment_action.setIcon(icon(MDI6.bacteria, color='black'))
-		self.segment_action.setToolTip(f"Segment the {self.mode} cells on the images.")
+		self.segment_action.setToolTip(f"Segment the {self.mode[:-1]} cells on the images.")
 		self.segment_action.toggled.connect(self.enable_segmentation_model_list)
 		#self.to_disable.append(self.segment_action)
 		grid_segment.addWidget(self.segment_action, 90)

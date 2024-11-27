@@ -49,7 +49,7 @@ class AppInitWindow(QMainWindow, Styles):
 		self.soft_path = software_location
 		self.onlyInt = QIntValidator()
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','logo.png'])))
-		center_window(self)
+
 		self._createActions()
 		self._createMenuBar()
 
@@ -66,6 +66,8 @@ class AppInitWindow(QMainWindow, Styles):
 		self.create_buttons_hbox()
 		self.setCentralWidget(central_widget)
 		self.reload_previous_gpu_threads()
+		center_window(self)
+
 		self.show()
 	
 	def closeEvent(self, event):

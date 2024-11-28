@@ -143,7 +143,7 @@ def switch_to_events(classes, event_times, max_times, origin_times=None, left_ce
 		survival_times = [s*FrameToMin for s in survival_times]
 	return events, survival_times
 
-def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMin=1, cut_observation_time=None):
+def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMin=1, cut_observation_time=None, pairs=False):
 
 	"""
 	Computes survival analysis for a specific class of interest within a dataset, returning a fitted Kaplan-Meier 
@@ -190,9 +190,14 @@ def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMi
 	assert t_event in cols,"The event time cannot be found in the dataframe..."
 	left_censored = False
 
-	classes = df.groupby(['position','TRACK_ID'])[class_of_interest].min().values
-	event_times = df.groupby(['position','TRACK_ID'])[t_event].min().values
-	max_times = df.groupby(['position','TRACK_ID'])['FRAME'].max().values
+	if not pairs:
+		groupby_cols = ['position','TRACK_ID']
+	else:
+		groupby_cols = ['position','REFERENCE_ID','NEIGHBOR_ID']
+
+	classes = df.groupby(groupby_cols)[class_of_interest].min().values
+	event_times = df.groupby(groupby_cols)[t_event].min().values
+	max_times = df.groupby(groupby_cols)['FRAME'].max().values
 
 	if t_reference=="0" or t_reference==0:
 		t_reference = None
@@ -202,9 +207,13 @@ def compute_survival(df, class_of_interest, t_event, t_reference=None, FrameToMi
 	if t_reference is not None:
 		left_censored = True
 		assert t_reference in cols,"The reference time cannot be found in the dataframe..."
-		first_detections = df.groupby(['position','TRACK_ID'])[t_reference].max().values
+		first_detections = df.groupby(groupby_cols)[t_reference].max().values
 	
+
+	print(f"{classes=} {event_times=} {max_times=} {first_detections=}")
 	events, survival_times = switch_to_events(classes, event_times, max_times, origin_times=first_detections, left_censored=left_censored, FrameToMin=FrameToMin, cut_observation_time=cut_observation_time)
+	print(f"{events=} {survival_times=}")
+
 	ks = KaplanMeierFitter()
 	if len(events)>0:
 		ks.fit(survival_times, event_observed=events)

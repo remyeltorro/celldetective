@@ -259,13 +259,13 @@ def measure_index(indices):
 								 'y': column_labels['y']}
 			feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
 		
-		if do_iso_intensities:
+		if do_iso_intensities and not trajectories is None:
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
-		if do_iso_intensities and do_features:
+		if do_iso_intensities and do_features and not trajectories is None:
 			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
-		elif do_iso_intensities * (not do_features):
+		elif do_iso_intensities * (not do_features) * (not trajectories is None):
 			measurements_at_t = iso_table
 		elif do_features:
 			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
@@ -279,6 +279,12 @@ def measure_index(indices):
 			measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
 		measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
 		
+		try:
+			measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[column_labels['x']] - img.shape[0] / 2) ** 2 + (
+					measurements_at_t[column_labels['y']] - img.shape[1] / 2) ** 2)
+		except Exception as e:
+			print(f"{e=}")
+
 		if measurements_at_t is not None:
 			measurements_at_t[column_labels['time']] = t
 			timestep_dataframes.append(measurements_at_t)

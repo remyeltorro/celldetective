@@ -30,6 +30,15 @@ from skimage.morphology import disk
 from scipy.stats import ks_2samp
 from cliffs_delta import cliffs_delta
 
+
+def extract_cols_from_table_list(tables, nrows=1):
+	all_columns = []
+	for tab in tables:
+		cols = pd.read_csv(tab, nrows=1).columns.tolist()
+		all_columns.extend(cols)
+	all_columns = np.unique(all_columns)
+	return all_columns
+
 def safe_log(array):
 
 	if isinstance(array,int) or isinstance(array,float):

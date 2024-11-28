@@ -791,7 +791,7 @@ def fix_missing_labels(position, population='target', prefix='Aligned'):
 		position += os.sep
 
 	stack = locate_stack(position, prefix=prefix)
-	template = np.zeros((stack[0].shape[0], stack[0].shape[1]))
+	template = np.zeros((stack[0].shape[0], stack[0].shape[1]),dtype=int)
 	all_frames = np.arange(len(stack))
 
 	if population.lower() == "target" or population.lower() == "targets":

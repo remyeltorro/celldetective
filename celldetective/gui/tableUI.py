@@ -473,6 +473,14 @@ class TableUI(QMainWindow, Styles):
 		self.table_view.resizeColumnsToContents()
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
+	def resizeEvent(self, event):
+
+		super().resizeEvent(event)
+
+		try:
+			self.fig.tight_layout()
+		except:
+			pass
 
 	def _createActions(self):
 

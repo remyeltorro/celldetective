@@ -128,10 +128,6 @@ def measure_pairs(pos, neighborhood_protocol):
 
 
 
-
-
-
-
 def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs={'window': 3, 'mode': 'bi'}):
 	"""
 	pos: position to process
@@ -344,7 +340,6 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 
 						idx_reference = list(timeline_reference).index(t)
 						idx_neighbor = list(timeline_neighbor).index(t)
-
 						inter = intersection_values.loc[(intersection_values['neigh_id']==nc)&(intersection_values["frame"]==t),"intersection"].values
 						if len(inter)==0:
 							inter = np.nan

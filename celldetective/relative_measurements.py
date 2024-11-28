@@ -128,10 +128,6 @@ def measure_pairs(pos, neighborhood_protocol):
 
 
 
-
-
-
-
 def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs={'window': 3, 'mode': 'bi'}):
 	"""
 	pos: position to process
@@ -340,9 +336,10 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				cum_sum = 0
 				for t in range(len(full_timeline)):
 
-					if t in timeline_reference: # meaning position exists on both sides
+					if t in timeline_reference and t in timeline_neighbor: # meaning position exists on both sides
 
 						idx_reference = list(timeline_reference).index(t)
+						idx_neighbor = list(timeline_neighbor).index(t)
 						inter = intersection_values.loc[(intersection_values['neigh_id']==nc)&(intersection_values["frame"]==t),"intersection"].values
 						if len(inter)==0:
 							inter = np.nan
@@ -350,12 +347,12 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 							inter = inter[0]
 
 						neigh_inter_fraction = np.nan
-						if inter==inter and neigh_area[t]==neigh_area[t]:
-							neigh_inter_fraction = inter / neigh_area[t]
+						if inter==inter and neigh_area[idx_neighbor]==neigh_area[idx_neighbor]:
+							neigh_inter_fraction = inter / neigh_area[idx_neighbor]
 
 						ref_inter_fraction = np.nan
-						if inter==inter and ref_area[t]==ref_area[t]:
-							ref_inter_fraction = inter / ref_area[t]						
+						if inter==inter and ref_area[idx_reference]==ref_area[idx_reference]:
+							ref_inter_fraction = inter / ref_area[idx_reference]						
 
 						if nc in neighbor_ids_per_t[idx_reference]:
 

@@ -62,6 +62,15 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.setLayout(self.layout)
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
+	def resizeEvent(self, event):
+		
+		super().resizeEvent(event)
+
+		try;
+			self.fig.tight_layout()
+		except:
+			pass
+		
 	def populate_widget(self):
 
 		self.plot_options = [QRadioButton() for i in range(3)]

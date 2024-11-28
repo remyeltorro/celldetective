@@ -66,11 +66,11 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		
 		super().resizeEvent(event)
 
-		try;
+		try:
 			self.fig.tight_layout()
 		except:
 			pass
-		
+
 	def populate_widget(self):
 
 		self.plot_options = [QRadioButton() for i in range(3)]

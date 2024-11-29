@@ -90,6 +90,10 @@ def measure_pairs(pos, neighborhood_protocol):
 				cosine_dot_vector[:] = np.nan
 
 				coords_neighbor = group_neigh[['POSITION_X', 'POSITION_Y']].to_numpy()[0]
+				intersection = np.nan
+				if 'intersection' in list(group_neigh.columns):
+					intersection = group_neigh['intersection'].values[0]
+
 				neighbor_vector[0] = coords_neighbor[0] - coords_reference[0]
 				neighbor_vector[1] = coords_neighbor[1] - coords_reference[1]
 
@@ -109,7 +113,7 @@ def measure_pairs(pos, neighborhood_protocol):
 							{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 							'reference_population': reference_population,
 							'neighbor_population': neighbor_population,
-							'FRAME': t, 'distance': relative_distance,
+							'FRAME': t, 'distance': relative_distance, 'intersection': intersection,
 							'angle': angle * 180 / np.pi,
 							f'status_{neighborhood_description}': 1,
 							f'class_{neighborhood_description}': 0,
@@ -121,10 +125,6 @@ def measure_pairs(pos, neighborhood_protocol):
 	df_pairs = pd.DataFrame(relative_measurements)
 	
 	return df_pairs
-
-
-
-
 
 
 
@@ -201,9 +201,14 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 			neighbor_dicts = group.loc[: , f'{neighborhood_description}'].values
 			timeline_reference = group['FRAME'].to_numpy()
 			coords_reference = group[['POSITION_X', 'POSITION_Y']].to_numpy()
+			if "area" in list(group.columns):
+				ref_area = group['area'].to_numpy()
+			else:
+				ref_area = [np.nan]*len(coords_reference)
 
 			neighbor_ids = []
 			neighbor_ids_per_t = []
+			intersection_values = []
 
 			time_of_first_entrance_in_neighborhood = {}
 			t_departure={}
@@ -218,9 +223,15 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 					for neigh in neighbors_at_t:
 						if neigh['id'] not in neighbor_ids:
 							time_of_first_entrance_in_neighborhood[neigh['id']]=t
+						if 'intersection' in neigh:
+							intersection_values.append({"frame": t, "neigh_id": neigh['id'], "intersection": neigh['intersection']})
+						else:
+							intersection_values.append({"frame": t, "neigh_id": neigh['id'], "intersection": np.nan})
 						neighbor_ids.append(neigh['id'])
 						neighs_t.append(neigh['id'])
 				neighbor_ids_per_t.append(neighs_t)
+
+			intersection_values = pd.DataFrame(intersection_values)
 
 			#print(neighbor_ids_per_t)
 			unique_neigh = list(np.unique(neighbor_ids))
@@ -232,12 +243,20 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				
 				coords_neighbor = group_neigh[['POSITION_X', 'POSITION_Y']].to_numpy()
 				timeline_neighbor = group_neigh['FRAME'].to_numpy()
+				if "area" in list(group_neigh.columns):
+					neigh_area = group_neigh['area'].to_numpy()
+				else:
+					neigh_area = [np.nan]*len(timeline_neighbor)
+
 
 				# # Perform timeline matching to have same start-end points and no gaps
 				full_timeline, _, _ = timeline_matching(timeline_reference, timeline_neighbor)
 
 				neighbor_vector = np.zeros((len(full_timeline), 2))
 				neighbor_vector[:,:] = np.nan
+
+				intersection_vector = np.zeros((len(full_timeline)))
+				intersection_vector[:] = np.nan
 
 				centre_of_mass_columns = [(c,c.replace('POSITION_X','POSITION_Y')) for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_X')]
 				centre_of_mass_labels = [c.replace('_centre_of_mass_POSITION_X','') for c in list(neighbor_properties.columns) if c.endswith('centre_of_mass_POSITION_X')]
@@ -317,9 +336,23 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 				cum_sum = 0
 				for t in range(len(full_timeline)):
 
-					if t in timeline_reference: # meaning position exists on both sides
+					if t in timeline_reference and t in timeline_neighbor: # meaning position exists on both sides
 
-						idx_reference = list(timeline_reference).index(t) 
+						idx_reference = list(timeline_reference).index(t)
+						idx_neighbor = list(timeline_neighbor).index(t)
+						inter = intersection_values.loc[(intersection_values['neigh_id']==nc)&(intersection_values["frame"]==t),"intersection"].values
+						if len(inter)==0:
+							inter = np.nan
+						else:
+							inter = inter[0]
+
+						neigh_inter_fraction = np.nan
+						if inter==inter and neigh_area[idx_neighbor]==neigh_area[idx_neighbor]:
+							neigh_inter_fraction = inter / neigh_area[idx_neighbor]
+
+						ref_inter_fraction = np.nan
+						if inter==inter and ref_area[idx_reference]==ref_area[idx_reference]:
+							ref_inter_fraction = inter / ref_area[idx_reference]						
 
 						if nc in neighbor_ids_per_t[idx_reference]:
 
@@ -328,7 +361,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 									'reference_population': reference_population,
 									'neighbor_population': neighbor_population,
-									'FRAME': t, 'distance': relative_distance[t],
+									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter, 'reference_frac_area_intersection': ref_inter_fraction, 'neighbor_frac_area_intersection': neigh_inter_fraction,
 									'velocity': rel_velocity[t],
 									'velocity_smooth': rel_velocity_long_timescale[t], 
 									'angle': angle[t] * 180 / np.pi,
@@ -349,7 +382,7 @@ def measure_pair_signals_at_position(pos, neighborhood_protocol, velocity_kwargs
 									{'REFERENCE_ID': tid, 'NEIGHBOR_ID': nc,
 									'reference_population': reference_population,
 									'neighbor_population': neighbor_population,
-									'FRAME': t, 'distance': relative_distance[t],
+									'FRAME': t, 'distance': relative_distance[t], 'intersection': inter, 'reference_frac_area_intersection': ref_inter_fraction, 'neighbor_frac_area_intersection': neigh_inter_fraction,
 									'velocity': rel_velocity[t], 
 									'velocity_smooth': rel_velocity_long_timescale[t],
 									'angle': angle[t] * 180 / np.pi,

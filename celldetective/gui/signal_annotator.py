@@ -35,7 +35,10 @@ class SignalAnnotator(QMainWindow, Styles):
 	def __init__(self, parent_window=None):
 
 		super().__init__()
+		
 		center_window(self)
+		self.proceed = True
+		self.setAttribute(Qt.WA_DeleteOnClose)
 
 		self.parent_window = parent_window
 		self.setWindowTitle("Signal annotator")
@@ -47,6 +50,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.soft_path = get_software_location()
 		self.recently_modified = False
 		self.selection = []
+
 		if self.mode == "targets":
 			self.instructions_path = self.exp_dir + os.sep.join(['configs', 'signal_annotator_config_targets.json'])
 			self.trajectories_path = self.pos + os.sep.join(['output','tables','trajectories_targets.csv'])
@@ -65,18 +69,19 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.status_name = 'status'
 
 		self.locate_stack()
-		self.load_annotator_config()
-		self.locate_tracks()
-		self.prepare_stack()
+		if not self.proceed:
+			self.close()
+		else:
+			self.load_annotator_config()
+			self.locate_tracks()
+			self.prepare_stack()
 
-		self.generate_signal_choices()
-		self.frame_lbl = QLabel('frame: ')
-		self.looped_animation()
-		self.create_cell_signal_canvas()
+			self.generate_signal_choices()
+			self.frame_lbl = QLabel('frame: ')
+			self.looped_animation()
+			self.create_cell_signal_canvas()
 
-		self.populate_widget()
-
-		self.setAttribute(Qt.WA_DeleteOnClose)
+			self.populate_widget()
 
 	def populate_widget(self):
 
@@ -501,6 +506,11 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.df_tracks['class_color'] = [color_from_class(i) for i in self.df_tracks[self.class_name].to_numpy()]
 
 		self.extract_scatter_from_trajectories()
+		if len(self.selection)>0:
+			self.select_single_cell(self.selection[0][0], self.selection[0][1])
+
+		self.fcanvas.canvas.draw()
+
 
 	def contrast_slider_action(self):
 
@@ -523,14 +533,14 @@ class SignalAnnotator(QMainWindow, Styles):
 		try:
 			self.selection.pop(0)
 		except Exception as e:
-			print(e)
+			print(f"L 536 {e=}")
 
 		try:
 			for k, (t, idx) in enumerate(zip(self.loc_t, self.loc_idx)):
 				self.colors[t][idx, 0] = self.previous_color[k][0]
 				self.colors[t][idx, 1] = self.previous_color[k][1]
 		except Exception as e:
-			print(f'{e=}')
+			print(f'L 543 {e=}')
 
 	def hide_annotation_buttons(self):
 
@@ -585,7 +595,7 @@ class SignalAnnotator(QMainWindow, Styles):
 				self.line_dt.set_xdata([t0, t0])
 				self.cell_fcanvas.canvas.draw_idle()
 			except Exception as e:
-				print(e)
+				print(f"L 598 {e=}")
 				t0 = -1
 				cclass = 2
 		elif self.no_event_btn.isChecked():
@@ -607,8 +617,13 @@ class SignalAnnotator(QMainWindow, Styles):
 			status[:] = 2
 		if cclass > 2:
 			status[:] = 42
+
 		status_color = [color_from_status(s, recently_modified=True) for s in status]
 		class_color = [color_from_class(cclass, recently_modified=True) for i in range(len(status))]
+
+
+		# self.df_tracks['status_color'] = [color_from_status(i) for i in self.df_tracks[self.status_name].to_numpy()]
+		# self.df_tracks['class_color'] = [color_from_class(i) for i in self.df_tracks[self.class_name].to_numpy()]
 
 		self.df_tracks.loc[indices, self.status_name] = status
 		self.df_tracks.loc[indices, 'status_color'] = status_color
@@ -645,11 +660,14 @@ class SignalAnnotator(QMainWindow, Styles):
 		if len(movies) == 0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("No movies are detected in the experiment folder. Cannot load an image to test Haralick.")
+			msgBox.setText("No movie is detected in the experiment folder.\nPlease check the stack prefix...")
 			msgBox.setWindowTitle("Warning")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Yes:
+			if returnValue == QMessageBox.Ok:
+				self.proceed = False
+				self.close()
+			else:
 				self.close()
 		else:
 			self.stack_path = movies[0]
@@ -977,15 +995,13 @@ class SignalAnnotator(QMainWindow, Styles):
 				self.stack[np.where(self.stack > 0.)] = np.log(self.stack[np.where(self.stack > 0.)])
 
 	def closeEvent(self, event):
-
-		self.stop()
-		# result = QMessageBox.question(self,
-		# 			  "Confirm Exit...",
-		# 			  "Are you sure you want to exit ?",
-		# 			  QMessageBox.Yes| QMessageBox.No,
-		# 			  )
-		del self.stack
-		gc.collect()
+		
+		try:
+			self.stop()
+			del self.stack
+			gc.collect()
+		except:
+			pass
 
 	def looped_animation(self):
 
@@ -1059,6 +1075,8 @@ class SignalAnnotator(QMainWindow, Styles):
 
 	def on_scatter_pick(self, event):
 
+		self.event = event
+
 		self.correct_btn.disconnect()
 		self.correct_btn.clicked.connect(self.show_annotation_buttons)
 
@@ -1073,35 +1091,40 @@ class SignalAnnotator(QMainWindow, Styles):
 			ind = [ind[np.argmin(dist)]]
 
 		if len(ind) > 0 and (len(self.selection) == 0):
-			ind = ind[0]
-			self.selection.append(ind)
-			self.correct_btn.setEnabled(True)
-			self.cancel_btn.setEnabled(True)
-			self.del_shortcut.setEnabled(True)
-			self.no_event_shortcut.setEnabled(True)
-
-			self.track_of_interest = self.tracks[self.framedata][ind]
-			print(f'You selected cell #{self.track_of_interest}...')
-			self.give_cell_information()
-			self.plot_signals()
-
-			self.loc_t = []
-			self.loc_idx = []
-			for t in range(len(self.tracks)):
-				indices = np.where(self.tracks[t] == self.track_of_interest)[0]
-				if len(indices) > 0:
-					self.loc_t.append(t)
-					self.loc_idx.append(indices[0])
-
-			self.previous_color = []
-			for t, idx in zip(self.loc_t, self.loc_idx):
-				self.previous_color.append(self.colors[t][idx].copy())
-				self.colors[t][idx] = 'lime'
+			
+			self.selection.append([ind[0],self.framedata])
+			self.select_single_cell(ind[0], self.framedata)
 
 		elif len(ind) > 0 and len(self.selection) == 1:
 			self.cancel_btn.click()
 		else:
 			pass
+
+	def select_single_cell(self, index, timepoint):
+
+		self.correct_btn.setEnabled(True)
+		self.cancel_btn.setEnabled(True)
+		self.del_shortcut.setEnabled(True)
+		self.no_event_shortcut.setEnabled(True)
+
+		self.track_of_interest = self.tracks[timepoint][index]
+		print(f'You selected cell #{self.track_of_interest}...')
+		self.give_cell_information()
+		self.plot_signals()
+
+		self.loc_t = []
+		self.loc_idx = []
+		for t in range(len(self.tracks)):
+			indices = np.where(self.tracks[t] == self.track_of_interest)[0]
+			if len(indices) > 0:
+				self.loc_t.append(t)
+				self.loc_idx.append(indices[0])
+
+		self.previous_color = []
+		for t, idx in zip(self.loc_t, self.loc_idx):
+			self.previous_color.append(self.colors[t][idx].copy())
+			self.colors[t][idx] = 'lime'
+
 
 	def shortcut_suppr(self):
 		self.correct_btn.click()
@@ -1149,6 +1172,7 @@ class SignalAnnotator(QMainWindow, Styles):
 			if len(min_values) > 0:
 				self.cell_ax.set_ylim(smallest_value - pad_small, largest_value + pad_large)
 		except Exception as e:
+			print(f"L1170 {e=}")
 			pass
 
 	def draw_frame(self, framedata):
@@ -1211,6 +1235,7 @@ class SignalAnnotator(QMainWindow, Styles):
 		self.df_tracks = self.df_tracks.drop(self.df_tracks[self.df_tracks[self.class_name] > 2].index)
 		self.df_tracks.to_csv(self.trajectories_path, index=False)
 		print('Table successfully exported...')
+		self.compute_status_and_colors(0)
 		self.extract_scatter_from_trajectories()
 
 	# self.give_cell_information()
@@ -2323,8 +2348,8 @@ class MeasureAnnotator(SignalAnnotator):
 		else:
 			self.current_stack = self.current_stack[0]
 			if self.log_option:
-				self.current_stack[np.where(self.current_stack > 0.)] = np.log(
-					self.current_stack[np.where(self.current_stack > 0.)])
+				self.current_stack[np.where((self.current_stack > 0.)&(self.current_stack==self.current_stack))] = np.log(
+					self.current_stack[np.where((self.current_stack > 0.)&(self.current_stack==self.current_stack))])
 
 	def changed_channel(self):
 
@@ -2415,6 +2440,8 @@ class MeasureAnnotator(SignalAnnotator):
 		except Exception as e:
 			print("cancel_selection: ",f'{e=}')
 
+		self.event = None
+
 	def locate_stack(self):
 
 		"""
@@ -2440,11 +2467,11 @@ class MeasureAnnotator(SignalAnnotator):
 		if len(movies) == 0:
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
-			msgBox.setText("No movies are detected in the experiment folder. Cannot load an image to test Haralick.")
+			msgBox.setText("No movie is detected in the experiment folder.\nPlease check the stack prefix...")
 			msgBox.setWindowTitle("Warning")
 			msgBox.setStandardButtons(QMessageBox.Ok)
 			returnValue = msgBox.exec()
-			if returnValue == QMessageBox.Yes:
+			if returnValue == QMessageBox.Ok:
 				self.close()
 		else:
 			self.stack_path = movies[0]

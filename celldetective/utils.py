@@ -1,3 +1,4 @@
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -28,6 +29,30 @@ from scipy import ndimage
 from skimage.morphology import disk
 from scipy.stats import ks_2samp
 from cliffs_delta import cliffs_delta
+
+
+def extract_cols_from_table_list(tables, nrows=1):
+	all_columns = []
+	for tab in tables:
+		cols = pd.read_csv(tab, nrows=1).columns.tolist()
+		all_columns.extend(cols)
+	all_columns = np.unique(all_columns)
+	return all_columns
+
+def safe_log(array):
+
+	if isinstance(array,int) or isinstance(array,float):
+		if value<=0.:
+			return np.nan
+		else:
+			return np.log10(value)
+	else:
+		if isinstance(array, list):
+			array = np.array(array)
+		output_array = np.zeros_like(array).astype(float)
+		output_array[:] = np.nan
+		output_array[array==array] = np.log10(array[array==array])
+		return output_array
 
 def contour_of_instance_segmentation(label, distance):
 

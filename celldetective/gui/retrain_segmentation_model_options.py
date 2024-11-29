@@ -616,4 +616,6 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		
 		train_segmentation_model(model_folder+"training_instructions.json", use_gpu=self.parent_window.parent_window.parent_window.use_gpu)
 
-		# self.parent.refresh_signal_models()
+		self.parent_window.init_seg_model_list()
+		idx = self.parent_window.seg_model_list.findText(model_name)
+		self.parent_window.seg_model_list.setCurrentIndex(idx)

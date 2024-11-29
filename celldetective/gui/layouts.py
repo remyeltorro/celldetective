@@ -650,7 +650,8 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 
 	def preview_correction(self):
 
-		if self.attr_parent.well_list.currentText()=="*" or self.attr_parent.position_list.currentText()=="*":
+		if self.attr_parent.well_list.isMultipleSelection() or not self.attr_parent.well_list.isAnySelected() or self.attr_parent.position_list.isMultipleSelection() or not self.attr_parent.position_list.isAnySelected():
+			
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Critical)
 			msgBox.setText("Please select a single position...")
@@ -672,8 +673,8 @@ class BackgroundFitCorrectionLayout(QGridLayout, Styles):
 			clip = False
 
 		corrected_stack = correct_background_model(self.attr_parent.exp_dir, 
-						   well_option=self.attr_parent.well_list.currentIndex(), #+1 ??
-						   position_option=self.attr_parent.position_list.currentIndex()-1, #+1??
+						   well_option=self.attr_parent.well_list.getSelectedIndices(), #+1 ??
+						   position_option=self.attr_parent.position_list.getSelectedIndices(), #+1??
 						   target_channel=self.channels_cb.currentText(),
 						   model = self.models_cb.currentText(),
 						   threshold_on_std = self.threshold_le.get_threshold(),
@@ -1258,7 +1259,7 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 
 	def preview_correction(self):
 
-		if self.attr_parent.well_list.currentText()=="*" or self.attr_parent.position_list.currentText()=="*":
+		if self.attr_parent.well_list.isMultipleSelection() or not self.attr_parent.well_list.isAnySelected() or self.attr_parent.position_list.isMultipleSelection() or not self.attr_parent.position_list.isAnySelected():
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Warning)
 			msgBox.setText("Please select a single position...")
@@ -1294,8 +1295,8 @@ class BackgroundModelFreeCorrectionLayout(QGridLayout, Styles):
 			clip = False
 
 		corrected_stacks = correct_background_model_free(self.attr_parent.exp_dir, 
-						   well_option=self.attr_parent.well_list.currentIndex(), #+1 ??
-						   position_option=self.attr_parent.position_list.currentIndex()-1, #+1??
+						   well_option=self.attr_parent.well_list.getSelectedIndices(), #+1 ??
+						   position_option=self.attr_parent.getSelectedIndices(), #+1??
 						   target_channel=self.channels_cb.currentText(),
 						   mode = mode,
 						   threshold_on_std = self.threshold_le.get_threshold(),

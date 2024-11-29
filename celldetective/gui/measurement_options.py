@@ -10,7 +10,7 @@ from superqt import QLabeledDoubleSlider
 from superqt.fonticon import icon
 from fonticon_mdi6 import MDI6
 
-from celldetective.gui.thresholds_gui import ThresholdSpot
+#from celldetective.gui.thresholds_gui import ThresholdSpot
 from celldetective.utils import extract_experiment_channels, get_software_location
 from celldetective.io import load_frames, auto_load_number_of_frames
 from celldetective.measure import compute_haralick_features
@@ -24,9 +24,8 @@ from glob import glob
 from natsort import natsorted
 from tifffile import imread
 from pathlib import Path
-import gc
 
-from celldetective.gui.viewers import CellEdgeVisualizer
+from celldetective.gui.viewers import CellEdgeVisualizer, SpotDetectionVisualizer
 from celldetective.gui.layouts import ProtocolDesignerLayout, BackgroundFitCorrectionLayout, LocalCorrectionLayout
 from celldetective.gui.gui_utils import ThresholdLineEdit
 from celldetective.gui import Styles
@@ -726,17 +725,9 @@ class ConfigMeasurements(QMainWindow, Styles):
 		else:
 			self.current_stack = movies[0]
 			self.stack_length = auto_load_number_of_frames(self.current_stack)
-			
-			if self.stack_length is None:
-				stack = imread(self.current_stack)
-				self.stack_length = len(stack)
-				del stack
-				gc.collect()
-			
 			self.mid_time = self.stack_length // 2
-			indices = self.mid_time + np.arange(len(self.channel_names))
+			indices = len(self.channel_names) * self.mid_time + np.arange(len(self.channel_names))
 			self.test_frame = load_frames(list(indices.astype(int)),self.current_stack, normalize_input=False)
-
 
 	def control_haralick_digitalization(self):
 
@@ -746,9 +737,10 @@ class ConfigMeasurements(QMainWindow, Styles):
 
 		"""
 
-		self.locate_image()
+		self.locate_image() # pb here
 		self.extract_haralick_options()
 		if self.test_frame is not None:
+
 			digitized_img = compute_haralick_features(self.test_frame, np.zeros(self.test_frame.shape[:2]),
 													  channels=self.channel_names, return_digit_image_only=True,
 													  **self.haralick_options
@@ -951,51 +943,54 @@ class ConfigMeasurements(QMainWindow, Styles):
 
 		layout.addWidget(self.threshold_lbl, 4, 0)
 		layout.addWidget(self.threshold_value, 4, 1)
-		self.preview_spot = QPushButton('Preview')
-		self.preview_spot.clicked.connect(self.spot_preview)
-		self.preview_spot.setStyleSheet(self.button_style_sheet_2)
-		layout.addWidget(self.preview_spot, 5, 0, 1, 2)
-		self.spot_channel.setEnabled(False)
-		self.spot_channel_lbl.setEnabled(False)
-		self.diameter_value.setEnabled(False)
-		self.diameter_lbl.setEnabled(False)
-		self.threshold_value.setEnabled(False)
-		self.threshold_lbl.setEnabled(False)
-		self.preview_spot.setEnabled(False)
 
+		self.spot_viewer_btn = QPushButton()
+		self.spot_viewer_btn.clicked.connect(self.spot_preview)
+		self.spot_viewer_btn.setIcon(icon(MDI6.image_check, color="k"))
+		self.spot_viewer_btn.setStyleSheet(self.button_select_all)
+		self.spot_viewer_btn.setToolTip('Set detection parameters visually.')
+		layout.addWidget(self.spot_viewer_btn, 1, 1, 1, 1, alignment=Qt.AlignRight)
+
+		self.spot_detection_widgets = [self.spot_channel, self.spot_channel_lbl, self.diameter_value, self.diameter_lbl, self.threshold_value, self.threshold_lbl, self.spot_viewer_btn]
+		for wg in self.spot_detection_widgets:
+			wg.setEnabled(False)
 
 	def enable_spot_preview(self):
 
 		diam = self.diameter_value.text().replace(',','').replace('.','')
 		thresh = self.threshold_value.text().replace(',','').replace('.','')
 		if diam.isnumeric() and thresh.isnumeric():
-			self.preview_spot.setEnabled(True)
+			self.spot_viewer_btn.setEnabled(True)
 		else:
-			self.preview_spot.setEnabled(False)
+			self.spot_viewer_btn.setEnabled(False)
 
 	def spot_preview(self):
 		self.locate_image()
 		if self.test_frame is not None:
 			self.locate_mask()
 			if self.test_mask is not None:
-				self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
-												 mask=self.test_mask, parent_window=self)
+				self.spot_visual = SpotDetectionVisualizer(frame_slider=True,
+														   contrast_slider=True,
+														   cell_type=self.mode,
+														   channel_cb=True,
+														   channel_names = self.channel_names,
+														   stack_path=self.current_stack,
+														   n_channels=len(self.channel_names),
+														   target_channel=self.spot_channel.currentIndex(),
+														   window_title='Detect spots',
+														   parent_channel_cb=self.spot_channel,
+														   parent_diameter_le=self.diameter_value,
+														   parent_threshold_le=self.threshold_value,
+														   PxToUm = 1,)
+				self.spot_visual.show()
+				#self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,
+				#								 mask=self.test_mask, parent_window=self)
 
 	def enable_spot_detection(self):
-		if self.spot_check.isChecked():
-			self.spot_channel.setEnabled(True)
-			self.spot_channel_lbl.setEnabled(True)
-			self.diameter_value.setEnabled(True)
-			self.diameter_lbl.setEnabled(True)
-			self.threshold_value.setEnabled(True)
-			self.threshold_lbl.setEnabled(True)
-			self.preview_spot.setEnabled(True)
 
+		if self.spot_check.isChecked():
+			for wg in self.spot_detection_widgets:
+				wg.setEnabled(True)
 		else:
-			self.spot_channel.setEnabled(False)
-			self.spot_channel_lbl.setEnabled(False)
-			self.diameter_value.setEnabled(False)
-			self.diameter_lbl.setEnabled(False)
-			self.threshold_value.setEnabled(False)
-			self.threshold_lbl.setEnabled(False)
-			self.preview_spot.setEnabled(False)
+			for wg in self.spot_detection_widgets:
+				wg.setEnabled(False)

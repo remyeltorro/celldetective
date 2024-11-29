@@ -5,7 +5,7 @@ Copright © 2022 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
 import argparse
 import os
 import json
-from celldetective.io import auto_load_number_of_frames, load_frames
+from celldetective.io import auto_load_number_of_frames, load_frames, fix_missing_labels, locate_labels
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
 from celldetective.utils import remove_redundant_features, remove_trajectory_measurements
 from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity
@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from natsort import natsorted
 from art import tprint
-from tifffile import imread
 import threading
 import datetime
 
@@ -165,6 +164,8 @@ else:
 	features += ['centroid']
 	do_iso_intensities = False
 
+# if 'centroid' not in features:
+# 	features += ['centroid']
 
 # if (features is not None) and (trajectories is not None):
 # 	features = remove_redundant_features(features, 
@@ -175,6 +176,12 @@ else:
 len_movie_auto = auto_load_number_of_frames(file)
 if len_movie_auto is not None:
 	len_movie = len_movie_auto
+
+if label_path is not None and file is not None:
+	test = len(label_path)==len_movie
+	if not test:
+		fix_missing_labels(pos, population=mode, prefix=movie_prefix)
+		label_path = natsorted(glob(os.sep.join([pos, label_folder, '*.tif'])))
 
 img_num_channels = _get_img_num_per_channel(channel_indices, len_movie, nbr_channels)
 
@@ -203,6 +210,8 @@ if trajectories is None:
 	if 'label' not in features:
 		features.append('label')
 
+if label_path is not None:
+	label_names = [os.path.split(lbl)[-1] for lbl in label_path]
 
 
 features_log=f'features: {features}'
@@ -228,7 +237,10 @@ def measure_index(indices):
 			img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
 
 		if label_path is not None:
-			lbl = imread(label_path[t])
+			
+			lbl = locate_labels(pos, population=mode, frames=t)
+			if lbl is None:
+				continue
 
 		if trajectories is not None:
 
@@ -247,18 +259,18 @@ def measure_index(indices):
 								 'y': column_labels['y']}
 			feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
 		
-		if do_iso_intensities:
+		if do_iso_intensities and not trajectories is None:
 			iso_table = measure_isotropic_intensity(positions_at_t, img, channels=channel_names, intensity_measurement_radii=intensity_measurement_radii, column_labels=column_labels, operations=isotropic_operations, verbose=False)
 
-		if do_iso_intensities and do_features:
-			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
+		if do_iso_intensities and do_features and not trajectories is None:
+			measurements_at_t = iso_table.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
-		elif do_iso_intensities * (not do_features):
+		elif do_iso_intensities * (not do_features) * (not trajectories is None):
 			measurements_at_t = iso_table
 		elif do_features:
-			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('', '_delme'))
+			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
-	
+
 		center_of_mass_x_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_x')]
 		center_of_mass_y_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_y')]
 		for c in center_of_mass_x_cols:
@@ -267,6 +279,12 @@ def measure_index(indices):
 			measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
 		measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
 		
+		try:
+			measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[column_labels['x']] - img.shape[0] / 2) ** 2 + (
+					measurements_at_t[column_labels['y']] - img.shape[1] / 2) ** 2)
+		except Exception as e:
+			print(f"{e=}")
+
 		if measurements_at_t is not None:
 			measurements_at_t[column_labels['time']] = t
 			timestep_dataframes.append(measurements_at_t)
@@ -286,16 +304,16 @@ for th in threads:
 
 
 if len(timestep_dataframes)>0:
+	
 	df = pd.concat(timestep_dataframes)	
-	df.reset_index(inplace=True, drop=True)
 
-	if trajectories is None:
+	if trajectories is not None:
+		df = df.sort_values(by=[column_labels['track'],column_labels['time']])
+		df = df.dropna(subset=[column_labels['track']])
+	else:
 		df['ID'] = np.arange(len(df))
 
-	if column_labels['track'] in df.columns:
-		df = df.sort_values(by=[column_labels['track'], column_labels['time']])
-	else:
-		df = df.sort_values(by=column_labels['time'])
+	df = df.reset_index(drop=True)
 
 	df.to_csv(pos+os.sep.join(["output", "tables", table_name]), index=False)
 	print(f'Measurements successfully written in table {pos+os.sep.join(["output", "tables", table_name])}')

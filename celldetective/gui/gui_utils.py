@@ -1,8 +1,8 @@
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QMessageBox, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
-	QPushButton, QLabel, QHBoxLayout, QCheckBox, QFileDialog
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QDoubleValidator, QIntValidator
+	QPushButton, QLabel, QHBoxLayout, QCheckBox, QFileDialog, QToolButton, QMenu, QStylePainter, QStyleOptionComboBox, QStyle
+from PyQt5.QtCore import Qt, QSize, QAbstractTableModel, QEvent, pyqtSignal
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QStandardItemModel, QPalette
 
 from celldetective.gui import Styles
 from superqt.fonticon import icon
@@ -15,6 +15,248 @@ import celldetective.extra_properties as extra_properties
 from inspect import getmembers, isfunction
 from celldetective.filters import *
 from os import sep
+
+
+class QCheckableComboBox(QComboBox):
+
+	"""
+	adapted from https://stackoverflow.com/questions/22775095/pyqt-how-to-set-combobox-items-be-checkable
+	"""
+
+	activated = pyqtSignal(str)
+
+	def __init__(self, obj='', parent_window=None, *args, **kwargs):
+		
+		super().__init__(parent_window, *args, **kwargs)
+
+		self.setTitle('')
+		self.setModel(QStandardItemModel(self))
+		self.obj = obj
+		self.toolButton = QToolButton(parent_window)
+		self.toolButton.setText('')
+		self.toolMenu = QMenu(parent_window)
+		self.toolButton.setMenu(self.toolMenu)
+		self.toolButton.setPopupMode(QToolButton.InstantPopup)
+		self.anySelected = False
+
+		self.view().viewport().installEventFilter(self)		
+		self.view().pressed.connect(self.handleItemPressed)
+
+	def clear(self):
+		
+		self.unselectAll()
+		self.toolMenu.clear()
+		super().clear()
+
+
+	def handleItemPressed(self, index):
+
+		idx = index.row()
+		actions = self.toolMenu.actions()
+
+		item = self.model().itemFromIndex(index)
+		if item.checkState() == Qt.Checked:
+			item.setCheckState(Qt.Unchecked)
+			actions[idx].setChecked(False)
+		else:
+			item.setCheckState(Qt.Checked)
+			actions[idx].setChecked(True)
+			self.anySelected = True
+
+		options_checked = np.array([a.isChecked() for a in actions])
+		if len(options_checked[options_checked]) > 1:
+			self.setTitle(f'Multiple {self.obj+"s"} selected...')
+		elif len(options_checked[options_checked])==1:
+			idx_selected = np.where(options_checked)[0][0]
+			if idx_selected!=idx:
+				item = self.model().item(idx_selected)
+			self.setTitle(item.text())
+		elif len(options_checked[options_checked])==0:
+			self.setTitle(f"No {self.obj} selected...")
+			self.anySelected = False
+		
+		self.activated.emit(self.title())
+
+	def setCurrentIndex(self, index):
+
+		super().setCurrentIndex(index)
+
+		item = self.model().item(index)
+		modelIndex = self.model().indexFromItem(item)
+
+		self.handleItemPressed(modelIndex)
+
+	def selectAll(self):
+
+		actions = self.toolMenu.actions()
+		for i,a in enumerate(actions):
+			if not a.isChecked():
+				self.setCurrentIndex(i)
+		self.anySelected = True
+
+	def unselectAll(self):
+		
+		actions = self.toolMenu.actions()
+		for i,a in enumerate(actions):
+			if a.isChecked():
+				self.setCurrentIndex(i)
+		self.anySelected = False
+
+	def title(self):
+		return self._title
+
+	def setTitle(self, title):
+		self._title = title
+		self.update()
+		self.repaint()
+
+	def paintEvent(self, event):
+
+		painter = QStylePainter(self)
+		painter.setPen(self.palette().color(QPalette.Text))
+		opt = QStyleOptionComboBox()
+		self.initStyleOption(opt)
+		opt.currentText = self._title
+		painter.drawComplexControl(QStyle.CC_ComboBox, opt)
+		painter.drawControl(QStyle.CE_ComboBoxLabel, opt)
+
+	def addItem(self, item, tooltip=None):
+
+		super().addItem(item)
+		idx = self.findText(item)
+		if tooltip is not None:
+			self.setItemData(idx, tooltip, Qt.ToolTipRole)
+		item2 = self.model().item(idx, 0)
+		item2.setCheckState(Qt.Unchecked)
+		action = self.toolMenu.addAction(item)
+		action.setCheckable(True)	
+
+	def addItems(self, items):
+
+		super().addItems(items)
+
+		for item in items:
+
+			idx = self.findText(item)
+			item2 = self.model().item(idx, 0)
+			item2.setCheckState(Qt.Unchecked)
+			action = self.toolMenu.addAction(item)
+			action.setCheckable(True)
+
+	def getSelectedIndices(self):
+		
+		actions = self.toolMenu.actions()
+		options_checked = np.array([a.isChecked() for a in actions])		
+		idx_selected = np.where(options_checked)[0]
+
+		return list(idx_selected)
+
+	def currentText(self):
+		return self.title()
+
+	def isMultipleSelection(self):
+		return self.currentText().startswith('Multiple')
+
+	def isSingleSelection(self):
+		return not self.currentText().startswith('Multiple') and not self.title().startswith('No')
+
+	def isAnySelected(self):
+		return not self.title().startswith('No')
+	
+	def eventFilter(self, source, event):
+		if source is self.view().viewport():
+			if event.type() == QEvent.MouseButtonRelease:
+				return True  # Prevent the popup from closing
+		return super().eventFilter(source, event)
+
+class PandasModel(QAbstractTableModel):
+
+	"""
+	from https://stackoverflow.com/questions/31475965/fastest-way-to-populate-qtableview-from-pandas-data-frame
+	"""
+
+	def __init__(self, data):
+		QAbstractTableModel.__init__(self)
+		self._data = data
+		self.colors = dict()
+
+	def rowCount(self, parent=None):
+		return self._data.shape[0]
+
+	def columnCount(self, parent=None):
+		return self._data.shape[1]
+
+	def data(self, index, role=Qt.DisplayRole):
+		if index.isValid():
+			if role == Qt.DisplayRole:
+				return str(self._data.iloc[index.row(), index.column()])
+			if role == Qt.BackgroundRole:
+				color = self.colors.get((index.row(), index.column()))
+				if color is not None:
+					return color
+		return None
+
+	def headerData(self, rowcol, orientation, role):
+		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+			return self._data.columns[rowcol]
+		if orientation == Qt.Vertical and role == Qt.DisplayRole:
+			return self._data.index[rowcol]
+		return None
+
+	def change_color(self, row, column, color):
+		ix = self.index(row, column)
+		self.colors[(row, column)] = color
+		self.dataChanged.emit(ix, ix, (Qt.BackgroundRole,))
+
+
+class GenericOpColWidget(QWidget, Styles):
+
+	def __init__(self, parent_window, column=None, title=''):
+
+		super().__init__()
+		
+		self.parent_window = parent_window
+		self.column = column
+		self.title = title
+
+		self.setWindowTitle(self.title)
+		# Create the QComboBox and add some items
+		
+		self.layout = QVBoxLayout(self)
+		self.layout.setContentsMargins(30,30,30,30)
+
+		self.sublayout = QVBoxLayout()
+
+		self.measurements_cb = QComboBox()
+		self.measurements_cb.addItems(list(self.parent_window.data.columns))
+		if self.column is not None:
+			idx = self.measurements_cb.findText(self.column)
+			self.measurements_cb.setCurrentIndex(idx)
+
+		measurement_layout = QHBoxLayout()
+		measurement_layout.addWidget(QLabel('measurements: '), 25)
+		measurement_layout.addWidget(self.measurements_cb, 75)
+		self.sublayout.addLayout(measurement_layout)
+
+		self.layout.addLayout(self.sublayout)
+		
+		self.submit_btn = QPushButton('Compute')
+		self.submit_btn.setStyleSheet(self.button_style_sheet)
+		self.submit_btn.clicked.connect(self.launch_operation)
+		self.layout.addWidget(self.submit_btn, 30)
+
+		self.setAttribute(Qt.WA_DeleteOnClose)		
+		center_window(self)
+
+	def launch_operation(self):
+
+		self.compute()
+		self.parent_window.model = PandasModel(self.parent_window.data)
+		self.parent_window.table_view.setModel(self.parent_window.model)
+		self.close()	
+
+	def compute(self):
+		pass
 
 
 class QuickSliderLayout(QHBoxLayout):
@@ -597,12 +839,20 @@ class FigureCanvas(QWidget):
 		if interactive:
 			self.toolbar = NavigationToolbar2QT(self.canvas)
 		self.layout = QVBoxLayout(self)
-		self.layout.addWidget(self.canvas)
+		self.layout.addWidget(self.canvas,90)
 		if interactive:
 			self.layout.addWidget(self.toolbar)
 
 		center_window(self)
 		self.setAttribute(Qt.WA_DeleteOnClose)
+
+	def resizeEvent(self, event):
+		
+		super().resizeEvent(event)
+		try:
+			self.fig.tight_layout()
+		except:
+			pass
 
 	def draw(self):
 		self.canvas.draw()

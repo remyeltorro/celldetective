@@ -4,15 +4,19 @@ import scipy.ndimage as snd
 import numpy as np
 
 def gauss_filter(img, sigma, interpolate=True, *kwargs):
+
 	if interpolate:
 		img = interpolate_nan(img.astype(float))
+
 	return snd.gaussian_filter(img.astype(float), sigma, *kwargs)
 
 def median_filter(img, size, interpolate=True, *kwargs):
+
 	if interpolate:
 		img = interpolate_nan(img.astype(float))
 
 	size = int(size)
+	
 	return snd.median_filter(img, size, *kwargs)
 
 def maximum_filter(img, size, interpolate=True, *kwargs):
@@ -65,13 +69,17 @@ def std_filter(img, size, interpolate=True):
 
 	if interpolate:
 		img = interpolate_nan(img.astype(float))
+	
 	size = int(size)
 	img = img.astype(float)
+	
 	win_mean = snd.uniform_filter(img, (size,size), mode='wrap')
 	win_sqr_mean = snd.uniform_filter(img**2, (size, size), mode='wrap')
-	win_sqr_mean[win_sqr_mean!=win_sqr_mean] = 0.
 	win_sqr_mean[win_sqr_mean<=0.] = 0. # add this to prevent sqrt from breaking
-	img = np.sqrt(win_sqr_mean - win_mean**2)
+	
+	sub = np.subtract(win_sqr_mean,win_mean**2)
+	sub[sub<=0.] = 0.
+	img = np.sqrt(sub)
 
 	return img
 
@@ -96,16 +104,21 @@ def local_filter(img, *kwargs):
 	return binary.astype(float)
 
 def niblack_filter(img, *kwargs):
+
 	thresh = threshold_niblack(img, *kwargs)
 	binary = img >= thresh
 	return binary.astype(float)
 
 def sauvola_filter(img, *kwargs):
+
 	thresh = threshold_sauvola(img, *kwargs)
 	binary = img >= thresh
 	return binary.astype(float)
 
 def log_filter(img, sigma, *kwargs):
+
+	if interpolate:
+		img = interpolate_nan(img.astype(float))
 	return snd.gaussian_laplace(img.astype(float), sigma, *kwargs)
 
 def tophat_filter(img, size, connectivity=4, interpolate=True, *kwargs):

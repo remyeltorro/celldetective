@@ -1,12 +1,6 @@
-import math
-
-import skimage
 from PyQt5.QtWidgets import QAction, QMenu, QMainWindow, QMessageBox, QLabel, QWidget, QFileDialog, QHBoxLayout, \
 	QGridLayout, QLineEdit, QScrollArea, QVBoxLayout, QComboBox, QPushButton, QApplication, QPushButton, QRadioButton, QButtonGroup
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
-from matplotlib.patches import Circle
-from scipy import ndimage
-from skimage.morphology import disk
 
 from celldetective.filters import std_filter, gauss_filter
 from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class, help_generic
@@ -1169,202 +1163,198 @@ class ThresholdNormalisation(ThresholdConfigWizard):
 		self.close()
 
 
-class ThresholdSpot(ThresholdConfigWizard):
-	def __init__(self, current_channel, img, mask, parent_window=None):
-		QMainWindow.__init__(self)
-		self.parent_window = parent_window
-		self.screen_height = self.parent_window.parent_window.parent_window.parent_window.screen_height
-		self.screen_width = self.parent_window.parent_window.parent_window.parent_window.screen_width
-		self.setMinimumHeight(int(0.8 * self.screen_height))
-		self.setWindowTitle("Spot threshold preview")
-		center_window(self)
-		self.img = img
-		self.current_channel = current_channel
-		self.mode = self.parent_window.mode
-		self.pos = self.parent_window.parent_window.parent_window.pos
-		self.exp_dir = self.parent_window.parent_window.exp_dir
-		self.onlyFloat = QDoubleValidator()
-		self.onlyInt = QIntValidator()
-		self.soft_path = get_software_location()
-		self.auto_close = False
+# class ThresholdSpot(ThresholdConfigWizard):
+# 	def __init__(self, current_channel, img, mask, parent_window=None):
+# 		QMainWindow.__init__(self)
+# 		self.parent_window = parent_window
+# 		self.screen_height = self.parent_window.parent_window.parent_window.parent_window.screen_height
+# 		self.screen_width = self.parent_window.parent_window.parent_window.parent_window.screen_width
+# 		self.setMinimumHeight(int(0.8 * self.screen_height))
+# 		self.setWindowTitle("Spot threshold preview")
+# 		center_window(self)
+# 		self.img = img
+# 		self.current_channel = current_channel
+# 		self.mode = self.parent_window.mode
+# 		self.pos = self.parent_window.parent_window.parent_window.pos
+# 		self.exp_dir = self.parent_window.parent_window.exp_dir
+# 		self.onlyFloat = QDoubleValidator()
+# 		self.onlyInt = QIntValidator()
+# 		self.soft_path = get_software_location()
+# 		self.auto_close = False
 
-		if self.img is not None:
-			print(self.img.shape)
-			#self.test_frame = self.img
-			self.frame = self.img
-			self.test_mask = mask
-			self.populate_all()
-			self.setAttribute(Qt.WA_DeleteOnClose)
-		if self.auto_close:
-			self.close()
+# 		if self.img is not None:
+# 			print(self.img.shape)
+# 			#self.test_frame = self.img
+# 			self.frame = self.img
+# 			self.test_mask = mask
+# 			self.populate_all()
+# 			self.setAttribute(Qt.WA_DeleteOnClose)
+# 		if self.auto_close:
+# 			self.close()
 
-	def populate_left_panel(self):
+# 	def populate_left_panel(self):
 
-		self.left_layout = QVBoxLayout()
-		diameter_layout=QHBoxLayout()
-		self.diameter_lbl = QLabel('Spot diameter: ')
-		self.diameter_value = QLineEdit()
-		self.diameter_value.setText(self.parent_window.diameter_value.text())
-		self.diameter_value.setValidator(self.onlyFloat)
-		diameter_layout.addWidget(self.diameter_lbl, alignment=Qt.AlignCenter)
-		diameter_layout.addWidget(self.diameter_value, alignment=Qt.AlignCenter)
-		self.left_layout.addLayout(diameter_layout)
-		threshold_layout=QHBoxLayout()
-		self.threshold_lbl = QLabel('Spot threshold: ')
-		self.threshold_value = QLineEdit()
-		self.threshold_value.setValidator(self.onlyFloat)
-		self.threshold_value.setText(self.parent_window.threshold_value.text())
-		threshold_layout.addWidget(self.threshold_lbl, alignment=Qt.AlignCenter)
-		threshold_layout.addWidget(self.threshold_value, alignment=Qt.AlignCenter)
-		self.left_layout.addLayout(threshold_layout)
-		self.left_panel.addLayout(self.left_layout)
+# 		self.left_layout = QVBoxLayout()
+# 		diameter_layout=QHBoxLayout()
+# 		self.diameter_lbl = QLabel('Spot diameter: ')
+# 		self.diameter_value = QLineEdit()
+# 		self.diameter_value.setText(self.parent_window.diameter_value.text())
+# 		self.diameter_value.setValidator(self.onlyFloat)
+# 		diameter_layout.addWidget(self.diameter_lbl, alignment=Qt.AlignCenter)
+# 		diameter_layout.addWidget(self.diameter_value, alignment=Qt.AlignCenter)
+# 		self.left_layout.addLayout(diameter_layout)
+# 		threshold_layout=QHBoxLayout()
+# 		self.threshold_lbl = QLabel('Spot threshold: ')
+# 		self.threshold_value = QLineEdit()
+# 		self.threshold_value.setValidator(self.onlyFloat)
+# 		self.threshold_value.setText(self.parent_window.threshold_value.text())
+# 		threshold_layout.addWidget(self.threshold_lbl, alignment=Qt.AlignCenter)
+# 		threshold_layout.addWidget(self.threshold_value, alignment=Qt.AlignCenter)
+# 		self.left_layout.addLayout(threshold_layout)
+# 		self.left_panel.addLayout(self.left_layout)
 
-	def enable_preview(self):
+# 	def enable_preview(self):
 
-		diam = self.diameter_value.text().replace(',','').replace('.','')
-		thresh = self.threshold_value.text().replace(',','').replace('.','')
-		if diam.isnumeric() and thresh.isnumeric():
-			self.preview_button.setEnabled(True)
-		else:
-			self.preview_button.setEnabled(False)
+# 		diam = self.diameter_value.text().replace(',','').replace('.','')
+# 		thresh = self.threshold_value.text().replace(',','').replace('.','')
+# 		if diam.isnumeric() and thresh.isnumeric():
+# 			self.preview_button.setEnabled(True)
+# 		else:
+# 			self.preview_button.setEnabled(False)
 
-	def draw_spot_preview(self):
+# 	def draw_spot_preview(self):
 
-		try:
-			diameter_value = float(self.parent_window.diameter_value.text().replace(',','.'))
-		except:
-			print('Diameter could not be converted to float... Abort.')
-			self.auto_close = True
-			return None
+# 		try:
+# 			diameter_value = float(self.parent_window.diameter_value.text().replace(',','.'))
+# 		except:
+# 			print('Diameter could not be converted to float... Abort.')
+# 			self.auto_close = True
+# 			return None
 
-		try:
-			threshold_value = float(self.parent_window.threshold_value.text().replace(',','.'))
-		except:
-			print('Threshold could not be converted to float... Abort.')
-			self.auto_close = True
-			return None
+# 		try:
+# 			threshold_value = float(self.parent_window.threshold_value.text().replace(',','.'))
+# 		except:
+# 			print('Threshold could not be converted to float... Abort.')
+# 			self.auto_close = True
+# 			return None
 
-		lbl = self.test_mask
-		blobs = self.blob_preview(image=self.img[:, :, self.current_channel], label=lbl, threshold=threshold_value,
-								  diameter=diameter_value)
-		mask = np.array([lbl[int(y), int(x)] != 0 for y, x, r in blobs])
-		if np.any(mask):
-			blobs_filtered = blobs[mask]
-		else:
-			blobs_filtered=[]
+# 		lbl = self.test_mask
+# 		blobs = self.blob_preview(image=self.img[:, :, self.current_channel], label=lbl, threshold=threshold_value,
+# 								  diameter=diameter_value)
+# 		mask = np.array([lbl[int(y), int(x)] != 0 for y, x, r in blobs])
+# 		if np.any(mask):
+# 			blobs_filtered = blobs[mask]
+# 		else:
+# 			blobs_filtered=[]
 
-		self.fig_contour, self.ax_contour = plt.subplots(figsize=(4, 6))
-		self.fcanvas = FigureCanvas(self.fig_contour, title="Blob measurement", interactive=True)
-		self.ax_contour.clear()
-		self.im = self.ax_contour.imshow(self.img[:, :, self.current_channel], cmap='gray')
-		self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
-		for circle in self.circles:
-			self.ax_contour.add_artist(circle)
-		self.ax_contour.set_xticks([])
-		self.ax_contour.set_yticks([])
-		self.fig_contour.set_facecolor('none')  # or 'None'
-		self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
-		self.fcanvas.canvas.draw()
+# 		self.fig_contour, self.ax_contour = plt.subplots(figsize=(4, 6))
+# 		self.fcanvas = FigureCanvas(self.fig_contour, title="Blob measurement", interactive=True)
+# 		self.ax_contour.clear()
+# 		self.im = self.ax_contour.imshow(self.img[:, :, self.current_channel], cmap='gray')
+# 		self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
+# 		for circle in self.circles:
+# 			self.ax_contour.add_artist(circle)
+# 		self.ax_contour.set_xticks([])
+# 		self.ax_contour.set_yticks([])
+# 		self.fig_contour.set_facecolor('none')  # or 'None'
+# 		self.fig_contour.canvas.setStyleSheet("background-color: transparent;")
+# 		self.fcanvas.canvas.draw()
 
-	def populate_all(self):
-		self.button_widget = QWidget()
-		main_layout = QVBoxLayout()
-		self.button_widget.setLayout(main_layout)
-		self.right_panel = QVBoxLayout()
-		self.left_panel = QVBoxLayout()
-		self.left_panel.setContentsMargins(30, 30, 30, 30)
-		self.populate_left_panel()
-		self.draw_spot_preview()
-		self.setCentralWidget(self.button_widget)
-		contrast_slider_layout = QHBoxLayout()
-		self.contrast_slider = QLabeledDoubleRangeSlider()
-		self.contrast_slider.setSingleStep(0.00001)
-		self.contrast_slider.setTickInterval(0.00001)
-		self.contrast_slider.setOrientation(1)
-		selection = self.frame[:, :, self.current_channel]
-		self.contrast_slider.setRange(np.amin(selection[selection==selection]), np.amax(selection[selection==selection]))
-		self.contrast_slider.setValue(
-			[np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
-		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
-		contrast_label = QLabel("Contrast: ")
-		contrast_slider_layout.addWidget(contrast_label)
-		contrast_slider_layout.addWidget(self.contrast_slider)
-		self.preview_button=QPushButton("Preview")
-		self.preview_button.clicked.connect(self.update_spots)
-		self.preview_button.setStyleSheet(self.button_style_sheet_2)
-		self.apply_changes=QPushButton("Apply")
-		self.apply_changes.setStyleSheet(self.button_style_sheet)
-		self.apply_changes.clicked.connect(self.apply)
+# 	def populate_all(self):
+# 		self.button_widget = QWidget()
+# 		main_layout = QVBoxLayout()
+# 		self.button_widget.setLayout(main_layout)
+# 		self.right_panel = QVBoxLayout()
+# 		self.left_panel = QVBoxLayout()
+# 		self.left_panel.setContentsMargins(30, 30, 30, 30)
+# 		self.populate_left_panel()
+# 		self.draw_spot_preview()
+# 		self.setCentralWidget(self.button_widget)
+# 		contrast_slider_layout = QHBoxLayout()
+# 		self.contrast_slider = QLabeledDoubleRangeSlider()
+# 		self.contrast_slider.setSingleStep(0.00001)
+# 		self.contrast_slider.setTickInterval(0.00001)
+# 		self.contrast_slider.setOrientation(1)
+# 		selection = self.frame[:, :, self.current_channel]
+# 		self.contrast_slider.setRange(np.amin(selection[selection==selection]), np.amax(selection[selection==selection]))
+# 		self.contrast_slider.setValue(
+# 			[np.percentile(self.frame[:, :, self.current_channel].flatten(), 1), np.percentile(self.frame[:, :, self.current_channel].flatten(), 99.99)])
+# 		self.contrast_slider.valueChanged.connect(self.contrast_slider_action)
+# 		contrast_label = QLabel("Contrast: ")
+# 		contrast_slider_layout.addWidget(contrast_label)
+# 		contrast_slider_layout.addWidget(self.contrast_slider)
+# 		self.preview_button=QPushButton("Preview")
+# 		self.preview_button.clicked.connect(self.update_spots)
+# 		self.preview_button.setStyleSheet(self.button_style_sheet_2)
+# 		self.apply_changes=QPushButton("Apply")
+# 		self.apply_changes.setStyleSheet(self.button_style_sheet)
+# 		self.apply_changes.clicked.connect(self.apply)
 
-		self.diameter_value.textChanged.connect(self.enable_preview)
-		self.threshold_value.textChanged.connect(self.enable_preview)
+# 		self.diameter_value.textChanged.connect(self.enable_preview)
+# 		self.threshold_value.textChanged.connect(self.enable_preview)
 
-		self.right_panel.addWidget(self.fcanvas.canvas)
-		self.right_panel.addWidget(self.fcanvas.toolbar)
+# 		self.right_panel.addWidget(self.fcanvas.canvas)
+# 		self.right_panel.addWidget(self.fcanvas.toolbar)
 
-		main_layout.addLayout(self.right_panel)
-		main_layout.addLayout(self.left_panel)
-		main_layout.addLayout(contrast_slider_layout)
-		main_layout.addWidget(self.preview_button)
-		main_layout.addWidget(self.apply_changes)
-		self.show()
+# 		main_layout.addLayout(self.right_panel)
+# 		main_layout.addLayout(self.left_panel)
+# 		main_layout.addLayout(contrast_slider_layout)
+# 		main_layout.addWidget(self.preview_button)
+# 		main_layout.addWidget(self.apply_changes)
+# 		self.show()
 
-	def blob_preview(self, image, label, threshold, diameter):
-		removed_background = image.copy()
-		dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
-		removed_background[np.where(dilated_image == 0)] = 0
-		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
-		max_sigma = math.sqrt(2) * min_sigma
-		blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
-										 max_sigma=max_sigma, overlap=0.75)
-		return blobs
+# 	def blob_preview(self, image, label, threshold, diameter):
+# 		removed_background = image.copy()
+# 		dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
+# 		removed_background[np.where(dilated_image == 0)] = 0
+# 		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
+# 		max_sigma = math.sqrt(2) * min_sigma
+# 		blobs = skimage.feature.blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
+# 										 max_sigma=max_sigma, overlap=0.75)
+# 		return blobs
 
-	def update_spots(self):
+# 	def update_spots(self):
 
-		try:
-			diameter_value = float(self.diameter_value.text().replace(',','.'))
-		except:
-			print('Diameter could not be converted to float... Abort.')
-			return None
+# 		try:
+# 			diameter_value = float(self.diameter_value.text().replace(',','.'))
+# 		except:
+# 			print('Diameter could not be converted to float... Abort.')
+# 			return None
 
-		try:
-			threshold_value = float(self.threshold_value.text().replace(',','.'))
-		except:
-			print('Threshold could not be converted to float... Abort.')
-			return None
-		xlim = self.ax_contour.get_xlim()
-		ylim = self.ax_contour.get_ylim()
-		contrast_levels = self.contrast_slider.value()
-		blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
-								  threshold=threshold_value,
-								  diameter=diameter_value)
-		mask = np.array([self.test_mask[int(y), int(x)] != 0 for y, x, r in blobs])
-		if np.any(mask):
-			blobs_filtered = blobs[mask]
-		else:
-			blobs_filtered = []
-		self.ax_contour.clear()
-		self.im = self.ax_contour.imshow(self.frame[:, :, self.current_channel], cmap='gray')
-		self.ax_contour.set_xticks([])
-		self.ax_contour.set_yticks([])
-		self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
-		for circle in self.circles:
-			self.ax_contour.add_artist(circle)
-		self.ax_contour.set_xlim(xlim)
-		self.ax_contour.set_ylim(ylim)
+# 		try:
+# 			threshold_value = float(self.threshold_value.text().replace(',','.'))
+# 		except:
+# 			print('Threshold could not be converted to float... Abort.')
+# 			return None
+# 		xlim = self.ax_contour.get_xlim()
+# 		ylim = self.ax_contour.get_ylim()
+# 		contrast_levels = self.contrast_slider.value()
+# 		blobs = self.blob_preview(image=self.frame[:, :, self.current_channel], label=self.test_mask,
+# 								  threshold=threshold_value,
+# 								  diameter=diameter_value)
+# 		mask = np.array([self.test_mask[int(y), int(x)] != 0 for y, x, r in blobs])
+# 		if np.any(mask):
+# 			blobs_filtered = blobs[mask]
+# 		else:
+# 			blobs_filtered = []
+# 		self.ax_contour.clear()
+# 		self.im = self.ax_contour.imshow(self.frame[:, :, self.current_channel], cmap='gray')
+# 		self.ax_contour.set_xticks([])
+# 		self.ax_contour.set_yticks([])
+# 		self.circles = [Circle((x, y), r, color='red', fill=False, alpha=0.3) for y, x, r in blobs_filtered]
+# 		for circle in self.circles:
+# 			self.ax_contour.add_artist(circle)
+# 		self.ax_contour.set_xlim(xlim)
+# 		self.ax_contour.set_ylim(ylim)
 
-		self.im.set_data(self.frame[:, :, self.current_channel])
-		self.fig_contour.canvas.draw()
-		self.contrast_slider.setValue(contrast_levels)
-
-
-
-
-	def apply(self):
-		self.parent_window.threshold_value.setText(self.threshold_value.text())
-		self.parent_window.diameter_value.setText(self.diameter_value.text())
-		self.close()
+# 		self.im.set_data(self.frame[:, :, self.current_channel])
+# 		self.fig_contour.canvas.draw()
+# 		self.contrast_slider.setValue(contrast_levels)
 
 
 
 
+# 	def apply(self):
+# 		self.parent_window.threshold_value.setText(self.threshold_value.text())
+# 		self.parent_window.diameter_value.setText(self.diameter_value.text())
+# 		self.close()

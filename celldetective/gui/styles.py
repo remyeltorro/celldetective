@@ -23,6 +23,7 @@ class Styles(object):
 
 	def init_button_styles(self):
 
+
 		self.button_style_sheet = '''
 			QPushButton {
 				background-color: #1565c0;
@@ -144,6 +145,18 @@ class Styles(object):
 			}
 			QPushButton:pressed {
 				background-color: #ff8a00;
+			}
+		'''
+
+		self.menu_check_style = '''
+			QCheckBox {
+				font-size: 10px;
+				padding-left: 10px;
+				padding-top: 5px;
+			}
+			QCheckBox::indicator:unchecked:hover {
+				background-color : rgba(189, 189, 189, 1);
+				opacity : 0.3;
 			}
 		'''
 

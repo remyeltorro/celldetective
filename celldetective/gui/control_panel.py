@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import QMainWindow, QComboBox, QPushButton, QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, \
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QHBoxLayout, QLabel, QWidget, QGridLayout, QFrame, \
 	QTabWidget, QVBoxLayout, QMessageBox, QScrollArea, QDesktopWidget
 from PyQt5.QtCore import Qt, QSize
-from celldetective.gui.gui_utils import center_window, QHSeperationLine
+from celldetective.gui.gui_utils import center_window, QHSeperationLine, QCheckableComboBox
 from celldetective.utils import _extract_labels_from_config, ConfigSectionMap, extract_experiment_channels, extract_identity_col
 from celldetective.gui import ConfigEditor, ProcessPanel, PreprocessingPanel, AnalysisPanel, NeighPanel
 from celldetective.io import get_experiment_wells, get_config, get_spatial_calibration, get_temporal_calibration, get_experiment_concentrations, get_experiment_cell_types, get_experiment_antibodies, get_experiment_pharmaceutical_agents
@@ -17,6 +17,7 @@ from celldetective.gui.viewers import StackVisualizer
 from celldetective.utils import extract_experiment_channels
 from celldetective.gui import Styles
 import pandas as pd
+
 
 class ControlPanel(QMainWindow, Styles):
 
@@ -90,7 +91,10 @@ class ControlPanel(QMainWindow, Styles):
 		self.initial_width = self.size().width()
 		self.screen_height = desktop.screenGeometry().height()
 		self.screen_width = desktop.screenGeometry().width()
-		self.scroll.setMinimumWidth(425)
+		self.scroll.setMinimumWidth(440)
+
+		self.well_list.setCurrentIndex(0)
+		#self.position_list.setCurrentIndex(0)
 
 	def init_wells_and_positions(self):
 
@@ -138,22 +142,20 @@ class ControlPanel(QMainWindow, Styles):
 		self.edit_config_button.clicked.connect(self.open_config_editor)
 		self.edit_config_button.setStyleSheet(self.button_select_all)
 
-		self.well_list = QComboBox()
+		self.well_list = QCheckableComboBox(obj='well', parent_window=self)
 		thresh = 32
-		self.well_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.well_labels]		
-		self.well_list.addItems(self.well_truncated) #self.well_labels
-		for i in range(len(self.well_labels)):
-			self.well_list.setItemData(i, self.well_labels[i], Qt.ToolTipRole)
-		self.well_list.addItems(["*"])
-		self.well_list.activated.connect(self.display_positions)
-		self.to_disable.append(self.well_list)
+		self.well_truncated = [w[:thresh - 3]+'...' if len(w)>thresh else w for w in self.well_labels]
+		for i in range(len(self.well_truncated)):
+			self.well_list.addItem(self.well_truncated[i], tooltip=self.well_labels[i])
 
-		self.position_list = QComboBox()
-		self.position_list.addItems(["*"])
+		self.position_list = QCheckableComboBox(obj='position', parent_window=self)
 		self.position_list.addItems(self.positions[0])
-		self.position_list.activated.connect(self.update_position_options)
 		self.to_disable.append(self.position_list)
 		#self.locate_selected_position()
+
+		self.well_list.activated.connect(self.display_positions)
+
+		self.position_list.activated.connect(self.update_position_options)
 
 		self.view_stack_btn = QPushButton()
 		self.view_stack_btn.setStyleSheet(self.button_select_all)
@@ -162,6 +164,24 @@ class ControlPanel(QMainWindow, Styles):
 		self.view_stack_btn.setIconSize(QSize(20, 20))
 		self.view_stack_btn.clicked.connect(self.view_current_stack)
 		self.view_stack_btn.setEnabled(False)
+
+		self.select_all_wells_btn = QPushButton()
+		self.select_all_wells_btn.setIcon(icon(MDI6.select_all,color="black"))
+		self.select_all_wells_btn.setIconSize(QSize(20, 20))
+		self.select_all_wells_btn.setToolTip("Select all wells.")
+		self.select_all_wells_btn.clicked.connect(self.select_all_wells)
+		self.select_all_wells_btn.setStyleSheet(self.button_select_all)
+		self.select_all_wells_option = False
+
+
+		self.select_all_pos_btn = QPushButton()
+		self.select_all_pos_btn.setIcon(icon(MDI6.select_all,color="black"))
+		self.select_all_pos_btn.setIconSize(QSize(20, 20))
+		self.select_all_pos_btn.setToolTip("Select all positions.")
+		self.select_all_pos_btn.clicked.connect(self.select_all_positions)
+		self.select_all_pos_btn.setStyleSheet(self.button_select_all)
+		self.select_all_pos_option = False
+
 
 		well_lbl = QLabel('Well: ')
 		well_lbl.setAlignment(Qt.AlignRight)
@@ -181,7 +201,13 @@ class ControlPanel(QMainWindow, Styles):
 		exp_hbox = QHBoxLayout()
 		exp_hbox.addWidget(experiment_label, 25, alignment=Qt.AlignRight)
 		exp_subhbox = QHBoxLayout()
-		exp_subhbox.addWidget(QLabel(name), 90, alignment=Qt.AlignLeft)
+		if len(name)>thresh:
+			name_cut = name[:thresh - 3]+'...'
+		else:
+			name_cut = name
+		exp_name_lbl = QLabel(name_cut)
+		exp_name_lbl.setToolTip(name)
+		exp_subhbox.addWidget(exp_name_lbl, 90, alignment=Qt.AlignLeft)
 		exp_subhbox.addWidget(self.folder_exp_btn, 5, alignment=Qt.AlignRight)
 		exp_subhbox.addWidget(self.edit_config_button, 5, alignment=Qt.AlignRight)
 		exp_hbox.addLayout(exp_subhbox, 75)
@@ -190,19 +216,51 @@ class ControlPanel(QMainWindow, Styles):
 		# Well row
 		well_hbox = QHBoxLayout()
 		well_hbox.addWidget(well_lbl, 25, alignment=Qt.AlignVCenter)
-		well_hbox.addWidget(self.well_list, 75)
+		well_subhbox = QHBoxLayout()
+		well_subhbox.addWidget(self.well_list, 95)
+		well_subhbox.addWidget(self.select_all_wells_btn, 5)
+		well_hbox.addLayout(well_subhbox, 75)
 		vbox.addLayout(well_hbox)
 
 		# Position row
 		position_hbox = QHBoxLayout()
 		position_hbox.addWidget(pos_lbl, 25, alignment=Qt.AlignVCenter)
 		pos_subhbox = QHBoxLayout()
-		pos_subhbox.addWidget(self.position_list, 95)
+		pos_subhbox.addWidget(self.position_list, 90)
+		pos_subhbox.addWidget(self.select_all_pos_btn, 5)
 		pos_subhbox.addWidget(self.view_stack_btn, 5)
 		position_hbox.addLayout(pos_subhbox, 75)
 		vbox.addLayout(position_hbox)
 
 		vbox.addWidget(hsep)
+
+	def select_all_wells(self):
+
+		if not self.select_all_wells_option:
+			self.well_list.selectAll()
+			self.select_all_wells_option = True
+			self.select_all_wells_btn.setIcon(icon(MDI6.select_all,color=self.celldetective_blue))
+			self.select_all_wells_btn.setIconSize(QSize(20, 20))
+			self.display_positions()
+		else:
+			self.well_list.unselectAll()
+			self.select_all_wells_option = False
+			self.select_all_wells_btn.setIcon(icon(MDI6.select_all,color="black"))
+			self.select_all_wells_btn.setIconSize(QSize(20, 20))
+			self.display_positions()
+
+	def select_all_positions(self):
+
+		if not self.select_all_pos_option:
+			self.position_list.selectAll()
+			self.select_all_pos_option = True
+			self.select_all_pos_btn.setIcon(icon(MDI6.select_all,color=self.celldetective_blue))
+			self.select_all_pos_btn.setIconSize(QSize(20, 20))
+		else:
+			self.position_list.unselectAll()
+			self.select_all_pos_option = False
+			self.select_all_pos_btn.setIcon(icon(MDI6.select_all,color="black"))
+			self.select_all_pos_btn.setIconSize(QSize(20, 20))
 
 	def locate_image(self):
 
@@ -335,17 +393,30 @@ class ControlPanel(QMainWindow, Styles):
 		Show the positions as the well is changed.
 		"""
 
-		if self.well_list.currentText()=="*":
+		if self.well_list.isMultipleSelection():
+
 			self.position_list.clear()
-			self.position_list.addItems(["*"])
 			position_linspace = np.linspace(0,len(self.positions[0])-1,len(self.positions[0]),dtype=int)
 			position_linspace = [str(s) for s in position_linspace]
 			self.position_list.addItems(position_linspace)
+			if self.select_all_pos_option:
+				self.select_all_pos_btn.click()
+			self.select_all_pos_btn.click()
+		
+		elif not self.well_list.isAnySelected():
+
+			self.position_list.unselectAll()
+			if self.select_all_pos_option:
+				self.select_all_pos_btn.click()
+
 		else:
-			pos_index = self.well_list.currentIndex()
+			pos_index = self.well_list.getSelectedIndices()[0]
 			self.position_list.clear()
-			self.position_list.addItems(["*"])
 			self.position_list.addItems(self.positions[pos_index])
+			if self.select_all_pos_option:
+				self.select_all_pos_btn.click()
+			self.position_list.setCurrentIndex(0)
+		
 		self.update_position_options()
 	
 	def open_config_editor(self):
@@ -360,7 +431,7 @@ class ControlPanel(QMainWindow, Styles):
 
 		"""
 
-		if self.well_list.currentText()=="*":
+		if self.well_list.isMultipleSelection():
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Critical)
 			msgBox.setText("Please select a single well...")
@@ -370,12 +441,12 @@ class ControlPanel(QMainWindow, Styles):
 			if returnValue == QMessageBox.Ok:
 				return False
 		else:
-			self.well_index = [self.well_list.currentIndex()]
+			self.well_index = self.well_list.getSelectedIndices() #[self.well_list.currentIndex()]
 
 		for w_idx in self.well_index:
 
 			pos = self.positions[w_idx]
-			if self.position_list.currentText()=="*":
+			if not self.position_list.isSingleSelection():
 				msgBox = QMessageBox()
 				msgBox.setIcon(QMessageBox.Critical)
 				msgBox.setText("Please select a single position...")
@@ -385,11 +456,12 @@ class ControlPanel(QMainWindow, Styles):
 				if returnValue == QMessageBox.Ok:
 					return False
 			else:
-				pos_indices = natsorted([pos.index(self.position_list.currentText())])
+				pos_indices = self.position_list.getSelectedIndices()
 
 			well = self.wells[w_idx]
 
 			for pos_idx in pos_indices:
+
 				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*{os.sep}"))[pos_idx]
 				if not os.path.exists(self.pos + 'output'):
 					os.mkdir(self.pos + 'output')
@@ -399,6 +471,7 @@ class ControlPanel(QMainWindow, Styles):
 		return True
 
 	def create_config_dir(self):
+
 		self.config_folder = self.exp_dir+'configs'+os.sep
 		if not os.path.exists(self.config_folder):
 			os.mkdir(self.config_folder)
@@ -407,7 +480,8 @@ class ControlPanel(QMainWindow, Styles):
 		
 		self.pos = self.position_list.currentText()
 		panels = [self.ProcessEffectors, self.ProcessTargets]
-		if self.position_list.currentText()=="*":
+
+		if self.position_list.isMultipleSelection() or not self.position_list.isAnySelected():
 			
 			for p in panels:
 				p.check_seg_btn.setEnabled(False)
@@ -437,19 +511,23 @@ class ControlPanel(QMainWindow, Styles):
 			self.ProcessEffectors.delete_tracks_btn.hide()
 
 			self.view_stack_btn.setEnabled(False)
-		elif self.well_list.currentText()=='*':
+
+		elif self.well_list.isMultipleSelection():
+
 			self.ProcessTargets.view_tab_btn.setEnabled(True)
 			self.ProcessEffectors.view_tab_btn.setEnabled(True)	
 			self.NeighPanel.view_tab_btn.setEnabled(True)
 			self.view_stack_btn.setEnabled(False)
 			self.ProcessEffectors.signal_analysis_action.setEnabled(True)
 			self.ProcessTargets.signal_analysis_action.setEnabled(True)
-
-			self.delete_tracks_btn.hide()
+			if hasattr(self,'delete_tracks_btn'):
+				self.delete_tracks_btn.hide()
 			self.ProcessTargets.delete_tracks_btn.hide()
 			self.ProcessEffectors.delete_tracks_btn.hide()
 		else:
-			if not self.well_list.currentText()=="*":
+
+			if self.well_list.isAnySelected() and self.position_list.isAnySelected():
+
 				self.locate_selected_position()
 				self.view_stack_btn.setEnabled(True)
 				# if os.path.exists(os.sep.join([self.pos,'labels_effectors', os.sep])):

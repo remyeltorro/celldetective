@@ -26,7 +26,7 @@ from natsort import natsorted
 from glob import glob
 import random
 from celldetective.utils import color_from_status, color_from_class
-from math import floor, ceil
+from math import floor
 from scipy.optimize import curve_fit
 import time
 import math
@@ -149,7 +149,7 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	assert os.path.exists(model_config_path),f'Model configuration could not be located in folder {model_path}... Abort.'
 
 	available_signals = list(trajectories.columns)
-	print('The available_signals are : ',available_signals)
+	#print('The available_signals are : ',available_signals)
 
 	f = open(model_config_path)
 	config = json.load(f)
@@ -167,22 +167,11 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 		selected_signals = []
 		for s in required_signals:
 			pattern_test = [s in a or s==a for a in available_signals]
-			print(f'Pattern test for signal {s}: ', pattern_test)
+			#print(f'Pattern test for signal {s}: ', pattern_test)
 			assert np.any(pattern_test),f'No signal matches with the requirements of the model {required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
-			valid_columns = np.array(available_signals)[np.array(pattern_test)]
-			if len(valid_columns)==1:
-				selected_signals.append(valid_columns[0])
-			else:
-				#print(test_number_of_nan(trajectories, valid_columns))
-				print(f'Found several candidate signals: {valid_columns}')
-				for vc in natsorted(valid_columns):
-					if 'circle' in vc:
-						selected_signals.append(vc)
-						break
-				else:
-					selected_signals.append(valid_columns[0])
-				# do something more complicated in case of one to many columns
-				#pass
+			valid_columns = natsorted(np.array(available_signals)[np.array(pattern_test)])
+			print(f"Selecting the first time series among: {valid_columns} for input requirement {s}...")
+			selected_signals.append(valid_columns[0])
 	else:
 		assert len(selected_signals)==len(required_signals),f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
 
@@ -202,80 +191,75 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 			signals[i,frames,j] = signal
 			signals[i,max(frames):,j] = signal[-1]
 
-	# for i in range(5):
-	# 	print('pre model')
-	# 	plt.plot(signals[i,:,0])
-	# 	plt.show()
-
 	model = SignalDetectionModel(pretrained=complete_path)
-	print('signal shape: ', signals.shape)
+	if not model.pretrained is None:
 
-	classes = model.predict_class(signals)
-	times_recast = model.predict_time_of_interest(signals)
+		classes = model.predict_class(signals)
+		times_recast = model.predict_time_of_interest(signals)
 
-	if label is None:
-		class_col = 'class'
-		time_col = 't0'
-		status_col = 'status'
-	else:
-		class_col = 'class_'+label
-		time_col = 't_'+label
-		status_col = 'status_'+label
-
-	for i,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
-		indices = group.index
-		trajectories.loc[indices,class_col] = classes[i]
-		trajectories.loc[indices,time_col] = times_recast[i]
-	print('Done.')
-
-	for tid, group in trajectories.groupby(column_labels['track']):
-		
-		indices = group.index
-		t0 = group[time_col].to_numpy()[0]
-		cclass = group[class_col].to_numpy()[0]
-		timeline = group[column_labels['time']].to_numpy()
-		status = np.zeros_like(timeline)
-		if t0 > 0:
-			status[timeline>=t0] = 1.
-		if cclass==2:
-			status[:] = 2
-		if cclass>2:
-			status[:] = 42
-		status_color = [color_from_status(s) for s in status]
-		class_color = [color_from_class(cclass) for i in range(len(status))]
-
-		trajectories.loc[indices, status_col] = status
-		trajectories.loc[indices, 'status_color'] = status_color
-		trajectories.loc[indices, 'class_color'] = class_color
-
-	if plot_outcome:
-		fig,ax = plt.subplots(1,len(selected_signals), figsize=(10,5))
-		for i,s in enumerate(selected_signals):
-			for k,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
-				cclass = group[class_col].to_numpy()[0]
-				t0 = group[time_col].to_numpy()[0]
-				timeline = group[column_labels['time']].to_numpy()
-				if cclass==0:
-					if len(selected_signals)>1:
-						ax[i].plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
-					else:
-						ax.plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
-		if len(selected_signals)>1:				
-			for a,s in zip(ax,selected_signals):
-				a.set_title(s)
-				a.set_xlabel(r'time - t$_0$ [frame]')
-				a.spines['top'].set_visible(False)
-				a.spines['right'].set_visible(False)
+		if label is None:
+			class_col = 'class'
+			time_col = 't0'
+			status_col = 'status'
 		else:
-			ax.set_title(s)
-			ax.set_xlabel(r'time - t$_0$ [frame]')
-			ax.spines['top'].set_visible(False)
-			ax.spines['right'].set_visible(False)			
-		plt.tight_layout()
-		if output_dir is not None:
-			plt.savefig(output_dir+'signal_collapse.png',bbox_inches='tight',dpi=300)
-		plt.pause(3)
-		plt.close()
+			class_col = 'class_'+label
+			time_col = 't_'+label
+			status_col = 'status_'+label
+
+		for i,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
+			indices = group.index
+			trajectories.loc[indices,class_col] = classes[i]
+			trajectories.loc[indices,time_col] = times_recast[i]
+		print('Done.')
+
+		for tid, group in trajectories.groupby(column_labels['track']):
+			
+			indices = group.index
+			t0 = group[time_col].to_numpy()[0]
+			cclass = group[class_col].to_numpy()[0]
+			timeline = group[column_labels['time']].to_numpy()
+			status = np.zeros_like(timeline)
+			if t0 > 0:
+				status[timeline>=t0] = 1.
+			if cclass==2:
+				status[:] = 2
+			if cclass>2:
+				status[:] = 42
+			status_color = [color_from_status(s) for s in status]
+			class_color = [color_from_class(cclass) for i in range(len(status))]
+
+			trajectories.loc[indices, status_col] = status
+			trajectories.loc[indices, 'status_color'] = status_color
+			trajectories.loc[indices, 'class_color'] = class_color
+
+		if plot_outcome:
+			fig,ax = plt.subplots(1,len(selected_signals), figsize=(10,5))
+			for i,s in enumerate(selected_signals):
+				for k,(tid,group) in enumerate(trajectories.groupby(column_labels['track'])):
+					cclass = group[class_col].to_numpy()[0]
+					t0 = group[time_col].to_numpy()[0]
+					timeline = group[column_labels['time']].to_numpy()
+					if cclass==0:
+						if len(selected_signals)>1:
+							ax[i].plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
+						else:
+							ax.plot(timeline - t0, group[s].to_numpy(),c='tab:blue',alpha=0.1)
+			if len(selected_signals)>1:				
+				for a,s in zip(ax,selected_signals):
+					a.set_title(s)
+					a.set_xlabel(r'time - t$_0$ [frame]')
+					a.spines['top'].set_visible(False)
+					a.spines['right'].set_visible(False)
+			else:
+				ax.set_title(s)
+				ax.set_xlabel(r'time - t$_0$ [frame]')
+				ax.spines['top'].set_visible(False)
+				ax.spines['right'].set_visible(False)			
+			plt.tight_layout()
+			if output_dir is not None:
+				plt.savefig(output_dir+'signal_collapse.png',bbox_inches='tight',dpi=300)
+			plt.pause(3)
+			plt.close()
 
 	return trajectories
 
@@ -378,194 +362,193 @@ def analyze_pair_signals_at_position(pos, model, use_gpu=True):
 	return None		
 
 
-def analyze_signals(trajectories, model, interpolate_na=True,
-                    selected_signals=None,
-                    model_path=None,
-                    column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
-                    plot_outcome=False, output_dir=None):
-    """
-	Analyzes signals from trajectory data using a specified signal detection model and configuration.
+# def analyze_signals(trajectories, model, interpolate_na=True,
+#                     selected_signals=None,
+#                     model_path=None,
+#                     column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
+#                     plot_outcome=False, output_dir=None):
+#     """
+# 	Analyzes signals from trajectory data using a specified signal detection model and configuration.
 
-	This function preprocesses trajectory data, selects specified signals, and applies a pretrained signal detection
-	model to predict classes and times of interest for each trajectory. It supports custom column labeling, interpolation
-	of missing values, and plotting of analysis outcomes.
+# 	This function preprocesses trajectory data, selects specified signals, and applies a pretrained signal detection
+# 	model to predict classes and times of interest for each trajectory. It supports custom column labeling, interpolation
+# 	of missing values, and plotting of analysis outcomes.
 
-	Parameters
-	----------
-	trajectories : pandas.DataFrame
-		DataFrame containing trajectory data with columns for track ID, frame, position, and signals.
-	model : str
-		The name of the signal detection model to be used for analysis.
-	interpolate_na : bool, optional
-		Whether to interpolate missing values in the trajectories (default is True).
-	selected_signals : list of str, optional
-		A list of column names from `trajectories` representing the signals to be analyzed. If None, signals will
-		be automatically selected based on the model configuration (default is None).
-	column_labels : dict, optional
-		A dictionary mapping the default column names ('track', 'time', 'x', 'y') to the corresponding column names
-		in `trajectories` (default is {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}).
-	plot_outcome : bool, optional
-		If True, generates and saves a plot of the signal analysis outcome (default is False).
-	output_dir : str, optional
-		The directory where the outcome plot will be saved. Required if `plot_outcome` is True (default is None).
+# 	Parameters
+# 	----------
+# 	trajectories : pandas.DataFrame
+# 		DataFrame containing trajectory data with columns for track ID, frame, position, and signals.
+# 	model : str
+# 		The name of the signal detection model to be used for analysis.
+# 	interpolate_na : bool, optional
+# 		Whether to interpolate missing values in the trajectories (default is True).
+# 	selected_signals : list of str, optional
+# 		A list of column names from `trajectories` representing the signals to be analyzed. If None, signals will
+# 		be automatically selected based on the model configuration (default is None).
+# 	column_labels : dict, optional
+# 		A dictionary mapping the default column names ('track', 'time', 'x', 'y') to the corresponding column names
+# 		in `trajectories` (default is {'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}).
+# 	plot_outcome : bool, optional
+# 		If True, generates and saves a plot of the signal analysis outcome (default is False).
+# 	output_dir : str, optional
+# 		The directory where the outcome plot will be saved. Required if `plot_outcome` is True (default is None).
 
-	Returns
-	-------
-	pandas.DataFrame
-		The input `trajectories` DataFrame with additional columns for predicted classes, times of interest, and
-		corresponding colors based on status and class.
+# 	Returns
+# 	-------
+# 	pandas.DataFrame
+# 		The input `trajectories` DataFrame with additional columns for predicted classes, times of interest, and
+# 		corresponding colors based on status and class.
 
-	Raises
-	------
-	AssertionError
-		If the model or its configuration file cannot be located.
+# 	Raises
+# 	------
+# 	AssertionError
+# 		If the model or its configuration file cannot be located.
 
-	Notes
-	-----
-	- The function relies on an external model configuration file (`config_input.json`) located in the model's directory.
-	- Signal selection and preprocessing are based on the requirements specified in the model's configuration.
+# 	Notes
+# 	-----
+# 	- The function relies on an external model configuration file (`config_input.json`) located in the model's directory.
+# 	- Signal selection and preprocessing are based on the requirements specified in the model's configuration.
 
-	"""
+# 	"""
 
-    model_path = locate_signal_model(model, path=model_path)
-    complete_path = model_path  # +model
-    complete_path = rf"{complete_path}"
-    model_config_path = os.sep.join([complete_path, 'config_input.json'])
-    model_config_path = rf"{model_config_path}"
-    assert os.path.exists(complete_path), f'Model {model} could not be located in folder {model_path}... Abort.'
-    assert os.path.exists(
-        model_config_path), f'Model configuration could not be located in folder {model_path}... Abort.'
+#     model_path = locate_signal_model(model, path=model_path)
+#     complete_path = model_path  # +model
+#     complete_path = rf"{complete_path}"
+#     model_config_path = os.sep.join([complete_path, 'config_input.json'])
+#     model_config_path = rf"{model_config_path}"
+#     assert os.path.exists(complete_path), f'Model {model} could not be located in folder {model_path}... Abort.'
+#     assert os.path.exists(
+#         model_config_path), f'Model configuration could not be located in folder {model_path}... Abort.'
 
-    available_signals = list(trajectories.columns)
-    print('The available_signals are : ', available_signals)
+#     available_signals = list(trajectories.columns)
 
-    f = open(model_config_path)
-    config = json.load(f)
-    required_signals = config["channels"]
+#     f = open(model_config_path)
+#     config = json.load(f)
+#     required_signals = config["channels"]
 
-    try:
-        label = config['label']
-        if label == '':
-            label = None
-    except:
-        label = None
+#     try:
+#         label = config['label']
+#         if label == '':
+#             label = None
+#     except:
+#         label = None
 
-    if selected_signals is None:
-        selected_signals = []
-        for s in required_signals:
-            pattern_test = [s in a or s == a for a in available_signals]
-            print(f'Pattern test for signal {s}: ', pattern_test)
-            assert np.any(
-                pattern_test), f'No signal matches with the requirements of the model {required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
-            valid_columns = np.array(available_signals)[np.array(pattern_test)]
-            if len(valid_columns) == 1:
-                selected_signals.append(valid_columns[0])
-            else:
-                # print(test_number_of_nan(trajectories, valid_columns))
-                print(f'Found several candidate signals: {valid_columns}')
-                for vc in natsorted(valid_columns):
-                    if 'circle' in vc:
-                        selected_signals.append(vc)
-                        break
-                else:
-                    selected_signals.append(valid_columns[0])
-        # do something more complicated in case of one to many columns
-        # pass
-    else:
-        assert len(selected_signals) == len(
-            required_signals), f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
+#     if selected_signals is None:
+#         selected_signals = []
+#         for s in required_signals:
+#             pattern_test = [s in a or s == a for a in available_signals]
+#             #print(f'Pattern test for signal {s}: ', pattern_test)
+#             assert np.any(
+#                 pattern_test), f'No signal matches with the requirements of the model {required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
+#             valid_columns = np.array(available_signals)[np.array(pattern_test)]
+#             if len(valid_columns) == 1:
+#                 selected_signals.append(valid_columns[0])
+#             else:
+#                 # print(test_number_of_nan(trajectories, valid_columns))
+#                 print(f'Found several candidate signals: {valid_columns}')
+#                 for vc in natsorted(valid_columns):
+#                     if 'circle' in vc:
+#                         selected_signals.append(vc)
+#                         break
+#                 else:
+#                     selected_signals.append(valid_columns[0])
+#         # do something more complicated in case of one to many columns
+#         # pass
+#     else:
+#         assert len(selected_signals) == len(
+#             required_signals), f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
 
-    print(f'The following channels will be passed to the model: {selected_signals}')
-    trajectories_clean = clean_trajectories(trajectories, interpolate_na=interpolate_na,
-                                            interpolate_position_gaps=interpolate_na, column_labels=column_labels)
+#     print(f'The following channels will be passed to the model: {selected_signals}')
+#     trajectories_clean = clean_trajectories(trajectories, interpolate_na=interpolate_na,
+#                                             interpolate_position_gaps=interpolate_na, column_labels=column_labels)
 
-    max_signal_size = int(trajectories_clean[column_labels['time']].max()) + 2
-    tracks = trajectories_clean[column_labels['track']].unique()
-    signals = np.zeros((len(tracks), max_signal_size, len(selected_signals)))
+#     max_signal_size = int(trajectories_clean[column_labels['time']].max()) + 2
+#     tracks = trajectories_clean[column_labels['track']].unique()
+#     signals = np.zeros((len(tracks), max_signal_size, len(selected_signals)))
 
-    for i, (tid, group) in enumerate(trajectories_clean.groupby(column_labels['track'])):
-        frames = group[column_labels['time']].to_numpy().astype(int)
-        for j, col in enumerate(selected_signals):
-            signal = group[col].to_numpy()
-            signals[i, frames, j] = signal
-            signals[i, max(frames):, j] = signal[-1]
+#     for i, (tid, group) in enumerate(trajectories_clean.groupby(column_labels['track'])):
+#         frames = group[column_labels['time']].to_numpy().astype(int)
+#         for j, col in enumerate(selected_signals):
+#             signal = group[col].to_numpy()
+#             signals[i, frames, j] = signal
+#             signals[i, max(frames):, j] = signal[-1]
 
-    # for i in range(5):
-    # 	print('pre model')
-    # 	plt.plot(signals[i,:,0])
-    # 	plt.show()
+#     # for i in range(5):
+#     # 	print('pre model')
+#     # 	plt.plot(signals[i,:,0])
+#     # 	plt.show()
 
-    model = SignalDetectionModel(pretrained=complete_path)
-    print('signal shape: ', signals.shape)
+#     model = SignalDetectionModel(pretrained=complete_path)
+#     print('signal shape: ', signals.shape)
 
-    classes = model.predict_class(signals)
-    times_recast = model.predict_time_of_interest(signals)
+#     classes = model.predict_class(signals)
+#     times_recast = model.predict_time_of_interest(signals)
 
-    if label is None:
-        class_col = 'class'
-        time_col = 't0'
-        status_col = 'status'
-    else:
-        class_col = 'class_' + label
-        time_col = 't_' + label
-        status_col = 'status_' + label
+#     if label is None:
+#         class_col = 'class'
+#         time_col = 't0'
+#         status_col = 'status'
+#     else:
+#         class_col = 'class_' + label
+#         time_col = 't_' + label
+#         status_col = 'status_' + label
 
-    for i, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
-        indices = group.index
-        trajectories.loc[indices, class_col] = classes[i]
-        trajectories.loc[indices, time_col] = times_recast[i]
-    print('Done.')
+#     for i, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
+#         indices = group.index
+#         trajectories.loc[indices, class_col] = classes[i]
+#         trajectories.loc[indices, time_col] = times_recast[i]
+#     print('Done.')
 
-    for tid, group in trajectories.groupby(column_labels['track']):
+#     for tid, group in trajectories.groupby(column_labels['track']):
 
-        indices = group.index
-        t0 = group[time_col].to_numpy()[0]
-        cclass = group[class_col].to_numpy()[0]
-        timeline = group[column_labels['time']].to_numpy()
-        status = np.zeros_like(timeline)
-        if t0 > 0:
-            status[timeline >= t0] = 1.
-        if cclass == 2:
-            status[:] = 2
-        if cclass > 2:
-            status[:] = 42
-        status_color = [color_from_status(s) for s in status]
-        class_color = [color_from_class(cclass) for i in range(len(status))]
+#         indices = group.index
+#         t0 = group[time_col].to_numpy()[0]
+#         cclass = group[class_col].to_numpy()[0]
+#         timeline = group[column_labels['time']].to_numpy()
+#         status = np.zeros_like(timeline)
+#         if t0 > 0:
+#             status[timeline >= t0] = 1.
+#         if cclass == 2:
+#             status[:] = 2
+#         if cclass > 2:
+#             status[:] = 42
+#         status_color = [color_from_status(s) for s in status]
+#         class_color = [color_from_class(cclass) for i in range(len(status))]
 
-        trajectories.loc[indices, status_col] = status
-        trajectories.loc[indices, 'status_color'] = status_color
-        trajectories.loc[indices, 'class_color'] = class_color
+#         trajectories.loc[indices, status_col] = status
+#         trajectories.loc[indices, 'status_color'] = status_color
+#         trajectories.loc[indices, 'class_color'] = class_color
 
-    if plot_outcome:
-        fig, ax = plt.subplots(1, len(selected_signals), figsize=(10, 5))
-        for i, s in enumerate(selected_signals):
-            for k, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
-                cclass = group[class_col].to_numpy()[0]
-                t0 = group[time_col].to_numpy()[0]
-                timeline = group[column_labels['time']].to_numpy()
-                if cclass == 0:
-                    if len(selected_signals) > 1:
-                        ax[i].plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
-                    else:
-                        ax.plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
-        if len(selected_signals) > 1:
-            for a, s in zip(ax, selected_signals):
-                a.set_title(s)
-                a.set_xlabel(r'time - t$_0$ [frame]')
-                a.spines['top'].set_visible(False)
-                a.spines['right'].set_visible(False)
-        else:
-            ax.set_title(s)
-            ax.set_xlabel(r'time - t$_0$ [frame]')
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-        plt.tight_layout()
-        if output_dir is not None:
-            plt.savefig(output_dir + 'signal_collapse.png', bbox_inches='tight', dpi=300)
-        plt.pause(3)
-        plt.close()
+#     if plot_outcome:
+#         fig, ax = plt.subplots(1, len(selected_signals), figsize=(10, 5))
+#         for i, s in enumerate(selected_signals):
+#             for k, (tid, group) in enumerate(trajectories.groupby(column_labels['track'])):
+#                 cclass = group[class_col].to_numpy()[0]
+#                 t0 = group[time_col].to_numpy()[0]
+#                 timeline = group[column_labels['time']].to_numpy()
+#                 if cclass == 0:
+#                     if len(selected_signals) > 1:
+#                         ax[i].plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
+#                     else:
+#                         ax.plot(timeline - t0, group[s].to_numpy(), c='tab:blue', alpha=0.1)
+#         if len(selected_signals) > 1:
+#             for a, s in zip(ax, selected_signals):
+#                 a.set_title(s)
+#                 a.set_xlabel(r'time - t$_0$ [frame]')
+#                 a.spines['top'].set_visible(False)
+#                 a.spines['right'].set_visible(False)
+#         else:
+#             ax.set_title(s)
+#             ax.set_xlabel(r'time - t$_0$ [frame]')
+#             ax.spines['top'].set_visible(False)
+#             ax.spines['right'].set_visible(False)
+#         plt.tight_layout()
+#         if output_dir is not None:
+#             plt.savefig(output_dir + 'signal_collapse.png', bbox_inches='tight', dpi=300)
+#         plt.pause(3)
+#         plt.close()
 
-    return trajectories
+#     return trajectories
 
 
 def analyze_pair_signals(trajectories_pairs,trajectories_reference,trajectories_neighbors, model, interpolate_na=True, selected_signals=None,
@@ -817,8 +800,12 @@ class SignalDetectionModel(object):
 
 
 		if self.pretrained is not None:
-			print(f"Load pretrained models from {path}...")
-			self.load_pretrained_model()
+			print(f"Load pretrained models from {pretrained}...")
+			test = self.load_pretrained_model()
+			if test is None:
+				self.pretrained = None
+				print('Pretrained model could not be loaded. Check the log for error. Abort...')
+				return None
 		else:
 			print("Create models from scratch...")
 			self.create_models_from_scratch()
@@ -845,6 +832,9 @@ class SignalDetectionModel(object):
 		- The configuration file is expected to be named "config_input.json" and located in the same directory as the models.
 		"""
 
+		if self.pretrained.endswith(os.sep):
+			self.pretrained = os.sep.join(self.pretrained.split(os.sep)[:-1])
+
 		try:
 			self.model_class = load_model(os.sep.join([self.pretrained,"classifier.h5"]),compile=False)
 			self.model_class.load_weights(os.sep.join([self.pretrained,"classifier.h5"]))
@@ -859,6 +849,9 @@ class SignalDetectionModel(object):
 		except Exception as e:
 			print(f"Error {e}...")
 			self.model_reg = None
+
+		if self.model_class is None and self.model_reg is None:
+			return None
 
 		# load config
 		with open(os.sep.join([self.pretrained,"config_input.json"])) as config_file:
@@ -3077,6 +3070,10 @@ def mean_signal(df, signal_name, class_col, time_col=None, class_value=[0], retu
 	assert signal_name in list(df.columns),"The signal you want to plot is not one of the measured features."
 	if isinstance(class_value,int):
 		class_value = [class_value]
+	elif class_value is None or class_col is None:
+		class_col = 'class_temp'
+		df['class_temp'] = 1
+		class_value = [1]
 
 	if forced_max_duration is None:
 		max_duration = int(df['FRAME'].max())+1 #ceil(np.amax(df.groupby(['position','TRACK_ID']).size().values))

@@ -23,7 +23,9 @@ Contents
    :caption: Basics:
 
    overview
+   cite
    get-started
+   first-experiment
    preprocessing
    segment
    track

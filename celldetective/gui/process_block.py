@@ -186,11 +186,8 @@ class ProcessPanel(QFrame, Styles):
 		measure_layout = QHBoxLayout()
 
 		self.measure_action = QCheckBox("MEASURE")
-		self.measure_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			padding-top: 5px;
-			""")
+		self.measure_action.setStyleSheet(self.menu_check_style)
+
 		self.measure_action.setIcon(icon(MDI6.eyedropper,color="black"))
 		self.measure_action.setIconSize(QSize(20, 20))
 		self.measure_action.setToolTip("Measure.")
@@ -229,11 +226,7 @@ class ProcessPanel(QFrame, Styles):
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
 		self.signal_analysis_action = QCheckBox("DETECT EVENTS")
-		self.signal_analysis_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			padding-top: 5px;
-			""")
+		self.signal_analysis_action.setStyleSheet(self.menu_check_style)
 		self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative,color="black"))
 		self.signal_analysis_action.setIconSize(QSize(20, 20))
 		self.signal_analysis_action.setToolTip("Detect events in single-cell signals.")
@@ -291,28 +284,15 @@ class ProcessPanel(QFrame, Styles):
 		self.signal_models_list.addItems(signal_models)
 
 	def generate_tracking_options(self):
+		
 		grid_track = QHBoxLayout()
 
 		self.track_action = QCheckBox("TRACK")
+		self.track_action.setStyleSheet(self.menu_check_style)
 		self.track_action.setIcon(icon(MDI6.chart_timeline_variant,color="black"))
 		self.track_action.setIconSize(QSize(20, 20))
 		self.track_action.setToolTip("Track the target cells using bTrack.")
-		self.track_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			padding-top: 5px;
-			""")
 		grid_track.addWidget(self.track_action, 75)
-		#self.to_disable.append(self.track_action_tc)
-
-		# self.show_track_table_btn = QPushButton()
-		# self.show_track_table_btn.setIcon(icon(MDI6.table,color="black"))
-		# self.show_track_table_btn.setIconSize(QSize(20, 20))
-		# self.show_track_table_btn.setToolTip("Show trajectories table.")
-		# self.show_track_table_btn.setStyleSheet(self.button_select_all)
-		# #self.show_track_table_btn.clicked.connect(self.display_trajectory_table)
-		# self.show_track_table_btn.setEnabled(False)
-		# grid_track.addWidget(self.show_track_table_btn, 6)  #4,3,1,1, alignment=Qt.AlignLeft
 
 		self.delete_tracks_btn = QPushButton()
 		self.delete_tracks_btn.setIcon(icon(MDI6.trash_can,color="black"))
@@ -381,10 +361,7 @@ class ProcessPanel(QFrame, Styles):
 		grid_segment.setSpacing(0)
 
 		self.segment_action = QCheckBox("SEGMENT")
-		self.segment_action.setStyleSheet("""
-			font-size: 10px;
-			padding-left: 10px;
-			""")
+		self.segment_action.setStyleSheet(self.menu_check_style)
 		self.segment_action.setIcon(icon(MDI6.bacteria, color='black'))
 		self.segment_action.setToolTip(f"Segment the {self.mode} cells on the images.")
 		self.segment_action.toggled.connect(self.enable_segmentation_model_list)
@@ -640,25 +617,6 @@ class ProcessPanel(QFrame, Styles):
 
 		self.seg_model_list.insertSeparator(len(self.models_truncated))
 
-
-		#if ("live_nuclei_channel" in self.exp_channels)*("dead_nuclei_channel" in self.exp_channels):
-		# 	print("both channels found")
-		# 	index = self.tc_seg_model_list.findText("MCF7_Hoescht_PI_w_primary_NK", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-		# elif ("live_nuclei_channel" in self.exp_channels)*("dead_nuclei_channel" not in self.exp_channels):
-		# 	index = self.tc_seg_model_list.findText("MCF7_Hoescht_w_primary_NK", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-		# elif ("live_nuclei_channel" not in self.exp_channels)*("dead_nuclei_channel" in self.exp_channels):
-		# 	index = self.tc_seg_model_list.findText("MCF7_PI_w_primary_NK", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-		# elif ("live_nuclei_channel" not in self.exp_channels)*("dead_nuclei_channel" not in self.exp_channels)*("adhesion_channel" in self.exp_channels):
-		# 	index = self.tc_seg_model_list.findText("RICM", Qt.MatchFixedString)
-		# 	if index >= 0:
-		# 		self.tc_seg_model_list.setCurrentIndex(index)
-
 	def tick_all_actions(self):
 		self.switch_all_ticks_option()
 		if self.all_ticked:
@@ -726,11 +684,24 @@ class ProcessPanel(QFrame, Styles):
 
 	def process_population(self):
 
-		if self.parent_window.well_list.currentText()=="*":
-			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
-		else:
-			self.well_index = [self.parent_window.well_list.currentIndex()]
-			print(f"Processing well {self.parent_window.well_list.currentText()}...")
+		# if self.parent_window.well_list.currentText().startswith('Multiple'):
+		# 	self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
+		# else:
+		
+		self.well_index = self.parent_window.well_list.getSelectedIndices()
+		if len(self.well_index)==0:
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Warning)
+			msgBox.setText("Please select at least one well first...")
+			msgBox.setWindowTitle("Warning")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+			else:
+				return None
+
+		print(f"Processing {self.parent_window.well_list.currentText()}...")
 
 		# self.freeze()
 		# QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -763,10 +734,10 @@ class ProcessPanel(QFrame, Styles):
 
 		loop_iter=0
 
-		if self.parent_window.position_list.currentText()=="*":
+		if self.parent_window.position_list.isMultipleSelection():
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
-			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
+			msgBox.setText("If you continue, several positions will be processed.\nDo you want to proceed?")
 			msgBox.setWindowTitle("Info")
 			msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
 			returnValue = msgBox.exec()
@@ -795,12 +766,8 @@ class ProcessPanel(QFrame, Styles):
 		for w_idx in self.well_index:
 
 			pos = self.parent_window.positions[w_idx]
-			if self.parent_window.position_list.currentText()=="*":
-				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
-				print("Processing all positions...")
-			else:
-				pos_indices = natsorted([pos.index(self.parent_window.position_list.currentText())])
-				print(f"Processing position {self.parent_window.position_list.currentText()}...")
+			pos_indices = self.parent_window.position_list.getSelectedIndices()
+			#print(f"Processing position {self.parent_window.position_list.currentText()}...")
 
 			well = self.parent_window.wells[w_idx]
 
@@ -816,7 +783,7 @@ class ProcessPanel(QFrame, Styles):
 
 				if self.segment_action.isChecked():
 
-					if len(glob(os.sep.join([self.pos, f'labels_{self.mode}','*.tif'])))>0 and self.parent_window.position_list.currentText()!="*":
+					if len(glob(os.sep.join([self.pos, f'labels_{self.mode}','*.tif'])))>0 and not self.parent_window.position_list.isMultipleSelection():
 						msgBox = QMessageBox()
 						msgBox.setIcon(QMessageBox.Question)
 						msgBox.setText("Labels have already been produced for this position. Do you want to segment again?")
@@ -843,7 +810,7 @@ class ProcessPanel(QFrame, Styles):
 						segment_at_position(self.pos, self.mode, self.model_name, stack_prefix=self.parent_window.movie_prefix, use_gpu=self.parent_window.parent_window.use_gpu, threads=self.parent_window.parent_window.n_threads)
 
 				if self.track_action.isChecked():
-					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and self.parent_window.position_list.currentText()!="*":
+					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and not self.parent_window.position_list.isMultipleSelection():
 						msgBox = QMessageBox()
 						msgBox.setIcon(QMessageBox.Question)
 						msgBox.setText("A trajectory set already exists. Previously annotated data for\nthis position will be lost. Do you want to proceed?")
@@ -859,15 +826,12 @@ class ProcessPanel(QFrame, Styles):
 
 				table = os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])
 				if self.signal_analysis_action.isChecked() and os.path.exists(table):
-					print('table exists')
 					table = pd.read_csv(table)
 					cols = list(table.columns)
-					print(table, cols)
 					if 'class_color' in cols:
-						print(cols, 'class_color in cols')
 						colors = list(table['class_color'].to_numpy())
 						if 'tab:orange' in colors or 'tab:cyan' in colors:
-							if self.parent_window.position_list.currentText()!="*":
+							if not self.parent_window.position_list.isMultipleSelection():
 								msgBox = QMessageBox()
 								msgBox.setIcon(QMessageBox.Question)
 								msgBox.setText("The signals of the cells in the position appear to have been annotated... Do you want to proceed?")
@@ -884,28 +848,7 @@ class ProcessPanel(QFrame, Styles):
 		if self.segment_action.isChecked():
 			self.segment_action.setChecked(False)
 
-		# QApplication.restoreOverrideCursor()
-		# self.unfreeze()
-
-	# def view_current_stack_with_scale_bar(self):
-
-	# 	self.parent_window.locate_image()
-	# 	if self.parent_window.current_stack is not None:
-	# 		self.viewer = CellSizeViewer(
-	# 									  initial_diameter = float(self.diameter_le.text().replace(',', '.')),
-	# 			parent_le = self.diameter_le,
-	# 									  stack_path=self.parent_window.current_stack,
-	# 									  window_title=f'Position {self.parent_window.position_list.currentText()}',
-	# 									  frame_slider = True,
-	# 									  contrast_slider = True,
-	# 									  channel_cb = True,
-	# 									  channel_names = self.parent_window.exp_channels,
-	# 									  n_channels = self.parent_window.nbr_channels,
-	# 									  PxToUm = 1,
-	# 									 )
-	# 		self.viewer.show()
-
-
+		self.cellpose_calibrated = False
 
 	def open_napari_tracking(self):
 		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')
@@ -920,7 +863,7 @@ class ProcessPanel(QFrame, Styles):
 			plot_mode = 'plot_track_signals'
 			if 'TRACK_ID' not in list(self.df.columns):
 				plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population=self.mode, plot_mode=plot_mode)
+			self.tab_ui = TableUI(self.df, f"{self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population=self.mode, plot_mode=plot_mode, save_inplace_option=True)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')
@@ -933,24 +876,6 @@ class ProcessPanel(QFrame, Styles):
 			if returnValue == QMessageBox.Ok:
 				return None
 
-	# def interpret_pos_location(self):
-
-	# 	"""
-	# 	Read the well/position selection from the control panel to decide which data to load
-	# 	Set position_indices to None if all positions must be taken
-
-	# 	"""
-
-	# 	if self.well_option==len(self.wells):
-	# 		self.well_indices = np.arange(len(self.wells))
-	# 	else:
-	# 		self.well_indices = np.array([self.well_option],dtype=int)
-
-	# 	if self.position_option==0:
-	# 		self.position_indices = None
-	# 	else:
-	# 		self.position_indices = np.array([self.position_option],dtype=int)
-
 	def load_available_tables(self):
 
 		"""
@@ -958,18 +883,10 @@ class ProcessPanel(QFrame, Styles):
 
 		"""
 
-		self.well_option = self.parent_window.well_list.currentIndex()
-		if self.well_option==len(self.wells):
-			wo = '*'
-		else:
-			wo = self.well_option
-		self.position_option = self.parent_window.position_list.currentIndex()
-		if self.position_option==0:
-			po = '*'
-		else:
-			po = self.position_option - 1
+		self.well_option = self.parent_window.well_list.getSelectedIndices()
+		self.position_option = self.parent_window.position_list.getSelectedIndices()
 
-		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population=self.mode, return_pos_info=True)
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=self.well_option, position_option=self.position_option, population=self.mode, return_pos_info=True)
 		if self.df is None:
 			print('No table could be found...')
 
@@ -1014,6 +931,7 @@ class ProcessPanel(QFrame, Styles):
 		self.stardist_calibrated = True
 		self.diamWidget.close()
 		self.process_population()
+
 
 
 class NeighPanel(QFrame, Styles):
@@ -1093,11 +1011,8 @@ class NeighPanel(QFrame, Styles):
 		# Button to compute the neighborhoods
 		neigh_option_hbox = QHBoxLayout()
 		self.neigh_action = QCheckBox('NEIGHBORHOODS')
-		self.neigh_action.setStyleSheet("""
-					font-size: 10px;
-					padding-left: 10px;
-					padding-top: 5px;
-					""")
+		self.neigh_action.setStyleSheet(self.menu_check_style)
+
 		#self.neigh_action.setIcon(icon(MDI6.eyedropper, color="black"))
 		#self.neigh_action.setIconSize(QSize(20, 20))
 		self.neigh_action.setToolTip(
@@ -1197,11 +1112,8 @@ class NeighPanel(QFrame, Styles):
 
 		rel_layout = QHBoxLayout()
 		self.measure_pairs_action = QCheckBox("MEASURE PAIRS")
-		self.measure_pairs_action.setStyleSheet("""
-					font-size: 10px;
-					padding-left: 10px;
-					padding-top: 5px;
-					""")
+		self.measure_pairs_action.setStyleSheet(self.menu_check_style)
+
 		self.measure_pairs_action.setIcon(icon(MDI6.eyedropper, color="black"))
 		self.measure_pairs_action.setIconSize(QSize(20, 20))
 		self.measure_pairs_action.setToolTip("Measure the relative quantities defined for the cell pairs, for all neighborhoods.")
@@ -1220,10 +1132,7 @@ class NeighPanel(QFrame, Styles):
 		signal_layout = QVBoxLayout()
 		signal_hlayout = QHBoxLayout()
 		self.signal_analysis_action = QCheckBox("DETECT PAIR EVENTS")
-		self.signal_analysis_action.setStyleSheet("""
-		font-size: 10px;
-		padding-left: 10px;
-		padding-top: 5px;""")
+		self.signal_analysis_action.setStyleSheet(self.menu_check_style)
 
 		self.signal_analysis_action.setIcon(icon(MDI6.chart_bell_curve_cumulative, color="black"))
 		self.signal_analysis_action.setIconSize(QSize(20, 20))
@@ -1348,18 +1257,10 @@ class NeighPanel(QFrame, Styles):
 
 		"""
 
-		self.well_option = self.parent_window.well_list.currentIndex()
-		if self.well_option==len(self.wells):
-			wo = '*'
-		else:
-			wo = self.well_option
-		self.position_option = self.parent_window.position_list.currentIndex()
-		if self.position_option==0:
-			po = '*'
-		else:
-			po = self.position_option - 1
+		self.well_option = self.parent_window.well_list.getSelectedIndices()
+		self.position_option = self.parent_window.position_list.getSelectedIndices()
 
-		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=wo, position_option=po, population="pairs", return_pos_info=True)
+		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=self.well_option, position_option=self.position_option, population="pairs", return_pos_info=True)
 		if self.df is None:
 			print('No table could be found...')
 
@@ -1371,7 +1272,7 @@ class NeighPanel(QFrame, Styles):
 
 		if self.df is not None:
 			plot_mode = 'static'
-			self.tab_ui = TableUI(self.df, f"Well {self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population='pairs', plot_mode=plot_mode)
+			self.tab_ui = TableUI(self.df, f"{self.parent_window.well_list.currentText()}; Position {self.parent_window.position_list.currentText()}", population='pairs', plot_mode=plot_mode, save_inplace_option=True)
 			self.tab_ui.show()
 		else:
 			print('Table could not be loaded...')
@@ -1448,18 +1349,18 @@ class NeighPanel(QFrame, Styles):
 
 	def process_neighborhood(self):
 
-		if self.parent_window.well_list.currentText()=="*":
-			self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
-		else:
-			self.well_index = [self.parent_window.well_list.currentIndex()]
-			print(f"Processing well {self.parent_window.well_list.currentText()}...")
+		# if self.parent_window.well_list.currentText().startswith('Multiple'):
+		# 	self.well_index = np.linspace(0,len(self.wells)-1,len(self.wells),dtype=int)
+		# else:
+		self.well_index = self.parent_window.well_list.getSelectedIndices()
+		print(f"Processing well {self.parent_window.well_list.currentText()}...")
 
 		# self.freeze()
 		# QApplication.setOverrideCursor(Qt.WaitCursor)
 
 		loop_iter=0
 
-		if self.parent_window.position_list.currentText()=="*":
+		if self.parent_window.position_list.isMultipleSelection():
 			msgBox = QMessageBox()
 			msgBox.setIcon(QMessageBox.Question)
 			msgBox.setText("If you continue, all positions will be processed.\nDo you want to proceed?")
@@ -1472,12 +1373,7 @@ class NeighPanel(QFrame, Styles):
 		for w_idx in self.well_index:
 
 			pos = self.parent_window.positions[w_idx]
-			if self.parent_window.position_list.currentText()=="*":
-				pos_indices = np.linspace(0,len(pos)-1,len(pos),dtype=int)
-				print("Processing all positions...")
-			else:
-				pos_indices = natsorted([pos.index(self.parent_window.position_list.currentText())])
-				print(f"Processing position {self.parent_window.position_list.currentText()}...")
+			pos_indices = self.parent_window.position_list.getSelectedIndices()
 
 			well = self.parent_window.wells[w_idx]
 
@@ -1523,34 +1419,11 @@ class NeighPanel(QFrame, Styles):
 					rel_measure_at_position(self.pos)
 
 				if self.signal_analysis_action.isChecked():
-					
-					# df_targets = get_position_pickle(self.pos, population='targets')
-					# df_effectors = get_position_pickle(self.pos, population='effectors')
-					# self.dataframes = {
-					# 	'targets': df_targets,
-					# 	'effectors': df_effectors,
-					# }
 
-					# df_pairs = get_position_table(self.pos, population='pairs')
-
-					# # Need to identify expected reference / neighbor tables
-					# model_path = locate_signal_model(self.pair_signal_models_list.currentText(), pairs=True)
-					# print(f'Looking for model in {model_path}...')
-					# complete_path = model_path
-					# complete_path = rf"{complete_path}"
-					# model_config_path = os.sep.join([complete_path, 'config_input.json'])
-					# model_config_path = rf"{model_config_path}"
-					# f = open(model_config_path)
-					# model_config_path = json.load(f)
-
-					# reference_population = model_config_path['reference_population']
-					# neighbor_population = model_config_path['neighbor_population']
-
-					# analyze_pair_signals(df_pairs, self.dataframes[reference_population], self.dataframes[neighbor_population], model=self.pair_signal_models_list.currentText())
 					analyze_pair_signals_at_position(self.pos, self.pair_signal_models_list.currentText(), use_gpu=self.parent_window.parent_window.use_gpu)
+
 		self.parent_window.update_position_options()
 		print('Done.')
-
 
 	def check_signals2(self):
 
@@ -1707,8 +1580,8 @@ class PreprocessingPanel(QFrame, Styles):
 		if returnValue == QMessageBox.Cancel:
 			return None
 		elif returnValue == QMessageBox.Yes:
-			self.parent_window.well_list.setCurrentIndex(self.parent_window.well_list.count()-1)
-			self.parent_window.position_list.setCurrentIndex(0)
+			self.parent_window.well_list.selectAll()
+			self.parent_window.position_list.selectAll()
 		elif returnValue == QMessageBox.No:
 			msgBox2 = QMessageBox()
 			msgBox2.setIcon(QMessageBox.Question)
@@ -1723,16 +1596,11 @@ class PreprocessingPanel(QFrame, Styles):
 
 		print('Proceed with correction...')
 
-		if self.parent_window.well_list.currentText()=='*':
-			well_option = "*"
-		else:
-			well_option = self.parent_window.well_list.currentIndex()
-
-		if self.parent_window.position_list.currentText()=='*':
-			pos_option = "*"
-		else:
-			pos_option = self.parent_window.position_list.currentIndex()-1
-
+		# if self.parent_window.well_list.currentText()=='*':
+		# 	well_option = "*"
+		# else:
+		well_option = self.parent_window.well_list.getSelectedIndices()
+		position_option = self.parent_window.position_list.getSelectedIndices()
 
 		for k,correction_protocol in enumerate(self.protocol_layout.protocols):
 
@@ -1747,7 +1615,7 @@ class PreprocessingPanel(QFrame, Styles):
 				print(f'Model-free correction; {movie_prefix=} {export_prefix=}')
 				correct_background_model_free(self.exp_dir, 
 								   well_option=well_option,
-								   position_option=pos_option,
+								   position_option=position_option,
 								   export = True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
@@ -1761,7 +1629,7 @@ class PreprocessingPanel(QFrame, Styles):
 				print(f'Fit correction; {movie_prefix=} {export_prefix=} {correction_protocol=}')
 				correct_background_model(self.exp_dir,
 								   well_option=well_option,
-								   position_option=pos_option,
+								   position_option=position_option,
 								   export= True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
@@ -1774,7 +1642,7 @@ class PreprocessingPanel(QFrame, Styles):
 				print(f'Offset correction; {movie_prefix=} {export_prefix=} {correction_protocol=}')
 				correct_channel_offset(self.exp_dir,
 								   well_option=well_option,
-								   position_option=pos_option,
+								   position_option=position_option,
 								   export= True,
 								   return_stacks=False,
 								   show_progress_per_well = True,
@@ -1792,6 +1660,7 @@ class PreprocessingPanel(QFrame, Styles):
 		Load the first frame of the first movie found in the experiment folder as a sample.
 		"""
 
+		print(f"{self.parent_window.pos}")
 		movies = glob(self.parent_window.pos + os.sep.join(['movie', f"{self.parent_window.movie_prefix}*.tif"]))
 
 		if len(movies) == 0:

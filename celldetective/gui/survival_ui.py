@@ -17,6 +17,7 @@ from matplotlib import colormaps
 from celldetective.events import compute_survival
 from natsort import natsorted
 from celldetective.relative_measurements import expand_pair_table
+import matplotlib.cm
 from celldetective.neighborhood import extract_neighborhood_in_pair_table
 
 class ConfigSurvival(QWidget, Styles):
@@ -153,10 +154,12 @@ class ConfigSurvival(QWidget, Styles):
 
 		all_cms = list(colormaps)
 		for cm in all_cms:
-			try:
-				self.cbs[-1].addColormap(cm)
-			except:
-				pass
+			if hasattr(matplotlib.cm, str(cm).lower()):
+				self.cbs[-1].addColormap(cm.lower())
+			#try:
+			# 	self.cbs[-1].addColormap(cm)
+			# except:
+			# 	pass
 
 		main_layout.addLayout(choice_layout)
 

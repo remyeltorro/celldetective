@@ -19,6 +19,7 @@ import pandas as pd
 import math
 from celldetective.gui import Styles
 from matplotlib import colormaps
+import matplotlib.cm
 
 
 class ConfigSignalPlot(QWidget, Styles):
@@ -110,10 +111,8 @@ class ConfigSignalPlot(QWidget, Styles):
 		
 		all_cms = list(colormaps)
 		for cm in all_cms:
-			try:
-				self.cbs[-1].addColormap(cm)
-			except:
-				pass
+			if hasattr(matplotlib.cm, str(cm).lower()):
+				self.cbs[-1].addColormap(cm.lower())
 
 		self.cbs[0].setCurrentIndex(1)
 		self.cbs[0].setCurrentIndex(0)

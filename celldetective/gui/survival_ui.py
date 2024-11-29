@@ -342,9 +342,7 @@ class ConfigSurvival(QWidget, Styles):
 			#print(f"{self.df_well_info=}")
 
 		if self.population=='pairs':
-			print('we have pairs so extract work needs to be done...')
 			self.df = expand_pair_table(self.df)
-			print(f"{self.neighborhood_keys[0]=}")
 			self.df = extract_neighborhood_in_pair_table(self.df, reference_population=self.population_reference, neighbor_population=self.population_neigh, neighborhood_key=self.neighborhood_keys[0], contact_only=True)
 
 

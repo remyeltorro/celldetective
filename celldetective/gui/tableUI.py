@@ -19,6 +19,7 @@ from fonticon_mdi6 import MDI6
 from math import floor
 
 from matplotlib import colormaps
+import matplotlib.cm
 
 
 class QueryWidget(QWidget):
@@ -726,7 +727,7 @@ class TableUI(QMainWindow, Styles):
 	def save_as_csv_inplace_per_pos(self):
 
 		print("Saving each table in its respective position folder...")
-		for pos,pos_group in self.data.groupby('position'):
+		for pos,pos_group in self.data.groupby(['position']):
 			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.population}.csv']), index=False)
 		print("Done...")
 
@@ -820,7 +821,7 @@ class TableUI(QMainWindow, Styles):
 
 		num_df = self.data.select_dtypes(include=self.numerics)
 
-		timeseries = num_df.groupby("FRAME").sum().copy()
+		timeseries = num_df.groupby(["FRAME"]).sum().copy()
 		timeseries["timeline"] = timeseries.index
 		self.subtable = TableUI(timeseries,"Group by frames", plot_mode="plot_timeseries")
 		self.subtable.show()
@@ -1037,11 +1038,10 @@ class TableUI(QMainWindow, Styles):
 		layout.addLayout(hbox)
 
 		self.cmap_cb = QColormapComboBox()
-		for cm in list(colormaps):
-			try:
-				self.cmap_cb.addColormap(cm)
-			except:
-				pass
+		all_cms = list(colormaps)
+		for cm in all_cms:
+			if hasattr(matplotlib.cm, str(cm).lower()):
+				self.cmap_cb.addColormap(cm.lower())
 		
 		hbox = QHBoxLayout()
 		hbox.addWidget(QLabel('colormap: '), 33)
@@ -1425,8 +1425,8 @@ class TableUI(QMainWindow, Styles):
 					row_idx_i = row_idx[np.where(col_idx == unique_cols[k])[0]]
 					y = self.data.iloc[row_idx_i, unique_cols[k]]
 					print(unique_cols[k])
-					for w,well_group in self.data.groupby('well_name'):
-						for pos,pos_group in well_group.groupby('pos_name'):
+					for w,well_group in self.data.groupby(['well_name']):
+						for pos,pos_group in well_group.groupby(['pos_name']):
 							for tid,group_track in pos_group.groupby(self.groupby_cols[1:]):
 								ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[k]]],label=column_names[unique_cols[k]])
 					#ax.plot(self.data["FRAME"][row_idx_i], y, label=column_names[unique_cols[k]])
@@ -1462,8 +1462,8 @@ class TableUI(QMainWindow, Styles):
 				# else:
 				# 	ref_time_col = 'FRAME'
 
-				for w,well_group in self.data.groupby('well_name'):
-					for pos,pos_group in well_group.groupby('pos_name'):
+				for w,well_group in self.data.groupby(['well_name']):
+					for pos,pos_group in well_group.groupby(['pos_name']):
 						for tid,group_track in pos_group.groupby(self.groupby_cols[1:]):
 							self.ax.plot(group_track["FRAME"], group_track[column_names[unique_cols[0]]],c="k", alpha = 0.1)
 				self.ax.set_xlabel(r"$t$ [frame]")

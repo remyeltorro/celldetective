@@ -131,14 +131,6 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
-	def resizeEvent(self, event):
-
-		super().resizeEvent(event)
-		try:
-			self.cell_fig.tight_layout()
-		except:
-			pass
-
 	def populate_widget(self):
 
 		"""
@@ -437,22 +429,6 @@ class SignalAnnotator2(QMainWindow,Styles):
 			contrast_hbox.addWidget(self.contrast_slider,90)
 			self.right_panel.addLayout(contrast_hbox, 5)
 
-		# speed_hbox = QHBoxLayout()
-		# speed_hbox.setContentsMargins(150,5,150,5)
-		# self.interval_slider = QLabeledSlider()
-		# self.interval_slider.setSingleStep(1)
-		# self.interval_slider.setTickInterval(1)
-		# self.interval_slider.setOrientation(1)
-		# self.interval_slider.setRange(1, 10000)
-		# self.interval_slider.setValue(self.speed)
-		# self.interval_slider.valueChanged.connect(self.interval_slider_action)
-		# speed_hbox.addWidget(QLabel('interval (ms): '))
-		# speed_hbox.addWidget(self.interval_slider,90)
-		# self.right_panel.addLayout(speed_hbox, 10)
-
-		#self.selected_populationulate_left_panel()
-		#grid.addLayout(self.left_side, 0, 0, 1, 1)
-
 		main_layout.addLayout(self.left_panel, 35)
 		main_layout.addLayout(self.right_panel, 65)
 		self.button_widget.adjustSize()
@@ -686,21 +662,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		self.extract_relevant_events()
 
-		# self.relative_class_choice_cb.disconnect()
-		# self.relative_class_choice_cb.clear()
-		# cols = np.array(self.df_relative.columns)
-		# self.relative_class_cols = np.array([c.startswith('class') for c in list(self.df_relative.columns)])
-		# self.relative_class_cols = list(cols[self.relative_class_cols])
-		# try:
-		# 	self.relative_class_cols.remove('class_color')
-		# 	self.relative_class_cols.remove('class_id')
-		# except:
-		# 	pass
-		# self.relative_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_pair)
-		# self.relative_class_choice_cb.addItems(self.relative_class_cols)
-		
 		self.pair_class_name = self.relative_class
-
 		self.pair_time_name = self.relative_time
 		self.pair_status_name = self.relative_status
 
@@ -802,6 +764,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 	def compute_status_and_colors_pair(self):
 
 		self.pair_class_name = self.relative_class_choice_cb.currentText()
+		
 		if self.pair_class_name!='':
 
 			self.pair_expected_status = 'status'

@@ -83,15 +83,6 @@ class SignalAnnotator(QMainWindow, Styles):
 
 			self.populate_widget()
 
-	def resizeEvent(self, event):
-
-		super().resizeEvent(event)
-
-		try:
-			self.cell_fig.tight_layout()
-		except:
-			pass
-
 	def populate_widget(self):
 
 		"""

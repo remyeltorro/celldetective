@@ -846,6 +846,14 @@ class FigureCanvas(QWidget):
 		center_window(self)
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
+	def resizeEvent(self, event):
+		
+		super().resizeEvent(event)
+		try:
+			self.fig.tight_layout()
+		except:
+			pass
+
 	def draw(self):
 		self.canvas.draw()
 

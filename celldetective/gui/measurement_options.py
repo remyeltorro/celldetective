@@ -261,7 +261,7 @@ class ConfigMeasurements(QMainWindow, Styles):
 		self.add_feature_btn.setToolTip("Add feature")
 		self.add_feature_btn.setIconSize(QSize(20, 20))
 
-		self.features_list = ListWidget(FeatureChoice, initial_features=['area', 'intensity_nanmean', ])
+		self.features_list = ListWidget(FeatureChoice, initial_features=['area', 'intensity_mean', ])
 
 		self.del_feature_btn.clicked.connect(self.features_list.removeSel)
 		self.add_feature_btn.clicked.connect(self.features_list.addItem)
@@ -313,25 +313,6 @@ class ConfigMeasurements(QMainWindow, Styles):
 
 		self.feat_sep3 = QHSeperationLine()
 		layout.addWidget(self.feat_sep3)
-		# self.radial_intensity_btn = QCheckBox('Measure radial intensity distribution')
-		# layout.addWidget(self.radial_intensity_btn)
-		# self.radial_intensity_btn.clicked.connect(self.enable_step_size)
-		# self.channel_chechkboxes=[]
-		# for channel in self.channel_names:
-		#     channel_checkbox=QCheckBox(channel)
-		#     self.channel_chechkboxes.append(channel_checkbox)
-		#     layout.addWidget(channel_checkbox)
-		#     channel_checkbox.setEnabled(False)
-		# step_box=QHBoxLayout()
-		# self.step_lbl=QLabel("Step size (in px)")
-		# self.step_size=QLineEdit()
-		# self.step_lbl.setEnabled(False)
-		# self.step_size.setEnabled(False)
-		# step_box.addWidget(self.step_lbl)
-		# step_box.addWidget(self.step_size)
-		# layout.addLayout(step_box)
-		# self.feat_sep4 = QHSeperationLine()
-		# layout.addWidget(self.feat_sep4)
 
 		# Haralick features parameters
 		self.activate_haralick_btn = QCheckBox('Measure Haralick texture features')
@@ -511,16 +492,6 @@ class ConfigMeasurements(QMainWindow, Styles):
 		if not border_distances:
 			border_distances = None
 		measurement_options.update({'border_distances': border_distances})
-		# radial_intensity = {}
-		# radial_step = int(self.step_size.text())
-		# radial_channels = []
-		# for checkbox in self.channel_chechkboxes:
-		#     if checkbox.isChecked():
-		#         radial_channels.append(checkbox.text())
-		# radial_intensity={'radial_step': radial_step, 'radial_channels': radial_channels}
-		# if not self.radial_intensity_btn.isChecked():
-		#     radial_intensity = None
-		# measurement_options.update({'radial_intensity' : radial_intensity})
 
 		self.extract_haralick_options()
 		measurement_options.update({'haralick_options': self.haralick_options})

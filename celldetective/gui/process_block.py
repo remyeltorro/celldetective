@@ -845,8 +845,10 @@ class ProcessPanel(QFrame, Styles):
 
 			# self.stack = None
 		self.parent_window.update_position_options()
-		if self.segment_action.isChecked():
-			self.segment_action.setChecked(False)
+
+		for action in [self.segment_action, self.track_action, self.measure_action, self.signal_analysis_action]:
+			if action.isChecked():
+				action.setChecked(False)
 
 		self.cellpose_calibrated = False
 

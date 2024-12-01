@@ -655,15 +655,14 @@ def rename_intensity_column(df, channels):
 	channel_names = np.array(channels)
 	channel_indices = np.arange(len(channel_names),dtype=int)
 
-	if np.any(['intensity' in c for c in df.columns]):
+	if np.any(['intensity' in c for c in list(df.columns)]):
 
 		intensity_indices = [s.startswith('intensity') for s in df.columns]
 		intensity_columns = df.columns[intensity_indices]
 
-		if len(channel_names) > 1:
+		if len(channel_names) >= 1:
 			to_rename = {}
 			for k in range(len(intensity_columns)):
-				#print(intensity_columns[k])
 
 				sections = np.array(re.split('-|_', intensity_columns[k]))
 				test_digit = np.array([s.isdigit() for s in sections])
@@ -673,7 +672,11 @@ def rename_intensity_column(df, channels):
 				new_name = np.delete(sections, np.where(test_digit)[0]) #np.where(test_digit)[0]
 				new_name = '_'.join(list(new_name))
 				new_name = new_name.replace('intensity', channel_name)
-				to_rename.update({intensity_columns[k]: new_name.replace('-','_')})
+				new_name = new_name.replace('-','_')
+				new_name = new_name.replace('_nanmean','_mean')
+
+				to_rename.update({intensity_columns[k]: new_name})
+
 				if 'centre' in intensity_columns[k]:
 					# sections = np.array(re.split('-|_', intensity_columns[k]))
 					measure = np.array(re.split('-|_', new_name))

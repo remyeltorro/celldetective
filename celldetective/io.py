@@ -25,6 +25,8 @@ import concurrent.futures
 from tifffile import imwrite
 from stardist import fill_label_holes
 from magicgui.widgets import Dialog
+import threading
+from skimage.measure import regionprops_table
 
 def extract_experiment_from_well(well_path):
 	if not well_path.endswith(os.sep):
@@ -1217,74 +1219,56 @@ def locate_pair_signal_model(name, path=None):
 			path += os.sep
 		models += glob(path + f'*{os.sep}')
 
-def relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}, threads=1):
+def relabel_segmentation(labels, df, exclude_nans=True, column_labels={'track': "TRACK_ID", 'frame': 'FRAME', 'y': 'POSITION_Y', 'x': 'POSITION_X', 'label': 'class_id'}, threads=1):
 
 	"""
-
-	Relabel the segmentation labels based on the provided tracking data and properties.
-
-	Parameters
-	----------
-	labels : ndarray
-		The original segmentation labels.
-	data : ndarray
-		The tracking data containing information about tracks, frames, y-coordinates, and x-coordinates.
-	properties : ndarray
-		The properties associated with the tracking data.
-	column_labels : dict, optional
-		A dictionary specifying the column labels for the tracking data. The default is {'track': "track",
-		'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}.
-
-	Returns
-	-------
-	ndarray
-		The relabeled segmentation labels.
-
-	Notes
-	-----
-	This function relabels the segmentation labels based on the provided tracking data and properties.
-	It creates a DataFrame from the tracking data and properties, merges them based on the indices, and sorts them by track and frame.
-	Then, it iterates over unique frames in the DataFrame, retrieves the tracks and identities at each frame,
-	and updates the corresponding labels with the new track values.
-
-	Examples
-	--------
-	>>> relabeled = relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame',
-	...                                                                 'y': 'y', 'x': 'x', 'label': 'class_id'})
-	# Relabel the segmentation labels based on the provided tracking data and properties.
-	
 	"""
-
 
 	n_threads = threads
-	if data.shape[1]==4:
-		df = pd.DataFrame(data,columns=[column_labels['track'],column_labels['frame'],column_labels['y'],column_labels['x']])
-	else:
-		df = pd.DataFrame(data,columns=[column_labels['track'],column_labels['frame'],'z', column_labels['y'],column_labels['x']])
-		df = df.drop(columns=['z'])
-
-	df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
 	df = df.sort_values(by=[column_labels['track'],column_labels['frame']])
-	df.loc[df['dummy'],column_labels['label']] = np.nan
+	if exclude_nans:
+		df = df.dropna(subset=column_labels['label'])
 
 	new_labels = np.zeros_like(labels)
+	shared_data = {"s": 0}
 
 	def rewrite_labels(indices):
+
+		all_track_ids = df[column_labels['track']].unique()
+		
 
 		for t in tqdm(indices):
 
 			f = int(t)
 			cells = df.loc[df[column_labels['frame']] == f, [column_labels['track'], column_labels['label']]].to_numpy()
-			tracks_at_t = cells[:,0]
-			identities = cells[:,1]
+			tracks_at_t = list(cells[:,0])
+			identities = list(cells[:,1])
+
+			labels_at_t = list(np.unique(labels[f]))
+			if 0 in labels_at_t:
+				labels_at_t.remove(0)
+			labels_not_in_df = [lbl for lbl in labels_at_t if lbl not in identities]
+			for lbl in labels_not_in_df:
+				with threading.Lock():  # Synchronize access to `shared_data["s"]`
+					track_id = max(all_track_ids) + shared_data["s"]
+					shared_data["s"] += 1
+				tracks_at_t.append(track_id)
+				identities.append(lbl)
 
 			# exclude NaN
+			tracks_at_t = np.array(tracks_at_t)
+			identities = np.array(identities)
+
 			tracks_at_t = tracks_at_t[identities == identities]
 			identities = identities[identities == identities]
 
 			for k in range(len(identities)):
+
+				# need routine to check values from labels not in class_id of this frame and add new track id
+				
 				loc_i, loc_j = np.where(labels[f] == identities[k])
-				new_labels[f, loc_i, loc_j] = round(tracks_at_t[k])
+				track_id = tracks_at_t[k]
+				new_labels[f, loc_i, loc_j] = round(track_id)
 
 	# Multithreading
 	indices = list(df[column_labels['frame']].unique())
@@ -1296,6 +1280,87 @@ def relabel_segmentation(labels, data, properties, column_labels={'track': "trac
 	print("\nDone.")
 
 	return new_labels
+
+
+# def relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}, threads=1):
+
+# 	"""
+
+# 	Relabel the segmentation labels based on the provided tracking data and properties.
+
+# 	Parameters
+# 	----------
+# 	labels : ndarray
+# 		The original segmentation labels.
+# 	data : ndarray
+# 		The tracking data containing information about tracks, frames, y-coordinates, and x-coordinates.
+# 	properties : ndarray
+# 		The properties associated with the tracking data.
+# 	column_labels : dict, optional
+# 		A dictionary specifying the column labels for the tracking data. The default is {'track': "track",
+# 		'frame': 'frame', 'y': 'y', 'x': 'x', 'label': 'class_id'}.
+
+# 	Returns
+# 	-------
+# 	ndarray
+# 		The relabeled segmentation labels.
+
+# 	Notes
+# 	-----
+# 	This function relabels the segmentation labels based on the provided tracking data and properties.
+# 	It creates a DataFrame from the tracking data and properties, merges them based on the indices, and sorts them by track and frame.
+# 	Then, it iterates over unique frames in the DataFrame, retrieves the tracks and identities at each frame,
+# 	and updates the corresponding labels with the new track values.
+
+# 	Examples
+# 	--------
+# 	>>> relabeled = relabel_segmentation(labels, data, properties, column_labels={'track': "track", 'frame': 'frame',
+# 	...                                                                 'y': 'y', 'x': 'x', 'label': 'class_id'})
+# 	# Relabel the segmentation labels based on the provided tracking data and properties.
+	
+# 	"""
+
+
+# 	n_threads = threads
+# 	if data.shape[1]==4:
+# 		df = pd.DataFrame(data,columns=[column_labels['track'],column_labels['frame'],column_labels['y'],column_labels['x']])
+# 	else:
+# 		df = pd.DataFrame(data,columns=[column_labels['track'],column_labels['frame'],'z', column_labels['y'],column_labels['x']])
+# 		df = df.drop(columns=['z'])
+
+# 	df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
+# 	df = df.sort_values(by=[column_labels['track'],column_labels['frame']])
+# 	df.loc[df['dummy'],column_labels['label']] = np.nan
+
+# 	new_labels = np.zeros_like(labels)
+
+# 	def rewrite_labels(indices):
+
+# 		for t in tqdm(indices):
+
+# 			f = int(t)
+# 			cells = df.loc[df[column_labels['frame']] == f, [column_labels['track'], column_labels['label']]].to_numpy()
+# 			tracks_at_t = cells[:,0]
+# 			identities = cells[:,1]
+
+# 			# exclude NaN
+# 			tracks_at_t = tracks_at_t[identities == identities]
+# 			identities = identities[identities == identities]
+
+# 			for k in range(len(identities)):
+# 				loc_i, loc_j = np.where(labels[f] == identities[k])
+# 				new_labels[f, loc_i, loc_j] = round(tracks_at_t[k])
+
+# 	# Multithreading
+# 	indices = list(df[column_labels['frame']].unique())
+# 	chunks = np.array_split(indices, n_threads)
+
+# 	with concurrent.futures.ThreadPoolExecutor() as executor:
+# 		executor.map(rewrite_labels, chunks)
+	
+# 	print("\nDone.")
+
+# 	return new_labels
 
 
 def control_tracking_btrack(position, prefix="Aligned", population="target", relabel=True, flush_memory=True, threads=1):
@@ -1326,11 +1391,39 @@ def control_tracking_btrack(position, prefix="Aligned", population="target", rel
 
 	data, properties, graph, labels, stack = load_napari_data(position, prefix=prefix, population=population)
 	view_on_napari_btrack(data, properties, graph, labels=labels, stack=stack, relabel=relabel,
-						  flush_memory=flush_memory, threads=threads)
+						  flush_memory=flush_memory, threads=threads, position=position, population=population)
+
+
+def tracks_to_btrack(df, exclude_nans=False):
+	
+	graph = {}
+	if exclude_nans:
+		df.dropna(subset='class_id',inplace=True)
+
+	df["z"] = 0.
+	data = df[["TRACK_ID","FRAME","z","POSITION_Y","POSITION_X"]].to_numpy()
+	
+	df['dummy'] = False
+	prop_cols = ['FRAME','state','generation','root','parent','dummy','class_id']
+	properties = {}
+	for col in prop_cols:
+		properties.update({col: df[col].to_numpy()})
+	
+	return data, properties, graph
+
+def tracks_to_napari(df, exclude_nans=False):
+	
+	data, properties, graph = tracks_to_btrack(df, exclude_nans=exclude_nans)
+	vertices = data[:, [1,-2,-1]]
+	if data.shape[1]==4:
+		tracks = data
+	else:
+		tracks = data[:,[0,1,3,4]]
+	return vertices, tracks, properties, graph
 
 
 def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, relabel=True, flush_memory=True,
-						  position=None, threads=1):
+						  position=None, population=None, threads=1):
 	"""
 
 	Visualize btrack data, including stack, labels, points, and tracks, using the napari viewer.
@@ -1363,20 +1456,17 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 
 	"""
 
+	df, df_path = get_position_table(position, population=population, return_path=True)
+	if df is None:
+		print('Please compute trajectories first... Abort...')
+		return None
+	shared_data = {"df": df, "path": df_path, "position": position, "population": population}
+
 	if (labels is not None) * relabel:
 		print('Replacing the cell mask labels with the track ID...')
-		labels = relabel_segmentation(labels, data, properties, threads=threads)
+		labels = relabel_segmentation(labels, df, exclude_nans=True, threads=threads)
 
-	vertices = data[:, [1,-2,-1]]
-
-	# def change_id_of_current_cell():
-	# 	print("plugin started!")
-	# 	print(dir(viewer))
-	# 	print(viewer.cursor)
-
-	# @magicgui(call_button='Relabel widget')
-	# def relabel_widget():
-	# 	return change_id_of_current_cell()	
+	vertices, tracks, properties, graph = tracks_to_napari(df, exclude_nans=True)
 
 	viewer = napari.Viewer()
 	if stack is not None:
@@ -1384,15 +1474,57 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 	if labels is not None:
 		labels_layer = viewer.add_labels(labels.astype(int), name='segmentation', opacity=0.4)
 	viewer.add_points(vertices, size=4, name='points', opacity=0.3)
-	if data.shape[1]==4:
-		viewer.add_tracks(data, properties=properties, graph=graph, name='tracks')
-	else:
-		viewer.add_tracks(data[:,[0,1,3,4]], properties=properties, graph=graph, name='tracks')     
-	
+	viewer.add_tracks(tracks, properties=properties, graph=graph, name='tracks')     
+
+	def lock_controls(layer, widgets=(), locked=True):
+		qctrl = viewer.window.qt_viewer.controls.widgets[layer]
+		for wdg in widgets:
+			getattr(qctrl, wdg).setEnabled(not locked)
+
+	label_widget_list = ['paint_button', 'erase_button']
+	lock_controls(viewer.layers['segmentation'], label_widget_list)
+
+	point_widget_list = ['addition_button', 'delete_button', 'select_button']
+	lock_controls(viewer.layers['points'], point_widget_list)
+
+
+	def export_modifications():
+		
+		from celldetective.tracking import write_first_detection_class, clean_trajectories
+		from celldetective.utils import velocity_per_track
+
+		df = shared_data['df']
+		position = shared_data['position']
+		population = shared_data['population']
+		df = velocity_per_track(df, window_size=3, mode='bi')
+		df = write_first_detection_class(df)
+
+		experiment = extract_experiment_from_position(position)
+		instruction_file = os.sep.join([experiment,"configs", f"tracking_instructions_{population}.json"])
+		if os.path.exists(instruction_file):
+			print('Tracking configuration file found...')
+			with open(instruction_file, 'r') as f:
+				instructions = json.load(f)			
+				if 'post_processing_options' in instructions:
+					post_processing_options = instructions['post_processing_options']
+					print(f'Applying the following track postprocessing: {post_processing_options}...')
+					df = clean_trajectories(df.copy(),**post_processing_options)
+
+		df.to_csv(shared_data['path'])
+		print('Done...')
+
+	@magicgui(call_button='Export the modified\ntracks...')
+	def export_table_widget():
+		return export_modifications()
+
+	viewer.window.add_dock_widget(export_table_widget, area='right')
+
 	@labels_layer.mouse_double_click_callbacks.append
 	def on_second_click_of_double_click(layer, event):
-		
-		print(viewer.layers['tracks'])
+
+		df = shared_data['df']
+		position = shared_data['position']
+		population = shared_data['population']
 
 		frame, x, y = event.position
 		try:
@@ -1414,10 +1546,64 @@ def view_on_napari_btrack(data, properties, graph, stack=None, labels=None, rela
 		if returnValue == QMessageBox.No:
 			return None
 		else:
+
+			if target_track_id not in df['TRACK_ID'].unique() and target_track_id in np.unique(viewer.layers['segmentation'].data[int(frame)-1]):
+				# the selected cell in frame -1 is not in the table... we can add it to DataFrame
+				current_labelm1 = viewer.layers['segmentation'].data[int(frame)-1]
+				original_labelm1 = locate_labels(position, population=population, frames=int(frame)-1)				
+				original_labelm1[current_labelm1!=target_track_id] = 0
+				props = regionprops_table(original_labelm1, intensity_image=None, properties=['centroid', 'label'])
+				props = pd.DataFrame(props)
+				new_cell = props[['centroid-1', 'centroid-0','label']].copy()
+				new_cell.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y', 'label': 'class_id'},inplace=True)
+				new_cell['FRAME'] = int(frame) - 1
+				new_cell['TRACK_ID'] = target_track_id
+				df = pd.concat([df, new_cell], ignore_index=True)				
+
+			if value_under not in df['TRACK_ID'].unique():
+				# the cell to add is not currently part of DataFrame, need to add measurement
+
+				current_label = viewer.layers['segmentation'].data[int(frame)]
+				original_label = locate_labels(position, population=population, frames=int(frame))
+
+				new_datapoint = {'TRACK_ID': value_under, 'FRAME': frame, 'POSITION_X': np.nan, 'POSITION_Y': np.nan, 'class_id': np.nan}
+				
+				original_label[current_label!=value_under] = 0
+
+				props = regionprops_table(original_label, intensity_image=None, properties=['centroid', 'label'])
+				props = pd.DataFrame(props)
+
+				new_cell = props[['centroid-1', 'centroid-0','label']].copy()
+				new_cell.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y', 'label': 'class_id'},inplace=True)
+				new_cell['FRAME'] = int(frame)
+				new_cell['TRACK_ID'] = value_under
+				df = pd.concat([df, new_cell], ignore_index=True)
+
+			relabel = np.amax(df['TRACK_ID'].unique()) + 1
 			for f in viewer.layers['segmentation'].data[int(frame):]:
+				if target_track_id!=0:
+					f[np.where(f==target_track_id)] = relabel
 				f[np.where(f==value_under)] = target_track_id
 
+			if target_track_id!=0:
+				df.loc[(df['FRAME']>=frame)&(df['TRACK_ID']==target_track_id),'TRACK_ID'] = relabel
+			df.loc[(df['FRAME']>=frame)&(df['TRACK_ID']==value_under),'TRACK_ID'] = target_track_id
+			df = df.loc[~(df['TRACK_ID']==0),:]
+			df = df.sort_values(by=['TRACK_ID','FRAME'])
 
+			vertices, tracks, properties, graph = tracks_to_napari(df, exclude_nans=True)
+			
+			viewer.layers['tracks'].data = tracks
+			viewer.layers['tracks'].properties = properties
+			viewer.layers['tracks'].graph = graph
+
+			viewer.layers['points'].data = vertices
+
+			viewer.layers['segmentation'].refresh()
+			viewer.layers['tracks'].refresh()
+			viewer.layers['points'].refresh()
+
+		shared_data['df'] = df
 
 	# viewer.window.add_dock_widget(relabel_widget, area='right')
 	# viewer.bind_key('R', relabel_widget)
@@ -1461,6 +1647,10 @@ def load_napari_data(position, prefix="Aligned", population="target", return_sta
 	# Load the necessary data for visualization of target trajectories.
 
 	"""
+
+	if not position.endswith(os.sep):
+		position += os.sep
+
 	position = position.replace('\\','/')
 	if population.lower()=="target" or population.lower()=="targets":
 		if os.path.exists(position+os.sep.join(['output','tables','napari_target_trajectories.npy'])):
@@ -1472,6 +1662,7 @@ def load_napari_data(position, prefix="Aligned", population="target", return_sta
 			napari_data = np.load(position+os.sep.join(['output', 'tables', 'napari_effector_trajectories.npy']), allow_pickle=True)
 		else:
 			napari_data = None
+
 	if napari_data is not None:
 		data = napari_data.item()['data']
 		properties = napari_data.item()['properties']

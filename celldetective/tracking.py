@@ -8,7 +8,7 @@ from btrack import BayesianTracker
 
 from celldetective.measure import measure_features
 from celldetective.utils import rename_intensity_column, velocity_per_track
-from celldetective.io import view_on_napari_btrack, interpret_tracking_configuration
+from celldetective.io import interpret_tracking_configuration
 
 import os
 import subprocess
@@ -167,8 +167,8 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 
 	df['ID'] = np.arange(len(df)).astype(int)
 
-	if view_on_napari:
-		view_on_napari_btrack(data,properties,graph,stack=stack,labels=labels,relabel=True)
+	# if view_on_napari:
+	# 	view_on_napari_btrack(data,properties,graph,stack=stack,labels=labels,relabel=True)
 
 	if return_napari_data:
 		napari_data = {"data": data, "properties": properties, "graph": graph}

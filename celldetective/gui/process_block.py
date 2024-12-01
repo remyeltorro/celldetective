@@ -9,7 +9,7 @@ from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
-	control_tracking_btrack, load_experiment_tables, get_pair_signal_models_list
+	control_tracks, load_experiment_tables, get_pair_signal_models_list
 from celldetective.io import locate_segmentation_model, fix_missing_labels, auto_load_number_of_frames, load_frames, locate_signal_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
@@ -852,7 +852,7 @@ class ProcessPanel(QFrame, Styles):
 
 	def open_napari_tracking(self):
 		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')
-		control_tracking_btrack(self.parent_window.pos, prefix=self.parent_window.movie_prefix, population=self.mode, threads=self.parent_window.parent_window.n_threads)
+		control_tracks(self.parent_window.pos, prefix=self.parent_window.movie_prefix, population=self.mode, threads=self.parent_window.parent_window.n_threads)
 
 	def view_table_ui(self):
 

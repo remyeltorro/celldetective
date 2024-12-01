@@ -306,8 +306,14 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 
 	"""
 
+	features = features.copy()
 	if features is None:
 		features = []
+
+	measure_mean_intensities = False
+	if 'intensity_mean' in features:
+		measure_mean_intensities = True
+		features.remove('intensity_mean')
 
 	# Add label to have identity of mask
 	if 'label' not in features:
@@ -357,10 +363,16 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 		if f in extra_props:
 			feats.remove(f)
 			extra_props_list.append(getattr(extra_properties, f))
+
+	# Add intensity nan mean if need to measure mean intensities
+	if measure_mean_intensities:
+		extra_props_list.append(getattr(extra_properties, 'intensity_nanmean'))
+
 	if len(extra_props_list) == 0:
 		extra_props_list = None
 	else:
 		extra_props_list = tuple(extra_props_list)
+
 	props = regionprops_table(label, intensity_image=img, properties=feats, extra_properties=extra_props_list)
 	df_props = pd.DataFrame(props)
 	if spot_detection is not None:

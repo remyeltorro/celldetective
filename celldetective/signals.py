@@ -876,7 +876,7 @@ class SignalDetectionModel(object):
 		self.n_classes = self.model_class.layers[-1].output_shape[-1]
 
 		assert self.model_class.layers[0].input_shape[0] == self.model_reg.layers[0].input_shape[0], f"mismatch between input shape of classification: {self.model_class.layers[0].input_shape[0]} and regression {self.model_reg.layers[0].input_shape[0]} models... Error."
-
+		return True
 
 	def create_models_from_scratch(self):
 

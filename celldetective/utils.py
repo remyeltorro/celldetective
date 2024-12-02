@@ -547,8 +547,14 @@ def extract_cols_from_query(query: str):
 			# Add the name to the globals dictionary with a dummy value.
 			variables[name] = None
 
-	return list(variables.keys())
+	# Reverse mangling for special characters in column names.
+	def demangle_column_name(name):
+		if name.startswith("BACKTICK_QUOTED_STRING_"):
+			# Unquote backtick-quoted string.
+			return name[len("BACKTICK_QUOTED_STRING_"):].replace("_DOT_", ".").replace("_SLASH_", "/")
+		return name
 
+	return [demangle_column_name(name) for name in variables.keys()]
 
 def create_patch_mask(h, w, center=None, radius=None):
 

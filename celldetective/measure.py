@@ -1172,7 +1172,7 @@ def interpret_track_classification(df, class_attr, irreversible_event=False, uni
 
 	return df
 
-def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_recovery=50, pre_event=None):
+def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_recovery=50, pre_event=None):
 
 	"""
 	Classify irreversible events in a tracked dataset based on the status of cells and transitions.
@@ -1210,6 +1210,8 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_re
 	>>> df = classify_irreversible_events(df, 'class', r2_threshold=0.7)
 	"""
 
+	df = data.copy()
+
 	cols = list(df.columns)
 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
 	if 'position' in cols:
@@ -1219,64 +1221,79 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_re
 
 	stat_col = class_attr.replace('class','status')
 
-	# if pre_event is not None:
+	if pre_event is not None:
 		
-	# 	assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
-	# 	assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
+		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
+		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
 
-	# 	for tid, track in df.groupby(sort_cols):
-	# 		indices = track.index
-	# 		if track['class_'+pre_event].values[0]==1:
-	# 			# then pre event not satisfied
-	# 			df.loc[indices, class_attr] = np.nan
-	# 			df.loc[indices, stat_col] = np.nan
-	# 		else:
-	# 			t_pre_event = track['t_'+pre_event].values[0]
-	# 			indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
-	# 			df.loc[indices_pre, stat_col] = np.nan
+		print(f"{pre_event=}")
+
+		for tid, track in df.groupby(sort_cols):
+			
+			indices = track[class_attr].index
+			if track['class_'+pre_event].values[0]==1:
+				print(f'{tid=}: pre event is 1 so pass NaN status...')
+
+				# then pre event not satisfied
+				df.loc[indices, class_attr] = np.nan
+				df.loc[indices, stat_col] = np.nan
+			else:
+				print(f'{tid=}: pre event is not 1...')
+				print(track['status_'+pre_event].values)
+				print(track[stat_col].values)
+
+				t_pre_event = track['t_'+pre_event].values[0]
+				print(f"{tid=} {t_pre_event=}")
+
+				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
+				df.loc[indices_pre, stat_col] = np.nan
+
+				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+
+				print(track['status_'+pre_event].values)
+				print(track[stat_col].values)
 		
-	# 			track_valid = track.dropna(subset=stat_col)
-	# 			indices_valid = track_valid[class_attr].index
+				track_valid = track.dropna(subset=stat_col, inplace=False)
+				indices_valid = track_valid[class_attr].index
+				status_values = track_valid[stat_col].to_numpy()
 
-	# 			indices = track[class_attr].index
-	# 			status_values = track_valid[stat_col].to_numpy()
-	# 			if np.all([s==0 for s in status_values]):
-	# 				# all negative, no event
-	# 				df.loc[indices, class_attr] = 1
+				if np.all([s==0 for s in status_values]):
+					# all negative, no event
+					df.loc[indices, class_attr] = 1
+				elif np.all([s==1 for s in status_values]):
+					# all positive, event already observed
+					df.loc[indices, class_attr] = 2
+					#df.loc[indices, class_attr.replace('class','status')] = 2
+				else:
+					# ambiguity, possible transition
+					df.loc[indices, class_attr] = 2
+	else:
+		for tid,track in df.groupby(sort_cols):
+			
+			# Set status to 0.0 before first detection
+			t_firstdetection = track['t_firstdetection'].values[0]
+			indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
+			track.loc[indices_pre_detection,stat_col] = 0.0
+			df.loc[indices_pre_detection,stat_col] = 0.0
 
-	# 			elif np.all([s==1 for s in status_values]):
-	# 				# all positive, event already observed
-	# 				df.loc[indices, class_attr] = 2
-	# 				#df.loc[indices, class_attr.replace('class','status')] = 2
-	# 			else:
-	# 				# ambiguity, possible transition
-	# 				df.loc[indices, class_attr] = 2
-	for tid,track in df.groupby(sort_cols):
+			track_valid = track.dropna(subset=stat_col)
+			indices_valid = track_valid[class_attr].index
+
+			indices = track[class_attr].index
+			status_values = track_valid[stat_col].to_numpy()
+
+			if np.all([s==0 for s in status_values]):
+				# all negative, no event
+				df.loc[indices, class_attr] = 1
+
+			elif np.all([s==1 for s in status_values]):
+				# all positive, event already observed
+				df.loc[indices, class_attr] = 2
+				#df.loc[indices, class_attr.replace('class','status')] = 2
+			else:
+				# ambiguity, possible transition
+				df.loc[indices, class_attr] = 2
 		
-		# Set status to 0.0 before first detection
-		t_firstdetection = track['t_firstdetection'].values[0]
-		indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
-		track.loc[indices_pre_detection,stat_col] = 0.0
-		df.loc[indices_pre_detection,stat_col] = 0.0
-
-		track_valid = track.dropna(subset=stat_col)
-		indices_valid = track_valid[class_attr].index
-
-		indices = track[class_attr].index
-		status_values = track_valid[stat_col].to_numpy()
-
-		if np.all([s==0 for s in status_values]):
-			# all negative, no event
-			df.loc[indices, class_attr] = 1
-
-		elif np.all([s==1 for s in status_values]):
-			# all positive, event already observed
-			df.loc[indices, class_attr] = 2
-			#df.loc[indices, class_attr.replace('class','status')] = 2
-		else:
-			# ambiguity, possible transition
-			df.loc[indices, class_attr] = 2
-	
 	print("Classes after initial pass: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 
 	df.loc[df[class_attr]!=2, class_attr.replace('class', 't')] = -1
@@ -1415,8 +1432,11 @@ def classify_cells_from_query(df, status_attr, query):
 
 	df = df.copy()
 	df.loc[:,status_attr] = 0
+	df[status_attr] = df[status_attr].astype(float)
 
 	cols = extract_cols_from_query(query)
+	print(f"{cols=}")
+
 	cols_in_df = np.all([c in list(df.columns) for c in cols], axis=0)
 	if query=='':
 		print('The provided query is empty...')

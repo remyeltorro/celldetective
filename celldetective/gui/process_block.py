@@ -291,7 +291,7 @@ class ProcessPanel(QFrame, Styles):
 		self.track_action.setStyleSheet(self.menu_check_style)
 		self.track_action.setIcon(icon(MDI6.chart_timeline_variant,color="black"))
 		self.track_action.setIconSize(QSize(20, 20))
-		self.track_action.setToolTip("Track the target cells using bTrack.")
+		self.track_action.setToolTip(f"Track the {self.mode[:-1]} cells.")
 		grid_track.addWidget(self.track_action, 75)
 
 		self.delete_tracks_btn = QPushButton()
@@ -307,7 +307,7 @@ class ProcessPanel(QFrame, Styles):
 		self.check_tracking_result_btn = QPushButton()
 		self.check_tracking_result_btn.setIcon(icon(MDI6.eye_check_outline,color="black"))
 		self.check_tracking_result_btn.setIconSize(QSize(20, 20))
-		self.check_tracking_result_btn.setToolTip("View raw bTrack output in napari.")
+		self.check_tracking_result_btn.setToolTip("View tracking output in napari.")
 		self.check_tracking_result_btn.setStyleSheet(self.button_select_all)
 		self.check_tracking_result_btn.clicked.connect(self.open_napari_tracking)
 		self.check_tracking_result_btn.setEnabled(False)

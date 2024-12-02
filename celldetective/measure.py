@@ -306,11 +306,20 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 
 	"""
 
-	features = features.copy()
+	if isinstance(features, list):
+		features = features.copy()
+		
 	if features is None:
 		features = []
 
 	measure_mean_intensities = False
+	if img is None:
+		if verbose:
+			print('No image was provided... Skip intensity measurements.')
+		border_dist = None;
+		haralick_options = None;
+		features = drop_tonal_features(features)
+
 	if 'intensity_mean' in features:
 		measure_mean_intensities = True
 		features.remove('intensity_mean')
@@ -319,12 +328,6 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 	if 'label' not in features:
 		features.append('label')
 
-	if img is None:
-		if verbose:
-			print('No image was provided... Skip intensity measurements.')
-		border_dist = None;
-		haralick_options = None;
-		features = drop_tonal_features(features)
 	if img is not None:
 		if img.ndim == 2:
 			img = img[:, :, np.newaxis]

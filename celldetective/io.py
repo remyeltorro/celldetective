@@ -131,10 +131,12 @@ def extract_experiment_from_position(pos_path):
 	'/path/to/experiment'
 	"""
 
-	if not pos_path.endswith(os.sep):
-		pos_path += os.sep
-	exp_path_blocks = pos_path.split(os.sep)[:-3]
+	pos_path = pos_path.replace(os.sep, '/')
+	if not pos_path.endswith('/'):
+		pos_path += '/'
+	exp_path_blocks = pos_path.split('/')[:-3]
 	experiment = os.sep.join(exp_path_blocks)
+
 	return experiment
 
 def collect_experiment_metadata(pos_path=None, well_path=None):
@@ -488,43 +490,43 @@ def get_experiment_cell_types(experiment, dtype=str):
 
 def get_experiment_antibodies(experiment, dtype=str):
 	
-    """
-    Retrieve the list of antibodies used in an experiment.
+	"""
+	Retrieve the list of antibodies used in an experiment.
 
-    This function extracts antibody labels for the wells in the given experiment
-    based on the configuration file. If the number of wells does not match the
-    number of antibody labels provided in the configuration, it generates a
-    sequence of default numeric labels.
+	This function extracts antibody labels for the wells in the given experiment
+	based on the configuration file. If the number of wells does not match the
+	number of antibody labels provided in the configuration, it generates a
+	sequence of default numeric labels.
 
-    Parameters
-    ----------
-    experiment : str
-        The identifier or name of the experiment to retrieve antibodies for.
-    dtype : type, optional
-        The data type to which the antibody labels should be cast. Default is `str`.
+	Parameters
+	----------
+	experiment : str
+		The identifier or name of the experiment to retrieve antibodies for.
+	dtype : type, optional
+		The data type to which the antibody labels should be cast. Default is `str`.
 
-    Returns
-    -------
-    numpy.ndarray
-        An array of antibody labels with the specified data type. If no antibodies
-        are specified or there is a mismatch, numeric labels are generated instead.
+	Returns
+	-------
+	numpy.ndarray
+		An array of antibody labels with the specified data type. If no antibodies
+		are specified or there is a mismatch, numeric labels are generated instead.
 
-    Notes
-    -----
-    - The function assumes the experiment's configuration can be loaded using
-      `get_config` and that the antibodies are listed under the "Labels" section
-      with the key `"antibodies"`.
-    - A mismatch between the number of wells and antibody labels will result in
-      numeric labels generated using `numpy.linspace`.
+	Notes
+	-----
+	- The function assumes the experiment's configuration can be loaded using
+	  `get_config` and that the antibodies are listed under the "Labels" section
+	  with the key `"antibodies"`.
+	- A mismatch between the number of wells and antibody labels will result in
+	  numeric labels generated using `numpy.linspace`.
 
-    Examples
-    --------
-    >>> get_experiment_antibodies("path/to/experiment1")
-    array(['A1', 'A2', 'A3'], dtype='<U2')
+	Examples
+	--------
+	>>> get_experiment_antibodies("path/to/experiment1")
+	array(['A1', 'A2', 'A3'], dtype='<U2')
 
-    >>> get_experiment_antibodies("path/to/experiment2", dtype=int)
-    array([0, 1, 2])
-    """
+	>>> get_experiment_antibodies("path/to/experiment2", dtype=int)
+	array([0, 1, 2])
+	"""
 
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
@@ -891,61 +893,61 @@ def get_position_movie_path(pos, prefix=''):
 def load_experiment_tables(experiment, population='targets', well_option='*', position_option='*',
 						   return_pos_info=False, load_pickle=False):
 
-    """
-    Load tabular data for an experiment, optionally including position-level information.
+	"""
+	Load tabular data for an experiment, optionally including position-level information.
 
-    This function retrieves and processes tables associated with positions in an experiment.
-    It supports filtering by wells and positions, and can load either CSV data or pickle files.
+	This function retrieves and processes tables associated with positions in an experiment.
+	It supports filtering by wells and positions, and can load either CSV data or pickle files.
 
-    Parameters
-    ----------
-    experiment : str
-        Path to the experiment folder to load data for.
-    population : str, optional
-        The population to extract from the position tables (`'targets'` or `'effectors'`). Default is `'targets'`.
-    well_option : str or list, optional
-        Specifies which wells to include. Default is `'*'`, meaning all wells.
-    position_option : str or list, optional
-        Specifies which positions to include within selected wells. Default is `'*'`, meaning all positions.
-    return_pos_info : bool, optional
-        If `True`, also returns a DataFrame containing position-level metadata. Default is `False`.
-    load_pickle : bool, optional
-        If `True`, loads pre-processed pickle files for the positions instead of raw data. Default is `False`.
+	Parameters
+	----------
+	experiment : str
+		Path to the experiment folder to load data for.
+	population : str, optional
+		The population to extract from the position tables (`'targets'` or `'effectors'`). Default is `'targets'`.
+	well_option : str or list, optional
+		Specifies which wells to include. Default is `'*'`, meaning all wells.
+	position_option : str or list, optional
+		Specifies which positions to include within selected wells. Default is `'*'`, meaning all positions.
+	return_pos_info : bool, optional
+		If `True`, also returns a DataFrame containing position-level metadata. Default is `False`.
+	load_pickle : bool, optional
+		If `True`, loads pre-processed pickle files for the positions instead of raw data. Default is `False`.
 
-    Returns
-    -------
-    df : pandas.DataFrame or None
-        A DataFrame containing aggregated data for the specified wells and positions, or `None` if no data is found.
-        The DataFrame includes metadata such as well and position identifiers, concentrations, antibodies, and other
-        experimental parameters.
-    df_pos_info : pandas.DataFrame, optional
-        A DataFrame with metadata for each position, including file paths and experimental details. Returned only
-        if `return_pos_info=True`.
+	Returns
+	-------
+	df : pandas.DataFrame or None
+		A DataFrame containing aggregated data for the specified wells and positions, or `None` if no data is found.
+		The DataFrame includes metadata such as well and position identifiers, concentrations, antibodies, and other
+		experimental parameters.
+	df_pos_info : pandas.DataFrame, optional
+		A DataFrame with metadata for each position, including file paths and experimental details. Returned only
+		if `return_pos_info=True`.
 
-    Notes
-    -----
-    - The function assumes the experiment's configuration includes details about movie prefixes, concentrations,
-      cell types, antibodies, and pharmaceutical agents.
-    - Wells and positions can be filtered using `well_option` and `position_option`, respectively. If filtering
-      fails or is invalid, those specific wells/positions are skipped.
-    - Position-level metadata is assembled into `df_pos_info` and includes paths to data and movies.
+	Notes
+	-----
+	- The function assumes the experiment's configuration includes details about movie prefixes, concentrations,
+	  cell types, antibodies, and pharmaceutical agents.
+	- Wells and positions can be filtered using `well_option` and `position_option`, respectively. If filtering
+	  fails or is invalid, those specific wells/positions are skipped.
+	- Position-level metadata is assembled into `df_pos_info` and includes paths to data and movies.
 
-    Examples
-    --------
-    Load all data for an experiment:
+	Examples
+	--------
+	Load all data for an experiment:
 
-    >>> df = load_experiment_tables("path/to/experiment1")
+	>>> df = load_experiment_tables("path/to/experiment1")
 
-    Load data for specific wells and positions, including position metadata:
+	Load data for specific wells and positions, including position metadata:
 
-    >>> df, df_pos_info = load_experiment_tables(
-    ...     "experiment_01", well_option=["A1", "B1"], position_option=[0, 1], return_pos_info=True
-    ... )
+	>>> df, df_pos_info = load_experiment_tables(
+	...     "experiment_01", well_option=["A1", "B1"], position_option=[0, 1], return_pos_info=True
+	... )
 
-    Use pickle files for faster loading:
+	Use pickle files for faster loading:
 
-    >>> df = load_experiment_tables("experiment_01", load_pickle=True)
-    """
+	>>> df = load_experiment_tables("experiment_01", load_pickle=True)
+	"""
 
 	config = get_config(experiment)
 	wells = get_experiment_wells(experiment)
@@ -1099,54 +1101,54 @@ def locate_stack(position, prefix='Aligned'):
 
 def locate_labels(position, population='target', frames=None):
 
-    """
-    Locate and load label images for a given position and population in an experiment.
+	"""
+	Locate and load label images for a given position and population in an experiment.
 
-    This function retrieves and optionally loads labeled images (e.g., targets or effectors) 
-    for a specified position in an experiment. It supports loading all frames, a specific 
-    frame, or a list of frames.
+	This function retrieves and optionally loads labeled images (e.g., targets or effectors) 
+	for a specified position in an experiment. It supports loading all frames, a specific 
+	frame, or a list of frames.
 
-    Parameters
-    ----------
-    position : str
-        Path to the position directory containing label images.
-    population : str, optional
-        The population to load labels for. Options are `'target'` (or `'targets'`) and 
-        `'effector'` (or `'effectors'`). Default is `'target'`.
-    frames : int, list of int, numpy.ndarray, or None, optional
-        Specifies which frames to load:
-        - `None`: Load all frames (default).
-        - `int`: Load a single frame, identified by its index.
-        - `list` or `numpy.ndarray`: Load multiple specific frames.
+	Parameters
+	----------
+	position : str
+		Path to the position directory containing label images.
+	population : str, optional
+		The population to load labels for. Options are `'target'` (or `'targets'`) and 
+		`'effector'` (or `'effectors'`). Default is `'target'`.
+	frames : int, list of int, numpy.ndarray, or None, optional
+		Specifies which frames to load:
+		- `None`: Load all frames (default).
+		- `int`: Load a single frame, identified by its index.
+		- `list` or `numpy.ndarray`: Load multiple specific frames.
 
-    Returns
-    -------
-    numpy.ndarray or list of numpy.ndarray
-        If `frames` is `None` or a single integer, returns a NumPy array of the corresponding 
-        labels. If `frames` is a list or array, returns a list of NumPy arrays for each frame. 
-        If a frame is not found, `None` is returned for that frame.
+	Returns
+	-------
+	numpy.ndarray or list of numpy.ndarray
+		If `frames` is `None` or a single integer, returns a NumPy array of the corresponding 
+		labels. If `frames` is a list or array, returns a list of NumPy arrays for each frame. 
+		If a frame is not found, `None` is returned for that frame.
 
-    Notes
-    -----
-    - The function assumes label images are stored in subdirectories named `"labels_targets"` 
-      or `"labels_effectors"`, with filenames formatted as `####.tif` (e.g., `0001.tif`).
-    - Frame indices are zero-padded to four digits for matching.
-    - If `frames` is invalid or a frame is not found, `None` is returned for that frame.
+	Notes
+	-----
+	- The function assumes label images are stored in subdirectories named `"labels_targets"` 
+	  or `"labels_effectors"`, with filenames formatted as `####.tif` (e.g., `0001.tif`).
+	- Frame indices are zero-padded to four digits for matching.
+	- If `frames` is invalid or a frame is not found, `None` is returned for that frame.
 
-    Examples
-    --------
-    Load all label images for a position:
+	Examples
+	--------
+	Load all label images for a position:
 
-    >>> labels = locate_labels("/path/to/position", population="target")
+	>>> labels = locate_labels("/path/to/position", population="target")
 
-    Load a single frame (frame index 3):
+	Load a single frame (frame index 3):
 
-    >>> label = locate_labels("/path/to/position", population="effector", frames=3)
+	>>> label = locate_labels("/path/to/position", population="effector", frames=3)
 
-    Load multiple specific frames:
+	Load multiple specific frames:
 
-    >>> labels = locate_labels("/path/to/position", population="target", frames=[0, 1, 2])
-    """
+	>>> labels = locate_labels("/path/to/position", population="target", frames=[0, 1, 2])
+	"""
 
 	if not position.endswith(os.sep):
 		position += os.sep
@@ -1336,52 +1338,52 @@ def load_tracking_data(position, prefix="Aligned", population="target"):
 
 
 def auto_load_number_of_frames(stack_path):
-    
-    """
-    Automatically determine the number of frames in a TIFF image stack.
+	
+	"""
+	Automatically determine the number of frames in a TIFF image stack.
 
-    This function extracts the number of frames (time slices) from the metadata of a TIFF file 
-    or infers it from the stack dimensions when metadata is unavailable. It is robust to 
-    variations in metadata structure and handles multi-channel images.
+	This function extracts the number of frames (time slices) from the metadata of a TIFF file 
+	or infers it from the stack dimensions when metadata is unavailable. It is robust to 
+	variations in metadata structure and handles multi-channel images.
 
-    Parameters
-    ----------
-    stack_path : str
-        Path to the TIFF image stack file.
+	Parameters
+	----------
+	stack_path : str
+		Path to the TIFF image stack file.
 
-    Returns
-    -------
-    int or None
-        The number of frames in the image stack. Returns `None` if the path is `None` 
-        or the frame count cannot be determined.
+	Returns
+	-------
+	int or None
+		The number of frames in the image stack. Returns `None` if the path is `None` 
+		or the frame count cannot be determined.
 
-    Notes
-    -----
-    - The function attempts to extract the `frames` or `slices` attributes from the 
-      TIFF metadata, specifically the `ImageDescription` tag.
-    - If metadata extraction fails, the function reads the image stack and infers 
-      the number of frames based on the stack dimensions.
-    - Multi-channel stacks are handled by assuming the number of channels is specified 
-      in the metadata under the `channels` attribute.
+	Notes
+	-----
+	- The function attempts to extract the `frames` or `slices` attributes from the 
+	  TIFF metadata, specifically the `ImageDescription` tag.
+	- If metadata extraction fails, the function reads the image stack and infers 
+	  the number of frames based on the stack dimensions.
+	- Multi-channel stacks are handled by assuming the number of channels is specified 
+	  in the metadata under the `channels` attribute.
 
-    Examples
-    --------
-    Automatically detect the number of frames in a TIFF stack:
+	Examples
+	--------
+	Automatically detect the number of frames in a TIFF stack:
 
-    >>> frames = auto_load_number_of_frames("experiment_stack.tif")
-    Automatically detected stack length: 120...
+	>>> frames = auto_load_number_of_frames("experiment_stack.tif")
+	Automatically detected stack length: 120...
 
-    Handle a single-frame TIFF:
+	Handle a single-frame TIFF:
 
-    >>> frames = auto_load_number_of_frames("single_frame_stack.tif")
-    Automatically detected stack length: 1...
+	>>> frames = auto_load_number_of_frames("single_frame_stack.tif")
+	Automatically detected stack length: 1...
 
-    Handle invalid or missing paths gracefully:
+	Handle invalid or missing paths gracefully:
 
-    >>> frames = auto_load_number_of_frames(None)
-    >>> print(frames)
-    None
-    """
+	>>> frames = auto_load_number_of_frames(None)
+	>>> print(frames)
+	None
+	"""
 
 	if stack_path is None:
 		return None
@@ -1439,45 +1441,45 @@ def auto_load_number_of_frames(stack_path):
 
 def parse_isotropic_radii(string):
 
-    """
-    Parse a string representing isotropic radii into a structured list.
+	"""
+	Parse a string representing isotropic radii into a structured list.
 
-    This function extracts integer values and ranges (denoted by square brackets) 
-    from a string input and returns them as a list. Single values are stored as integers, 
-    while ranges are represented as lists of two integers.
+	This function extracts integer values and ranges (denoted by square brackets) 
+	from a string input and returns them as a list. Single values are stored as integers, 
+	while ranges are represented as lists of two integers.
 
-    Parameters
-    ----------
-    string : str
-        The input string containing radii and ranges, separated by commas or spaces. 
-        Ranges should be enclosed in square brackets, e.g., `[1 2]`.
+	Parameters
+	----------
+	string : str
+		The input string containing radii and ranges, separated by commas or spaces. 
+		Ranges should be enclosed in square brackets, e.g., `[1 2]`.
 
-    Returns
-    -------
-    list
-        A list of parsed radii where:
-        - Single integers are included as `int`.
-        - Ranges are included as two-element lists `[start, end]`.
+	Returns
+	-------
+	list
+		A list of parsed radii where:
+		- Single integers are included as `int`.
+		- Ranges are included as two-element lists `[start, end]`.
 
-    Examples
-    --------
-    Parse a string with single radii and ranges:
+	Examples
+	--------
+	Parse a string with single radii and ranges:
 
-    >>> parse_isotropic_radii("1, [2 3], 4")
-    [1, [2, 3], 4]
+	>>> parse_isotropic_radii("1, [2 3], 4")
+	[1, [2, 3], 4]
 
-    Handle inputs with mixed delimiters:
+	Handle inputs with mixed delimiters:
 
-    >>> parse_isotropic_radii("5 [6 7], 8")
-    [5, [6, 7], 8]
+	>>> parse_isotropic_radii("5 [6 7], 8")
+	[5, [6, 7], 8]
 
-    Notes
-    -----
-    - The function splits the input string by commas or spaces.
-    - It identifies ranges using square brackets and assumes that ranges are always 
-      two consecutive values.
-    - Non-integer sections of the string are ignored.
-    """
+	Notes
+	-----
+	- The function splits the input string by commas or spaces.
+	- It identifies ranges using square brackets and assumes that ranges are always 
+	  two consecutive values.
+	- Non-integer sections of the string are ignored.
+	"""
 
 	sections = re.split(',| ', string)
 	radii = []
@@ -1540,52 +1542,52 @@ def get_tracking_configs_list(return_path=False):
 
 def interpret_tracking_configuration(config):
 	
-    """
-    Interpret and resolve the path for a tracking configuration file.
+	"""
+	Interpret and resolve the path for a tracking configuration file.
 
-    This function determines the appropriate configuration file path based on the input.
-    If the input is a string representing an existing path or a known configuration name, 
-    it resolves to the correct file path. If the input is invalid or `None`, a default 
-    configuration is returned.
+	This function determines the appropriate configuration file path based on the input.
+	If the input is a string representing an existing path or a known configuration name, 
+	it resolves to the correct file path. If the input is invalid or `None`, a default 
+	configuration is returned.
 
-    Parameters
-    ----------
-    config : str or None
-        The input configuration, which can be:
-        - A string representing the full path to a configuration file.
-        - A short name of a configuration file without the `.json` extension.
-        - `None` to use a default configuration.
+	Parameters
+	----------
+	config : str or None
+		The input configuration, which can be:
+		- A string representing the full path to a configuration file.
+		- A short name of a configuration file without the `.json` extension.
+		- `None` to use a default configuration.
 
-    Returns
-    -------
-    str
-        The resolved path to the configuration file.
+	Returns
+	-------
+	str
+		The resolved path to the configuration file.
 
-    Notes
-    -----
-    - If `config` is a string and the specified path exists, it is returned as-is.
-    - If `config` is a name, the function searches in the `tracking_configs` directory 
-      within the `celldetective` models folder.
-    - If the file or name is not found, or if `config` is `None`, the function falls 
-      back to a default configuration using `cell_config()`.
+	Notes
+	-----
+	- If `config` is a string and the specified path exists, it is returned as-is.
+	- If `config` is a name, the function searches in the `tracking_configs` directory 
+	  within the `celldetective` models folder.
+	- If the file or name is not found, or if `config` is `None`, the function falls 
+	  back to a default configuration using `cell_config()`.
 
-    Examples
-    --------
-    Resolve a full path:
+	Examples
+	--------
+	Resolve a full path:
 
-    >>> interpret_tracking_configuration("/path/to/config.json")
-    '/path/to/config.json'
+	>>> interpret_tracking_configuration("/path/to/config.json")
+	'/path/to/config.json'
 
-    Resolve a named configuration:
+	Resolve a named configuration:
 
-    >>> interpret_tracking_configuration("default_tracking")
-    '/path/to/celldetective/models/tracking_configs/default_tracking.json'
+	>>> interpret_tracking_configuration("default_tracking")
+	'/path/to/celldetective/models/tracking_configs/default_tracking.json'
 
-    Handle `None` to return the default configuration:
+	Handle `None` to return the default configuration:
 
-    >>> interpret_tracking_configuration(None)
-    '/path/to/default/config.json'
-    """
+	>>> interpret_tracking_configuration(None)
+	'/path/to/default/config.json'
+	"""
 
 	if isinstance(config, str):
 		if os.path.exists(config):
@@ -1706,60 +1708,60 @@ def get_pair_signal_models_list(return_path=False):
 
 def locate_signal_model(name, path=None, pairs=False):
 
-    """
-    Locate a signal detection model by name, either locally or from Zenodo.
+	"""
+	Locate a signal detection model by name, either locally or from Zenodo.
 
-    This function searches for a signal detection model with the specified name in the local
-    `celldetective` directory. If the model is not found locally, it attempts to download
-    the model from Zenodo.
+	This function searches for a signal detection model with the specified name in the local
+	`celldetective` directory. If the model is not found locally, it attempts to download
+	the model from Zenodo.
 
-    Parameters
-    ----------
-    name : str
-        The name of the signal detection model to locate.
-    path : str, optional
-        An additional directory path to search for the model. If provided, this directory
-        is also scanned for matching models. Default is `None`.
-    pairs : bool, optional
-        If `True`, searches for paired signal detection models in the `pair_signal_detection`
-        subdirectory. If `False`, searches in the `signal_detection` subdirectory. Default is `False`.
+	Parameters
+	----------
+	name : str
+		The name of the signal detection model to locate.
+	path : str, optional
+		An additional directory path to search for the model. If provided, this directory
+		is also scanned for matching models. Default is `None`.
+	pairs : bool, optional
+		If `True`, searches for paired signal detection models in the `pair_signal_detection`
+		subdirectory. If `False`, searches in the `signal_detection` subdirectory. Default is `False`.
 
-    Returns
-    -------
-    str or None
-        The full path to the located model directory if found, or `None` if the model is not available
-        locally or on Zenodo.
+	Returns
+	-------
+	str or None
+		The full path to the located model directory if found, or `None` if the model is not available
+		locally or on Zenodo.
 
-    Notes
-    -----
-    - The function first searches in the `celldetective/models/signal_detection` or 
-      `celldetective/models/pair_signal_detection` directory based on the `pairs` argument.
-    - If a `path` is specified, it is searched in addition to the default directories.
-    - If the model is not found locally, the function queries Zenodo for the model. If available,
-      the model is downloaded to the appropriate `celldetective` subdirectory.
+	Notes
+	-----
+	- The function first searches in the `celldetective/models/signal_detection` or 
+	  `celldetective/models/pair_signal_detection` directory based on the `pairs` argument.
+	- If a `path` is specified, it is searched in addition to the default directories.
+	- If the model is not found locally, the function queries Zenodo for the model. If available,
+	  the model is downloaded to the appropriate `celldetective` subdirectory.
 
-    Examples
-    --------
-    Search for a signal detection model locally:
+	Examples
+	--------
+	Search for a signal detection model locally:
 
-    >>> locate_signal_model("example_model")
-    'path/to/celldetective/models/signal_detection/example_model/'
+	>>> locate_signal_model("example_model")
+	'path/to/celldetective/models/signal_detection/example_model/'
 
-    Search for a paired signal detection model:
+	Search for a paired signal detection model:
 
-    >>> locate_signal_model("paired_model", pairs=True)
-    'path/to/celldetective/models/pair_signal_detection/paired_model/'
+	>>> locate_signal_model("paired_model", pairs=True)
+	'path/to/celldetective/models/pair_signal_detection/paired_model/'
 
-    Include an additional search path:
+	Include an additional search path:
 
-    >>> locate_signal_model("custom_model", path="/additional/models/")
-    '/additional/models/custom_model/'
+	>>> locate_signal_model("custom_model", path="/additional/models/")
+	'/additional/models/custom_model/'
 
-    Handle a model available only on Zenodo:
+	Handle a model available only on Zenodo:
 
-    >>> locate_signal_model("remote_model")
-    'path/to/celldetective/models/signal_detection/remote_model/'
-    """
+	>>> locate_signal_model("remote_model")
+	'path/to/celldetective/models/signal_detection/remote_model/'
+	"""
 
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], "celldetective"])
 	modelpath = os.sep.join([main_dir, "models", "signal_detection", os.sep])
@@ -1788,45 +1790,45 @@ def locate_signal_model(name, path=None, pairs=False):
 
 def locate_pair_signal_model(name, path=None):
 
-    """
-    Locate a pair signal detection model by name.
+	"""
+	Locate a pair signal detection model by name.
 
-    This function searches for a pair signal detection model in the default 
-    `celldetective` directory and optionally in an additional user-specified path.
+	This function searches for a pair signal detection model in the default 
+	`celldetective` directory and optionally in an additional user-specified path.
 
-    Parameters
-    ----------
-    name : str
-        The name of the pair signal detection model to locate.
-    path : str, optional
-        An additional directory path to search for the model. If provided, this directory 
-        is also scanned for matching models. Default is `None`.
+	Parameters
+	----------
+	name : str
+		The name of the pair signal detection model to locate.
+	path : str, optional
+		An additional directory path to search for the model. If provided, this directory 
+		is also scanned for matching models. Default is `None`.
 
-    Returns
-    -------
-    str or None
-        The full path to the located model directory if found, or `None` if no matching 
-        model is located.
+	Returns
+	-------
+	str or None
+		The full path to the located model directory if found, or `None` if no matching 
+		model is located.
 
-    Notes
-    -----
-    - The function first searches in the default `celldetective/models/pair_signal_detection` 
-      directory.
-    - If a `path` is specified, it is searched in addition to the default directory.
-    - The function prints the search path and model name during execution.
+	Notes
+	-----
+	- The function first searches in the default `celldetective/models/pair_signal_detection` 
+	  directory.
+	- If a `path` is specified, it is searched in addition to the default directory.
+	- The function prints the search path and model name during execution.
 
-    Examples
-    --------
-    Locate a model in the default directory:
+	Examples
+	--------
+	Locate a model in the default directory:
 
-    >>> locate_pair_signal_model("example_model")
-    'path/to/celldetective/models/pair_signal_detection/example_model/'
+	>>> locate_pair_signal_model("example_model")
+	'path/to/celldetective/models/pair_signal_detection/example_model/'
 
-    Include an additional search directory:
+	Include an additional search directory:
 
-    >>> locate_pair_signal_model("custom_model", path="/additional/models/")
-    '/additional/models/custom_model/'
-    """
+	>>> locate_pair_signal_model("custom_model", path="/additional/models/")
+	'/additional/models/custom_model/'
+	"""
 
 
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], "celldetective"])
@@ -1840,71 +1842,71 @@ def locate_pair_signal_model(name, path=None):
 
 def relabel_segmentation(labels, df, exclude_nans=True, column_labels={'track': "TRACK_ID", 'frame': 'FRAME', 'y': 'POSITION_Y', 'x': 'POSITION_X', 'label': 'class_id'}, threads=1):
 
-    """
-    Relabel the segmentation labels with the tracking IDs from the tracks.
+	"""
+	Relabel the segmentation labels with the tracking IDs from the tracks.
 
 	The function reassigns the mask value for each cell with the associated `TRACK_ID`, if it exists
 	in the trajectory table (`df`). If no track uses the cell mask, a new track with a single point
 	is generated on the fly (max of `TRACK_ID` values + i, for i=0 to N such cells). It supports 
 	multithreaded processing for faster execution on large datasets.
 
-    Parameters
-    ----------
-    labels : np.ndarray
-        A (TYX) array where each frame contains a 2D segmentation mask. Each unique 
-        non-zero integer represents a labeled object.
-    df : pandas.DataFrame
-        A DataFrame containing tracking information with columns 
-        specified in `column_labels`. Must include at least frame, track ID, and object ID.
-    exclude_nans : bool, optional
-        Whether to exclude rows in `df` with NaN values in the column specified by 
-        `column_labels['label']`. Default is `True`.
-    column_labels : dict, optional
-        A dictionary specifying the column names in `df`. Default is:
-        - `'track'`: Track ID column name (`"TRACK_ID"`)
-        - `'frame'`: Frame column name (`"FRAME"`)
-        - `'y'`: Y-coordinate column name (`"POSITION_Y"`)
-        - `'x'`: X-coordinate column name (`"POSITION_X"`)
-        - `'label'`: Object ID column name (`"class_id"`)
-    threads : int, optional
-        Number of threads to use for multithreaded processing. Default is `1`.
+	Parameters
+	----------
+	labels : np.ndarray
+		A (TYX) array where each frame contains a 2D segmentation mask. Each unique 
+		non-zero integer represents a labeled object.
+	df : pandas.DataFrame
+		A DataFrame containing tracking information with columns 
+		specified in `column_labels`. Must include at least frame, track ID, and object ID.
+	exclude_nans : bool, optional
+		Whether to exclude rows in `df` with NaN values in the column specified by 
+		`column_labels['label']`. Default is `True`.
+	column_labels : dict, optional
+		A dictionary specifying the column names in `df`. Default is:
+		- `'track'`: Track ID column name (`"TRACK_ID"`)
+		- `'frame'`: Frame column name (`"FRAME"`)
+		- `'y'`: Y-coordinate column name (`"POSITION_Y"`)
+		- `'x'`: X-coordinate column name (`"POSITION_X"`)
+		- `'label'`: Object ID column name (`"class_id"`)
+	threads : int, optional
+		Number of threads to use for multithreaded processing. Default is `1`.
 
-    Returns
-    -------
-    np.ndarray
-        A new (TYX) array with the same shape as `labels`, where objects are relabeled 
-        according to their tracking identity in `df`.
+	Returns
+	-------
+	np.ndarray
+		A new (TYX) array with the same shape as `labels`, where objects are relabeled 
+		according to their tracking identity in `df`.
 
-    Notes
-    -----
-    - For frames where labeled objects in `labels` do not match any entries in the `df`,
-      new track IDs are generated for the unmatched labels.
-    - The relabeling process maintains synchronization across threads using a shared
-      counter for generating unique track IDs.
+	Notes
+	-----
+	- For frames where labeled objects in `labels` do not match any entries in the `df`,
+	  new track IDs are generated for the unmatched labels.
+	- The relabeling process maintains synchronization across threads using a shared
+	  counter for generating unique track IDs.
 
-    Examples
-    --------
-    Relabel segmentation using tracking data:
+	Examples
+	--------
+	Relabel segmentation using tracking data:
 
-    >>> labels = np.random.randint(0, 5, (10, 100, 100))
-    >>> df = pd.DataFrame({
-    ...     "TRACK_ID": [1, 2, 1, 2],
-    ...     "FRAME": [0, 0, 1, 1],
-    ...     "class_id": [1, 2, 1, 2],
-    ... })
-    >>> new_labels = relabel_segmentation(labels, df, threads=2)
-    Done.
+	>>> labels = np.random.randint(0, 5, (10, 100, 100))
+	>>> df = pd.DataFrame({
+	...     "TRACK_ID": [1, 2, 1, 2],
+	...     "FRAME": [0, 0, 1, 1],
+	...     "class_id": [1, 2, 1, 2],
+	... })
+	>>> new_labels = relabel_segmentation(labels, df, threads=2)
+	Done.
 
-    Use custom column labels and exclude rows with NaNs:
+	Use custom column labels and exclude rows with NaNs:
 
-    >>> column_labels = {
-    ...     'track': "track_id",
-    ...     'frame': "time",
-    ...     'label': "object_id"
-    ... }
-    >>> new_labels = relabel_segmentation(labels, df, column_labels=column_labels, exclude_nans=True)
-    Done.
-    """
+	>>> column_labels = {
+	...     'track': "track_id",
+	...     'frame': "time",
+	...     'label': "object_id"
+	... }
+	>>> new_labels = relabel_segmentation(labels, df, column_labels=column_labels, exclude_nans=True)
+	Done.
+	"""
 
 	n_threads = threads
 	df = df.sort_values(by=[column_labels['track'],column_labels['frame']])
@@ -1965,46 +1967,46 @@ def relabel_segmentation(labels, df, exclude_nans=True, column_labels={'track': 
 
 def control_tracks(position, prefix="Aligned", population="target", relabel=True, flush_memory=True, threads=1):
 
-    """
-    Controls the tracking of cells or objects within a given position by locating the relevant image stack and label data,
-    and then visualizing and managing the tracks in the Napari viewer.
+	"""
+	Controls the tracking of cells or objects within a given position by locating the relevant image stack and label data,
+	and then visualizing and managing the tracks in the Napari viewer.
 
-    Parameters
-    ----------
-    position : str
-        The path to the directory containing the position's data. The function will ensure the path uses forward slashes.
-    
-    prefix : str, optional, default="Aligned"
-        The prefix of the file names for the image stack and labels. This parameter helps locate the relevant data files.
-    
-    population : str, optional, default="target"
-        The population to be tracked, typically either "target" or "effectors". This is used to identify the group of interest for tracking.
-    
-    relabel : bool, optional, default=True
-        If True, will relabel the tracks, potentially assigning new track IDs to the detected objects.
-    
-    flush_memory : bool, optional, default=True
-        If True, will flush memory after processing to free up resources.
-    
-    threads : int, optional, default=1
-        The number of threads to use for processing. This can speed up the task in multi-threaded environments.
+	Parameters
+	----------
+	position : str
+		The path to the directory containing the position's data. The function will ensure the path uses forward slashes.
+	
+	prefix : str, optional, default="Aligned"
+		The prefix of the file names for the image stack and labels. This parameter helps locate the relevant data files.
+	
+	population : str, optional, default="target"
+		The population to be tracked, typically either "target" or "effectors". This is used to identify the group of interest for tracking.
+	
+	relabel : bool, optional, default=True
+		If True, will relabel the tracks, potentially assigning new track IDs to the detected objects.
+	
+	flush_memory : bool, optional, default=True
+		If True, will flush memory after processing to free up resources.
+	
+	threads : int, optional, default=1
+		The number of threads to use for processing. This can speed up the task in multi-threaded environments.
 
-    Returns
-    -------
-    None
-        The function performs visualization and management of tracks in the Napari viewer. It does not return any value.
+	Returns
+	-------
+	None
+		The function performs visualization and management of tracks in the Napari viewer. It does not return any value.
 
-    Notes
-    -----
-    - This function assumes that the necessary data for tracking (stack and labels) are located in the specified position directory.
-    - The `locate_stack_and_labels` function is used to retrieve the image stack and labels from the specified directory.
-    - The tracks are visualized using the `view_tracks_in_napari` function, which handles the display in the Napari viewer.
-    - The function can be used for tracking biological entities (e.g., cells) and their movement across time frames in an image stack.
-    
-    Example
-    -------
-    >>> control_tracks("/path/to/data/position_1", prefix="Aligned", population="target", relabel=True, flush_memory=True, threads=4)
-    """
+	Notes
+	-----
+	- This function assumes that the necessary data for tracking (stack and labels) are located in the specified position directory.
+	- The `locate_stack_and_labels` function is used to retrieve the image stack and labels from the specified directory.
+	- The tracks are visualized using the `view_tracks_in_napari` function, which handles the display in the Napari viewer.
+	- The function can be used for tracking biological entities (e.g., cells) and their movement across time frames in an image stack.
+	
+	Example
+	-------
+	>>> control_tracks("/path/to/data/position_1", prefix="Aligned", population="target", relabel=True, flush_memory=True, threads=4)
+	"""
 	
 	if not position.endswith(os.sep):
 		position += os.sep
@@ -2018,45 +2020,45 @@ def control_tracks(position, prefix="Aligned", population="target", relabel=True
 
 def tracks_to_btrack(df, exclude_nans=False):
 	
-    """
-    Converts a dataframe of tracked objects into the bTrack output format.
-    The function prepares tracking data, properties, and an empty graph structure for further processing.
+	"""
+	Converts a dataframe of tracked objects into the bTrack output format.
+	The function prepares tracking data, properties, and an empty graph structure for further processing.
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        A dataframe containing tracking information. The dataframe must have columns for `TRACK_ID`, 
-        `FRAME`, `POSITION_Y`, `POSITION_X`, and `class_id` (among others).
+	Parameters
+	----------
+	df : pandas.DataFrame
+		A dataframe containing tracking information. The dataframe must have columns for `TRACK_ID`, 
+		`FRAME`, `POSITION_Y`, `POSITION_X`, and `class_id` (among others).
 
-    exclude_nans : bool, optional, default=False
-        If True, rows with NaN values in the `class_id` column will be excluded from the dataset.
-        If False, the dataframe will retain all rows, including those with NaN in `class_id`.
+	exclude_nans : bool, optional, default=False
+		If True, rows with NaN values in the `class_id` column will be excluded from the dataset.
+		If False, the dataframe will retain all rows, including those with NaN in `class_id`.
 
-    Returns
-    -------
-    data : numpy.ndarray
-        A 2D numpy array containing the tracking data with columns `[TRACK_ID, FRAME, z, POSITION_Y, POSITION_X]`.
-        The `z` column is set to zero for all rows.
+	Returns
+	-------
+	data : numpy.ndarray
+		A 2D numpy array containing the tracking data with columns `[TRACK_ID, FRAME, z, POSITION_Y, POSITION_X]`.
+		The `z` column is set to zero for all rows.
 
-    properties : dict
-        A dictionary where keys are property names (e.g., 'FRAME', 'state', 'generation', etc.) and values are numpy arrays
-        containing the corresponding values from the dataframe.
+	properties : dict
+		A dictionary where keys are property names (e.g., 'FRAME', 'state', 'generation', etc.) and values are numpy arrays
+		containing the corresponding values from the dataframe.
 
-    graph : dict
-        An empty dictionary intended to store graph-related information for the tracking data. It can be extended
-        later to represent relationships between different tracking objects.
-    
-    Notes
-    -----
-    - The function assumes that the dataframe contains specific columns: `TRACK_ID`, `FRAME`, `POSITION_Y`, `POSITION_X`, 
-      and `class_id`. These columns are used to construct the tracking data and properties.
-    - The `z` coordinate is set to 0 for all tracks since the function does not process 3D data.
-    - This function is useful for transforming tracking data into a format that can be used by tracking graph algorithms.
+	graph : dict
+		An empty dictionary intended to store graph-related information for the tracking data. It can be extended
+		later to represent relationships between different tracking objects.
+	
+	Notes
+	-----
+	- The function assumes that the dataframe contains specific columns: `TRACK_ID`, `FRAME`, `POSITION_Y`, `POSITION_X`, 
+	  and `class_id`. These columns are used to construct the tracking data and properties.
+	- The `z` coordinate is set to 0 for all tracks since the function does not process 3D data.
+	- This function is useful for transforming tracking data into a format that can be used by tracking graph algorithms.
 
-    Example
-    -------
-    >>> data, properties, graph = tracks_to_btrack(df, exclude_nans=True)
-    """
+	Example
+	-------
+	>>> data, properties, graph = tracks_to_btrack(df, exclude_nans=True)
+	"""
 
 	graph = {}
 	if exclude_nans:
@@ -2094,7 +2096,7 @@ def view_tracks_in_napari(position, population, stack=None, labels=None, relabel
 	if df is None:
 		print('Please compute trajectories first... Abort...')
 		return None
-	shared_data = {"df": df, "path": df_path, "position": position, "population": population}
+	shared_data = {"df": df, "path": df_path, "position": position, "population": population, 'selected_frame': None}
 
 	if (labels is not None) * relabel:
 		print('Replacing the cell mask labels with the track ID...')
@@ -2113,14 +2115,23 @@ def view_tracks_in_napari(position, population, stack=None, labels=None, relabel
 	def lock_controls(layer, widgets=(), locked=True):
 		qctrl = viewer.window.qt_viewer.controls.widgets[layer]
 		for wdg in widgets:
-			getattr(qctrl, wdg).setEnabled(not locked)
+			try:
+				getattr(qctrl, wdg).setEnabled(not locked)
+			except:
+				pass
 
-	label_widget_list = ['paint_button', 'erase_button']
+	label_widget_list = ['paint_button', 'erase_button', 'fill_button', 'polygon_button', 'transform_button']
 	lock_controls(viewer.layers['segmentation'], label_widget_list)
 
-	point_widget_list = ['addition_button', 'delete_button', 'select_button']
+	point_widget_list = ['addition_button', 'delete_button', 'select_button', 'transform_button']
 	lock_controls(viewer.layers['points'], point_widget_list)
 
+	track_widget_list = ['transform_button']
+	lock_controls(viewer.layers['tracks'], track_widget_list)
+
+	# Initialize selected frame
+	selected_frame = viewer.dims.current_step[0]
+	shared_data['selected_frame'] = selected_frame
 
 	def export_modifications():
 
@@ -2131,10 +2142,11 @@ def view_tracks_in_napari(position, population, stack=None, labels=None, relabel
 		position = shared_data['position']
 		population = shared_data['population']
 		df = velocity_per_track(df, window_size=3, mode='bi')
-		df = write_first_detection_class(df)
+		df = write_first_detection_class(df, img_shape=labels[0].shape)
 
 		experiment = extract_experiment_from_position(position)
-		instruction_file = os.sep.join([experiment,"configs", f"tracking_instructions_{population}.json"])
+		instruction_file = "/".join([experiment,"configs", f"tracking_instructions_{population}.json"])
+		print(f"{instruction_file=}")
 		if os.path.exists(instruction_file):
 			print('Tracking configuration file found...')
 			with open(instruction_file, 'r') as f:
@@ -2143,13 +2155,25 @@ def view_tracks_in_napari(position, population, stack=None, labels=None, relabel
 					post_processing_options = instructions['post_processing_options']
 					print(f'Applying the following track postprocessing: {post_processing_options}...')
 					df = clean_trajectories(df.copy(),**post_processing_options)
-
-		df.to_csv(shared_data['path'])
+		unnamed_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
+		df = df.drop(unnamed_cols, axis=1)
+		print(f"{list(df.columns)=}")
+		df.to_csv(shared_data['path'], index=False)
 		print('Done...')
 
 	@magicgui(call_button='Export the modified\ntracks...')
 	def export_table_widget():
 		return export_modifications()
+
+	def label_changed(event):
+
+		value = viewer.layers['segmentation'].selected_label
+		if value != 0:
+			selected_frame = viewer.dims.current_step[0]
+			shared_data['selected_frame'] = selected_frame
+
+
+	viewer.layers['segmentation'].events.selected_label.connect(label_changed)
 
 	viewer.window.add_dock_widget(export_table_widget, area='right')
 
@@ -2181,16 +2205,16 @@ def view_tracks_in_napari(position, population, stack=None, labels=None, relabel
 			return None
 		else:
 
-			if target_track_id not in df['TRACK_ID'].unique() and target_track_id in np.unique(viewer.layers['segmentation'].data[int(frame)-1]):
+			if target_track_id not in df['TRACK_ID'].unique() and target_track_id in np.unique(viewer.layers['segmentation'].data[shared_data['selected_frame']]):
 				# the selected cell in frame -1 is not in the table... we can add it to DataFrame
-				current_labelm1 = viewer.layers['segmentation'].data[int(frame)-1]
-				original_labelm1 = locate_labels(position, population=population, frames=int(frame)-1)				
+				current_labelm1 = viewer.layers['segmentation'].data[shared_data['selected_frame']]
+				original_labelm1 = locate_labels(position, population=population, frames=shared_data['selected_frame'])				
 				original_labelm1[current_labelm1!=target_track_id] = 0
 				props = regionprops_table(original_labelm1, intensity_image=None, properties=['centroid', 'label'])
 				props = pd.DataFrame(props)
 				new_cell = props[['centroid-1', 'centroid-0','label']].copy()
 				new_cell.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y', 'label': 'class_id'},inplace=True)
-				new_cell['FRAME'] = int(frame) - 1
+				new_cell['FRAME'] = shared_data['selected_frame']
 				new_cell['TRACK_ID'] = target_track_id
 				df = pd.concat([df, new_cell], ignore_index=True)				
 
@@ -2576,6 +2600,19 @@ def control_segmentation_napari(position, prefix='Aligned', population="target",
 	viewer.add_labels(labels.astype(int), name='segmentation', opacity=0.4)
 	viewer.window.add_dock_widget(save_widget, area='right')
 	viewer.window.add_dock_widget(export_widget, area='right')
+
+	def lock_controls(layer, widgets=(), locked=True):
+		qctrl = viewer.window.qt_viewer.controls.widgets[layer]
+		for wdg in widgets:
+			try:
+				getattr(qctrl, wdg).setEnabled(not locked)
+			except:
+				pass
+
+	label_widget_list = ['polygon_button', 'transform_button']
+	lock_controls(viewer.layers['segmentation'], label_widget_list)
+
+
 	viewer.show(block=True)
 
 	if flush_memory:

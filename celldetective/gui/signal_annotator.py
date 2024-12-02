@@ -457,8 +457,10 @@ class SignalAnnotator(QMainWindow, Styles):
 		cols = np.array(self.df_tracks.columns)
 		self.class_cols = np.array([c.startswith('class') for c in list(self.df_tracks.columns)])
 		self.class_cols = list(cols[self.class_cols])
-		self.class_cols.remove('class_id')
-		self.class_cols.remove('class_color')
+		if 'class_id' in self.class_cols:
+			self.class_cols.remove('class_id')
+		if 'class_color' in self.class_cols:
+			self.class_cols.remove('class_color')
 		self.class_choice_cb.addItems(self.class_cols)
 		idx = self.class_choice_cb.findText(self.target_class)
 		self.class_choice_cb.setCurrentIndex(idx)

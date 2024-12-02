@@ -894,7 +894,7 @@ def fit_and_apply_model_background_to_stack(stack_path,
 		else:
 			newfile = '_'.join([prefix,file])
 		
-		with tiff.TiffWriter(os.sep.join([path,newfile]),imagej=True) as tif:
+		with tiff.TiffWriter(os.sep.join([path,newfile]), imagej=True, bigtiff=True) as tif:
 
 			for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
 				
@@ -1156,7 +1156,7 @@ def correct_channel_offset_single_stack(stack_path,
 		else:
 			newfile = '_'.join([prefix,file])
 		
-		with tiff.TiffWriter(os.sep.join([path,newfile]),imagej=True) as tif:
+		with tiff.TiffWriter(os.sep.join([path,newfile]),bigtiff=True,imagej=True) as tif:
 
 			for i in tqdm(range(0,int(stack_length*nbr_channels),nbr_channels)):
 				

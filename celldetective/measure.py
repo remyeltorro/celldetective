@@ -1226,8 +1226,6 @@ def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_
 		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
 		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
 
-		print(f"{pre_event=}")
-
 		for tid, track in df.groupby(sort_cols):
 			
 			indices = track[class_attr].index
@@ -1238,22 +1236,14 @@ def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_
 				df.loc[indices, class_attr] = np.nan
 				df.loc[indices, stat_col] = np.nan
 			else:
-				print(f'{tid=}: pre event is not 1...')
-				print(track['status_'+pre_event].values)
-				print(track[stat_col].values)
 
 				t_pre_event = track['t_'+pre_event].values[0]
-				print(f"{tid=} {t_pre_event=}")
-
 				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
 				df.loc[indices_pre, stat_col] = np.nan
 
 				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
-
-				print(track['status_'+pre_event].values)
-				print(track[stat_col].values)
-		
 				track_valid = track.dropna(subset=stat_col, inplace=False)
+
 				indices_valid = track_valid[class_attr].index
 				status_values = track_valid[stat_col].to_numpy()
 
@@ -1306,7 +1296,7 @@ def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_
 	
 	return df
 
-def classify_unique_states(df, class_attr, percentile=50):
+def classify_unique_states(df, class_attr, percentile=50, pre_event=None):
 
 	"""
 	Classify unique cell states based on percentile values of a status attribute in a tracked dataset.
@@ -1352,28 +1342,62 @@ def classify_unique_states(df, class_attr, percentile=50):
 	stat_col = class_attr.replace('class','status')
 
 
-	for tid,track in df.groupby(sort_cols):
-
-
-		track_valid = track.dropna(subset=stat_col)
-		indices_valid = track_valid[class_attr].index
-
-		indices = track[class_attr].index
-		status_values = track_valid[stat_col].to_numpy()
-
-
-		frames = track_valid['FRAME'].to_numpy()
-		t_first = track['t_firstdetection'].to_numpy()[0]
-		perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
+	if pre_event is not None:
 		
-		if perc_status==perc_status:
-			c = ceil(perc_status)
-			if c==0:
-				df.loc[indices, class_attr] = 1
-				df.loc[indices, class_attr.replace('class','t')] = -1
-			elif c==1:
-				df.loc[indices, class_attr] = 2
-				df.loc[indices, class_attr.replace('class','t')] = -1
+		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
+		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
+
+		for tid, track in df.groupby(sort_cols):
+			
+			indices = track[class_attr].index
+			if track['class_'+pre_event].values[0]==1:
+				# then pre event not satisfied
+				df.loc[indices, class_attr] = np.nan
+				df.loc[indices, stat_col] = np.nan
+			else:
+				t_pre_event = track['t_'+pre_event].values[0]
+				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
+				df.loc[indices_pre, stat_col] = np.nan
+
+				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+				track_valid = track.dropna(subset=stat_col, inplace=False)
+
+				indices_valid = track_valid[class_attr].index
+				status_values = track_valid[stat_col].to_numpy()
+
+				frames = track_valid['FRAME'].to_numpy()
+				t_first = track['t_firstdetection'].to_numpy()[0]
+				perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
+				
+				if perc_status==perc_status:
+					c = ceil(perc_status)
+					if c==0:
+						df.loc[indices, class_attr] = 1
+						df.loc[indices, class_attr.replace('class','t')] = -1
+					elif c==1:
+						df.loc[indices, class_attr] = 2
+						df.loc[indices, class_attr.replace('class','t')] = -1
+	else:
+		for tid,track in df.groupby(sort_cols):
+
+			track_valid = track.dropna(subset=stat_col)
+			indices_valid = track_valid[class_attr].index
+
+			indices = track[class_attr].index
+			status_values = track_valid[stat_col].to_numpy()
+
+			frames = track_valid['FRAME'].to_numpy()
+			t_first = track['t_firstdetection'].to_numpy()[0]
+			perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
+			
+			if perc_status==perc_status:
+				c = ceil(perc_status)
+				if c==0:
+					df.loc[indices, class_attr] = 1
+					df.loc[indices, class_attr.replace('class','t')] = -1
+				elif c==1:
+					df.loc[indices, class_attr] = 2
+					df.loc[indices, class_attr.replace('class','t')] = -1
 	return df
 
 def classify_cells_from_query(df, status_attr, query):

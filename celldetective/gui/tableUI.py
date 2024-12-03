@@ -728,7 +728,7 @@ class TableUI(QMainWindow, Styles):
 
 		print("Saving each table in its respective position folder...")
 		for pos,pos_group in self.data.groupby(['position']):
-			pos_group.to_csv(pos+os.sep.join(['output', 'tables', f'trajectories_{self.population}.csv']), index=False)
+			pos_group.to_csv(pos[0]+os.sep.join(['output', 'tables', f'trajectories_{self.population}.csv']), index=False)
 		print("Done...")
 
 	def differenciate_selected_feature(self):

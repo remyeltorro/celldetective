@@ -515,7 +515,11 @@ class FilterChoice(QWidget):
 		self.combo_box.currentTextChanged.connect(self.update_arguments)
 		layout.addWidget(self.combo_box)
 
+		self.floatValidator = QDoubleValidator()
 		self.arguments_le = [QLineEdit() for i in range(3)]
+		for i in range(3):
+			self.arguments_le[i].setValidator(self.floatValidator)
+
 		self.arguments_labels = [QLabel('') for i in range(3)]
 		for i in range(2):
 			hbox = QHBoxLayout()
@@ -537,8 +541,10 @@ class FilterChoice(QWidget):
 
 		filter_instructions = [filtername.split('_')[0]]
 		for a in self.arguments_le:
-			arg = a.text()
+			
+			arg = a.text().replace(',','.')
 			arg_num = arg
+
 			if (arg != '') and arg_num.replace('.', '').replace(',', '').isnumeric():
 				num = float(arg)
 				if num.is_integer():

@@ -1,5 +1,5 @@
-Welcome to the documentation!
-=============================
+Celldetective, a bioimage analysis software
+===========================================
 
 .. figure:: _static/logo.png
     :width: 300px
@@ -23,6 +23,7 @@ Contents
    :caption: Basics:
 
    overview
+   acknowledegments
    cite
    get-started
    first-experiment

@@ -269,10 +269,7 @@ class ConfigSurvival(QWidget, Styles):
 
 	def process_survival(self):
 
-		print('you clicked!!')
 		self.FrameToMin = float(self.time_calibration_le.text().replace(',','.'))
-		print(self.FrameToMin, 'set')
-
 		self.time_of_interest = self.cbs[2].currentText()
 		if self.time_of_interest=="t0":
 			self.class_of_interest = "class"
@@ -356,19 +353,10 @@ class ConfigSurvival(QWidget, Styles):
 				cut_observation_time = None		
 		except Exception as e:
 			pass
-		print(f"{cut_observation_time=}")
 
 		pairs = False
 		if self.neighborhood_keys is not None:
 			pairs = True
-
-		print('we compute the survival function!!!')
-		print(f"{list(self.df.columns)=}")
-		print(self.df.head(30))
-
-		for block,movie_group in self.df.groupby(['well','position']):
-			print(f"{block=}")
-
 
 		# Per position survival
 		for block,movie_group in self.df.groupby(['well','position']):

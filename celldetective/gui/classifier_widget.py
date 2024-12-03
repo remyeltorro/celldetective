@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QLineEdit, QMessageBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, \
-	QCheckBox, QRadioButton, QButtonGroup
+	QCheckBox, QRadioButton, QButtonGroup, QComboBox
 from PyQt5.QtCore import Qt, QSize
 from superqt import QLabeledSlider,QLabeledDoubleSlider, QSearchableComboBox
 from superqt.fonticon import icon
@@ -163,6 +163,20 @@ class ClassifierWidget(QWidget, Styles):
 		time_corr_layout.addWidget(self.irreversible_event_btn, 50,alignment=Qt.AlignCenter)
 		layout.addLayout(time_corr_layout)
 
+		self.prereq_event_check = QCheckBox('prerequisite event:')
+		self.prereq_event_check.toggled.connect(self.activate_prereq_cb)
+		self.prereq_event_cb = QComboBox()
+		event_cols = ['--'] + [c.replace('t_','') for c in self.cols if c.startswith('t_')]
+		self.prereq_event_cb.addItems(event_cols)
+		self.prereq_event_check.setEnabled(False)
+		self.prereq_event_cb.setEnabled(False)
+
+		prereq_layout = QHBoxLayout()
+		prereq_layout.addWidget(QLabel(''), 50)
+		prereq_layout.addWidget(self.prereq_event_check, 15)
+		prereq_layout.addWidget(self.prereq_event_cb, 35)
+		layout.addLayout(prereq_layout)
+
 		self.r2_slider = QLabeledDoubleSlider()
 		self.r2_slider.setValue(0.75)
 		self.r2_slider.setRange(0,1)
@@ -170,6 +184,7 @@ class ClassifierWidget(QWidget, Styles):
 		self.r2_slider.setOrientation(1)
 		self.r2_label = QLabel('R2 tolerance:')
 		self.r2_label.setToolTip('Minimum R2 between the fit sigmoid and the binary response to the filters to accept the event.')
+
 		r2_threshold_layout = QHBoxLayout()
 		r2_threshold_layout.addWidget(QLabel(''), 50)
 		r2_threshold_layout.addWidget(self.r2_label, 15)
@@ -193,6 +208,12 @@ class ClassifierWidget(QWidget, Styles):
 		self.frame_slider.valueChanged.connect(self.set_frame)
 		self.alpha_slider.valueChanged.connect(self.set_transparency)
 
+	def activate_prereq_cb(self):
+		if self.prereq_event_check.isChecked():
+			self.prereq_event_cb.setEnabled(True)
+		else:
+			self.prereq_event_cb.setEnabled(False)
+
 	def activate_submit_btn(self):
 
 		if self.property_query_le.text()=='':
@@ -204,10 +225,10 @@ class ClassifierWidget(QWidget, Styles):
 
 	def activate_r2(self):
 		if self.irreversible_event_btn.isChecked() and self.time_corr.isChecked():
-			for wg in [self.r2_slider, self.r2_label]:
+			for wg in [self.r2_slider, self.r2_label, self.prereq_event_check]:
 				wg.setEnabled(True)
 		else:
-			for wg in [self.r2_slider, self.r2_label]:
+			for wg in [self.r2_slider, self.r2_label, self.prereq_event_check]:
 				wg.setEnabled(False)				
 
 	def activate_time_corr_options(self):
@@ -416,7 +437,11 @@ class ClassifierWidget(QWidget, Styles):
 			self.df = self.df.drop(list(set(name_map.values()) & set(self.df.columns)), axis=1).rename(columns=name_map)
 			self.df.reset_index(inplace=True, drop=True)
 
-			self.df = interpret_track_classification(self.df, self.class_name_user, irreversible_event=self.irreversible_event_btn.isChecked(), unique_state=self.unique_state_btn.isChecked(), r2_threshold=self.r2_slider.value())
+			pre_event = None
+			if self.prereq_event_check.isChecked() and "t_"+self.prereq_event_cb.currentText() in self.cols:
+				pre_event = self.prereq_event_cb.currentText()
+
+			self.df = interpret_track_classification(self.df, self.class_name_user, irreversible_event=self.irreversible_event_btn.isChecked(), unique_state=self.unique_state_btn.isChecked(), r2_threshold=self.r2_slider.value(), pre_event=pre_event)
 		
 		else:
 			self.group_name_user = 'group_' + self.name_le.text()

@@ -12,7 +12,7 @@ btrack
 tensorflow~=2.15.0
 #tensorflow #<=2.12.1
 #keras==2.15.0
-napari
+napari<0.6.0
 tqdm
 mahotas
 fonticon-materialdesignicons6

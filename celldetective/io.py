@@ -379,6 +379,12 @@ def get_temporal_calibration(experiment):
 
 	return FrameToMin
 
+def get_experiment_metadata(experiment):
+
+	config = get_config(experiment)
+	metadata = ConfigSectionMap(config, "Metadata")
+	return metadata
+
 
 def get_experiment_concentrations(experiment, dtype=str):
 	
@@ -957,6 +963,8 @@ def load_experiment_tables(experiment, population='targets', well_option='*', po
 	cell_types = get_experiment_cell_types(experiment)
 	antibodies = get_experiment_antibodies(experiment)
 	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
+	metadata = get_experiment_metadata(experiment) # None or dict of metadata
+
 	well_labels = _extract_labels_from_config(config, len(wells))
 
 	well_indices, position_indices = interpret_wells_and_positions(experiment, well_option, position_option)
@@ -1011,15 +1019,23 @@ def load_experiment_tables(experiment, population='targets', well_option='*', po
 				df_pos['antibody'] = well_antibody
 				df_pos['cell_type'] = well_cell_type
 				df_pos['pharmaceutical_agent'] = well_pharmaceutical_agent
+				if metadata is not None:
+					keys = list(metadata.keys())
+					for k in keys:
+						df_pos[k] = metadata[k]
 
 				df.append(df_pos)
 				any_table = True
 
-				df_pos_info.append(
-					{'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table,
-					 'stack_path': stack_path,
-					 'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name,
-					 'well_number': well_number, 'well_alias': well_alias})
+				pos_dict = {'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table,
+					 'stack_path': stack_path,'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name,
+					 'well_number': well_number, 'well_alias': well_alias}
+				if metadata is not None:
+					keys = list(metadata.keys())
+					for k in keys:
+						pos_dict.update({k: metadata[k]})
+
+				df_pos_info.append(pos_dict)
 
 				real_pos_index += 1
 

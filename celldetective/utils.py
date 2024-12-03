@@ -1250,7 +1250,10 @@ def ConfigSectionMap(path,section):
 	Config = configparser.ConfigParser()
 	Config.read(path)
 	dict1 = {}
-	options = Config.options(section)
+	try:
+		options = Config.options(section)
+	except:
+		return None
 	for option in options:
 		try:
 			dict1[option] = Config.get(section, option)

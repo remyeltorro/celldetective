@@ -728,6 +728,9 @@ class TableUI(QMainWindow, Styles):
 
 		print("Saving each table in its respective position folder...")
 		for pos,pos_group in self.data.groupby(['position']):
+			invalid_cols = [c for c in list(pos_group.columns) if c.startswith('Unnamed')]
+			if len(invalid_cols)>0:
+				pos_group = pos_group.drop(invalid_cols, axis=1)
 			pos_group.to_csv(pos[0]+os.sep.join(['output', 'tables', f'trajectories_{self.population}.csv']), index=False)
 		print("Done...")
 
@@ -1332,6 +1335,9 @@ class TableUI(QMainWindow, Styles):
 		if file_name:
 			if not file_name.endswith(".csv"):
 				file_name += ".csv"
+			invalid_cols = [c for c in list(self.data.columns) if c.startswith('Unnamed')]
+			if len(invalid_cols)>0:
+				self.data = self.data.drop(invalid_cols, axis=1)	
 			self.data.to_csv(file_name, index=False)
 
 	def test_bool(self, array):

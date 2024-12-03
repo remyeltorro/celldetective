@@ -47,7 +47,6 @@ else:
 
 if not use_gpu:
 	os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-n_threads = int(process_arguments['threads'])
 
 modelname = str(process_arguments['model'])
 

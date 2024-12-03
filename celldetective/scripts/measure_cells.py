@@ -314,6 +314,10 @@ if len(timestep_dataframes)>0:
 		df['ID'] = np.arange(len(df))
 
 	df = df.reset_index(drop=True)
+	
+	invalid_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
+	if len(invalid_cols)>0:
+		df = df.drop(invalid_cols, axis=1)	
 
 	df.to_csv(pos+os.sep.join(["output", "tables", table_name]), index=False)
 	print(f'Measurements successfully written in table {pos+os.sep.join(["output", "tables", table_name])}')

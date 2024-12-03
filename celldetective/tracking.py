@@ -167,6 +167,10 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 
 	df['ID'] = np.arange(len(df)).astype(int)
 
+	invalid_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
+	if len(invalid_cols)>0:
+		df = df.drop(invalid_cols, axis=1)	
+
 	# if view_on_napari:
 	# 	view_on_napari_btrack(data,properties,graph,stack=stack,labels=labels,relabel=True)
 

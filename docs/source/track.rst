@@ -43,7 +43,7 @@ Once the tracking configuration is properly set, click on ``Save``, tick the ``T
 Visualization
 -------------
 
-Once the tracking step is complete, you can view the raw bTrack tracks (before post-processing) by clicking on the eye button in the tracking module (select a single position first). 
+Once the tracking step is complete, you can view the tracks (neglecting the positions not associated with a cell mask) by clicking on the eye button in the tracking module (select a single position first). 
 
 .. figure:: _static/napari-tracks.png
     :align: center
@@ -51,6 +51,24 @@ Once the tracking step is complete, you can view the raw bTrack tracks (before p
     
     **View tracks in napari**
 
+Upon running the function, Napari launches with the following layers:
+
+* ``image``: Displays the raw image stack.
+* ``segmentation``: Shows the labeled masks with cell IDs.
+* ``points``: Highlights key positions for each cell.
+* ``tracks``: Visualizes trajectories across frames.
+
+Modifying Tracks
+----------------
+
+You can interact with the ``segmentation`` layer to modify trajectories. Here's how:
+
+#. **Selecting a Cell**:  Use the pipette tool in the segmentation layer to select a cell's mask value, just before a tracking mistake. Select the move image button. Navigate to the next frame using Napari's timeline slider.
+#. **Reassigning a Track**: in the later frame, double-click on the target cell to change its value to the one selected with the pipette. A confirmation dialog will appear: click Yes to assign the selected track ID to the cell under the cursor. The software will propagate the new track ID to all later frames. Any conflicting track IDs are automatically reassigned to maintain data integrity.
+#. **Visualization Updates**: The tracks layer updates dynamically, reflecting the changes.
+``points`` and ``segmentation`` layers refresh to show the adjustments.
+#. **Exporting Modifications**: Once you’ve completed your edits, save the updated tracks to the dataset. In napari’s right dock, find the ``Export the modified tracks...`` button.
+Click it to: 1) save the updated track data to the original CSV file and 2) apply any configured post-processing options, such as velocity calculations or trajectory cleanup.
 
 
 References

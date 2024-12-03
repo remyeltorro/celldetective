@@ -684,12 +684,14 @@ class DistanceChoice(QWidget):
 		super().__init__()
 		self.parent_window = parent_window
 		self.setWindowTitle("Set distances")
+		self.floatValidator = QDoubleValidator()
 		center_window(self)
 
 		# Create the QComboBox and add some items
 
 		self.dist_label = QLabel('Distance [px]: ')
 		self.dist_le = QLineEdit('10')
+		self.dist_le.setValidator(self.floatValidator)
 
 		self.add_btn = QPushButton("Add")
 		self.add_btn.clicked.connect(self.add_current_feature)
@@ -704,7 +706,7 @@ class DistanceChoice(QWidget):
 		layout.addWidget(self.add_btn)
 
 	def add_current_feature(self):
-		value = self.dist_le.text()
+		value = self.dist_le.text().replace(',','.')
 		values = [value]
 		self.parent_window.list_widget.addItems(values)
 		self.close()

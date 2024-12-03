@@ -174,7 +174,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		self.attr_parent.locate_image()
 		if self.attr_parent.current_stack is not None:
 			self.viewer = CellEdgeVisualizer(
-										  cell_type='effectors',
+										  cell_type=self.reference_population_cb.currentText(),
 										  edge_range=(1,30),
 										  invert=True,
 										  initial_edge=3,

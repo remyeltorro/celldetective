@@ -97,6 +97,18 @@ if os.path.exists(instr_path):
 		post_processing_options = instructions['post_processing_options']
 	else:
 		post_processing_options = None
+
+	btrack_option = True
+	if 'btrack_option' in instructions:
+		btrack_option = instructions['btrack_option']
+	search_range = None
+	if 'search_range' in instructions:
+		search_range = instructions['search_range']
+	memory = None
+	if 'memory' in instructions:
+		memory = instructions['memory']
+
+
 else:
 	print('Tracking instructions could not be located... Using a standard bTrack motion model instead...')
 	btrack_config = interpret_tracking_configuration(None)
@@ -104,7 +116,9 @@ else:
 	mask_channels = None
 	haralick_options = None
 	post_processing_options = None
-
+	btrack_option = True
+	memory = None
+	search_range = None
 if features is None:
 	features = []
 
@@ -146,6 +160,13 @@ log='\n'.join(log_list)
 with open(pos+f'log_{mode}.json', 'a') as f:
 	f.write(f'{datetime.datetime.now()} TRACK \n')
 	f.write(log+"\n")
+
+
+if not btrack_option:
+	features = []
+	channel_names = None
+	haralick_options = None
+
 
 def measure_index(indices):
 	for t in tqdm(indices,desc="frame"):
@@ -203,6 +224,9 @@ trajectories, napari_data = track(None,
 		  			track_kwargs={'step_size': 100}, 
 		  			clean_trajectories_kwargs=post_processing_options, 
 		  			volume=(shape_x, shape_y),
+		  			btrack_option=btrack_option, 
+		  			search_range=search_range,
+		  			memory=memory,
 		  			)
 
 # out trajectory table, create POSITION_X_um, POSITION_Y_um, TIME_min (new ones)

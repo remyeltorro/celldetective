@@ -1,5 +1,7 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QRadioButton, QButtonGroup, QMainWindow, QApplication, QMessageBox, QScrollArea, QComboBox, QFrame, QCheckBox, QFileDialog, QGridLayout, QTextEdit, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QDoubleValidator
+
 from celldetective.gui.gui_utils import center_window, FeatureChoice, ListWidget, QHSeperationLine, FigureCanvas, help_generic
 from superqt import QLabeledDoubleSlider,QLabeledSlider
 from superqt.fonticon import icon
@@ -30,6 +32,8 @@ class ConfigTracking(QMainWindow, Styles):
 		self.setWindowTitle("Configure tracking")
 		self.mode = self.parent_window.mode
 		self.exp_dir = self.parent_window.exp_dir
+		self.floatValidator = QDoubleValidator()
+
 		if self.mode=="targets":
 			self.config_name = os.sep.join(["configs", "btrack_config_targets.json"])
 			self.track_instructions_write_path = self.parent_window.exp_dir + os.sep.join(["configs","tracking_instructions_targets.json"])
@@ -68,9 +72,25 @@ class ConfigTracking(QMainWindow, Styles):
 		main_layout.setContentsMargins(30,30,30,30)
 
 		# First collapsable Frame CONFIG
+
+		self.btrack_option = QRadioButton('bTrack')
+		self.btrack_option.setChecked(True)
+
+		self.trackpy_option = QRadioButton('trackpy')
+		self.tracker_option_group = QButtonGroup()
+		self.tracker_option_group.addButton(self.btrack_option)
+		self.tracker_option_group.addButton(self.trackpy_option)
+
 		self.config_frame = QFrame()
 		self.config_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_config_frame()
+
+		tracker_hbox = QHBoxLayout()
+		tracker_hbox.setContentsMargins(15,15,15,15)
+		tracker_hbox.addWidget(self.btrack_option, 50, alignment=Qt.AlignCenter)
+		tracker_hbox.addWidget(self.trackpy_option, 50, alignment=Qt.AlignCenter)
+		main_layout.addLayout(tracker_hbox)
+
 		main_layout.addWidget(self.config_frame)
 
 		# Second collapsable frame FEATURES
@@ -78,6 +98,12 @@ class ConfigTracking(QMainWindow, Styles):
 		self.features_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.populate_features_frame()
 		main_layout.addWidget(self.features_frame)
+
+		self.config_trackpy_frame = QFrame()
+		self.config_trackpy_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+		self.populate_config_trackpy_frame()
+		main_layout.addWidget(self.config_trackpy_frame)
+		self.config_trackpy_frame.hide()
 
 		# Third collapsable frame POST-PROCESSING
 		self.post_proc_frame = QFrame()
@@ -102,8 +128,26 @@ class ConfigTracking(QMainWindow, Styles):
 		self.setCentralWidget(self.scroll_area)
 		self.show()
 
+		self.btrack_option.toggled.connect(self.show_tracking_options)
+		self.trackpy_option.toggled.connect(self.show_tracking_options)
+
 		QApplication.processEvents()
 		self.adjustScrollArea()
+
+	def show_tracking_options(self):
+
+		if self.btrack_option.isChecked():
+			self.config_frame.show()
+			self.features_frame.show()
+			self.config_trackpy_frame.hide()
+			#self.scroll_area.setMinimumHeight(min(int(930), int(0.9*self.screen_height)))
+			#self.adjustSize()
+		else:
+			self.config_frame.hide()
+			self.features_frame.hide()
+			self.config_trackpy_frame.show()
+			#self.scroll_area.setMinimumHeight(self.minimum_height)
+			#self.adjustSize()
 
 
 	def populate_post_proc_frame(self):
@@ -539,6 +583,29 @@ class ConfigTracking(QMainWindow, Styles):
 		self.collapse_config_btn.clicked.connect(self.collapse_config_advanced)
 		#self.ContentsConfig.hide()
 
+	def populate_config_trackpy_frame(self):
+
+		grid = QGridLayout(self.config_trackpy_frame)
+		panel_title = QLabel(f"CONFIGURATION")
+		panel_title.setStyleSheet("""
+			font-weight: bold;
+			padding: 0px;
+			""")
+
+		grid.addWidget(panel_title, 0, 0, 1, 4, alignment=Qt.AlignCenter)
+
+		self.collapse_config_trackpy_btn = QPushButton()
+		self.collapse_config_trackpy_btn.setIcon(icon(MDI6.chevron_down,color="black"))
+		self.collapse_config_trackpy_btn.setIconSize(QSize(20, 20))
+		self.collapse_config_trackpy_btn.setStyleSheet(self.button_select_all)
+		grid.addWidget(self.collapse_config_trackpy_btn, 0, 0, 1, 4, alignment=Qt.AlignRight)
+		self.generate_config_trackpy_panel_contents()
+		grid.addWidget(self.ContentsConfigTrackpy, 1, 0, 1, 4, alignment=Qt.AlignTop)
+		self.collapse_config_trackpy_btn.clicked.connect(lambda: self.ContentsConfigTrackpy.setHidden(not self.ContentsConfigTrackpy.isHidden()))
+		self.collapse_config_trackpy_btn.clicked.connect(self.collapse_config_trackpy_advanced)
+		#self.ContentsConfig.hide()
+
+
 	def collapse_config_advanced(self):
 
 		"""
@@ -560,6 +627,56 @@ class ConfigTracking(QMainWindow, Styles):
 			self.collapse_config_btn.setIcon(icon(MDI6.chevron_up,color="black"))
 			self.collapse_config_btn.setIconSize(QSize(20, 20))
 			self.scroll_area.setMinimumHeight(min(int(930), int(0.9*self.screen_height)))
+
+	def collapse_config_trackpy_advanced(self):
+
+		"""
+		Switch the chevron icon and adjust the size for the CONFIG frame.
+		"""
+
+
+		post_open = not self.ContentsPostProc.isHidden()
+		is_open = np.array([post_open])
+
+		if self.ContentsConfigTrackpy.isHidden():
+			self.collapse_config_trackpy_btn.setIcon(icon(MDI6.chevron_down,color="black"))
+			self.collapse_config_trackpy_btn.setIconSize(QSize(20, 20))
+			if len(is_open[is_open])==0:
+				self.scroll_area.setMinimumHeight(int(self.minimum_height))
+				self.adjustSize()
+		else:
+			self.collapse_config_trackpy_btn.setIcon(icon(MDI6.chevron_up,color="black"))
+			self.collapse_config_trackpy_btn.setIconSize(QSize(20, 20))
+			self.scroll_area.setMinimumHeight(min(int(930), int(0.9*self.screen_height)))
+
+
+	def generate_config_trackpy_panel_contents(self):
+
+		self.ContentsConfigTrackpy = QFrame()
+		layout = QVBoxLayout(self.ContentsConfigTrackpy)
+		layout.setContentsMargins(0,0,0,0)
+
+		sr_layout = QHBoxLayout()
+		self.search_range_lbl = QLabel("search range [px]: ")
+		self.search_range_le = QLineEdit('30')
+		self.search_range_le.setPlaceholderText('search distance in pixels')
+		self.search_range_le.setValidator(self.floatValidator)
+		sr_layout.addWidget(self.search_range_lbl, 30)
+		sr_layout.addWidget(self.search_range_le, 70)
+		layout.addLayout(sr_layout)
+
+		memory_layout = QHBoxLayout()
+		self.memory_lbl = QLabel("memory [# frames]: ")
+		self.memory_slider = QLabeledSlider()
+		self.memory_slider.setSingleStep(1)
+		self.memory_slider.setTickInterval(1)
+		self.memory_slider.setSingleStep(1)
+		self.memory_slider.setOrientation(1)
+		self.memory_slider.setRange(0,self.parent_window.parent_window.len_movie)
+		self.memory_slider.setValue(0)
+		memory_layout.addWidget(self.memory_lbl, 30)
+		memory_layout.addWidget(self.memory_slider, 70)
+		layout.addLayout(memory_layout)
 
 
 	def generate_config_panel_contents(self):
@@ -741,7 +858,23 @@ class ConfigTracking(QMainWindow, Styles):
 		"""
 
 		print('Writing instructions...')
+		
+		if self.btrack_option.isChecked():
+			btrack_option = True
+		else:
+			btrack_option = False
+
+		# Fetch trackpky params
+		if not btrack_option:
+			search_range = int(self.search_range_le.text().replace(',','.'))
+			memory = self.memory_slider.value()
+		else:
+			search_range = None
+			memory = None	
+
 		tracking_options = {'btrack_config_path': self.config_path}
+		tracking_options.update({'btrack_option': btrack_option, 'search_range': search_range, 'memory': memory})
+
 		if not self.features_ticked:
 			features = None
 			masked_channels = None
@@ -849,6 +982,23 @@ class ConfigTracking(QMainWindow, Styles):
 				else:
 					self.ContentsFeatures.hide()
 					self.uncheck_features()
+
+				btrack_option = True
+				if 'btrack_option' in tracking_instructions:
+					btrack_option = tracking_instructions['btrack_option']
+				if btrack_option:
+					self.btrack_option.click()
+				else:
+					self.trackpy_option.click()
+
+				if 'search_range' in tracking_instructions:
+					search_range = tracking_instructions['search_range']
+					if search_range is not None:
+						self.search_range_le.setText(str(search_range).replace('.',','))				
+				if 'memory' in tracking_instructions:
+					memory = tracking_instructions['memory']
+					if memory is not None:
+						self.memory_slider.setValue(memory)
 
 				# Uncheck channels that are masked
 				mask_channels = tracking_instructions['mask_channels']

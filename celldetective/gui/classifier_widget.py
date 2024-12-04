@@ -95,7 +95,6 @@ class ClassifierWidget(QWidget, Styles):
 		layout.addLayout(slider_alpha_hbox)
 
 
-
 		self.features_cb = [QSearchableComboBox() for i in range(2)]
 		self.log_btns = [QPushButton() for i in range(2)]
 
@@ -129,7 +128,6 @@ class ClassifierWidget(QWidget, Styles):
 		layout.addLayout(hbox_classify)
 
 		self.time_corr = QCheckBox('Time correlated')
-		self.time_corr.toggled.connect(self.activate_time_corr_options)
 		if "TRACK_ID" in self.df.columns:
 			self.time_corr.setEnabled(True)
 		else:
@@ -152,11 +150,6 @@ class ClassifierWidget(QWidget, Styles):
 		self.unique_state_btn = QRadioButton('unique state')
 		time_corr_btn_group = QButtonGroup()
 		self.unique_state_btn.click()
-		self.time_corr_options = [self.irreversible_event_btn, self.unique_state_btn]
-
-		for btn in self.time_corr_options:
-			time_corr_btn_group.addButton(btn)
-			btn.setEnabled(False)
 
 		time_corr_layout = QHBoxLayout()
 		time_corr_layout.addWidget(self.unique_state_btn, 50, alignment=Qt.AlignCenter)
@@ -171,12 +164,6 @@ class ClassifierWidget(QWidget, Styles):
 		self.prereq_event_check.setEnabled(False)
 		self.prereq_event_cb.setEnabled(False)
 
-		prereq_layout = QHBoxLayout()
-		prereq_layout.addWidget(QLabel(''), 50)
-		prereq_layout.addWidget(self.prereq_event_check, 15)
-		prereq_layout.addWidget(self.prereq_event_cb, 35)
-		layout.addLayout(prereq_layout)
-
 		self.r2_slider = QLabeledDoubleSlider()
 		self.r2_slider.setValue(0.75)
 		self.r2_slider.setRange(0,1)
@@ -189,13 +176,25 @@ class ClassifierWidget(QWidget, Styles):
 		r2_threshold_layout.addWidget(QLabel(''), 50)
 		r2_threshold_layout.addWidget(self.r2_label, 15)
 		r2_threshold_layout.addWidget(self.r2_slider, 35)
-		layout.addLayout(r2_threshold_layout)	
+		layout.addLayout(r2_threshold_layout)
 		
+		self.time_corr_options = [self.irreversible_event_btn, self.unique_state_btn, self.prereq_event_check, self.prereq_event_cb]
+		for btn in [self.irreversible_event_btn, self.unique_state_btn]:
+			time_corr_btn_group.addButton(btn)
+			btn.setEnabled(False)
+		self.time_corr.toggled.connect(self.activate_time_corr_options)
+
 		self.irreversible_event_btn.clicked.connect(self.activate_r2)
 		self.unique_state_btn.clicked.connect(self.activate_r2)
 
 		for wg in [self.r2_slider, self.r2_label]:
 			wg.setEnabled(False)
+
+		prereq_layout = QHBoxLayout()
+		prereq_layout.setContentsMargins(30,0,0,0)
+		prereq_layout.addWidget(self.prereq_event_check, 20)
+		prereq_layout.addWidget(self.prereq_event_cb, 80)
+		layout.addLayout(prereq_layout)
 
 		layout.addWidget(QLabel())
 
@@ -225,10 +224,10 @@ class ClassifierWidget(QWidget, Styles):
 
 	def activate_r2(self):
 		if self.irreversible_event_btn.isChecked() and self.time_corr.isChecked():
-			for wg in [self.r2_slider, self.r2_label, self.prereq_event_check]:
+			for wg in [self.r2_slider, self.r2_label]:
 				wg.setEnabled(True)
 		else:
-			for wg in [self.r2_slider, self.r2_label, self.prereq_event_check]:
+			for wg in [self.r2_slider, self.r2_label]:
 				wg.setEnabled(False)				
 
 	def activate_time_corr_options(self):

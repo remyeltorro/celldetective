@@ -508,15 +508,19 @@ class ConfigMeasurements(QMainWindow, Styles):
 									'isotropic_operations': isotropic_operations})
 		spot_detection = None
 		if self.spot_check.isChecked():
+			invert_value = self.invert_value_le.text().replace(',','.')
+			if invert_value=='':
+				invert_value = None
+			else:
+				invert_value = float(invert_value)
 			spot_detection = {'channel': self.spot_channel.currentText(), 'diameter': float(self.diameter_value.text().replace(',','.')),
-							  'threshold': float(self.threshold_value.text().replace(',','.'))}
+							  'threshold': float(self.threshold_value.text().replace(',','.')), 'invert': self.invert_check.isChecked(), 'invert_value': invert_value}
 		measurement_options.update({'spot_detection': spot_detection})
 		if self.clear_previous_btn.isChecked():
 			self.clear_previous = True
 		else:
 			self.clear_previous = False
 		measurement_options.update({'clear_previous': self.clear_previous})
-
 
 
 		print('Measurement instructions: ', measurement_options)
@@ -922,7 +926,16 @@ class ConfigMeasurements(QMainWindow, Styles):
 		self.spot_viewer_btn.setToolTip('Set detection parameters visually.')
 		layout.addWidget(self.spot_viewer_btn, 1, 1, 1, 1, alignment=Qt.AlignRight)
 
-		self.spot_detection_widgets = [self.spot_channel, self.spot_channel_lbl, self.diameter_value, self.diameter_lbl, self.threshold_value, self.threshold_lbl, self.spot_viewer_btn]
+
+		#invert_layout = QHBoxLayout()
+		self.invert_check = QCheckBox('invert')
+		self.invert_value_le = QLineEdit('65535')
+		self.invert_value_le.setValidator(self.onlyFloat)
+		layout.addWidget(self.invert_check, 5, 0)
+		layout.addWidget(self.invert_value_le, 5, 1)
+		#layout.addLayout(invert_layout, 5, 1, 1, 1)
+
+		self.spot_detection_widgets = [self.spot_channel, self.spot_channel_lbl, self.diameter_value, self.diameter_lbl, self.threshold_value, self.threshold_lbl, self.spot_viewer_btn,  self.invert_check, self.invert_value_le]
 		for wg in self.spot_detection_widgets:
 			wg.setEnabled(False)
 
@@ -940,6 +953,13 @@ class ConfigMeasurements(QMainWindow, Styles):
 		if self.test_frame is not None:
 			self.locate_mask()
 			if self.test_mask is not None:
+
+				invert_value = self.invert_value_le.text().replace(',','.')
+				if invert_value != '':
+					invert_value = float(invert_value)
+				else:
+					invert_value = None
+
 				self.spot_visual = SpotDetectionVisualizer(frame_slider=True,
 														   contrast_slider=True,
 														   cell_type=self.mode,
@@ -952,6 +972,8 @@ class ConfigMeasurements(QMainWindow, Styles):
 														   parent_channel_cb=self.spot_channel,
 														   parent_diameter_le=self.diameter_value,
 														   parent_threshold_le=self.threshold_value,
+														   invert = self.invert_check.isChecked(),
+														   invert_value = self.invert_value_le.text().replace(',','.'),
 														   PxToUm = 1,)
 				self.spot_visual.show()
 				#self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,

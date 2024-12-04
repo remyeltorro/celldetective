@@ -626,7 +626,7 @@ class CellEdgeVisualizer(StackVisualizer):
 
 class SpotDetectionVisualizer(StackVisualizer):
 	
-	def __init__(self, parent_channel_cb=None, parent_diameter_le=None, parent_threshold_le=None, cell_type='targets', labels=None, *args, **kwargs):
+	def __init__(self, parent_channel_cb=None, parent_diameter_le=None, parent_threshold_le=None, cell_type='targets', invert=False, invert_value=None, labels=None, *args, **kwargs):
 
 		super().__init__(*args, **kwargs)
 		
@@ -637,6 +637,8 @@ class SpotDetectionVisualizer(StackVisualizer):
 		self.parent_diameter_le = parent_diameter_le
 		self.parent_threshold_le = parent_threshold_le
 		self.spot_sizes = []
+		self.invert = invert
+		self.invert_value = invert_value
 
 		self.floatValidator = QDoubleValidator()
 		self.init_scatter()
@@ -707,7 +709,7 @@ class SpotDetectionVisualizer(StackVisualizer):
 
 		self.reset_detection()
 		self.control_valid_parameters() # set current diam and threshold
-		blobs_filtered = extract_blobs_in_image(self.target_img, self.init_label,threshold=self.thresh, diameter=self.diameter)
+		blobs_filtered = extract_blobs_in_image(self.target_img, self.init_label,threshold=self.thresh, diameter=self.diameter, invert=self.invert, invert_value=self.invert_value)
 		if blobs_filtered is not None:
 			self.spot_positions = np.array([[x,y] for y,x,_ in blobs_filtered])
 			

@@ -341,7 +341,11 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 			for index, channel in enumerate(channels):
 				if channel == spot_detection['channel']:
 					ind = index
-					df_spots = blob_detection(img, label, diameter=spot_detection['diameter'],threshold=spot_detection['threshold'], channel_name=spot_detection['channel'], target_channel=ind)
+					if 'invert' not in spot_detection:
+						spot_detection.update({'invert': False})
+					if 'invert_value' not in spot_detection:
+						spot_detection.update({'invert_value': None})
+					df_spots = blob_detection(img, label, diameter=spot_detection['diameter'],threshold=spot_detection['threshold'], channel_name=spot_detection['channel'], target_channel=ind, invert=spot_detection['invert'], invert_value=spot_detection['invert_value'])
 		
 		if normalisation_list:
 			for norm in normalisation_list:
@@ -919,11 +923,23 @@ def normalise_by_cell(image, labels, distance=5, model='median', operation='subt
 	return normalised_frame
 
 
-def extract_blobs_in_image(image, label, diameter, threshold=0., method="log"):
+def extract_blobs_in_image(image, label, diameter, threshold=0., method="log", invert=False, invert_value=None):
 	
+
 	if np.percentile(image.flatten(),99.9)==0.0:
 		return None
 
+	if invert and invert_value is None:
+		invert_value = 65535
+
+	if invert:
+		image = image.astype(float)
+		image_fill = np.zeros_like(image)
+		image_fill[:,:] = invert_value
+		image = np.subtract(image_fill, image, where=image==image)
+
+
+	print(f"{invert=} {invert_value=}")
 	dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
 
 	masked_image = image.copy()
@@ -944,14 +960,17 @@ def extract_blobs_in_image(image, label, diameter, threshold=0., method="log"):
 	return blobs_filtered
 
 
-def blob_detection(image, label, diameter, threshold=0., channel_name=None, target_channel=0, method="log"):
+def blob_detection(image, label, diameter, threshold=0., channel_name=None, target_channel=0, method="log", invert=False, invert_value=None):
 	
+
+	print(f"{invert=} {invert_value=}")
+
 	image = image[:, :, target_channel].copy()
 	if np.percentile(image.flatten(),99.9)==0.0:
 		return None
 
 	detections = []
-	blobs_filtered = extract_blobs_in_image(image, label, diameter, threshold=threshold)
+	blobs_filtered = extract_blobs_in_image(image, label, diameter, threshold=threshold, invert=invert, invert_value=invert_value)
 
 	for lbl in np.unique(label):
 		if lbl>0:
@@ -1193,6 +1212,129 @@ def interpret_track_classification(df, class_attr, irreversible_event=False, uni
 
 	return df
 
+# def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_recovery=50, pre_event=None):
+
+# 	"""
+# 	Classify irreversible events in a tracked dataset based on the status of cells and transitions.
+
+# 	Parameters
+# 	----------
+# 	df : pandas.DataFrame
+# 		DataFrame containing tracked cell data, including classification and status columns.
+# 	class_attr : str
+# 		Column name for the classification attribute (e.g., 'class') used to update the classification of cell states.
+# 	r2_threshold : float, optional
+# 		R-squared threshold for fitting the model (default is 0.5). Used when estimating the time of transition.
+
+# 	Returns
+# 	-------
+# 	pandas.DataFrame
+# 		DataFrame with updated classifications for irreversible events, with the following outcomes:
+# 		- Cells with all 0s in the status column are classified as 1 (no event).
+# 		- Cells with all 1s are classified as 2 (event already occurred).
+# 		- Cells with a mix of 0s and 1s are classified as 2 (ambiguous, possible transition).
+# 		- For cells classified as 2, the time of the event is estimated using the `estimate_time` function. If successful they are reclassified as 0 (event).
+# 		- The classification for cells still classified as 2 is revisited using a 95th percentile threshold.
+
+# 	Notes
+# 	-----
+# 	- The function assumes that cells are grouped by a unique identifier ('TRACK_ID') and sorted by position or ID.
+# 	- The classification is based on the `stat_col` derived from `class_attr` (status column).
+# 	- Cells with no event (all 0s in the status column) are assigned a class value of 1.
+# 	- Cells with irreversible events (all 1s in the status column) are assigned a class value of 2.
+# 	- Cells with transitions (a mix of 0s and 1s) are classified as 2 and their event times are estimated. When successful they are reclassified as 0.
+# 	- After event classification, the function reclassifies leftover ambiguous cases (class 2) using the `classify_unique_states` function.
+
+# 	Example
+# 	-------
+# 	>>> df = classify_irreversible_events(df, 'class', r2_threshold=0.7)
+# 	"""
+
+# 	df = data.copy()
+# 	cols = list(df.columns)
+
+# 	# Control input
+# 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
+# 	if 'position' in cols:
+# 		sort_cols = ['position', 'TRACK_ID']
+# 	else:
+# 		sort_cols = ['TRACK_ID']
+# 	if pre_event is not None:
+# 		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
+# 		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
+
+# 	stat_col = class_attr.replace('class','status')
+
+# 	if pre_event is not None:
+		
+# 		# Version with pre event; intuition: mask status value before pre-event takes place with NaN
+# 		for tid, track in df.groupby(sort_cols):
+			
+# 			indices = track[class_attr].index
+
+# 			if track['class_'+pre_event].values[0]==1:
+# 				# Pre-event never took place, all NaN
+# 				df.loc[indices, class_attr] = np.nan
+# 				df.loc[indices, stat_col] = np.nan
+# 			else:
+# 				# pre-event took place (if left-censored took place at time -1)
+# 				t_pre_event = track['t_'+pre_event].values[0]
+# 				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
+# 				df.loc[indices_pre, stat_col] = np.nan # set to NaN all statuses before pre-event
+# 				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+
+# 				# The non-NaN part of track (post pre-event)
+# 				track_valid = track.dropna(subset=stat_col, inplace=False)
+# 				status_values = track_valid[stat_col].to_numpy()
+
+# 				if np.all([s==0 for s in status_values]):
+# 					# all negative to condition, event not observed
+# 					df.loc[indices, class_attr] = 1
+# 				elif np.all([s==1 for s in status_values]):
+# 					# all positive, event already observed (left-censored)
+# 					df.loc[indices, class_attr] = 2
+# 				else:
+# 					# ambiguity, possible transition, use `unique_state` technique after
+# 					df.loc[indices, class_attr] = 2
+# 	else:
+# 		for tid,track in df.groupby(sort_cols):
+			
+# 			# Set status to 0.0 before first detection
+# 			t_firstdetection = track['t_firstdetection'].values[0]
+# 			indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
+# 			track.loc[indices_pre_detection,stat_col] = 0.0
+# 			df.loc[indices_pre_detection,stat_col] = 0.0
+
+# 			track_valid = track.dropna(subset=stat_col)
+
+# 			indices = track[class_attr].index
+# 			status_values = track_valid[stat_col].to_numpy()
+
+# 			if np.all([s==0 for s in status_values]):
+# 				# all negative, no event
+# 				df.loc[indices, class_attr] = 1
+
+# 			elif np.all([s==1 for s in status_values]):
+# 				# all positive, event already observed
+# 				df.loc[indices, class_attr] = 2
+# 				#df.loc[indices, class_attr.replace('class','status')] = 2
+# 			else:
+# 				# ambiguity, possible transition
+# 				df.loc[indices, class_attr] = 2
+		
+# 	print("Classes after initial pass: ",df.loc[df['FRAME']==0,class_attr].value_counts())
+
+# 	df.loc[df[class_attr]!=2, class_attr.replace('class', 't')] = -1
+# 	# Try to fit time on class 2 cells (ambiguous)
+# 	df = estimate_time(df, class_attr, model='step_function', class_of_interest=[2], r2_threshold=r2_threshold)
+# 	print("Classes after fit: ", df.loc[df['FRAME']==0,class_attr].value_counts())
+
+# 	# Revisit class 2 cells to classify as neg/pos with percentile tolerance
+# 	df.loc[df[class_attr]==2,:] = classify_unique_states(df.loc[df[class_attr]==2,:].copy(), class_attr, percentile_recovery)
+# 	print("Classes after unique state recovery: ",df.loc[df['FRAME']==0,class_attr].value_counts())
+	
+# 	return df
+
 def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_recovery=50, pre_event=None):
 
 	"""
@@ -1246,62 +1388,41 @@ def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_
 
 	stat_col = class_attr.replace('class','status')
 
-	if pre_event is not None:
-		
-		# Version with pre event; intuition: mask status value before pre-event takes place with NaN
-		for tid, track in df.groupby(sort_cols):
-			
-			indices = track[class_attr].index
+	for tid,track in df.groupby(sort_cols):
 
+		indices = track[class_attr].index
+
+		if pre_event is not None:
 			if track['class_'+pre_event].values[0]==1:
-				# Pre-event never took place, all NaN
 				df.loc[indices, class_attr] = np.nan
 				df.loc[indices, stat_col] = np.nan
+				continue
 			else:
 				# pre-event took place (if left-censored took place at time -1)
 				t_pre_event = track['t_'+pre_event].values[0]
 				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
 				df.loc[indices_pre, stat_col] = np.nan # set to NaN all statuses before pre-event
 				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
-
-				# The non-NaN part of track (post pre-event)
-				track_valid = track.dropna(subset=stat_col, inplace=False)
-				status_values = track_valid[stat_col].to_numpy()
-
-				if np.all([s==0 for s in status_values]):
-					# all negative to condition, event not observed
-					df.loc[indices, class_attr] = 1
-				elif np.all([s==1 for s in status_values]):
-					# all positive, event already observed (left-censored)
-					df.loc[indices, class_attr] = 2
-				else:
-					# ambiguity, possible transition, use `unique_state` technique after
-					df.loc[indices, class_attr] = 2
-	else:
-		for tid,track in df.groupby(sort_cols):
-			
-			# Set status to 0.0 before first detection
+		else:
+			# set state to 0 before first detection
 			t_firstdetection = track['t_firstdetection'].values[0]
 			indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
 			track.loc[indices_pre_detection,stat_col] = 0.0
 			df.loc[indices_pre_detection,stat_col] = 0.0
+		
+		# The non-NaN part of track (post pre-event)
+		track_valid = track.dropna(subset=stat_col, inplace=False)
+		status_values = track_valid[stat_col].to_numpy()
 
-			track_valid = track.dropna(subset=stat_col)
-
-			indices = track[class_attr].index
-			status_values = track_valid[stat_col].to_numpy()
-
-			if np.all([s==0 for s in status_values]):
-				# all negative, no event
-				df.loc[indices, class_attr] = 1
-
-			elif np.all([s==1 for s in status_values]):
-				# all positive, event already observed
-				df.loc[indices, class_attr] = 2
-				#df.loc[indices, class_attr.replace('class','status')] = 2
-			else:
-				# ambiguity, possible transition
-				df.loc[indices, class_attr] = 2
+		if np.all([s==0 for s in status_values]):
+			# all negative to condition, event not observed
+			df.loc[indices, class_attr] = 1
+		elif np.all([s==1 for s in status_values]):
+			# all positive, event already observed (left-censored)
+			df.loc[indices, class_attr] = 2
+		else:
+			# ambiguity, possible transition, use `unique_state` technique after
+			df.loc[indices, class_attr] = 2
 		
 	print("Classes after initial pass: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 
@@ -1315,6 +1436,114 @@ def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_
 	print("Classes after unique state recovery: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 	
 	return df
+
+
+# def classify_unique_states(df, class_attr, percentile=50, pre_event=None):
+
+# 	"""
+# 	Classify unique cell states based on percentile values of a status attribute in a tracked dataset.
+
+# 	Parameters
+# 	----------
+# 	df : pandas.DataFrame
+# 		DataFrame containing tracked cell data, including classification and status columns.
+# 	class_attr : str
+# 		Column name for the classification attribute (e.g., 'class') used to update the classification of cell states.
+# 	percentile : int, optional
+# 		Percentile value used to classify the status attribute within the valid frames (default is median).
+
+# 	Returns
+# 	-------
+# 	pandas.DataFrame
+# 		DataFrame with updated classification for each track and corresponding time (if applicable). 
+# 		The classification is updated based on the calculated percentile:
+# 		- Cells with percentile values that round to 0 (negative to classification) are classified as 1.
+# 		- Cells with percentile values that round to 1 (positive to classification) are classified as 2.
+# 		- If classification is not applicable (NaN), time (`class_attr.replace('class', 't')`) is set to -1.
+
+# 	Notes
+# 	-----
+# 	- The function assumes that cells are grouped by a unique identifier ('TRACK_ID') and sorted by position or ID.
+# 	- The classification is based on the `stat_col` derived from `class_attr` (status column).
+# 	- NaN values in the status column are excluded from the percentile calculation.
+# 	- For each track, the classification is assigned according to the rounded percentile value.
+# 	- Time (`class_attr.replace('class', 't')`) is set to -1 when the cell state is classified.
+
+# 	Example
+# 	-------
+# 	>>> df = classify_unique_states(df, 'class', percentile=75)
+# 	"""
+
+# 	cols = list(df.columns)
+# 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
+# 	if 'position' in cols:
+# 		sort_cols = ['position', 'TRACK_ID']
+# 	else:
+# 		sort_cols = ['TRACK_ID']
+
+# 	if pre_event is not None:
+# 		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
+# 		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
+
+# 	stat_col = class_attr.replace('class','status')
+
+# 	if pre_event is not None:
+
+# 		for tid, track in df.groupby(sort_cols):
+			
+# 			indices = track[class_attr].index
+
+# 			if track['class_'+pre_event].values[0]==1:
+# 				# then pre event not satisfied, class/status is NaN
+# 				df.loc[indices, class_attr] = np.nan
+# 				df.loc[indices, stat_col] = np.nan
+# 				df.loc[indices, stat_col.replace('status_','t_')] = -1
+# 			else:
+# 				# Pre event might happen, set to NaN observations before pre event
+# 				t_pre_event = track['t_'+pre_event].values[0]
+# 				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
+# 				df.loc[indices_pre, stat_col] = np.nan
+# 				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+
+# 				# Post pre-event track
+# 				track_valid = track.dropna(subset=stat_col, inplace=False)
+# 				status_values = track_valid[stat_col].to_numpy()
+
+# 				frames = track_valid['FRAME'].to_numpy() # from t_pre-event to T
+# 				t_first = track['t_firstdetection'].to_numpy()[0]
+# 				perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
+				
+# 				if perc_status==perc_status:
+# 					c = ceil(perc_status)
+# 					if c==0:
+# 						df.loc[indices, class_attr] = 1
+# 						df.loc[indices, class_attr.replace('class','t')] = -1
+# 					elif c==1:
+# 						df.loc[indices, class_attr] = 2
+# 						df.loc[indices, class_attr.replace('class','t')] = -1
+# 	else:
+# 		for tid,track in df.groupby(sort_cols):
+
+# 			track_valid = track.dropna(subset=stat_col)
+# 			indices_valid = track_valid[class_attr].index
+
+# 			indices = track[class_attr].index
+# 			status_values = track_valid[stat_col].to_numpy()
+
+# 			frames = track_valid['FRAME'].to_numpy()
+# 			t_first = track['t_firstdetection'].to_numpy()[0]
+# 			perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
+			
+# 			if perc_status==perc_status:
+# 				c = ceil(perc_status)
+# 				if c==0:
+# 					df.loc[indices, class_attr] = 1
+# 					df.loc[indices, class_attr.replace('class','t')] = -1
+# 				elif c==1:
+# 					df.loc[indices, class_attr] = 2
+# 					df.loc[indices, class_attr.replace('class','t')] = -1
+# 	return df
+
 
 def classify_unique_states(df, class_attr, percentile=50, pre_event=None):
 
@@ -1364,62 +1593,38 @@ def classify_unique_states(df, class_attr, percentile=50, pre_event=None):
 		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
 
 	stat_col = class_attr.replace('class','status')
+	
+	for tid, track in df.groupby(sort_cols):
 
-	if pre_event is not None:
+		indices = track[class_attr].index
 
-		for tid, track in df.groupby(sort_cols):
-			
-			indices = track[class_attr].index
-
+		if pre_event is not None:
 			if track['class_'+pre_event].values[0]==1:
-				# then pre event not satisfied, class/status is NaN
 				df.loc[indices, class_attr] = np.nan
 				df.loc[indices, stat_col] = np.nan
 				df.loc[indices, stat_col.replace('status_','t_')] = -1
+				continue
 			else:
-				# Pre event might happen, set to NaN observations before pre event
 				t_pre_event = track['t_'+pre_event].values[0]
-				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
+				indices_pre = track.loc[track['FRAME']<=t_pre_event, class_attr].index
 				df.loc[indices_pre, stat_col] = np.nan
 				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
 
-				# Post pre-event track
-				track_valid = track.dropna(subset=stat_col, inplace=False)
-				status_values = track_valid[stat_col].to_numpy()
-
-				frames = track_valid['FRAME'].to_numpy() # from t_pre-event to T
-				t_first = track['t_firstdetection'].to_numpy()[0]
-				perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
-				
-				if perc_status==perc_status:
-					c = ceil(perc_status)
-					if c==0:
-						df.loc[indices, class_attr] = 1
-						df.loc[indices, class_attr.replace('class','t')] = -1
-					elif c==1:
-						df.loc[indices, class_attr] = 2
-						df.loc[indices, class_attr.replace('class','t')] = -1
-	else:
-		for tid,track in df.groupby(sort_cols):
-
-			track_valid = track.dropna(subset=stat_col)
-			indices_valid = track_valid[class_attr].index
-
-			indices = track[class_attr].index
-			status_values = track_valid[stat_col].to_numpy()
-
-			frames = track_valid['FRAME'].to_numpy()
-			t_first = track['t_firstdetection'].to_numpy()[0]
-			perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
-			
-			if perc_status==perc_status:
-				c = ceil(perc_status)
-				if c==0:
-					df.loc[indices, class_attr] = 1
-					df.loc[indices, class_attr.replace('class','t')] = -1
-				elif c==1:
-					df.loc[indices, class_attr] = 2
-					df.loc[indices, class_attr.replace('class','t')] = -1
+		# Post pre-event track
+		track_valid = track.dropna(subset=stat_col, inplace=False)
+		status_values = track_valid[stat_col].to_numpy()
+		frames = track_valid['FRAME'].to_numpy()
+		t_first = track['t_firstdetection'].to_numpy()[0]
+		perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
+		
+		if perc_status==perc_status:
+			c = ceil(perc_status)
+			if c==0:
+				df.loc[indices, class_attr] = 1
+				df.loc[indices, class_attr.replace('class','t')] = -1
+			elif c==1:
+				df.loc[indices, class_attr] = 2
+				df.loc[indices, class_attr.replace('class','t')] = -1
 	return df
 
 def classify_cells_from_query(df, status_attr, query):

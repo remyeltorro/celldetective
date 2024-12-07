@@ -127,3 +127,15 @@ def tophat_filter(img, size, connectivity=4, interpolate=True, *kwargs):
 	structure = snd.generate_binary_structure(rank=2, connectivity=connectivity)
 	img = snd.white_tophat(img.astype(float), structure=structure, size=size, *kwargs)
 	return img
+
+def invert_filter(img, value=65535, *kwargs):
+	
+	print(f"{value=}")
+	img = img.astype(float)
+
+	image_fill = np.zeros_like(img)
+	image_fill[:,:] = value
+
+	inverted = np.subtract(image_fill, img, where=img==img)
+	return inverted
+

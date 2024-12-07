@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMessageBox, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
+from PyQt5.QtWidgets import QGridLayout, QApplication, QMessageBox, QFrame, QSizePolicy, QWidget, QLineEdit, QListWidget, QVBoxLayout, QComboBox, \
 	QPushButton, QLabel, QHBoxLayout, QCheckBox, QFileDialog, QToolButton, QMenu, QStylePainter, QStyleOptionComboBox, QStyle
 from PyQt5.QtCore import Qt, QSize, QAbstractTableModel, QEvent, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QStandardItemModel, QPalette
@@ -15,6 +15,125 @@ import celldetective.extra_properties as extra_properties
 from inspect import getmembers, isfunction
 from celldetective.filters import *
 from os import sep
+import json
+
+
+class PreprocessingLayout(QVBoxLayout, Styles):
+
+	"""
+	A widget that allows user to choose preprocessing filters for an image
+	"""
+
+	def __init__(self, parent_window=None, apply_btn_option=True, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		self.parent_window = parent_window
+		self.apply_btn_option = apply_btn_option
+		self.generate_components()
+		self.add_to_layout()
+
+	def add_to_layout(self):
+		
+		self.setContentsMargins(20, 20, 20, 20)
+		
+		button_layout = QHBoxLayout()
+		button_layout.addWidget(self.preprocess_lbl, 85, alignment=Qt.AlignLeft)
+		button_layout.addWidget(self.delete_filter_btn, 5)
+		button_layout.addWidget(self.add_filter_btn, 5)
+		button_layout.addWidget(self.help_prefilter_btn, 5)
+		self.addLayout(button_layout, 25)
+
+		self.addWidget(self.list, 70)
+		if self.apply_btn_option:
+			self.addWidget(self.apply_btn, 5)
+
+	def generate_components(self):
+		
+		self.list = ListWidget(FilterChoice, [])
+
+		self.preprocess_lbl = QLabel('Preprocessing')
+		self.preprocess_lbl.setStyleSheet("font-weight: bold;")
+
+		self.delete_filter_btn = QPushButton()
+		self.delete_filter_btn.setStyleSheet(self.button_select_all)
+		self.delete_filter_btn.setIcon(icon(MDI6.trash_can, color="black"))
+		self.delete_filter_btn.setToolTip("Remove filter")
+		self.delete_filter_btn.setIconSize(QSize(20, 20))
+		self.delete_filter_btn.clicked.connect(self.list.removeSel)
+
+		self.add_filter_btn = QPushButton()
+		self.add_filter_btn.setStyleSheet(self.button_select_all)
+		self.add_filter_btn.setIcon(icon(MDI6.filter_plus, color="black"))
+		self.add_filter_btn.setToolTip("Add filter")
+		self.add_filter_btn.setIconSize(QSize(20, 20))
+		self.add_filter_btn.clicked.connect(self.list.addItem)
+
+		self.help_prefilter_btn = QPushButton()
+		self.help_prefilter_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
+		self.help_prefilter_btn.setIconSize(QSize(20, 20))
+		self.help_prefilter_btn.clicked.connect(self.help_prefilter)
+		self.help_prefilter_btn.setStyleSheet(self.button_select_all)
+		self.help_prefilter_btn.setToolTip("Help.")
+		
+		if self.apply_btn_option:
+			self.apply_btn = QPushButton("Apply")
+			self.apply_btn.setIcon(icon(MDI6.filter_cog_outline, color="white"))
+			self.apply_btn.setIconSize(QSize(20, 20))
+			self.apply_btn.setStyleSheet(self.button_style_sheet)
+			self.apply_btn.clicked.connect(self.parent_window.preprocess_image)
+
+	def help_prefilter(self):
+
+		"""
+		Helper for prefiltering strategy
+		"""
+
+		dict_path = os.sep.join([get_software_location(),'celldetective','gui','help','prefilter-for-segmentation.json'])
+
+		with open(dict_path) as f:
+			d = json.load(f)
+
+		suggestion = help_generic(d)
+		if isinstance(suggestion, str):
+			print(f"{suggestion=}")
+			msgBox = QMessageBox()
+			msgBox.setIcon(QMessageBox.Information)
+			msgBox.setTextFormat(Qt.RichText)
+			msgBox.setText(f"The suggested technique is to {suggestion}.\nSee a tutorial <a href='https://celldetective.readthedocs.io/en/latest/segment.html'>here</a>.")
+			msgBox.setWindowTitle("Info")
+			msgBox.setStandardButtons(QMessageBox.Ok)
+			returnValue = msgBox.exec()
+			if returnValue == QMessageBox.Ok:
+				return None
+
+
+class PreprocessingLayout2(PreprocessingLayout):
+
+	def __init__(self, fraction=75, *args, **kwargs):
+
+		self.fraction = fraction
+		super().__init__(apply_btn_option=False, *args, **kwargs)
+		self.preprocess_lbl.setText('Preprocessing: ')
+		self.preprocess_lbl.setStyleSheet("")
+		self.setContentsMargins(0,0,0,0)
+
+	def add_to_layout(self):
+		
+		main_layout = QHBoxLayout()
+		main_layout.setContentsMargins(0,0,0,0)
+		main_layout.setSpacing(5)
+		main_layout.addWidget(self.preprocess_lbl, self.fraction, alignment=Qt.AlignTop)
+
+		list_grid = QGridLayout()
+		list_grid.addWidget(self.list, 0, 0, 2, 2)
+		list_grid.addWidget(self.add_filter_btn, 0, 2, 1, 1)
+		list_grid.addWidget(self.delete_filter_btn, 1, 2, 1, 1)
+		main_layout.addLayout(list_grid, 100-self.fraction)
+		self.add_filter_btn.setFixedWidth(35)  # Ensure the button width is fixed
+		self.delete_filter_btn.setFixedWidth(35)
+		list_grid.setColumnStretch(2, 0)
+
+		self.addLayout(main_layout)
 
 
 class QCheckableComboBox(QComboBox):
@@ -427,7 +546,7 @@ class QHSeperationLine(QFrame):
 		self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
 
-class FeatureChoice(QWidget):
+class FeatureChoice(QWidget, Styles):
 
 	def __init__(self, parent_window):
 		super().__init__()
@@ -435,7 +554,6 @@ class FeatureChoice(QWidget):
 		self.setWindowTitle("Add feature")
 		# Create the QComboBox and add some items
 		self.combo_box = QComboBox(self)
-		center_window(self)
 
 		standard_measurements = ["area",
 								 "area_bbox",
@@ -465,12 +583,15 @@ class FeatureChoice(QWidget):
 		self.combo_box.addItems(standard_measurements)
 
 		self.add_btn = QPushButton("Add")
+		self.add_btn.setStyleSheet(self.button_style_sheet)
 		self.add_btn.clicked.connect(self.add_current_feature)
 
 		# Create the layout
 		layout = QVBoxLayout(self)
 		layout.addWidget(self.combo_box)
 		layout.addWidget(self.add_btn)
+		center_window(self)
+
 
 	def add_current_feature(self):
 		filtername = self.combo_box.currentText()
@@ -478,7 +599,7 @@ class FeatureChoice(QWidget):
 		self.close()
 
 
-class FilterChoice(QWidget):
+class FilterChoice(QWidget, Styles):
 
 	def __init__(self, parent_window):
 
@@ -499,6 +620,7 @@ class FilterChoice(QWidget):
 			'laplace_filter': None,
 			'abs_filter': None,
 			'ln_filter': None,
+			'invert_filter': {'value': 65535},
 			'subtract_filter': {'value': 1},
 			'dog_filter': {'sigma_low': 0.8, 'sigma_high': 1.6},
 			'log_filter': {'sigma': 2},
@@ -523,16 +645,18 @@ class FilterChoice(QWidget):
 		self.arguments_labels = [QLabel('') for i in range(3)]
 		for i in range(2):
 			hbox = QHBoxLayout()
-			hbox.addWidget(self.arguments_labels[i], 20)
-			hbox.addWidget(self.arguments_le[i], 80)
+			hbox.addWidget(self.arguments_labels[i], 40)
+			hbox.addWidget(self.arguments_le[i], 60)
 			layout.addLayout(hbox)
 
 		self.add_btn = QPushButton("Add")
+		self.add_btn.setStyleSheet(self.button_style_sheet)
 		self.add_btn.clicked.connect(self.add_current_feature)
 		layout.addWidget(self.add_btn)
 
 		self.combo_box.setCurrentIndex(0)
 		self.update_arguments()
+		center_window(self)
 
 	def add_current_feature(self):
 
@@ -787,6 +911,9 @@ class ListWidget(QWidget):
 		self.addItemWindow = self.choiceWidget(self)
 		self.addItemWindow.show()
 
+	def addItemToList(self, item):
+		self.list_widget.addItems([item])
+
 	def getItems(self):
 
 		"""
@@ -814,6 +941,9 @@ class ListWidget(QWidget):
 				items.append(self.dtype(self.list_widget.item(x).text()))
 		return items
 
+	def clear(self):
+		self.items = []
+		self.list_widget.clear()
 
 	def removeSel(self):
 		

@@ -27,8 +27,9 @@ from pathlib import Path
 
 from celldetective.gui.viewers import CellEdgeVisualizer, SpotDetectionVisualizer
 from celldetective.gui.layouts import ProtocolDesignerLayout, BackgroundFitCorrectionLayout, LocalCorrectionLayout
-from celldetective.gui.gui_utils import ThresholdLineEdit
+from celldetective.gui.gui_utils import ThresholdLineEdit, PreprocessingLayout2
 from celldetective.gui import Styles
+
 
 class ConfigMeasurements(QMainWindow, Styles):
 	"""
@@ -477,6 +478,8 @@ class ConfigMeasurements(QMainWindow, Styles):
 		Write the selected options in a json file for later reading by the software.
 		"""
 
+		print(f"{self.spot_preprocessing.list.items=}")
+
 		print('Writing instructions...')
 		measurement_options = {}
 		background_correction = self.protocol_layout.protocols
@@ -508,13 +511,11 @@ class ConfigMeasurements(QMainWindow, Styles):
 									'isotropic_operations': isotropic_operations})
 		spot_detection = None
 		if self.spot_check.isChecked():
-			invert_value = self.invert_value_le.text().replace(',','.')
-			if invert_value=='':
-				invert_value = None
-			else:
-				invert_value = float(invert_value)
+			image_preprocessing = self.spot_preprocessing.list.items
+			if image_preprocessing==[]:
+				image_preprocessing = None
 			spot_detection = {'channel': self.spot_channel.currentText(), 'diameter': float(self.diameter_value.text().replace(',','.')),
-							  'threshold': float(self.threshold_value.text().replace(',','.')), 'invert': self.invert_check.isChecked(), 'invert_value': invert_value}
+							  'threshold': float(self.threshold_value.text().replace(',','.')), 'image_preprocessing': image_preprocessing}
 		measurement_options.update({'spot_detection': spot_detection})
 		if self.clear_previous_btn.isChecked():
 			self.clear_previous = True
@@ -593,7 +594,13 @@ class ConfigMeasurements(QMainWindow, Styles):
 							self.spot_channel.setCurrentText(idx)
 						self.diameter_value.setText(str(spot_detection['diameter']))
 						self.threshold_value.setText(str(spot_detection['threshold']))
-
+						if 'image_preprocessing' in spot_detection:
+							items = spot_detection['image_preprocessing']
+							if items is not None:
+								items_for_list = [a[0] for a in items]
+								for it in items_for_list:
+									self.spot_preprocessing.list.addItemToList(it)
+								self.spot_preprocessing.list.items = items
 
 				if 'border_distances' in measurement_instructions:
 					border_distances = measurement_instructions['border_distances']
@@ -890,52 +897,81 @@ class ConfigMeasurements(QMainWindow, Styles):
 
 	def populate_spot_detection(self):
 
-		layout = QGridLayout(self.spot_detection_frame)
+		layout = QVBoxLayout(self.spot_detection_frame)
+
 		self.spot_detection_lbl = QLabel("SPOT DETECTION")
 		self.spot_detection_lbl.setStyleSheet("""font-weight: bold;padding: 0px;""")
-		layout.addWidget(self.spot_detection_lbl, 0, 0, 1, 2, alignment=Qt.AlignCenter)
-		self.spot_check= QCheckBox('Perform spot detection')
+		layout.addWidget(self.spot_detection_lbl, alignment=Qt.AlignCenter)
+
+		perform_hbox = QHBoxLayout()
+		self.spot_check = QCheckBox('Perform spot detection')
 		self.spot_check.toggled.connect(self.enable_spot_detection)
-		layout.addWidget(self.spot_check, 1, 0)
-		self.spot_channel_lbl = QLabel("Choose channel for spot detection: ")
+		perform_hbox.addWidget(self.spot_check, 95)
+		
+		self.spot_viewer_btn = QPushButton()
+		self.spot_viewer_btn.clicked.connect(self.spot_preview)
+		self.spot_viewer_btn.setIcon(icon(MDI6.image_check, color="k"))
+		self.spot_viewer_btn.setStyleSheet(self.button_select_all)
+		self.spot_viewer_btn.setToolTip('Set detection parameters visually.')
+		perform_hbox.addWidget(self.spot_viewer_btn, 5)
+		layout.addLayout(perform_hbox)
+
+		channel_hbox = QHBoxLayout()
+		self.spot_channel_lbl = QLabel("Channel: ")
 		self.spot_channel = QComboBox()
 		self.spot_channel.addItems(self.channel_names)
-		layout.addWidget(self.spot_channel_lbl, 2, 0)
-		layout.addWidget(self.spot_channel, 2, 1)
+		channel_hbox.addWidget(self.spot_channel_lbl, 30)
+		channel_hbox.addWidget(self.spot_channel, 70)
+		layout.addLayout(channel_hbox)
+
+		self.spot_preprocessing = PreprocessingLayout2(fraction=30, parent_window=self)
+		layout.addLayout(self.spot_preprocessing)
+
+		# continue switching to VBox + HBox down
+		diam_hbox = QHBoxLayout()
 		self.diameter_lbl = QLabel('Spot diameter: ')
 		self.diameter_value = QLineEdit()
 		self.diameter_value.setValidator(self.onlyFloat)
 		self.diameter_value.setText('7')
 		self.diameter_value.textChanged.connect(self.enable_spot_preview)
 
-		layout.addWidget(self.diameter_lbl, 3, 0)
-		layout.addWidget(self.diameter_value, 3, 1)
+		diam_hbox.addWidget(self.diameter_lbl,30)
+		diam_hbox.addWidget(self.diameter_value, 70)
+		layout.addLayout(diam_hbox)
+
+		thresh_hbox = QHBoxLayout()
 		self.threshold_lbl = QLabel('Spot threshold: ')
 		self.threshold_value = QLineEdit()
 		self.threshold_value.setValidator(self.onlyFloat)
 		self.threshold_value.setText('0')
 		self.threshold_value.textChanged.connect(self.enable_spot_preview)
 
-		layout.addWidget(self.threshold_lbl, 4, 0)
-		layout.addWidget(self.threshold_value, 4, 1)
+		thresh_hbox.addWidget(self.threshold_lbl, 30)
+		thresh_hbox.addWidget(self.threshold_value, 70)
+		layout.addLayout(thresh_hbox)
 
-		self.spot_viewer_btn = QPushButton()
-		self.spot_viewer_btn.clicked.connect(self.spot_preview)
-		self.spot_viewer_btn.setIcon(icon(MDI6.image_check, color="k"))
-		self.spot_viewer_btn.setStyleSheet(self.button_select_all)
-		self.spot_viewer_btn.setToolTip('Set detection parameters visually.')
-		layout.addWidget(self.spot_viewer_btn, 1, 1, 1, 1, alignment=Qt.AlignRight)
+		# #invert_layout = QHBoxLayout()
+		# self.invert_check = QCheckBox('invert')
+		# self.invert_value_le = QLineEdit('65535')
+		# self.invert_value_le.setValidator(self.onlyFloat)
+		# layout.addWidget(self.invert_check, 6, 0)
+		# layout.addWidget(self.invert_value_le, 6, 1)
+		# #layout.addLayout(invert_layout, 5, 1, 1, 1)
 
-
-		#invert_layout = QHBoxLayout()
-		self.invert_check = QCheckBox('invert')
-		self.invert_value_le = QLineEdit('65535')
-		self.invert_value_le.setValidator(self.onlyFloat)
-		layout.addWidget(self.invert_check, 5, 0)
-		layout.addWidget(self.invert_value_le, 5, 1)
-		#layout.addLayout(invert_layout, 5, 1, 1, 1)
-
-		self.spot_detection_widgets = [self.spot_channel, self.spot_channel_lbl, self.diameter_value, self.diameter_lbl, self.threshold_value, self.threshold_lbl, self.spot_viewer_btn,  self.invert_check, self.invert_value_le]
+		self.spot_detection_widgets = [self.spot_channel, 
+									   self.spot_channel_lbl,
+									   self.diameter_value,
+									   self.diameter_lbl, 
+									   self.threshold_value,
+									   self.threshold_lbl,
+									   self.spot_viewer_btn,  
+									   #self.invert_check, 
+									   #self.invert_value_le, 
+									   self.spot_preprocessing.list, 
+									   self.spot_preprocessing.add_filter_btn, 
+									   self.spot_preprocessing.delete_filter_btn, 
+									   self.spot_preprocessing.preprocess_lbl
+									  ]
 		for wg in self.spot_detection_widgets:
 			wg.setEnabled(False)
 
@@ -954,11 +990,11 @@ class ConfigMeasurements(QMainWindow, Styles):
 			self.locate_mask()
 			if self.test_mask is not None:
 
-				invert_value = self.invert_value_le.text().replace(',','.')
-				if invert_value != '':
-					invert_value = float(invert_value)
-				else:
-					invert_value = None
+				# invert_value = self.invert_value_le.text().replace(',','.')
+				# if invert_value != '':
+				# 	invert_value = float(invert_value)
+				# else:
+				# 	invert_value = None
 
 				self.spot_visual = SpotDetectionVisualizer(frame_slider=True,
 														   contrast_slider=True,
@@ -972,8 +1008,10 @@ class ConfigMeasurements(QMainWindow, Styles):
 														   parent_channel_cb=self.spot_channel,
 														   parent_diameter_le=self.diameter_value,
 														   parent_threshold_le=self.threshold_value,
-														   invert = self.invert_check.isChecked(),
-														   invert_value = self.invert_value_le.text().replace(',','.'),
+														   parent_preprocessing_list=self.spot_preprocessing.list,
+														   #parent_invert_check=self.invert_check,
+														   #invert = self.invert_check.isChecked(),
+														   #invert_value = self.invert_value_le.text().replace(',','.'),
 														   PxToUm = 1,)
 				self.spot_visual.show()
 				#self.spot_visual = ThresholdSpot(current_channel=self.spot_channel.currentIndex(), img=self.test_frame,

@@ -25,6 +25,8 @@ from celldetective.extra_properties import *
 from inspect import getmembers, isfunction
 from skimage.morphology import disk
 
+from celldetective.segmentation import filter_image
+
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
 def measure(stack=None, labels=None, trajectories=None, channel_names=None,
@@ -341,11 +343,9 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 			for index, channel in enumerate(channels):
 				if channel == spot_detection['channel']:
 					ind = index
-					if 'invert' not in spot_detection:
-						spot_detection.update({'invert': False})
-					if 'invert_value' not in spot_detection:
-						spot_detection.update({'invert_value': None})
-					df_spots = blob_detection(img, label, diameter=spot_detection['diameter'],threshold=spot_detection['threshold'], channel_name=spot_detection['channel'], target_channel=ind, invert=spot_detection['invert'], invert_value=spot_detection['invert_value'])
+					if "image_preprocessing" not in spot_detection:
+						spot_detection.update({'image_preprocessing': None})
+					df_spots = blob_detection(img, label, diameter=spot_detection['diameter'],threshold=spot_detection['threshold'], channel_name=spot_detection['channel'], target_channel=ind, image_preprocessing=spot_detection['image_preprocessing'])
 		
 		if normalisation_list:
 			for norm in normalisation_list:
@@ -923,24 +923,15 @@ def normalise_by_cell(image, labels, distance=5, model='median', operation='subt
 	return normalised_frame
 
 
-def extract_blobs_in_image(image, label, diameter, threshold=0., method="log", invert=False, invert_value=None):
+def extract_blobs_in_image(image, label, diameter, threshold=0., method="log", image_preprocessing=None):
 	
-
 	if np.percentile(image.flatten(),99.9)==0.0:
 		return None
 
-	if invert and invert_value is None:
-		invert_value = 65535
+	if isinstance(image_preprocessing, (list, np.ndarray)):
+		image = filter_image(image.copy(),filters=image_preprocessing) # apply prefiltering to images before spot detection
 
-	if invert:
-		image = image.astype(float)
-		image_fill = np.zeros_like(image)
-		image_fill[:,:] = invert_value
-		image = np.subtract(image_fill, image, where=image==image)
-
-
-	print(f"{invert=} {invert_value=}")
-	dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
+	dilated_image = ndimage.grey_dilation(label, footprint=disk(int(1.2*diameter))) # dilation larger than spot diameter to be safe
 
 	masked_image = image.copy()
 	masked_image[np.where((dilated_image == 0)|(image!=image))] = 0
@@ -949,7 +940,8 @@ def extract_blobs_in_image(image, label, diameter, threshold=0., method="log", i
 	if method=="dog":
 		blobs = blob_dog(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)
 	elif method=="log":
-		blobs = blob_log(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)		
+		blobs = blob_log(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)
+
 	# Exclude spots outside of cell masks
 	mask = np.array([label[int(y), int(x)] != 0 for y, x, _ in blobs])
 	if np.any(mask):
@@ -960,17 +952,15 @@ def extract_blobs_in_image(image, label, diameter, threshold=0., method="log", i
 	return blobs_filtered
 
 
-def blob_detection(image, label, diameter, threshold=0., channel_name=None, target_channel=0, method="log", invert=False, invert_value=None):
+def blob_detection(image, label, diameter, threshold=0., channel_name=None, target_channel=0, method="log", image_preprocessing=None):
 	
-
-	print(f"{invert=} {invert_value=}")
 
 	image = image[:, :, target_channel].copy()
 	if np.percentile(image.flatten(),99.9)==0.0:
 		return None
 
 	detections = []
-	blobs_filtered = extract_blobs_in_image(image, label, diameter, threshold=threshold, invert=invert, invert_value=invert_value)
+	blobs_filtered = extract_blobs_in_image(image, label, diameter, method=method, threshold=threshold, image_preprocessing=image_preprocessing)
 
 	for lbl in np.unique(label):
 		if lbl>0:
@@ -994,69 +984,6 @@ def blob_detection(image, label, diameter, threshold=0., channel_name=None, targ
 	detections = pd.DataFrame(detections)
 
 	return detections
-
-
-# def blob_detectionv0(image, label, threshold, diameter):
-# 	"""
-# 	Perform blob detection on an image based on labeled regions.
-
-# 	Parameters:
-# 	- image (numpy.ndarray): The input image data.
-# 	- label (numpy.ndarray): An array specifying labeled regions in the image.
-# 	- threshold (float): The threshold value for blob detection.
-# 	- diameter (float): The expected diameter of blobs.
-
-# 	Returns:
-# 	- dict: A dictionary containing information about detected blobs.
-
-# 	This function performs blob detection on an image based on labeled regions. It iterates over each labeled region
-# 	and detects blobs within the region using the Difference of Gaussians (DoG) method. Detected blobs are filtered
-# 	based on the specified threshold and expected diameter. The function returns a dictionary containing the number of
-# 	detected blobs and their mean intensity for each labeled region.
-
-# 	Example:
-# 	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-# 	>>> label = np.array([[0, 1, 1], [2, 2, 0], [3, 3, 0]])
-# 	>>> threshold = 0.1
-# 	>>> diameter = 5.0
-# 	>>> result = blob_detection(image, label, threshold, diameter)
-# 	>>> print(result)
-# 	{1: [1, 4.0], 2: [0, nan], 3: [0, nan]}
-
-# 	Note:
-# 	- Blobs are detected using the Difference of Gaussians (DoG) method.
-# 	- Detected blobs are filtered based on the specified threshold and expected diameter.
-# 	- The returned dictionary contains information about the number of detected blobs and their mean intensity
-# 	  for each labeled region.
-# 	"""
-# 	blob_labels = {}
-# 	dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
-# 	for mask_index in np.unique(label):
-# 		if mask_index == 0:
-# 			continue
-# 		removed_background = image.copy()
-# 		one_mask = label.copy()
-# 		one_mask[np.where(label != mask_index)] = 0
-# 		dilated_copy = dilated_image.copy()
-# 		dilated_copy[np.where(dilated_image != mask_index)] = 0
-# 		removed_background[np.where(dilated_copy == 0)] = 0
-# 		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
-# 		max_sigma = math.sqrt(2) * min_sigma
-# 		blobs = blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
-# 										 max_sigma=max_sigma)
-
-# 		mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])
-# 		if not np.any(mask):
-# 			continue
-# 		blobs_filtered = blobs[mask]
-# 		binary_blobs = np.zeros_like(label)
-# 		for blob in blobs_filtered:
-# 			y, x, r = blob
-# 			rr, cc = dsk((y, x), r, shape=binary_blobs.shape)
-# 			binary_blobs[rr, cc] = 1
-# 		spot_intensity = regionprops_table(binary_blobs, removed_background, ['intensity_mean'])
-# 		blob_labels[mask_index] = [blobs_filtered.shape[0], spot_intensity['intensity_mean'][0]]
-# 	return blob_labels
 
 ### Classification ####
 

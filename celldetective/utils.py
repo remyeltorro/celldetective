@@ -424,7 +424,7 @@ def estimate_unreliable_edge(activation_protocol=[['gauss',2],['std',4]]):
 	else:
 		edge=0
 		for fct in activation_protocol:
-			if isinstance(fct[1],(int,np.int_)):
+			if isinstance(fct[1],(int,np.int_)) and not fct[0]=='invert':
 				edge+=fct[1]
 		return edge
 

@@ -11,11 +11,9 @@ import os
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 from glob import glob
-import pandas as pd
 from celldetective.gui import Styles
 from matplotlib import colormaps
 from celldetective.events import compute_survival
-from natsort import natsorted
 from celldetective.relative_measurements import expand_pair_table
 import matplotlib.cm
 from celldetective.neighborhood import extract_neighborhood_in_pair_table

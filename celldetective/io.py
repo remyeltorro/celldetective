@@ -25,7 +25,7 @@ from magicgui import magicgui
 from pathlib import Path, PurePath
 from shutil import copyfile, rmtree
 
-from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file, interpolate_nan
+from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
 from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 
 from stardist import fill_label_holes

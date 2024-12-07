@@ -642,7 +642,10 @@ class SpotDetectionVisualizer(StackVisualizer):
 		self.spot_sizes = []
 		self.floatValidator = QDoubleValidator()
 		self.init_scatter()
-		self.generate_detection_channel()
+		
+		self.generate_detection_channel()		
+		self.detection_channel = self.detection_channel_cb.currentIndex()
+
 		self.generate_spot_detection_params()
 		self.generate_add_measurement_btn()
 		self.load_labels()
@@ -709,7 +712,8 @@ class SpotDetectionVisualizer(StackVisualizer):
 
 		self.reset_detection()
 		self.control_valid_parameters() # set current diam and threshold
-		self.set_detection_channel_index(self.detection_channel_cb.currentIndex())
+		#self.change_frame(self.frame_slider.value())
+		#self.set_detection_channel_index(self.detection_channel_cb.currentIndex())
 
 		image_preprocessing = self.preprocessing.list.items
 		if image_preprocessing==[]:
@@ -813,12 +817,11 @@ class SpotDetectionVisualizer(StackVisualizer):
 
 		self.detection_channel = value
 		if self.mode == 'direct':
-			self.last_frame = self.stack[-1,:,:,self.detection_channel]
+			self.target_img = self.stack[-1,:,:,self.detection_channel]
 		elif self.mode == 'virtual':
-			self.target_img = load_frames(self.img_num_per_channel[self.detection_channel, self.stack_length-1], 
-										  self.stack_path,
-										  normalize_input=False).astype(float)[:,:,0]
-			print(f"{self.target_img.shape=} {self.img_num_per_channel[self.detection_channel, self.stack_length-1]=}")
+			self.target_img = load_frames(self.img_num_per_channel[self.detection_channel, self.frame_slider.value()], 
+										  self.stack_path,normalize_input=False).astype(float)[:,:,0]
+			print(f"{self.target_img.shape=} {self.img_num_per_channel[self.detection_channel, self.frame_slider.value()]=}")
 
 	def generate_spot_detection_params(self):
 

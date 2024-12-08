@@ -130,7 +130,6 @@ def tophat_filter(img, size, connectivity=4, interpolate=True, *kwargs):
 
 def invert_filter(img, value=65535, *kwargs):
 	
-	print(f"{value=}")
 	img = img.astype(float)
 
 	image_fill = np.zeros_like(img)

@@ -702,8 +702,7 @@ class SpotDetectionVisualizer(StackVisualizer):
 		if self.mode=='virtual':
 			self.init_label = imread(self.mask_paths[value])
 			self.target_img = load_frames(self.img_num_per_channel[self.detection_channel, value], 
-								self.stack_path,
-								normalize_input=False).astype(float)[:,:,0]
+								self.stack_path,normalize_input=False).astype(float)[:,:,0]
 		elif self.mode=='direct':
 			self.init_label = self.labels[value,:,:]
 			self.target_img = self.stack[value,:,:,self.detection_channel].copy()
@@ -821,7 +820,6 @@ class SpotDetectionVisualizer(StackVisualizer):
 		elif self.mode == 'virtual':
 			self.target_img = load_frames(self.img_num_per_channel[self.detection_channel, self.frame_slider.value()], 
 										  self.stack_path,normalize_input=False).astype(float)[:,:,0]
-			print(f"{self.target_img.shape=} {self.img_num_per_channel[self.detection_channel, self.frame_slider.value()]=}")
 
 	def generate_spot_detection_params(self):
 

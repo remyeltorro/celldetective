@@ -7,7 +7,7 @@ from celldetective.gui import Styles
 from celldetective.gui.gui_utils import center_window
 from superqt import QLabeledDoubleRangeSlider, QSearchableComboBox
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
-from celldetective.io import auto_load_number_of_frames, load_frames
+from celldetective.io import auto_load_number_of_frames, load_frames, get_experiment_metadata
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
 import json
 import numpy as np
@@ -66,7 +66,10 @@ class SignalAnnotator2(QMainWindow,Styles):
 					 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name',
 					 'index', 'relxy', 'tc', 'nk', 'concentration', 'antibody', 'cell_type', 'pharmaceutical_agent',
 					 'reference_population', 'neighbor_population']
-
+		meta = get_experiment_metadata(self.exp_dir)
+		if meta is not None:
+			keys = list(meta.keys())
+			self.cols_to_remove.extend(keys)		
 
 		# Read instructions from target block for now...
 		self.mode = "neighborhood"

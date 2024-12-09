@@ -211,7 +211,15 @@ def collect_experiment_metadata(pos_path=None, well_path=None):
 	antibodies = get_experiment_antibodies(experiment)
 	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
 	
-	return {"pos_path": pos_path, "position": pos_path, "pos_name": pos_name, "well_path": well_path, "well_name": well_name, "well_nbr": well_nbr, "experiment": experiment, "antibody": antibodies[idx], "concentration": concentrations[idx], "cell_type": cell_types[idx], "pharmaceutical_agent": pharmaceutical_agents[idx]}
+	dico = {"pos_path": pos_path, "position": pos_path, "pos_name": pos_name, "well_path": well_path, "well_name": well_name, "well_nbr": well_nbr, "experiment": experiment, "antibody": antibodies[idx], "concentration": concentrations[idx], "cell_type": cell_types[idx], "pharmaceutical_agent": pharmaceutical_agents[idx]}
+
+	meta = get_experiment_metadata(experiment) # None or dict of metadata
+	if meta is not None:
+		keys = list(meta.keys())
+		for k in keys:
+			dico.update({k: meta[k]})
+	
+	return dico
 
 
 def get_experiment_wells(experiment):
@@ -964,7 +972,6 @@ def load_experiment_tables(experiment, population='targets', well_option='*', po
 	antibodies = get_experiment_antibodies(experiment)
 	pharmaceutical_agents = get_experiment_pharmaceutical_agents(experiment)
 	metadata = get_experiment_metadata(experiment) # None or dict of metadata
-
 	well_labels = _extract_labels_from_config(config, len(wells))
 
 	well_indices, position_indices = interpret_wells_and_positions(experiment, well_option, position_option)
@@ -1030,10 +1037,10 @@ def load_experiment_tables(experiment, population='targets', well_option='*', po
 				pos_dict = {'pos_path': pos_path, 'pos_index': real_pos_index, 'pos_name': pos_name, 'table_path': table,
 					 'stack_path': stack_path,'well_path': well_path, 'well_index': real_well_index, 'well_name': well_name,
 					 'well_number': well_number, 'well_alias': well_alias}
-				if metadata is not None:
-					keys = list(metadata.keys())
-					for k in keys:
-						pos_dict.update({k: metadata[k]})
+				# if metadata is not None:
+				# 	keys = list(metadata.keys())
+				# 	for k in keys:
+				# 		pos_dict.update({k: metadata[k]})
 
 				df_pos_info.append(pos_dict)
 

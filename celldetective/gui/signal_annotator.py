@@ -7,7 +7,7 @@ from celldetective.gui.gui_utils import center_window, color_from_state
 from superqt import QLabeledDoubleSlider, QLabeledDoubleRangeSlider, QSearchableComboBox
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
 from celldetective.io import auto_load_number_of_frames, load_frames, \
-	load_napari_data
+	load_napari_data, get_experiment_metadata
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class, ExportPlotBtn
 import json
 import numpy as np
@@ -781,6 +781,11 @@ class SignalAnnotator(QMainWindow, Styles):
 							  'state', 'generation', 'root', 'parent', 'class_id', 'class', 't0', 'POSITION_X',
 							  'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name', 'index',
 							  'concentration', 'cell_type', 'antibody', 'pharmaceutical_agent'] + self.class_cols
+			meta = get_experiment_metadata(self.exp_dir)
+			if meta is not None:
+				keys = list(meta.keys())
+				cols_to_remove.extend(keys)
+
 			cols = np.array(list(self.df_tracks.columns))
 			time_cols = np.array([c.startswith('t_') for c in cols])
 			time_cols = list(cols[time_cols])

@@ -339,8 +339,6 @@ class ControlPanel(QMainWindow, Styles):
 		self.pharmaceutical_agents = get_experiment_pharmaceutical_agents(self.exp_dir)
 
 		self.metadata = ConfigSectionMap(self.exp_config,"Metadata")
-		if self.metadata is not None:
-			print(f"{list(self.metadata.keys())=}")
 		print('Experiment configuration successfully read...')
 
 	def closeEvent(self, event):

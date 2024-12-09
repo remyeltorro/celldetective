@@ -1188,12 +1188,12 @@ def classify_transient_events(data, class_attr, pre_event=None):
 
 		peaks, _ = find_peaks(status_safe)
 		widths, _, left, right = peak_widths(status_safe, peaks, rel_height=1)
-		minimum_weight = 3
+		minimum_weight = 0
 
 		if len(peaks)>0:
 			idx = np.argmax(widths)
 			peak = peaks[idx]; width = widths[idx]; 
-			if width > minimum_weight:
+			if width >= minimum_weight:
 				left = left[idx]; right = right[idx];
 				left = timeline_safe[int(left)]; right = timeline_safe[int(right)];
 				

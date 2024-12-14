@@ -400,7 +400,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		
 		status_options = [self.reference_population_status_cb.currentText(), self.neighbor_population_status_cb.currentText()]
 		for k in range(2):
-			if status_options[k]=='--':
+			if status_options[k]=='--' or status_options[k]=='':
 				status_options[k] = None
 		if pop[0]!=pop[1]:
 			mode = 'two-pop'

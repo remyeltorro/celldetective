@@ -205,14 +205,14 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		self.cell_events_hbox = QHBoxLayout()
 		self.cell_events_hbox.setContentsMargins(0,0,0,0)
-		self.cell_events_hbox.addWidget(QLabel('reference event: '), 25)
+		self.cell_events_hbox.addWidget(QLabel('Event: '), 25)
 		self.reference_event_choice_cb = QComboBox()
 		self.cell_events_hbox.addWidget(self.reference_event_choice_cb, 75)
 		
 		#if 'self' not in self.neighborhood_choice_cb.currentText():
 		self.neigh_cell_events_hbox = QHBoxLayout()
 		self.neigh_cell_events_hbox.setContentsMargins(0,0,0,0)
-		self.neigh_lab=QLabel('neighbor event: ')
+		self.neigh_lab=QLabel('Event: ')
 		self.neigh_cell_events_hbox.addWidget(self.neigh_lab, 25)
 		self.neighbor_event_choice_cb = QComboBox()
 		self.neigh_cell_events_hbox.addWidget(self.neighbor_event_choice_cb, 75)
@@ -233,7 +233,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		neighbor_layout.addLayout(self.neigh_cell_events_hbox)
 
 		self.cell_info_hbox.addLayout(reference_layout, 33)
-		self.cell_info_hbox.addWidget(self.pair_info, 33, alignment=Qt.AlignCenter)
+		self.cell_info_hbox.addWidget(self.pair_info, 33)
 		self.cell_info_hbox.addLayout(neighbor_layout, 33)
 
 		self.left_panel.addLayout(self.cell_info_hbox)
@@ -2378,41 +2378,41 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		df_reference = self.dataframes[self.reference_population]
 		if self.reference_track_of_interest is not None:
-			reference_cell_selected = f"reference cell: {self.reference_track_of_interest}\n"
-			reference_cell_population = f"population: {self.reference_population}\n"
+			reference_cell_selected = f"Ref #{self.reference_track_of_interest}\n"
+			reference_cell_population = f"Pop: {self.reference_population}\n"
 			#reference_cell_class = f"class: {df_reference[df_reference['TRACK_ID']==self.reference_track_of_interest, self.reference_event_choice_cb.currentText()].values[0]}\n"
 			#reference_cell_time = f"time of interest: {df_reference[df_reference['TRACK_ID']==self.reference_track_of_interest, ''].values[0]}\n"
 			self.reference_cell_info.setText(reference_cell_selected+reference_cell_population)
 		else:
-			reference_cell_selected = f"reference cell: None\n"
-			reference_cell_population = f"population: {self.reference_population}\n"
+			reference_cell_selected = f"Ref: None\n"
+			reference_cell_population = f"Pop: {self.reference_population}\n"
 			self.reference_cell_info.setText(reference_cell_selected+reference_cell_population)
 
 	def give_neighbor_cell_information(self):
 
 		if self.neighbor_track_of_interest is not None:
-			neighbor_cell_selected = f"neighbor cell: {self.neighbor_track_of_interest}\n"
-			neighbor_cell_population = f"population: {self.neighbor_population}\n"
+			neighbor_cell_selected = f"Neigh #{self.neighbor_track_of_interest}\n"
+			neighbor_cell_population = f"Pop: {self.neighbor_population}\n"
 			#neighbor_cell_time = f"time of interest: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest), self.pair_time_name].to_numpy()[0]}\n"
 			#neighbor_cell_class = f"class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest), self.pair_class_name].to_numpy()[0]}\n"
 			self.neighbor_cell_info.setText(neighbor_cell_selected+neighbor_cell_population) #neighbor_cell_class+neighbor_cell_time 
 		else:
-			neighbor_cell_selected = f"neighbor cell: None\n"
-			neighbor_cell_population = f"population: {self.neighbor_population}\n"
+			neighbor_cell_selected = f"Neigh: None\n"
+			neighbor_cell_population = f"Pop: {self.neighbor_population}\n"
 			self.neighbor_cell_info.setText(neighbor_cell_selected+neighbor_cell_population)
 
 	def give_pair_information(self):
 
 		if self.neighbor_track_of_interest is not None and self.reference_track_of_interest is not None:
-			pair_selected = f"(reference/neighbor) pair: ({self.reference_track_of_interest},{self.neighbor_track_of_interest})\n"
-			pair_populations = f"populations: ({self.reference_population}, {self.neighbor_population})\n"
+			pair_selected = f"Pair: ({self.reference_track_of_interest},{self.neighbor_track_of_interest})\n"
+			pair_populations = "" #f"populations: ({self.reference_population}, {self.neighbor_population})\n"
 			current_class = self.relative_class_choice_cb.currentText()
-			pair_class = f"interaction event class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), current_class].values[0]}\n"
-			pair_time = f"time of interest: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), self.pair_time_name].values[0]}\n"
+			pair_class = f"Event class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), current_class].values[0]}\n"
+			pair_time = f"Time: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), self.pair_time_name].values[0]}\n"
 			self.pair_info.setText(pair_selected+pair_populations+pair_class+pair_time)
 		else:
-			pair_selected = f"(reference/neighbor) pair: None\n"
-			pair_populations = f"populations: ({self.reference_population}, {self.neighbor_population})\n"
+			pair_selected = f"Pair: None\n"
+			pair_populations = "" #f"populations: ({self.reference_population}, {self.neighbor_population})\n"
 			self.pair_info.setText(pair_selected+pair_populations)
 
 

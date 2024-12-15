@@ -41,7 +41,7 @@ If you want to run the latest development version, you can clone the repository 
 
 .. code-block:: console
 
-    $ git clone git://github.com/remyeltorro/celldetective.git
+    $ git clone git://github.com/celldetective/celldetective.git
     $ cd celldetective
 
     # create and activate environment (optional)
@@ -57,7 +57,7 @@ To run the latest development version without cloning the repository, you can al
 
 .. code-block:: console
 
-    $ pip install git+https//github.com/remyeltorro/celldetective.git
+    $ pip install git+https//github.com/celldetective/celldetective.git
 
 You can also download the repository as a compressed file. Unzip the file and open a terminal at the root of the folder (same level as the file ``requirements.txt``). We recommend that you create a python environment as Celldetective relies on many packages that may interfere with package requirements for other projects. Run the following lines to create an environment named "celldetective":
 
@@ -66,7 +66,7 @@ You can also download the repository as a compressed file. Unzip the file and op
     $ conda create -n celldetective python=3.9.18 pyqt
     $ conda activate celldetective
     $ pip install -r requirements.txt
-    $ pip install .
+    $ pip install -e .
 
 Before launching the software, move to a different directory as running the package locally can create some bugs when locating the models.
 
@@ -88,8 +88,15 @@ Once the pip installation is complete, open a terminal and run:
 
 	$ python -m celldetective
 
-A startup image is displayed during the loading of the python libraries. Upon completion, the first window of the software opens. You can either create a new experiment (button New or shortcut Ctrl+N) or load one.
 
-.. warning::
+.. figure:: _static/launch.gif
+    :width: 100%
+    :align: center
+    :alt: static_class
 
-    Do not open the terminal in the installation folder. Some software features will misbehave.
+    How to launch the software from a terminal, here, without an environment
+
+
+A startup image is displayed during the loading of the python libraries. Upon completion, the first window of the software opens. 
+
+You can either create a new experiment (button New or shortcut Ctrl+N) or load one.

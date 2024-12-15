@@ -18,6 +18,7 @@ Tracking
 --------
 
 * `btrack <https://github.com/quantumjot/btrack>`_
+* `trackpy <https://soft-matter.github.io/trackpy/v0.6.4/>`_
 
 
 Data extraction

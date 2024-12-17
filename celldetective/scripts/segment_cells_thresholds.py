@@ -5,7 +5,7 @@ Copright © 2022 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
 import argparse
 import os
 import json
-from celldetective.io import auto_load_number_of_frames, load_frames
+from celldetective.io import auto_load_number_of_frames, load_frames, extract_position_name
 from celldetective.segmentation import segment_frame_from_thresholds
 from celldetective.utils import _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel, extract_experiment_channels
 from pathlib import Path, PurePath
@@ -60,8 +60,10 @@ parent1 = Path(pos).parent
 expfolder = parent1.parent
 config = PurePath(expfolder,Path("config.ini"))
 assert os.path.exists(config),'The configuration file for the experiment could not be located. Abort.'
-print("Configuration file: ",config)
 
+print(f"Position: {extract_position_name(pos)}...")
+print("Configuration file: ",config)
+print(f"Population: {mode}...")
 
 channel_indices = _extract_channel_indices_from_config(config, required_channels)
 # need to abort if channel not found
@@ -103,7 +105,7 @@ else:
 	f_reference = None
 
 threshold_instructions.update({'equalize_reference': f_reference})
-print(threshold_instructions)
+print(f"instructions: {threshold_instructions}...")
 
 # Loop over all frames and segment
 def segment_index(indices):

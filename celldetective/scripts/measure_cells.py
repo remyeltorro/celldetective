@@ -5,7 +5,7 @@ Copright © 2022 Laboratoire Adhesion et Inflammation, Authored by Remy Torro.
 import argparse
 import os
 import json
-from celldetective.io import auto_load_number_of_frames, load_frames, fix_missing_labels, locate_labels
+from celldetective.io import auto_load_number_of_frames, load_frames, fix_missing_labels, locate_labels, extract_position_name
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
 from celldetective.utils import remove_redundant_features, remove_trajectory_measurements
 from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity
@@ -50,7 +50,10 @@ parent1 = Path(pos).parent
 expfolder = parent1.parent
 config = PurePath(expfolder,Path("config.ini"))
 assert os.path.exists(config),'The configuration file for the experiment could not be located. Abort.'
+
+print(f"Position: {extract_position_name(pos)}...")
 print("Configuration file: ",config)
+print(f"Population: {mode}...")
 
 # from exp config fetch spatial calib, channel names
 movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]
@@ -62,11 +65,15 @@ nbr_channels = len(channel_names)
 
 # from tracking instructions, fetch btrack config, features, haralick, clean_traj, idea: fetch custom timeline?
 instr_path = PurePath(expfolder,Path(f"{instruction_file}"))
+print('Looking for measurement instruction file...')
+
 if os.path.exists(instr_path):
-	print(f"Tracking instructions for the {mode} population has been successfully located.")
+	
 	with open(instr_path, 'r') as f:
 		instructions = json.load(f)
-		print("Reading the following instructions: ", instructions)
+		print(f"Measurement instruction file successfully loaded...")
+		print(f"Instructions: {instructions}...")
+
 	if 'background_correction' in instructions:
 		background_correction = instructions['background_correction']
 	else:
@@ -144,7 +151,7 @@ except IndexError:
 # Load trajectories, add centroid if not in trajectory
 trajectories = pos+os.sep.join(['output','tables', table_name])
 if os.path.exists(trajectories):
-	print('trajectory exists...')
+	print('A trajectory table was found...')
 	trajectories = pd.read_csv(trajectories)
 	if 'TRACK_ID' not in list(trajectories.columns):
 		do_iso_intensities = False
@@ -289,18 +296,26 @@ def measure_index(indices):
 			measurements_at_t[column_labels['time']] = t
 			timestep_dataframes.append(measurements_at_t)
 
+	return 
+
+
+print(f"Starting the measurements with {n_threads} thread(s)...")
+
+import concurrent.futures
 
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))
 chunks = np.array_split(indices, n_threads)
-threads = []
-for i in range(n_threads):
-	thread_i = threading.Thread(target=measure_index, args=[chunks[i]])
-	threads.append(thread_i)
-for th in threads:
-	th.start()
-for th in threads:
-	th.join()
+
+with concurrent.futures.ThreadPoolExecutor() as executor:
+	results = executor.map(measure_index, chunks)
+	try:
+		for i,return_value in enumerate(results):
+			print(f"Thread {i} output check: ",return_value)
+	except Exception as e:
+		print("Exception: ", e)
+
+print('Done.')
 
 
 if len(timestep_dataframes)>0:
@@ -320,7 +335,7 @@ if len(timestep_dataframes)>0:
 		df = df.drop(invalid_cols, axis=1)	
 
 	df.to_csv(pos+os.sep.join(["output", "tables", table_name]), index=False)
-	print(f'Measurements successfully written in table {pos+os.sep.join(["output", "tables", table_name])}')
+	print(f'Measurement table successfully exported in  {os.sep.join(["output", "tables"])}...')
 	print('Done.')
 else:
 	print('No measurement could be performed. Check your inputs.')

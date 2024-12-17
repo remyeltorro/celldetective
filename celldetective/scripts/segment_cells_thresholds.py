@@ -48,8 +48,6 @@ else:
 	print('The configuration path is not valid. Abort.')
 	os.abort()
 
-print('The following instructions were successfully loaded: ', threshold_instructions)
-
 if mode.lower()=="target" or mode.lower()=="targets":
 	label_folder = "labels_targets"
 elif mode.lower()=="effector" or mode.lower()=="effectors":
@@ -67,7 +65,7 @@ print(f"Population: {mode}...")
 
 channel_indices = _extract_channel_indices_from_config(config, required_channels)
 # need to abort if channel not found
-print(f'Required channels: {required_channels} located at channel indices {channel_indices}.')
+print(f'Required channels: {required_channels} located at channel indices {channel_indices}...')
 
 threshold_instructions.update({'target_channel': channel_indices[0]})
 
@@ -88,15 +86,15 @@ if len_movie_auto is not None:
 	len_movie = len_movie_auto
 
 nbr_channels = _extract_nbr_channels_from_config(config)
-print(f'Number of channels in the input movie: {nbr_channels}')
+#print(f'Number of channels in the input movie: {nbr_channels}')
 img_num_channels = _get_img_num_per_channel(np.arange(nbr_channels), len_movie, nbr_channels)
 
 # If everything OK, prepare output, load models
-print('Erasing previous segmentation folder.')
 if os.path.exists(os.sep.join([pos,label_folder])):
+	print('Erasing the previous labels folder...')
 	rmtree(os.sep.join([pos,label_folder]))
 os.mkdir(os.sep.join([pos,label_folder]))
-print(f'Folder {os.sep.join([pos,label_folder])} successfully generated.')
+print(f'Labels folder successfully generated...')
 
 if equalize:
 	f_reference = load_frames(img_num_channels[:,equalize_time], file, scale=None, normalize_input=False)
@@ -105,7 +103,7 @@ else:
 	f_reference = None
 
 threshold_instructions.update({'equalize_reference': f_reference})
-print(f"instructions: {threshold_instructions}...")
+print(f"Instructions: {threshold_instructions}...")
 
 # Loop over all frames and segment
 def segment_index(indices):

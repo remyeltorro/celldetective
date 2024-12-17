@@ -2874,7 +2874,7 @@ def locate_segmentation_model(name):
 
 	main_dir = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"celldetective"])
 	modelpath = os.sep.join([main_dir, "models", "segmentation*"]) + os.sep
-	print(f'Looking for {name} in {modelpath}')
+	#print(f'Looking for {name} in {modelpath}')
 	models = glob(modelpath + f'*{os.sep}')
 
 	match = None

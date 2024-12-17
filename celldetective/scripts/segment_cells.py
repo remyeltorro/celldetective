@@ -8,7 +8,7 @@ import os
 import json
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
-from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
+from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames, extract_position_name
 from celldetective.utils import interpolate_nan, _estimate_scale_factor, _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from pathlib import Path, PurePath
 from glob import glob
@@ -44,6 +44,7 @@ if use_gpu=='True' or use_gpu=='true' or use_gpu=='1':
 	n_threads = 1  # avoid misbehavior on GPU with multithreading
 else:
 	use_gpu = False
+	#n_threads = 1 # force 1 threads since all CPUs seem to be in use anyway
 
 if not use_gpu:
 	os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -60,20 +61,22 @@ parent1 = Path(pos).parent
 expfolder = parent1.parent
 config = PurePath(expfolder,Path("config.ini"))
 assert os.path.exists(config),'The configuration file for the experiment could not be located. Abort.'
+
+print(f"Position: {extract_position_name(pos)}...")
 print("Configuration file: ",config)
+print(f"Population: {mode}...")
 
 ####################################
 # Check model requirements #########
 ####################################
 
 modelpath = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],"models"])
-print(modelpath)
 model_complete_path = locate_segmentation_model(modelname)
 if model_complete_path is None:
 	print('Model could not be found. Abort.')
 	os.abort()
 else:
-	print(f'Model successfully located in {model_complete_path}')
+	print(f'Model path: {model_complete_path}...')
 
 # load config
 assert os.path.exists(model_complete_path+"config_input.json"),'The configuration for the inputs to the model could not be located. Abort.'
@@ -86,7 +89,7 @@ required_channels = input_config["channels"]
 channel_indices = _extract_channel_indices_from_config(config, required_channels)
 print(f'Required channels: {required_channels} located at channel indices {channel_indices}.')
 required_spatial_calibration = input_config['spatial_calibration']
-print(f'Expected spatial calibration is {required_spatial_calibration}.')
+print(f'Spatial calibration expected by the model: {required_spatial_calibration}...')
 
 normalization_percentile = input_config['normalization_percentile']
 normalization_clip = input_config['normalization_clip']
@@ -117,18 +120,19 @@ if model_type=='cellpose':
 	flow_threshold = input_config['flow_threshold']
 
 scale = _estimate_scale_factor(spatial_calibration, required_spatial_calibration)
-print(f"Scale = {scale}...")
+print(f"Scale: {scale}...")
 
 nbr_channels = _extract_nbr_channels_from_config(config)
-print(f'Number of channels in the input movie: {nbr_channels}')
+#print(f'Number of channels in the input movie: {nbr_channels}')
 img_num_channels = _get_img_num_per_channel(channel_indices, int(len_movie), nbr_channels)
 
 # If everything OK, prepare output, load models
-print('Erasing previous segmentation folder.')
 if os.path.exists(pos+label_folder):
+	print('Erasing the previous labels folder...')
 	rmtree(pos+label_folder)
 os.mkdir(pos+label_folder)
-print(f'Folder {pos+label_folder} successfully generated.')
+print(f'Labels folder successfully generated...')
+
 log=f'segmentation model: {modelname}\n'
 with open(pos+f'log_{mode}.json', 'a') as f:
 	f.write(f'{datetime.datetime.now()} SEGMENT \n')
@@ -137,6 +141,7 @@ with open(pos+f'log_{mode}.json', 'a') as f:
 
 # Loop over all frames and segment
 def segment_index(indices):
+
 	global scale
 
 	if model_type=='stardist':
@@ -179,8 +184,7 @@ def segment_index(indices):
 		f = np.moveaxis([interpolate_nan(f[:,:,c].copy()) for c in range(f.shape[-1])],0,-1)
 
 		if np.any(img_num_channels[:,t]==-1):
-			f[:,:,np.where(img_num_channels[:,t]==-1)[0]] = 0.
-		
+			f[:,:,np.where(img_num_channels[:,t]==-1)[0]] = 0.	
 
 		if model_type=="stardist":
 			Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)
@@ -206,6 +210,10 @@ def segment_index(indices):
 		del Y_pred;
 		gc.collect()
 
+	return
+
+
+print(f"Starting the segmentation with {n_threads} thread(s) and GPU={use_gpu}...")
 
 import concurrent.futures
 
@@ -214,16 +222,12 @@ indices = list(range(img_num_channels.shape[1]))
 chunks = np.array_split(indices, n_threads)
 
 with concurrent.futures.ThreadPoolExecutor() as executor:
-	executor.map(segment_index, chunks)
-
-# threads = []
-# for i in range(n_threads):
-# 	thread_i = threading.Thread(target=segment_index, args=[chunks[i]])
-# 	threads.append(thread_i)
-# for th in threads:
-# 	th.start()
-# for th in threads:
-# 	th.join()
+	results = executor.map(segment_index, chunks)
+	try:
+		for i,return_value in enumerate(results):
+			print(f"Thread {i} output check: ",return_value)
+	except Exception as e:
+		print("Exception: ", e)
 
 print('Done.')
 

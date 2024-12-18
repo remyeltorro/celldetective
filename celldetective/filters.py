@@ -88,9 +88,13 @@ def laplace_filter(img, output=float, interpolate=True, *kwargs):
 		img = interpolate_nan(img.astype(float))
 	return snd.laplace(img.astype(float), *kwargs)
 
-def dog_filter(img, sigma_low, sigma_high, interpolate=True, *kwargs):
+def dog_filter(img, blob_size=None, sigma_low=1, sigma_high=2, interpolate=True, *kwargs):
+	
 	if interpolate:
 		img = interpolate_nan(img.astype(float))
+	if blob_size is not None:
+		sigma_low = 1.0 / (1.0 + np.sqrt(2)) * blob_size
+		sigma_high = np.sqrt(2)*sigma_low
 	return difference_of_gaussians(img.astype(float), sigma_low, sigma_high, *kwargs)
 
 def otsu_filter(img, *kwargs):
@@ -115,15 +119,31 @@ def sauvola_filter(img, *kwargs):
 	binary = img >= thresh
 	return binary.astype(float)
 
-def log_filter(img, sigma, *kwargs):
+def log_filter(img, blob_size=None, sigma=1, interpolate=True, *kwargs):
 
 	if interpolate:
 		img = interpolate_nan(img.astype(float))
+	if blob_size is not None:
+		sigma_low = 1.0 / (1.0 + np.sqrt(2)) * blob_size
+		sigma_high = np.sqrt(2)*sigma_low
+
 	return snd.gaussian_laplace(img.astype(float), sigma, *kwargs)
 
 def tophat_filter(img, size, connectivity=4, interpolate=True, *kwargs):
+	
 	if interpolate:
 		img = interpolate_nan(img.astype(float))
 	structure = snd.generate_binary_structure(rank=2, connectivity=connectivity)
 	img = snd.white_tophat(img.astype(float), structure=structure, size=size, *kwargs)
 	return img
+
+def invert_filter(img, value=65535, *kwargs):
+	
+	img = img.astype(float)
+
+	image_fill = np.zeros_like(img)
+	image_fill[:,:] = value
+
+	inverted = np.subtract(image_fill, img, where=img==img)
+	return inverted
+

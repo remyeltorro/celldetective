@@ -8,17 +8,18 @@ from btrack import BayesianTracker
 
 from celldetective.measure import measure_features
 from celldetective.utils import rename_intensity_column, velocity_per_track
-from celldetective.io import view_on_napari_btrack, interpret_tracking_configuration
+from celldetective.io import interpret_tracking_configuration
 
 import os
 import subprocess
+import trackpy as tp
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0],'celldetective'])
 
 def track(labels, configuration=None, stack=None, spatial_calibration=1, features=None, channel_names=None,
 		  haralick_options=None, return_napari_data=False, view_on_napari=False, mask_timepoints=None, mask_channels=None, volume=(2048,2048),
 		  optimizer_options = {'tm_lim': int(12e4)}, track_kwargs={'step_size': 100}, objects=None,
-		  clean_trajectories_kwargs=None, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
+		  clean_trajectories_kwargs=None, btrack_option=True, search_range=None, memory=None,column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'},
 		  ):
 
 	"""
@@ -90,6 +91,12 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 	configuration = interpret_tracking_configuration(configuration)
 
 	if objects is None:
+		
+		if not btrack_option:
+			features = []
+			channel_names = None
+			haralick_options = None
+
 		objects = extract_objects_and_features(labels, stack, features, 
 										   channel_names=channel_names,
 										   haralick_options=haralick_options,
@@ -97,78 +104,100 @@ def track(labels, configuration=None, stack=None, spatial_calibration=1, feature
 										   mask_channels=mask_channels,
 										   )
 
-	columns = list(objects.columns)
-	to_remove = ['x','y','class_id','t']
-	for tr in to_remove:
-		try:
-			columns.remove(tr)
-		except:
-			print(f'column {tr} could not be found...')
+	if btrack_option:
+		columns = list(objects.columns)
+		to_remove = ['x','y','class_id','t']
+		for tr in to_remove:
+			try:
+				columns.remove(tr)
+			except:
+				print(f'column {tr} could not be found...')
 
-	scaler = StandardScaler()
-	if columns:
-		x = objects[columns].values
-		x_scaled = scaler.fit_transform(x)
-		df_temp = pd.DataFrame(x_scaled, columns=columns, index = objects.index)
-		objects[columns] = df_temp
-	else:
-		print('Warning: no features were passed to bTrack...')
-
-	# 2) track the objects
-	new_btrack_objects = localizations_to_objects(objects)
-
-	with BayesianTracker() as tracker:
-
-		tracker.configure(configuration)
-
+		scaler = StandardScaler()
 		if columns:
-			tracking_updates = ["motion","visual"]
-			#tracker.tracking_updates = ["motion","visual"]
-			tracker.features = columns
+			x = objects[columns].values
+			x_scaled = scaler.fit_transform(x)
+			df_temp = pd.DataFrame(x_scaled, columns=columns, index = objects.index)
+			objects[columns] = df_temp
 		else:
-			tracking_updates = ["motion"]
-		
-		tracker.append(new_btrack_objects)
-		tracker.volume = ((0,volume[0]), (0,volume[1]), (-1e5, 1e5)) #(-1e5, 1e5)
-		#print(tracker.volume)
-		tracker.track(tracking_updates=tracking_updates, **track_kwargs)
-		tracker.optimize(options=optimizer_options)
+			print('Warning: no features were passed to bTrack...')
 
-		data, properties, graph = tracker.to_napari() #ndim=2
+		# 2) track the objects
+		new_btrack_objects = localizations_to_objects(objects)
 
-	# do the table post processing and napari options
-	if data.shape[1]==4:
-		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])
-	elif data.shape[1]==5:
-		df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],"z",column_labels['y'],column_labels['x']])
-		df = df.drop(columns=['z'])	
-	df[column_labels['x']+'_um'] = df[column_labels['x']]*spatial_calibration
-	df[column_labels['y']+'_um'] = df[column_labels['y']]*spatial_calibration
+		with BayesianTracker() as tracker:
 
-	df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
-	if columns:
-		x = df[columns].values
-		x_scaled = scaler.inverse_transform(x)
-		df_temp = pd.DataFrame(x_scaled, columns=columns, index = df.index)
-		df[columns] = df_temp
+			tracker.configure(configuration)
 
-	# set dummy features to NaN
-	df.loc[df['dummy'],['class_id']+columns] = np.nan 
+			if columns:
+				tracking_updates = ["motion","visual"]
+				#tracker.tracking_updates = ["motion","visual"]
+				tracker.features = columns
+			else:
+				tracking_updates = ["motion"]
+			
+			tracker.append(new_btrack_objects)
+			tracker.volume = ((0,volume[0]), (0,volume[1]), (-1e5, 1e5)) #(-1e5, 1e5)
+			#print(tracker.volume)
+			tracker.track(tracking_updates=tracking_updates, **track_kwargs)
+			tracker.optimize(options=optimizer_options)
+
+			data, properties, graph = tracker.to_napari() #ndim=2
+		# do the table post processing and napari options
+		if data.shape[1]==4:
+			df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],column_labels['y'],column_labels['x']])
+		elif data.shape[1]==5:
+			df = pd.DataFrame(data, columns=[column_labels['track'],column_labels['time'],"z",column_labels['y'],column_labels['x']])
+			df = df.drop(columns=['z'])	
+		df[column_labels['x']+'_um'] = df[column_labels['x']]*spatial_calibration
+		df[column_labels['y']+'_um'] = df[column_labels['y']]*spatial_calibration
+
+	else:
+		properties = None
+		graph = {}
+		print(f"{objects=} {objects.columns=}")
+		objects = objects.rename(columns={"t": "frame"})
+		if search_range is not None and memory is not None:
+			data = tp.link(objects, search_range, memory=memory,link_strategy='auto')
+		else:
+			print('Please provide a valid search range and memory value...')
+			return None
+		data['particle'] = data['particle'] + 1 # force track id to start at 1
+		df = data.rename(columns={'frame': column_labels['time'], 'x': column_labels['x'], 'y': column_labels['y'], 'particle': column_labels['track']})
+		df['state'] = 5.0; df['generation'] = 0.0; df['root'] = 1.0; df['parent'] = 1.0; df['dummy'] = False; df['z'] = 0.0;
+		data = df[[column_labels['track'],column_labels['time'],"z",column_labels['y'],column_labels['x']]].to_numpy()
+		print(f"{df=}")
+
+	if btrack_option:
+		df = df.merge(pd.DataFrame(properties),left_index=True, right_index=True)
+		if columns:
+			x = df[columns].values
+			x_scaled = scaler.inverse_transform(x)
+			df_temp = pd.DataFrame(x_scaled, columns=columns, index = df.index)
+			df[columns] = df_temp
+
+		# set dummy features to NaN
+		df.loc[df['dummy'],['class_id']+columns] = np.nan
+
 	df = df.sort_values(by=[column_labels['track'],column_labels['time']])
 	df = velocity_per_track(df, window_size=3, mode='bi')
 
 	if channel_names is not None:
 		df = rename_intensity_column(df, channel_names)
 
-	df = write_first_detection_class(df, column_labels=column_labels)
+	df = write_first_detection_class(df, img_shape=volume, column_labels=column_labels)
 
 	if clean_trajectories_kwargs is not None:
 		df = clean_trajectories(df.copy(),**clean_trajectories_kwargs)
 
 	df['ID'] = np.arange(len(df)).astype(int)
 
-	if view_on_napari:
-		view_on_napari_btrack(data,properties,graph,stack=stack,labels=labels,relabel=True)
+	invalid_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
+	if len(invalid_cols)>0:
+		df = df.drop(invalid_cols, axis=1)	
+
+	# if view_on_napari:
+	# 	view_on_napari_btrack(data,properties,graph,stack=stack,labels=labels,relabel=True)
 
 	if return_napari_data:
 		napari_data = {"data": data, "properties": properties, "graph": graph}
@@ -921,44 +950,58 @@ def track_at_position(pos, mode, return_tracks=False, view_on_napari=False, thre
 	# # else:
 	# return None
 
-def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
+def write_first_detection_class(df, img_shape=None, edge_threshold=20, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
 	
 	"""
-	Annotates a dataframe with the time of the first detection and classifies tracks based on their detection status.
+	Assigns a classification and first detection time to tracks in the given DataFrame. This function must be called
+	before any track post-processing.
 
-	This function processes a dataframe containing tracking data, identifying the first point of detection for each
-	track based on the x-coordinate values. It annotates the dataframe with the time of the first detection and
-	assigns a class to each track indicating whether the first detection occurs at the start, during, or if there's
-	no detection within the tracking data.
+	This function computes the first detection time and a detection class (`class_firstdetection`) for each track in the data. 
+	Tracks that start on or near the image edge, or those detected at the initial frame, are marked with special classes.
 
 	Parameters
 	----------
-	tab : pandas.DataFrame
-		The dataframe containing tracking data, expected to have columns for track ID, time, and spatial coordinates.
+	df : pandas.DataFrame
+		A DataFrame containing track data. Expected to have at least the columns specified in `column_labels` and `class_id` (mask value).
+
+	img_shape : tuple of int, optional
+		The shape of the image as `(height, width)`. Used to determine whether the first detection occurs near the image edge.
+
+	edge_threshold : int, optional, default=20
+		The distance in pixels from the image edge to consider a detection as near the edge.
+
 	column_labels : dict, optional
-		A dictionary mapping standard column names ('track', 'time', 'x', 'y') to the corresponding column names in
-		`tab`. Default column names are 'TRACK_ID', 'FRAME', 'POSITION_X', 'POSITION_Y'.
+		A dictionary mapping logical column names to actual column names in `tab`. Keys include:
+		- `'track'`: The column indicating the track ID (default: `"TRACK_ID"`).
+		- `'time'`: The column indicating the frame/time (default: `"FRAME"`).
+		- `'x'`: The column indicating the X-coordinate (default: `"POSITION_X"`).
+		- `'y'`: The column indicating the Y-coordinate (default: `"POSITION_Y"`).
 
 	Returns
 	-------
 	pandas.DataFrame
-		The input dataframe `tab` with two additional columns: 'class_firstdetection' indicating the detection class,
-		and 't_firstdetection' indicating the time of the first detection.
+		The input DataFrame `df` with two additional columns:
+		- `'class_firstdetection'`: A class assigned based on detection status:
+			- `0`: Valid detection not near the edge and not at the initial frame.
+			- `2`: Detection near the edge, at the initial frame, or no detection available.
+		- `'t_firstdetection'`: The adjusted first detection time (in frame units):
+			- `-1`: Indicates no valid detection or detection near the edge.
+			- A float value representing the adjusted first detection time otherwise.
 
 	Notes
 	-----
-	- Detection is based on the presence of non-NaN values in the 'x' column for each track.
-	- Tracks with their first detection at the first time point are classified differently (`cclass=2`) and assigned
-	  a `t_first` of -1, indicating no prior detection.
-	- The function assumes uniform time steps between each frame in the tracking data.
-
+	- The function assumes that tracks are grouped and sorted by track ID and frame.
+	- Detections near the edge or at the initial frame (frame 0) are considered invalid and assigned special values.
+	- If `img_shape` is not provided, edge checks are skipped.
 	"""
 
-	tab = tab.sort_values(by=[column_labels['track'],column_labels['time']])
-	for tid,track_group in tab.groupby(column_labels['track']):
+	df = df.sort_values(by=[column_labels['track'],column_labels['time']])
+	for tid,track_group in df.groupby(column_labels['track']):
 		indices = track_group.index
-		detection = track_group[column_labels['x']].values
+		detection = track_group['class_id'].values
 		timeline = track_group[column_labels['time']].values
+		positions_x = track_group[column_labels['x']].values
+		positions_y = track_group[column_labels['y']].values
 		dt = 1
 		
 		# Initialize
@@ -966,8 +1009,14 @@ def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time':
 
 		if np.any(detection==detection):
 			t_first = timeline[detection==detection][0]
+			x_first = positions_x[detection==detection][0]; y_first = positions_y[detection==detection][0];
+
+			edge_test = False
+			if img_shape is not None:
+				edge_test = (x_first < edge_threshold) or (y_first < edge_threshold) or (y_first > (img_shape[0] - edge_threshold)) or (x_first > (img_shape[1] - edge_threshold))
+
 			cclass = 0
-			if t_first<=0:
+			if t_first<=0 or edge_test:
 				t_first = -1
 				cclass = 2
 			else:
@@ -978,10 +1027,10 @@ def write_first_detection_class(tab, column_labels={'track': "TRACK_ID", 'time':
 			t_first = -1
 			cclass = 2
 
-		tab.loc[indices, 'class_firstdetection'] = cclass
-		tab.loc[indices, 't_firstdetection'] = t_first
+		df.loc[indices, 'class_firstdetection'] = cclass
+		df.loc[indices, 't_firstdetection'] = t_first
 
-	return tab
+	return df
 
 
 

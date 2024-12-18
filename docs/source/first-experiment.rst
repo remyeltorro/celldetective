@@ -6,20 +6,27 @@ First project
 Input
 -----
 
-Celldetective processes multichannel time-lapse microscopy data, saved as ``tif`` stacks, which translates into 3D (TXY) or 4D hyperstacks (TCXY). We recommend to open the experimental stacks on ImageJ first to ensure that the dimensions of the stack are properly set. 
+Celldetective is designed to process multichannel time-lapse microscopy data saved as ``tif`` stacks. These stacks may have the following formats:
 
-.. note::
+- 3D stacks (TXY): Time-series data with spatial dimensions.
+- 4D hyperstacks (TCXY): Time-series data with both channel and spatial dimensions.
 
-    With microscopy data acquired through :math:`\mu` Manager [#]_ , it is quite common to have the channel dimension interlaced with the time dimension, to preserve the time-channel dimension separation
+If your data lacks a time axis but you still wish to use Celldetective for segmentation and measurements, you can substitute the time axis with a tile axis. In this scenario, each stack "frame" represents a different field of view within the well, and you only need to define a single position for the well.
+
+Compatibility with Other Formats:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- 2D images (XY) and 3D stacks (CXY) are also supported, provided the channel metadata is properly embedded in the file.
 
 
-.. note::
+Pre-Processing Recommendations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    On large stack (above 5 Gb), we found it useful to save the stacks using the *Bioformat Exporter* plugin of ImageJ.
+Microscopy data acquired through :math:`\mu` Manager [#]_ often interlaces the channel dimension with the time dimension to preserve their separation. Before using these stacks in Celldetective, they must be disentangled to ensure proper functionality of the Celldetective viewers.
 
+Before loading your data into Celldetective, we recommend opening the experimental stacks in **ImageJ** (or a similar tool) to verify that the stack dimensions (time, channels, spatial axes) are correctly set.
 
-If the data is not a time series but you still want to use Celldetective for segmentation and measurements then you can replace the missing time dimension with a position dimension. In this case each stack "frame" is a different field of view within a well, and there is only one position folder and movie for this well.
-
+For large stacks exceeding 5 GB, we recommend using the **Bio-Formats Exporter** plugin in ImageJ to save the stacks. This format optimizes the data for efficient processing and visualization in Celldetective.
 
 
 Data organization
@@ -35,13 +42,19 @@ We designed a software that structures experimental data into nested well and po
     The experiment folder mimics the organization of the glass slide into wells and fields of view within wells.
 
 
-Since cells are microscopic objects, observed at high magnification, it is rarely possible to image all the cells at once. At best, experimentalists pick multiple positions within the well, in the hope that the sampling is representative enough of the whole well. In Celldetective, single-cell detection is always performed at the single position level, with the possibility of looping over many positions or wells. Higher representations, such as population responses, can pool the single-cell information from a whole well (*i.e.* multiple positions).
+Since cells are microscopic objects observed under high magnification, capturing all cells within a well in a single image is rarely feasible. Instead, experimentalists typically select multiple imaging positions within the well, aiming for a representative sample of the entire well.
 
+In Celldetective, single-cell detection is performed independently for each position. The software allows looping through multiple positions or wells, enabling streamlined analysis. Higher-level representations, such as population responses, can aggregate single-cell data from all positions within a well to provide a comprehensive overview.
 
-A Celldetective experiment is only a folder plus a configuration file (written in the ``ini`` format). The experiment folder contains well folders (as many as there are wells). Naturally, each well folder contains as many position folders as there are positions per well. A position folder only contains a movie/ subfolder, where the user must drop the data associated with that position. By force of habit, processing a movie implies processing a position and vice versa.
+A **Celldetective experiment** consists of a folder and a configuration file in ``.ini`` format. The folder is organized hierarchically to support data from multiple wells and positions:
 
+#. Experiment folder: Contains individual well folders (one per well) and the configuration file.
+#. Well folder: Includes subfolders corresponding to positions within that well.
+#. Position folder: Contains a single ``movie/`` subfolder where the user drops the stack associated with that position.
 
-.. figure:: _static/startup-window.png
+In Celldetective, "processing a movie" is synonymous with processing a position. This approach standardizes workflows and ensures clear data organization.
+
+.. figure:: _static/maingui.png
     :align: center
     :alt: exp_folder_mimics_glass_slide
     
@@ -50,24 +63,42 @@ A Celldetective experiment is only a folder plus a configuration file (written i
 
 .. note::
 
-    The movie prefix field allows you to select a specific movie among several movies in a position folder based on the filename (*e.g.* the "Aligned", "Normed", "Corrected" movie). You can leave it blank for now but it will be particularly helpful if you perform stack preprocessing.
+    The **movie prefix** field allows you to specify a particular movie in a position folder based on its filename (e.g., movies named "Aligned," "Normed," or "Corrected"). While this field can be left blank initially, it becomes especially useful if you perform preprocessing steps on your stacks.
 
 
 .. note::
 
-    Setting the number of frames is optionnal as this information is sometimes contained in the metadata of the ``tif`` stack. When it cannot be found, the value selected here is used instead.
+    Setting the **number of frames** is optional. In many cases, this information is already embedded in the metadata of the ``tif`` stack. If the metadata does not include this detail, the value you specify here will be used instead.
 
 
-Generate the folder tree
-------------------------
+Creating a new experiment
+-------------------------
 
-To generate automatically such a folder tree, open Celldetective and go to ``File>New experiment...`` or press ``Ctrl+N``.
+To automatically generate the folder tree for a new experiment in Celldetective, follow these steps:
 
+#. Open Celldetective and navigate to **File > New Experiment...** or press ``Ctrl+N``.
 
-A dialog window will ask you where on the disk you want to put the experiment folder. A second window, displayed above, will ask for all information needed to fill the configuration file: number of wells, number of positions per well, spatio-temporal calibration, channel names and order...     
+#. A dialog window will prompt you to select the disk location for the experiment folder.
 
+#. A second window will appear, requesting the information needed to populate the configuration file, including:
 
-Once you click on ``Submit``, a secondary window asks you to describe briefly each biological condition associated with each well.
+    - Number of wells
+
+    - Number of positions per well
+
+    - Spatio-temporal calibration
+
+    - Channel names and their order
+
+#. Once you click **Submit**, another dialog window will ask for a brief description of the biological conditions associated with each well.
+
+#. After submitting the information:
+
+    - The dialog closes.
+
+    - The path to the newly created experiment is automatically loaded in the startup window. Click **Open** to access it.
+
+    - On the disk, the experiment folder is created with a configuration file that looks like the example below.
 
 .. figure:: _static/bio-cond-new-exp.png
     :align: center
@@ -77,11 +108,11 @@ Once you click on ``Submit``, a secondary window asks you to describe briefly ea
 
 .. note::
 
-    The condition fields can be left empty. They will be written as 0,1,2... in the configuration file
+    Condition fields can be left blank, and will default to ``0, 1, 2, ...`` in the configuration file.
 
 
-Upon submission, the window closes, the path to the new experiment is automatically loaded in the startup window. Press ``Open`` to open it. On the disk, an experiment folder was created with a configuration file that looks as follows:
-
+Configuration file example
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: ini
 
@@ -110,15 +141,36 @@ Upon submission, the window closes, the path to the new experiment is automatica
     concentrations = 0,100
     pharmaceutical_agents = None,None
 
+    [Metadata]
+    concentration_units = pM
+    cell_donor = 01022022
 
-.. note::
 
-    A shortcut to the experiment folder is available once an experiment is opened in Celldetective by clicking on the folder icon in the top part, next to the experiment name
+Configuration file tags
+~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``MovieSettings``: Defines image-related parameters such as spatio-temporal calibration, stack length, and filename prefix.
+- ``Channels``: Specifies the order of channels in the stack.
+- ``Labels``: Provides additional descriptive information for each well in the experiment.
+- ``Metadata``: Allows manual addition of extra metadata related to the experiment, which is incorporated into the single-cell data.
+
+Quick acess to the experiment folder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once an experiment is opened in Celldetective, you can quickly access its folder by clicking the **folder icon** next to the experiment name in the top menu.
 
 
 Drag and drop the movies
 ------------------------
 
-You must now drag and drop each movie in its position folder, in the ``movie/`` subfolder (*e.g.* ``W1/100/movie/``). This process is not automatic as there are many acquisition protocols and naming conventions preventing to have a general way to add movies in their proper place. We encourage you to write a script adapted to your data if the manual deposition is too cumbersome.
+To prepare your data for processing, you need to place each movie into its corresponding position folder, specifically in the ``movie/`` subfolder (e.g., ``W1/100/movie/``).
 
-Once the movies are in their respective folder, you can start processing the images, which is explained in the next pages.
+This step is **not automated**, as variations in acquisition protocols and naming conventions make it difficult to provide a universal solution. If manual placement is too time-consuming, we recommend creating a custom script tailored to your specific data organization.
+
+Once the movies are placed in their respective folders, you can proceed to image processing. Detailed instructions on processing are provided in the next sections.
+
+
+Bibliography
+------------
+
+.. [#] Arthur D Edelstein, Mark A Tsuchida, Nenad Amodaj, Henry Pinkard, Ronald D Vale, and Nico Stuurman (2014), Advanced methods of microscope control using μManager software. Journal of Biological Methods 2014 1(2):e11.

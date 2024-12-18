@@ -7,7 +7,7 @@ from celldetective.gui import Styles
 from celldetective.gui.gui_utils import center_window
 from superqt import QLabeledDoubleRangeSlider, QSearchableComboBox
 from celldetective.utils import extract_experiment_channels, get_software_location, _get_img_num_per_channel
-from celldetective.io import auto_load_number_of_frames, load_frames
+from celldetective.io import auto_load_number_of_frames, load_frames, get_experiment_metadata
 from celldetective.gui.gui_utils import FigureCanvas, color_from_status, color_from_class
 import json
 import numpy as np
@@ -66,7 +66,10 @@ class SignalAnnotator2(QMainWindow,Styles):
 					 't0', 'POSITION_X', 'POSITION_Y', 'position', 'well', 'well_index', 'well_name', 'pos_name',
 					 'index', 'relxy', 'tc', 'nk', 'concentration', 'antibody', 'cell_type', 'pharmaceutical_agent',
 					 'reference_population', 'neighbor_population']
-
+		meta = get_experiment_metadata(self.exp_dir)
+		if meta is not None:
+			keys = list(meta.keys())
+			self.cols_to_remove.extend(keys)		
 
 		# Read instructions from target block for now...
 		self.mode = "neighborhood"
@@ -210,14 +213,14 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		self.cell_events_hbox = QHBoxLayout()
 		self.cell_events_hbox.setContentsMargins(0,0,0,0)
-		self.cell_events_hbox.addWidget(QLabel('reference event: '), 25)
+		self.cell_events_hbox.addWidget(QLabel('Event: '), 25)
 		self.reference_event_choice_cb = QComboBox()
 		self.cell_events_hbox.addWidget(self.reference_event_choice_cb, 75)
 		
 		#if 'self' not in self.neighborhood_choice_cb.currentText():
 		self.neigh_cell_events_hbox = QHBoxLayout()
 		self.neigh_cell_events_hbox.setContentsMargins(0,0,0,0)
-		self.neigh_lab=QLabel('neighbor event: ')
+		self.neigh_lab=QLabel('Event: ')
 		self.neigh_cell_events_hbox.addWidget(self.neigh_lab, 25)
 		self.neighbor_event_choice_cb = QComboBox()
 		self.neigh_cell_events_hbox.addWidget(self.neighbor_event_choice_cb, 75)
@@ -238,7 +241,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 		neighbor_layout.addLayout(self.neigh_cell_events_hbox)
 
 		self.cell_info_hbox.addLayout(reference_layout, 33)
-		self.cell_info_hbox.addWidget(self.pair_info, 33, alignment=Qt.AlignCenter)
+		self.cell_info_hbox.addWidget(self.pair_info, 33)
 		self.cell_info_hbox.addLayout(neighbor_layout, 33)
 
 		self.left_panel.addLayout(self.cell_info_hbox)
@@ -437,27 +440,12 @@ class SignalAnnotator2(QMainWindow,Styles):
 			contrast_hbox.addWidget(self.contrast_slider,90)
 			self.right_panel.addLayout(contrast_hbox, 5)
 
-		# speed_hbox = QHBoxLayout()
-		# speed_hbox.setContentsMargins(150,5,150,5)
-		# self.interval_slider = QLabeledSlider()
-		# self.interval_slider.setSingleStep(1)
-		# self.interval_slider.setTickInterval(1)
-		# self.interval_slider.setOrientation(1)
-		# self.interval_slider.setRange(1, 10000)
-		# self.interval_slider.setValue(self.speed)
-		# self.interval_slider.valueChanged.connect(self.interval_slider_action)
-		# speed_hbox.addWidget(QLabel('interval (ms): '))
-		# speed_hbox.addWidget(self.interval_slider,90)
-		# self.right_panel.addLayout(speed_hbox, 10)
-
-		#self.selected_populationulate_left_panel()
-		#grid.addLayout(self.left_side, 0, 0, 1, 1)
-
 		main_layout.addLayout(self.left_panel, 35)
 		main_layout.addLayout(self.right_panel, 65)
 		self.button_widget.adjustSize()
 		self.compute_status_and_colors_reference()
 
+		self.extract_relevant_events()
 
 		self.setCentralWidget(self.button_widget)
 		self.show()
@@ -681,23 +669,11 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.df_relative.loc[(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population),self.relative_time] = 0.1
 		else:
 			self.df_relative.loc[(~self.df_relative['status_'+self.current_neighborhood].isnull())&(self.df_relative['reference_population']==self.reference_population),self.relative_time] = -1
-		self.relative_class_choice_cb.disconnect()
-		self.relative_class_choice_cb.clear()
-		cols = np.array(self.df_relative.columns)
-		self.relative_class_cols = np.array([c.startswith('class') for c in list(self.df_relative.columns)])
-		self.relative_class_cols = list(cols[self.relative_class_cols])
-		try:
-			self.relative_class_cols.remove('class_color')
-			self.relative_class_cols.remove('class_id')
-		except:
-			pass
-		self.relative_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_pair)
-		self.relative_class_choice_cb.addItems(self.relative_class_cols)
-		idx = self.relative_class_choice_cb.findText(self.relative_class)
-		self.relative_class_choice_cb.setCurrentIndex(idx)
+		
+
+		self.extract_relevant_events()
 
 		self.pair_class_name = self.relative_class
-
 		self.pair_time_name = self.relative_time
 		self.pair_status_name = self.relative_status
 
@@ -713,167 +689,131 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		df_reference = self.dataframes[self.reference_population]
 		self.reference_class_name = self.reference_event_choice_cb.currentText()
-		self.expected_reference_status = 'status_'
-		suffix = self.reference_class_name.replace('class','').replace('_','')
-		if suffix!='':
-			self.expected_reference_status+='_'+suffix
-			self.expected_reference_time = 't_'+suffix
-		else:
-			self.expected_reference_time = 't0'
 
-		self.reference_time_name = self.expected_reference_time
-		self.reference_status_name = self.expected_reference_status
+		if self.reference_class_name!='':
 
-		if self.reference_time_name in list(df_reference.columns) and self.reference_class_name in list(df_reference.columns) and not self.reference_status_name in list(df_reference.columns):
-			# only create the status column if it does not exist to not erase static classification results
-			self.make_reference_status_column()
-		elif self.reference_time_name in list(df_reference.columns) and self.reference_class_name in list(df_reference.columns):
-			# all good, do nothing
-			pass
-		else:
-			if not self.reference_status_name in list(df_reference.columns):
-				df_reference[self.reference_status_name] = 0
-				df_reference['status_color'] = color_from_status(0)
-				df_reference['class_color'] = color_from_class(1)
+			self.expected_reference_status = 'status_'
+			suffix = self.reference_class_name.replace('class','').replace('_','')
+			if suffix!='':
+				self.expected_reference_status+='_'+suffix
+				self.expected_reference_time = 't_'+suffix
+			else:
+				self.expected_reference_time = 't0'
 
-		if not self.reference_class_name in list(df_reference.columns):
-			df_reference[self.reference_class_name] = 1
-		if not self.reference_time_name in list(df_reference.columns):
-			df_reference[self.reference_time_name] = -1
+			self.reference_time_name = self.expected_reference_time
+			self.reference_status_name = self.expected_reference_status
 
-		df_reference['status_color'] = [color_from_status(i) for i in df_reference[self.reference_status_name].to_numpy()]
-		df_reference['class_color'] = [color_from_class(i) for i in df_reference[self.reference_class_name].to_numpy()]
+			if self.reference_time_name in list(df_reference.columns) and self.reference_class_name in list(df_reference.columns) and not self.reference_status_name in list(df_reference.columns):
+				# only create the status column if it does not exist to not erase static classification results
+				self.make_reference_status_column()
+			elif self.reference_time_name in list(df_reference.columns) and self.reference_class_name in list(df_reference.columns):
+				# all good, do nothing
+				pass
+			else:
+				if not self.reference_status_name in list(df_reference.columns):
+					df_reference[self.reference_status_name] = 0
+					df_reference['status_color'] = color_from_status(0)
+					df_reference['class_color'] = color_from_class(1)
 
-		if self.reference_population=='targets':
-			self.extract_scatter_from_target_trajectories()
-		else:
-			self.extract_scatter_from_effector_trajectories()
+			if not self.reference_class_name in list(df_reference.columns):
+				df_reference[self.reference_class_name] = 1
+			if not self.reference_time_name in list(df_reference.columns):
+				df_reference[self.reference_time_name] = -1
+
+			df_reference['status_color'] = [color_from_status(i) for i in df_reference[self.reference_status_name].to_numpy()]
+			df_reference['class_color'] = [color_from_class(i) for i in df_reference[self.reference_class_name].to_numpy()]
+
+			if self.reference_population=='targets':
+				self.extract_scatter_from_target_trajectories()
+			else:
+				self.extract_scatter_from_effector_trajectories()
 
 
 	def compute_status_and_colors_neighbor(self):
 
 		df_neighbors = self.dataframes[self.neighbor_population]
 		self.neighbor_class_name = self.neighbor_event_choice_cb.currentText()
-		self.expected_neighbor_status = 'status_'
-		suffix = self.neighbor_class_name.replace('class','').replace('_','')
-		if suffix!='':
-			self.expected_neighbor_status+='_'+suffix
-			self.expected_neighbor_time = 't_'+suffix
-		else:
-			self.expected_neighbor_time = 't0'
 
-		self.neighbor_time_name = self.expected_neighbor_time
-		self.neighbor_status_name = self.expected_neighbor_status
+		if self.neighbor_class_name!='':
 
-		if self.neighbor_time_name in list(df_neighbors.columns) and self.neighbor_class_name in list(df_neighbors.columns) and not self.neighbor_status_name in list(df_neighbors.columns):
-			# only create the status column if it does not exist to not erase static classification results
-			self.make_neighbor_status_column()
-		elif self.neighbor_time_name in list(df_neighbors.columns) and self.neighbor_class_name in list(df_neighbors.columns):
-			# all good, do nothing
-			pass
-		else:
-			if not self.neighbor_status_name in list(df_neighbors.columns):
-				df_neighbors[self.neighbor_status_name] = 0
-				df_neighbors['status_color'] = color_from_status(0)
-				df_neighbors['class_color'] = color_from_class(1)
+			self.expected_neighbor_status = 'status_'
+			suffix = self.neighbor_class_name.replace('class','').replace('_','')
+			if suffix!='':
+				self.expected_neighbor_status+='_'+suffix
+				self.expected_neighbor_time = 't_'+suffix
+			else:
+				self.expected_neighbor_time = 't0'
 
-		if not self.neighbor_class_name in list(df_neighbors.columns):
-			df_neighbors[self.neighbor_class_name] = 1
-		if not self.neighbor_time_name in list(df_neighbors.columns):
-			df_neighbors[self.neighbor_time_name] = -1
+			self.neighbor_time_name = self.expected_neighbor_time
+			self.neighbor_status_name = self.expected_neighbor_status
 
-		df_neighbors['status_color'] = [color_from_status(i) for i in df_neighbors[self.neighbor_status_name].to_numpy()]
-		df_neighbors['class_color'] = [color_from_class(i) for i in df_neighbors[self.neighbor_class_name].to_numpy()]
+			if self.neighbor_time_name in list(df_neighbors.columns) and self.neighbor_class_name in list(df_neighbors.columns) and not self.neighbor_status_name in list(df_neighbors.columns):
+				# only create the status column if it does not exist to not erase static classification results
+				self.make_neighbor_status_column()
+			elif self.neighbor_time_name in list(df_neighbors.columns) and self.neighbor_class_name in list(df_neighbors.columns):
+				# all good, do nothing
+				pass
+			else:
+				if not self.neighbor_status_name in list(df_neighbors.columns):
+					df_neighbors[self.neighbor_status_name] = 0
+					df_neighbors['status_color'] = color_from_status(0)
+					df_neighbors['class_color'] = color_from_class(1)
 
-		if self.neighbor_population=='targets':
-			self.extract_scatter_from_target_trajectories()
-		else:
-			self.extract_scatter_from_effector_trajectories()
+			if not self.neighbor_class_name in list(df_neighbors.columns):
+				df_neighbors[self.neighbor_class_name] = 1
+			if not self.neighbor_time_name in list(df_neighbors.columns):
+				df_neighbors[self.neighbor_time_name] = -1
 
-		# if self.df_effectors is not None:
-		# 	if self.reference_population=='effectors':
-		# 		self.effector_class_name = self.reference_event_choice_cb.currentText()
-		# 	elif self.neighbor_population == 'effectors':
-		# 		self.effector_class_name = self.neighbor_event_choice_cb.currentText()
-		# 	else:
-		# 		self.effector_class_name=''
-		# 	#self.effector_class_name = self.effector_class_choice_cb.currentText()
-		# 	self.effector_expected_status = 'status'
-		# 	suffix = self.effector_class_name.replace('class','').replace('_','')
-		# 	if suffix!='':
-		# 		self.effector_expected_status+='_'+suffix
-		# 		self.effector_expected_time = 't_'+suffix
-		# 	else:
-		# 		self.effector_expected_time = 't0'
+			df_neighbors['status_color'] = [color_from_status(i) for i in df_neighbors[self.neighbor_status_name].to_numpy()]
+			df_neighbors['class_color'] = [color_from_class(i) for i in df_neighbors[self.neighbor_class_name].to_numpy()]
 
-		# 	self.effector_time_name = self.effector_expected_time
-		# 	self.effector_status_name = self.effector_expected_status
-
-		# 	print('selection and expected names: ', self.effector_class_name, self.effector_expected_time, self.effector_expected_status)
-
-		# 	if self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns and not self.effector_status_name in self.df_effectors.columns:
-		# 		# only create the status column if it does not exist to not erase static classification results
-		# 		self.make_effector_status_column()
-		# 	elif self.effector_time_name in self.df_effectors.columns and self.effector_class_name in self.df_effectors.columns:
-		# 		# all good, do nothing
-		# 		pass
-		# 	else:
-		# 		if not self.effector_status_name in self.df_effectors.columns:
-		# 			self.df_effectors[self.effector_status_name] = 0
-		# 			self.df_effectors['status_color'] = color_from_status(0)
-		# 			self.df_effectors['class_color'] = color_from_class(1)
-
-		# 	if not self.effector_class_name in self.df_effectors.columns:
-		# 		self.df_effectors[self.effector_class_name] = 1
-		# 	if not self.effector_time_name in self.df_effectors.columns:
-		# 		self.df_effectors[self.effector_time_name] = -1
-
-		# 	self.df_effectors['status_color'] = [color_from_status(i) for i in self.df_effectors[self.effector_status_name].to_numpy()]
-		# 	self.df_effectors['class_color'] = [color_from_class(i) for i in self.df_effectors[self.effector_class_name].to_numpy()]
-
-		# 	self.extract_scatter_from_effector_trajectories()
+			if self.neighbor_population=='targets':
+				self.extract_scatter_from_target_trajectories()
+			else:
+				self.extract_scatter_from_effector_trajectories()
 
 	def compute_status_and_colors_pair(self):
 
 		self.pair_class_name = self.relative_class_choice_cb.currentText()
-		print(f'{self.pair_class_name=}')
+		
+		if self.pair_class_name!='':
 
-		self.pair_expected_status = 'status'
-		suffix = self.pair_class_name.replace('class','').replace('_','',1)
-		if suffix!='':
-			self.pair_expected_status+='_'+suffix
-			self.pair_expected_time = 't0_'+suffix
-			if not self.pair_expected_time in list(self.df_relative.columns):
-				self.pair_expected_time = 't_'+suffix
-		else:
-			self.pair_expected_time = 't0'
+			self.pair_expected_status = 'status'
+			suffix = self.pair_class_name.replace('class','').replace('_','',1)
+			if suffix!='':
+				self.pair_expected_status+='_'+suffix
+				self.pair_expected_time = 't0_'+suffix
+				if not self.pair_expected_time in list(self.df_relative.columns):
+					self.pair_expected_time = 't_'+suffix
+			else:
+				self.pair_expected_time = 't0'
 
-		self.pair_time_name = self.pair_expected_time
-		self.pair_status_name = self.pair_expected_status
+			self.pair_time_name = self.pair_expected_time
+			self.pair_status_name = self.pair_expected_status
 
-		if self.pair_time_name in self.df_relative.columns and self.pair_class_name in self.df_relative.columns and not self.pair_status_name in self.df_relative.columns:
-			# only create the status column if it does not exist to not erase static classification results
-			self.make_relative_status_column()
-		elif self.pair_time_name in self.df_relative.columns and self.pair_class_name in self.df_relative.columns:
-			# all good, do nothing
-			pass
-		else:
-			if not self.pair_status_name in self.df_relative.columns:
-				self.df_relative[self.pair_status_name] = 0
-				self.df_relative['status_color'] = color_from_status(0)
-				self.df_relative['class_color'] = color_from_class(1)
+			if self.pair_time_name in self.df_relative.columns and self.pair_class_name in self.df_relative.columns and not self.pair_status_name in self.df_relative.columns:
+				# only create the status column if it does not exist to not erase static classification results
+				self.make_relative_status_column()
+			elif self.pair_time_name in self.df_relative.columns and self.pair_class_name in self.df_relative.columns:
+				# all good, do nothing
+				pass
+			else:
+				if not self.pair_status_name in self.df_relative.columns:
+					self.df_relative[self.pair_status_name] = 0
+					self.df_relative['status_color'] = color_from_status(0)
+					self.df_relative['class_color'] = color_from_class(1)
 
-		if not self.pair_class_name in self.df_relative.columns:
-			self.df_relative[self.pair_time_name] = 1
-		if not self.pair_time_name in self.df_relative.columns:
-			self.df_relative[self.pair_time_name] = -1
+			if not self.pair_class_name in self.df_relative.columns:
+				self.df_relative[self.pair_time_name] = 1
+			if not self.pair_time_name in self.df_relative.columns:
+				self.df_relative[self.pair_time_name] = -1
 
-		self.df_relative['status_color'] = [color_from_status(i) for i in self.df_relative[self.pair_status_name].to_numpy()]
-		self.df_relative['class_color'] = [color_from_class(i) for i in self.df_relative[self.pair_class_name].to_numpy()]
+			self.df_relative['status_color'] = [color_from_status(i) for i in self.df_relative[self.pair_status_name].to_numpy()]
+			self.df_relative['class_color'] = [color_from_class(i) for i in self.df_relative[self.pair_class_name].to_numpy()]
 
-		self.extract_scatter_from_lines()
-		self.give_pair_information()
-		self.plot_signals()
+			self.extract_scatter_from_lines()
+			self.give_pair_information()
+			self.plot_signals()
 
 	def contrast_slider_action(self):
 
@@ -1337,30 +1277,6 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.MinMaxScaler_effectors.fit(x)
 
 
-	# def make_effector_status_column(self):
-	# 	print('remaking the status column for the effectors')
-	# 	for tid, group in self.df_effectors.groupby('TRACK_ID'):
-
-	# 		indices = group.index
-	# 		t0 = group[self.].to_numpy()[0]
-	# 		cclass = group[self.class_name].to_numpy()[0]
-	# 		timeline = group['FRAME'].to_numpy()
-	# 		status = np.zeros_like(timeline)
-	# 		if t0 > 0:
-	# 			status[timeline >= t0] = 1.
-	# 		if cclass == 2:
-	# 			status[:] = 2
-	# 		if cclass > 2:
-	# 			status[:] = 42
-	# 		status_color = [color_from_status(s) for s in status]
-	# 		class_color = [color_from_class(cclass) for i in range(len(status))]
-
-	# 		self.df_tracks.loc[indices, self.status_name] = status
-	# 		self.df_tracks.loc[indices, 'status_color'] = status_color
-	# 		self.df_tracks.loc[indices, 'class_color'] = class_color
-
-
-
 	def locate_relative_tracks(self):
 
 		population = 'relative'
@@ -1400,6 +1316,9 @@ class SignalAnnotator2(QMainWindow,Styles):
 			self.relative_time_name = 't0'
 			self.relative_status_name = 'status'
 
+		for col in list(self.df_relative.columns):
+			if np.all(self.df_relative[col].isnull()) or self.df_relative[col].dtype==object:
+				self.cols_to_remove.append(col)
 
 		self.MinMaxScaler_pairs = MinMaxScaler()
 		self.pair_columns = list(self.df_relative.columns)
@@ -1416,7 +1335,7 @@ class SignalAnnotator2(QMainWindow,Styles):
 				pass
 
 		x = self.df_relative[self.pair_columns].values
-		self.MinMaxScaler_pairs.fit(x)	
+		self.MinMaxScaler_pairs.fit(x)
 
 
 	def set_reference_and_neighbor_populations(self):
@@ -1821,12 +1740,46 @@ class SignalAnnotator2(QMainWindow,Styles):
 		self.cancel_selection()
 		self.set_reference_and_neighbor_populations()
 		# Update reference classes and neighbor classes
+		self.extract_relevant_events()
 		self.fill_class_cbs()
 
 		self.update_cell_events()
 		self.extract_scatter_from_lines()
 		# self.draw_frame(self.framedata)
 		self.plot_signals()
+
+	def extract_relevant_events(self):
+		
+		if self.reference_population!=self.neighbor_population:
+			pattern = "_2_"
+		else:
+			pattern = "_self_"
+
+		try:
+			self.relative_class_choice_cb.disconnect()
+		except:
+			pass
+
+		self.relative_class_choice_cb.clear()
+
+		cols = list(self.df_relative.columns)
+		self.relative_class_cols = [c for c in cols if c.startswith('class')]
+		for c in ['class_color', 'class_id']:
+			if c in self.relative_class_cols:
+				self.relative_class_cols.remove(c)
+		
+		# Keep only valid classes for which there are values
+		self.new_relative_class_cols = []
+		for c in self.relative_class_cols:
+			if ~self.df_relative.loc[(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population),c].isnull().all():
+				self.new_relative_class_cols.append(c)
+
+		if len(self.new_relative_class_cols)>0:
+			self.relative_class = self.new_relative_class_cols[0]
+			self.relative_class_choice_cb.currentIndexChanged.connect(self.compute_status_and_colors_pair)
+			self.relative_class_choice_cb.addItems(self.new_relative_class_cols)		
+			idx = self.relative_class_choice_cb.findText(self.relative_class)
+			self.relative_class_choice_cb.setCurrentIndex(idx)
 
 
 	def closeEvent(self, event):
@@ -2433,41 +2386,41 @@ class SignalAnnotator2(QMainWindow,Styles):
 
 		df_reference = self.dataframes[self.reference_population]
 		if self.reference_track_of_interest is not None:
-			reference_cell_selected = f"reference cell: {self.reference_track_of_interest}\n"
-			reference_cell_population = f"population: {self.reference_population}\n"
+			reference_cell_selected = f"Ref #{self.reference_track_of_interest}\n"
+			reference_cell_population = f"Pop: {self.reference_population}\n"
 			#reference_cell_class = f"class: {df_reference[df_reference['TRACK_ID']==self.reference_track_of_interest, self.reference_event_choice_cb.currentText()].values[0]}\n"
 			#reference_cell_time = f"time of interest: {df_reference[df_reference['TRACK_ID']==self.reference_track_of_interest, ''].values[0]}\n"
 			self.reference_cell_info.setText(reference_cell_selected+reference_cell_population)
 		else:
-			reference_cell_selected = f"reference cell: None\n"
-			reference_cell_population = f"population: {self.reference_population}\n"
+			reference_cell_selected = f"Ref: None\n"
+			reference_cell_population = f"Pop: {self.reference_population}\n"
 			self.reference_cell_info.setText(reference_cell_selected+reference_cell_population)
 
 	def give_neighbor_cell_information(self):
 
 		if self.neighbor_track_of_interest is not None:
-			neighbor_cell_selected = f"neighbor cell: {self.neighbor_track_of_interest}\n"
-			neighbor_cell_population = f"population: {self.neighbor_population}\n"
+			neighbor_cell_selected = f"Neigh #{self.neighbor_track_of_interest}\n"
+			neighbor_cell_population = f"Pop: {self.neighbor_population}\n"
 			#neighbor_cell_time = f"time of interest: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest), self.pair_time_name].to_numpy()[0]}\n"
 			#neighbor_cell_class = f"class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest), self.pair_class_name].to_numpy()[0]}\n"
 			self.neighbor_cell_info.setText(neighbor_cell_selected+neighbor_cell_population) #neighbor_cell_class+neighbor_cell_time 
 		else:
-			neighbor_cell_selected = f"neighbor cell: None\n"
-			neighbor_cell_population = f"population: {self.neighbor_population}\n"
+			neighbor_cell_selected = f"Neigh: None\n"
+			neighbor_cell_population = f"Pop: {self.neighbor_population}\n"
 			self.neighbor_cell_info.setText(neighbor_cell_selected+neighbor_cell_population)
 
 	def give_pair_information(self):
 
 		if self.neighbor_track_of_interest is not None and self.reference_track_of_interest is not None:
-			pair_selected = f"(reference/neighbor) pair: ({self.reference_track_of_interest},{self.neighbor_track_of_interest})\n"
-			pair_populations = f"populations: ({self.reference_population}, {self.neighbor_population})\n"
+			pair_selected = f"Pair: ({self.reference_track_of_interest},{self.neighbor_track_of_interest})\n"
+			pair_populations = "" #f"populations: ({self.reference_population}, {self.neighbor_population})\n"
 			current_class = self.relative_class_choice_cb.currentText()
-			pair_class = f"interaction event class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), current_class].values[0]}\n"
-			pair_time = f"time of interest: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), self.pair_time_name].values[0]}\n"
+			pair_class = f"Event class: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), current_class].values[0]}\n"
+			pair_time = f"Time: {self.df_relative.loc[(self.df_relative['REFERENCE_ID']==self.reference_track_of_interest)&(self.df_relative['NEIGHBOR_ID']==self.neighbor_track_of_interest)&(self.df_relative['reference_population']==self.reference_population)&(self.df_relative['neighbor_population']==self.neighbor_population)&(~self.df_relative['status_'+self.current_neighborhood].isnull()), self.pair_time_name].values[0]}\n"
 			self.pair_info.setText(pair_selected+pair_populations+pair_class+pair_time)
 		else:
-			pair_selected = f"(reference/neighbor) pair: None\n"
-			pair_populations = f"populations: ({self.reference_population}, {self.neighbor_population})\n"
+			pair_selected = f"Pair: None\n"
+			pair_populations = "" #f"populations: ({self.reference_population}, {self.neighbor_population})\n"
 			self.pair_info.setText(pair_selected+pair_populations)
 
 

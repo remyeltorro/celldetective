@@ -23,8 +23,6 @@ Contents
    :caption: Basics:
 
    overview
-   acknowledegments
-   cite
    get-started
    first-experiment
    preprocessing
@@ -60,3 +58,9 @@ Contents
    :caption: API Reference:
    
    API
+
+.. toctree::
+   :caption: About:
+
+   acknowledegments
+   cite

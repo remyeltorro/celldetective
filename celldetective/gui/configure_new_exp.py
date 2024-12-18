@@ -453,6 +453,9 @@ class ConfigNewExperiment(QMainWindow, Styles):
 		config.set('Labels', 'concentrations', self.concentrations)
 		config.set('Labels', 'pharmaceutical_agents', self.pharmaceutical_agents)
 
+		config.add_section('Metadata')
+		config.set('Metadata', 'concentration_units', self.concentration_units)
+
 		# save to a file
 		with open('config.ini', 'w') as configfile:
 			config.write(configfile)
@@ -480,6 +483,8 @@ class SetupConditionLabels(QWidget, Styles):
 		self.antibodies_cbs = [QLineEdit() for i in range(self.n_wells)]
 		self.concentrations_cbs = [QLineEdit() for i in range(self.n_wells)]
 		self.pharmaceutical_agents_cbs = [QLineEdit() for i in range(self.n_wells)]
+		self.concentration_units_le = QLineEdit('pM')
+		self.concentration_units_le.setPlaceholderText('concentration units')
 
 		for i in range(self.n_wells):
 			hbox = QHBoxLayout()
@@ -503,6 +508,12 @@ class SetupConditionLabels(QWidget, Styles):
 			self.pharmaceutical_agents_cbs[i].setPlaceholderText('e.g. dextran')
 
 			self.layout.addLayout(hbox)
+
+		concentration_units_layout = QHBoxLayout()
+		concentration_units_layout.addWidget(QLabel('concentration\nunits: '),5,alignment=Qt.AlignLeft)
+		concentration_units_layout.addWidget(self.concentration_units_le,10)
+		concentration_units_layout.addWidget(QLabel(''), 85)
+		self.layout.addLayout(concentration_units_layout)
 
 		btn_hbox = QHBoxLayout()
 		btn_hbox.setContentsMargins(0,20,0,0)
@@ -555,6 +566,8 @@ class SetupConditionLabels(QWidget, Styles):
 
 		pharamaceutical_text = [c.text() for c in self.pharmaceutical_agents_cbs]
 		self.parent_window.pharmaceutical_agents = ','.join(pharamaceutical_text)
+
+		self.parent_window.concentration_units = self.concentration_units_le.text()
 
 
 

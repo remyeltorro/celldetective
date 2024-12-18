@@ -6,7 +6,7 @@ import argparse
 import datetime
 import os
 import json
-from celldetective.io import auto_load_number_of_frames, load_frames, interpret_tracking_configuration
+from celldetective.io import auto_load_number_of_frames, load_frames, interpret_tracking_configuration, extract_position_name
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
 from celldetective.measure import drop_tonal_features, measure_features
 from celldetective.tracking import track
@@ -59,6 +59,10 @@ expfolder = parent1.parent
 config = PurePath(expfolder,Path("config.ini"))
 assert os.path.exists(config),'The configuration file for the experiment could not be located. Abort.'
 
+print(f"Position: {extract_position_name(pos)}...")
+print("Configuration file: ",config)
+print(f"Population: {mode}...")
+
 # from exp config fetch spatial calib, channel names
 movie_prefix = ConfigSectionMap(config,"MovieSettings")["movie_prefix"]
 spatial_calibration = float(ConfigSectionMap(config,"MovieSettings")["pxtoum"])
@@ -71,9 +75,10 @@ channel_names, channel_indices = extract_experiment_channels(config)
 nbr_channels = len(channel_names)
 
 # from tracking instructions, fetch btrack config, features, haralick, clean_traj, idea: fetch custom timeline?
+print('Looking for tracking instruction file...')
 instr_path = PurePath(expfolder,Path(f"{instruction_file}"))
 if os.path.exists(instr_path):
-	print(f"Tracking instructions for the {mode} population have been successfully loaded...")
+	print(f"Tracking instruction file successfully loaded...")
 	with open(instr_path, 'r') as f:
 		instructions = json.load(f)
 	btrack_config = interpret_tracking_configuration(instructions['btrack_config_path'])
@@ -97,6 +102,16 @@ if os.path.exists(instr_path):
 		post_processing_options = instructions['post_processing_options']
 	else:
 		post_processing_options = None
+
+	btrack_option = True
+	if 'btrack_option' in instructions:
+		btrack_option = instructions['btrack_option']
+	search_range = None
+	if 'search_range' in instructions:
+		search_range = instructions['search_range']
+	memory = None
+	if 'memory' in instructions:
+		memory = instructions['memory']
 else:
 	print('Tracking instructions could not be located... Using a standard bTrack motion model instead...')
 	btrack_config = interpret_tracking_configuration(None)
@@ -104,7 +119,9 @@ else:
 	mask_channels = None
 	haralick_options = None
 	post_processing_options = None
-
+	btrack_option = True
+	memory = None
+	search_range = None
 if features is None:
 	features = []
 
@@ -147,7 +164,15 @@ with open(pos+f'log_{mode}.json', 'a') as f:
 	f.write(f'{datetime.datetime.now()} TRACK \n')
 	f.write(log+"\n")
 
+
+if not btrack_option:
+	features = []
+	channel_names = None
+	haralick_options = None
+
+
 def measure_index(indices):
+
 	for t in tqdm(indices,desc="frame"):
 		
 		# Load channels at time t
@@ -160,24 +185,27 @@ def measure_index(indices):
 		df_props.rename(columns={'centroid-1': 'x', 'centroid-0': 'y'},inplace=True)
 		df_props['t'] = int(t)
 		timestep_dataframes.append(df_props)
+	return 
+
+
+
+print(f"Measuring features with {n_threads} thread(s)...")
+
+import concurrent.futures
 
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))
 chunks = np.array_split(indices, n_threads)
 
-import concurrent.futures
-
 with concurrent.futures.ThreadPoolExecutor() as executor:
-	executor.map(measure_index, chunks)
+	results = executor.map(measure_index, chunks)
+	try:
+		for i,return_value in enumerate(results):
+			print(f"Thread {i} output check: ",return_value)
+	except Exception as e:
+		print("Exception: ", e)
 
-# threads = []
-# for i in range(n_threads):
-# 	thread_i = threading.Thread(target=measure_index, args=[chunks[i]])
-# 	threads.append(thread_i)
-# for th in threads:
-# 	th.start()
-# for th in threads:
-# 	th.join()
+print('Features successfully measured...')
 
 df = pd.concat(timestep_dataframes)	
 df.reset_index(inplace=True, drop=True)
@@ -193,6 +221,13 @@ if mask_channels is not None:
 		df = df.drop(cols_to_drop, axis=1)
 
 # do tracking
+if btrack_option:
+	tracker = 'bTrack'
+else:
+	tracker = 'trackpy'
+
+print(f"Start the tracking step using the {tracker} tracker...")
+
 trajectories, napari_data = track(None,
 					configuration=btrack_config,
 					objects=df, 
@@ -203,15 +238,18 @@ trajectories, napari_data = track(None,
 		  			track_kwargs={'step_size': 100}, 
 		  			clean_trajectories_kwargs=post_processing_options, 
 		  			volume=(shape_x, shape_y),
+		  			btrack_option=btrack_option, 
+		  			search_range=search_range,
+		  			memory=memory,
 		  			)
+print(f"Tracking successfully performed...")
 
 # out trajectory table, create POSITION_X_um, POSITION_Y_um, TIME_min (new ones)
-# Save napari data
+# Save napari data # deprecated, should disappear progressively
 np.save(pos+os.sep.join(['output', 'tables', napari_name]), napari_data, allow_pickle=True)
-print(f"napari data successfully saved in {pos+os.sep.join(['output', 'tables'])}")
 
 trajectories.to_csv(pos+os.sep.join(['output', 'tables', table_name]), index=False)
-print(f"Table {table_name} successfully saved in {os.sep.join(['output', 'tables'])}")
+print(f"Trajectory table successfully exported in {os.sep.join(['output', 'tables'])}...")
 
 if os.path.exists(pos+os.sep.join(['output', 'tables', table_name.replace('.csv','.pkl')])):
 	os.remove(pos+os.sep.join(['output', 'tables', table_name.replace('.csv','.pkl')]))

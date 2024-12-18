@@ -62,14 +62,6 @@ class GenericSignalPlotWidget(QWidget, Styles):
 		self.setLayout(self.layout)
 		self.setAttribute(Qt.WA_DeleteOnClose)
 
-	def resizeEvent(self, event):
-		
-		super().resizeEvent(event)
-
-		try:
-			self.fig.tight_layout()
-		except:
-			pass
 
 	def populate_widget(self):
 
@@ -237,6 +229,11 @@ class GenericSignalPlotWidget(QWidget, Styles):
 										)
 		self.alpha_slider.valueChanged.connect(self.submit_alpha)
 		self.cell_lines_alpha_wdg.setLayout(alpha_hbox)
+
+		# self.submit_alpha_btn = QPushButton('submit')
+		# self.submit_alpha_btn.setStyleSheet(self.button_style_sheet_2)
+		# self.submit_alpha_btn.clicked.connect(self.submit_alpha)
+		# alpha_hbox.addWidget(self.submit_alpha_btn, 10)
 		self.layout.addWidget(self.cell_lines_alpha_wdg)
 
 		self.select_option = [QRadioButton() for i in range(2)]

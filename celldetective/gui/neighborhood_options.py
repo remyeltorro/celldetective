@@ -174,7 +174,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		self.attr_parent.locate_image()
 		if self.attr_parent.current_stack is not None:
 			self.viewer = CellEdgeVisualizer(
-										  cell_type='effectors',
+										  cell_type=self.reference_population_cb.currentText(),
 										  edge_range=(1,30),
 										  invert=True,
 										  initial_edge=3,
@@ -400,7 +400,7 @@ class ConfigNeighborhoods(QWidget, Styles):
 		
 		status_options = [self.reference_population_status_cb.currentText(), self.neighbor_population_status_cb.currentText()]
 		for k in range(2):
-			if status_options[k]=='--':
+			if status_options[k]=='--' or status_options[k]=='':
 				status_options[k] = None
 		if pop[0]!=pop[1]:
 			mode = 'two-pop'

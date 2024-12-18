@@ -24,6 +24,9 @@ import celldetective.extra_properties as extra_properties
 from celldetective.extra_properties import *
 from inspect import getmembers, isfunction
 from skimage.morphology import disk
+from scipy.signal import find_peaks, peak_widths
+
+from celldetective.segmentation import filter_image
 
 abs_path = os.sep.join([os.path.split(os.path.dirname(os.path.realpath(__file__)))[0], 'celldetective'])
 
@@ -198,7 +201,7 @@ def measure(stack=None, labels=None, trajectories=None, channel_names=None,
 					measurements_at_t[column_labels['y']] - img.shape[1] / 2) ** 2)
 		except Exception as e:
 			print(f"{e=}")
-		
+
 		timestep_dataframes.append(measurements_at_t)
 
 	measurements = pd.concat(timestep_dataframes)
@@ -306,19 +309,28 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 
 	"""
 
+	if isinstance(features, list):
+		features = features.copy()
+
 	if features is None:
 		features = []
 
-	# Add label to have identity of mask
-	if 'label' not in features:
-		features.append('label')
-
+	measure_mean_intensities = False
 	if img is None:
 		if verbose:
 			print('No image was provided... Skip intensity measurements.')
 		border_dist = None;
 		haralick_options = None;
 		features = drop_tonal_features(features)
+
+	if 'intensity_mean' in features:
+		measure_mean_intensities = True
+		features.remove('intensity_mean')
+
+	# Add label to have identity of mask
+	if 'label' not in features:
+		features.append('label')
+
 	if img is not None:
 		if img.ndim == 2:
 			img = img[:, :, np.newaxis]
@@ -332,7 +344,9 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 			for index, channel in enumerate(channels):
 				if channel == spot_detection['channel']:
 					ind = index
-					df_spots = blob_detection(img, label, diameter=spot_detection['diameter'],threshold=spot_detection['threshold'], channel_name=spot_detection['channel'], target_channel=ind)
+					if "image_preprocessing" not in spot_detection:
+						spot_detection.update({'image_preprocessing': None})
+					df_spots = blob_detection(img, label, diameter=spot_detection['diameter'],threshold=spot_detection['threshold'], channel_name=spot_detection['channel'], target_channel=ind, image_preprocessing=spot_detection['image_preprocessing'])
 		
 		if normalisation_list:
 			for norm in normalisation_list:
@@ -357,10 +371,16 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 		if f in extra_props:
 			feats.remove(f)
 			extra_props_list.append(getattr(extra_properties, f))
+
+	# Add intensity nan mean if need to measure mean intensities
+	if measure_mean_intensities:
+		extra_props_list.append(getattr(extra_properties, 'intensity_nanmean'))
+
 	if len(extra_props_list) == 0:
 		extra_props_list = None
 	else:
 		extra_props_list = tuple(extra_props_list)
+
 	props = regionprops_table(label, intensity_image=img, properties=feats, extra_properties=extra_props_list)
 	df_props = pd.DataFrame(props)
 	if spot_detection is not None:
@@ -904,12 +924,15 @@ def normalise_by_cell(image, labels, distance=5, model='median', operation='subt
 	return normalised_frame
 
 
-def extract_blobs_in_image(image, label, diameter, threshold=0., method="log"):
+def extract_blobs_in_image(image, label, diameter, threshold=0., method="log", image_preprocessing=None):
 	
 	if np.percentile(image.flatten(),99.9)==0.0:
 		return None
 
-	dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
+	if isinstance(image_preprocessing, (list, np.ndarray)):
+		image = filter_image(image.copy(),filters=image_preprocessing) # apply prefiltering to images before spot detection
+
+	dilated_image = ndimage.grey_dilation(label, footprint=disk(int(1.2*diameter))) # dilation larger than spot diameter to be safe
 
 	masked_image = image.copy()
 	masked_image[np.where((dilated_image == 0)|(image!=image))] = 0
@@ -918,7 +941,8 @@ def extract_blobs_in_image(image, label, diameter, threshold=0., method="log"):
 	if method=="dog":
 		blobs = blob_dog(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)
 	elif method=="log":
-		blobs = blob_log(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)		
+		blobs = blob_log(masked_image, threshold=threshold, min_sigma=min_sigma, max_sigma=max_sigma, overlap=0.75)
+
 	# Exclude spots outside of cell masks
 	mask = np.array([label[int(y), int(x)] != 0 for y, x, _ in blobs])
 	if np.any(mask):
@@ -929,14 +953,15 @@ def extract_blobs_in_image(image, label, diameter, threshold=0., method="log"):
 	return blobs_filtered
 
 
-def blob_detection(image, label, diameter, threshold=0., channel_name=None, target_channel=0, method="log"):
+def blob_detection(image, label, diameter, threshold=0., channel_name=None, target_channel=0, method="log", image_preprocessing=None):
 	
+
 	image = image[:, :, target_channel].copy()
 	if np.percentile(image.flatten(),99.9)==0.0:
 		return None
 
 	detections = []
-	blobs_filtered = extract_blobs_in_image(image, label, diameter, threshold=threshold)
+	blobs_filtered = extract_blobs_in_image(image, label, diameter, method=method, threshold=threshold, image_preprocessing=image_preprocessing)
 
 	for lbl in np.unique(label):
 		if lbl>0:
@@ -1111,7 +1136,7 @@ def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], 
 	return df
 
 
-def interpret_track_classification(df, class_attr, irreversible_event=False, unique_state=False,r2_threshold=0.5, percentile_recovery=50):
+def interpret_track_classification(df, class_attr, irreversible_event=False, unique_state=False, transient_event=False, r2_threshold=0.5, percentile_recovery=50, pre_event=None):
 
 	"""
 	Interpret and classify tracked cells based on their status signals.
@@ -1170,15 +1195,87 @@ def interpret_track_classification(df, class_attr, irreversible_event=False, uni
 
 	if irreversible_event:
 
-		df = classify_irreversible_events(df, class_attr, r2_threshold=r2_threshold, percentile_recovery=percentile_recovery)
+		df = classify_irreversible_events(df, class_attr, r2_threshold=r2_threshold, percentile_recovery=percentile_recovery, pre_event=pre_event)
 	
 	elif unique_state:
 		
-		df = classify_unique_states(df, class_attr, percentile=50)
+		df = classify_unique_states(df, class_attr, percentile=50, pre_event=pre_event)
+
+	elif transient_event:
+
+		df = classify_transient_events(df, class_attr, pre_event=pre_event)
 
 	return df
 
-def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_recovery=50):
+
+def classify_transient_events(data, class_attr, pre_event=None):
+
+	df = data.copy()
+	cols = list(df.columns)
+
+	# Control input
+	assert 'TRACK_ID' in cols,'Please provide tracked data...'
+	if 'position' in cols:
+		sort_cols = ['position', 'TRACK_ID']
+		df = df.sort_values(by=sort_cols+['FRAME'])
+	else:
+		sort_cols = ['TRACK_ID']
+		df = df.sort_values(by=sort_cols+['FRAME'])
+	if pre_event is not None:
+		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
+		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
+
+	stat_col = class_attr.replace('class','status')
+
+	for tid,track in df.groupby(sort_cols):
+
+		indices = track[class_attr].index
+
+		if pre_event is not None:
+
+			if track['class_'+pre_event].values[0]==1:
+				df.loc[indices, class_attr] = np.nan
+				df.loc[indices, stat_col] = np.nan
+				continue
+			else:
+				# pre-event took place (if left-censored took place at time -1)
+				t_pre_event = track['t_'+pre_event].values[0]
+				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
+				df.loc[indices_pre, stat_col] = np.nan # set to NaN all statuses before pre-event
+				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+
+		status = track[stat_col].to_numpy()
+		timeline = track['FRAME'].to_numpy()
+		timeline_safe = timeline[status==status]
+		status_safe = list(status[status==status])
+
+		peaks, _ = find_peaks(status_safe)
+		widths, _, left, right = peak_widths(status_safe, peaks, rel_height=1)
+		minimum_weight = 0
+
+		if len(peaks)>0:
+			idx = np.argmax(widths)
+			peak = peaks[idx]; width = widths[idx];
+			if width >= minimum_weight:
+				left = left[idx]; right = right[idx];
+				left = timeline_safe[int(left)]; right = timeline_safe[int(right)];
+
+				df.loc[indices, class_attr] = 0
+				df.loc[indices, class_attr.replace('class_','t_')] = left + (right - left)/2.0
+			else:
+				df.loc[indices, class_attr] = 1
+				df.loc[indices, class_attr.replace('class_','t_')] = -1
+		else:
+			df.loc[indices, class_attr] = 1
+			df.loc[indices, class_attr.replace('class_','t_')] = -1
+
+
+	print("Classes: ",df.loc[df['FRAME']==0,class_attr].value_counts())
+
+	return df
+
+
+def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_recovery=50, pre_event=None):
 
 	"""
 	Classify irreversible events in a tracked dataset based on the status of cells and transitions.
@@ -1216,45 +1313,62 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_re
 	>>> df = classify_irreversible_events(df, 'class', r2_threshold=0.7)
 	"""
 
+	df = data.copy()
 	cols = list(df.columns)
+
+	# Control input
 	assert 'TRACK_ID' in cols,'Please provide tracked data...'
 	if 'position' in cols:
 		sort_cols = ['position', 'TRACK_ID']
 	else:
 		sort_cols = ['TRACK_ID']
+	if pre_event is not None:
+		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
+		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
 
 	stat_col = class_attr.replace('class','status')
 
 	for tid,track in df.groupby(sort_cols):
-		
-		# Set status to 0.0 before first detection
-		t_firstdetection = track['t_firstdetection'].values[0]
-		indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
-		track.loc[indices_pre_detection,stat_col] = 0.0
-		df.loc[indices_pre_detection,stat_col] = 0.0
-
-		track_valid = track.dropna(subset=stat_col)
-		indices_valid = track_valid[class_attr].index
 
 		indices = track[class_attr].index
+
+		if pre_event is not None:
+			if track['class_'+pre_event].values[0]==1:
+				df.loc[indices, class_attr] = np.nan
+				df.loc[indices, stat_col] = np.nan
+				continue
+			else:
+				# pre-event took place (if left-censored took place at time -1)
+				t_pre_event = track['t_'+pre_event].values[0]
+				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
+				df.loc[indices_pre, stat_col] = np.nan # set to NaN all statuses before pre-event
+				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+		else:
+			# set state to 0 before first detection
+			t_firstdetection = track['t_firstdetection'].values[0]
+			indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
+			track.loc[indices_pre_detection,stat_col] = 0.0
+			df.loc[indices_pre_detection,stat_col] = 0.0
+
+		# The non-NaN part of track (post pre-event)
+		track_valid = track.dropna(subset=stat_col, inplace=False)
 		status_values = track_valid[stat_col].to_numpy()
 
 		if np.all([s==0 for s in status_values]):
-			# all negative, no event
+			# all negative to condition, event not observed
 			df.loc[indices, class_attr] = 1
-
 		elif np.all([s==1 for s in status_values]):
-			# all positive, event already observed
+			# all positive, event already observed (left-censored)
 			df.loc[indices, class_attr] = 2
-			#df.loc[indices, class_attr.replace('class','status')] = 2
 		else:
-			# ambiguity, possible transition
+			# ambiguity, possible transition, use `unique_state` technique after
 			df.loc[indices, class_attr] = 2
-	
+
 	print("Classes after initial pass: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 
 	df.loc[df[class_attr]!=2, class_attr.replace('class', 't')] = -1
-	df = estimate_time(df, class_attr, model='step_function', class_of_interest=[2],r2_threshold=r2_threshold)
+	# Try to fit time on class 2 cells (ambiguous)
+	df = estimate_time(df, class_attr, model='step_function', class_of_interest=[2], r2_threshold=r2_threshold)
 	print("Classes after fit: ", df.loc[df['FRAME']==0,class_attr].value_counts())
 
 	# Revisit class 2 cells to classify as neg/pos with percentile tolerance
@@ -1263,7 +1377,8 @@ def classify_irreversible_events(df, class_attr, r2_threshold=0.5, percentile_re
 	
 	return df
 
-def classify_unique_states(df, class_attr, percentile=50):
+
+def classify_unique_states(df, class_attr, percentile=50, pre_event=None):
 
 	"""
 	Classify unique cell states based on percentile values of a status attribute in a tracked dataset.
@@ -1306,19 +1421,31 @@ def classify_unique_states(df, class_attr, percentile=50):
 	else:
 		sort_cols = ['TRACK_ID']
 
+	if pre_event is not None:
+		assert 't_'+pre_event in cols,"Pre-event time does not seem to be a valid column in the DataFrame..."
+		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
+
 	stat_col = class_attr.replace('class','status')
 
-
-	for tid,track in df.groupby(sort_cols):
-
-
-		track_valid = track.dropna(subset=stat_col)
-		indices_valid = track_valid[class_attr].index
+	for tid, track in df.groupby(sort_cols):
 
 		indices = track[class_attr].index
+
+		if pre_event is not None:
+			if track['class_'+pre_event].values[0]==1:
+				df.loc[indices, class_attr] = np.nan
+				df.loc[indices, stat_col] = np.nan
+				df.loc[indices, stat_col.replace('status_','t_')] = -1
+				continue
+			else:
+				t_pre_event = track['t_'+pre_event].values[0]
+				indices_pre = track.loc[track['FRAME']<=t_pre_event, class_attr].index
+				df.loc[indices_pre, stat_col] = np.nan
+				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+
+		# Post pre-event track
+		track_valid = track.dropna(subset=stat_col, inplace=False)
 		status_values = track_valid[stat_col].to_numpy()
-
-
 		frames = track_valid['FRAME'].to_numpy()
 		t_first = track['t_firstdetection'].to_numpy()[0]
 		perc_status = np.nanpercentile(status_values[frames>=t_first], percentile)
@@ -1389,8 +1516,11 @@ def classify_cells_from_query(df, status_attr, query):
 
 	df = df.copy()
 	df.loc[:,status_attr] = 0
+	df[status_attr] = df[status_attr].astype(float)
 
 	cols = extract_cols_from_query(query)
+	print(f"{cols=}")
+
 	cols_in_df = np.all([c in list(df.columns) for c in cols], axis=0)
 	if query=='':
 		print('The provided query is empty...')

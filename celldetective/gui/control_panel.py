@@ -341,6 +341,7 @@ class ControlPanel(QMainWindow, Styles):
 		self.antibodies = get_experiment_antibodies(self.exp_dir)
 		self.pharmaceutical_agents = get_experiment_pharmaceutical_agents(self.exp_dir)
 
+		self.metadata = ConfigSectionMap(self.exp_config,"Metadata")
 		print('Experiment configuration successfully read...')
 
 	def closeEvent(self, event):

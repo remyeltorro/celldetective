@@ -8,12 +8,10 @@ from .utils import _estimate_scale_factor, _extract_channel_indices
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
-from stardist.models import StarDist2D
-from cellpose.models import CellposeModel
 from skimage.transform import resize
-from celldetective.io import _view_on_napari, locate_labels, locate_stack, _view_on_napari
+from celldetective.io import _view_on_napari, locate_labels, locate_stack, _view_on_napari, _check_label_dims
 from celldetective.filters import * #rework this to give a name
-from celldetective.utils import rename_intensity_column, mask_edges, estimate_unreliable_edge
+from celldetective.utils import interpolate_nan_multichannel,_rearrange_multichannel_frame, _fix_no_contrast, zoom_multiframes, _rescale_labels, rename_intensity_column, mask_edges, _prep_stardist_model, _prep_cellpose_model, estimate_unreliable_edge,_get_normalize_kwargs_from_config, _segment_image_with_stardist_model, _segment_image_with_cellpose_model
 from stardist import fill_label_holes
 import scipy.ndimage as ndi
 from skimage.segmentation import watershed
@@ -99,9 +97,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 	required_spatial_calibration = input_config['spatial_calibration']
 	model_type = input_config['model_type']
 
-	normalization_percentile = input_config['normalization_percentile']
-	normalization_clip = input_config['normalization_clip']
-	normalization_values = input_config['normalization_values']
+	normalize_kwargs = _get_normalize_kwargs_from_config(input_config)
 
 	if model_type=='cellpose':
 		diameter = input_config['diameter']
@@ -116,28 +112,10 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 	print(f"{spatial_calibration=} {required_spatial_calibration=} Scale = {scale}...")
 
 	if model_type=='stardist':
-
-		model = StarDist2D(None, name=model_name, basedir=Path(model_path).parent)
-		model.config.use_gpu = use_gpu
-		model.use_gpu = use_gpu
-		print(f"StarDist model {model_name} successfully loaded.")
-		scale_model = scale
+		model, scale_model = _prep_stardist_model(model_name, Path(model_path).parent, use_gpu=use_gpu, scale=scale)
 
 	elif model_type=='cellpose':
-		
-		import torch
-		if not use_gpu:
-			device = torch.device("cpu")
-		else:
-			device = torch.device("cuda")
-
-		model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=model_path+model_path.split('/')[-2], model_type=None, nchan=len(required_channels))
-		if scale is None:
-			scale_model = model.diam_mean / model.diam_labels
-		else:
-			scale_model = scale * model.diam_mean / model.diam_labels
-		print(f"Diam mean: {model.diam_mean}; Diam labels: {model.diam_labels}; Final rescaling: {scale_model}...")
-		print(f'Cellpose model {model_name} successfully loaded.')
+		model, scale_model = _prep_cellpose_model(model_path.split('/')[-2], model_path, use_gpu=use_gpu, n_channels=len(required_channels), scale=scale)		
 
 	labels = []
 
@@ -149,11 +127,7 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		channel_indices[channel_indices==None] = 0
 
 		frame = stack[t]
-		#frame = stack[t,:,:,channel_indices.astype(int)].astype(float)
-		if frame.ndim==2:
-			frame = frame[:,:,np.newaxis]
-		if frame.ndim==3 and np.array(frame.shape).argmin()==0:
-			frame = np.moveaxis(frame,0,-1)
+		frame = _rearrange_multichannel_frame(frame).astype(float)
 
 		frame_to_segment = np.zeros((frame.shape[0], frame.shape[1], len(required_channels))).astype(float)
 		for ch in channel_intersection:
@@ -162,45 +136,25 @@ def segment(stack, model_name, channels=None, spatial_calibration=None, view_on_
 		frame = frame_to_segment
 		template = frame.copy()
 
-		values = []
-		percentiles = []
-		for k in range(len(normalization_percentile)):
-			if normalization_percentile[k]:
-				percentiles.append(normalization_values[k])
-				values.append(None)
-			else:
-				percentiles.append(None)
-				values.append(normalization_values[k])
-
-		frame = normalize_multichannel(frame, **{"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
+		frame = normalize_multichannel(frame, **normalize_kwargs)
 		
 		if scale_model is not None:
-			frame = [zoom(frame[:,:,c].copy(), [scale_model,scale_model], order=3, prefilter=False) for c in range(frame.shape[-1])]
-			frame = np.moveaxis(frame,0,-1)
+			frame = zoom_multiframes(frame, scale_model)
 		
-		for k in range(frame.shape[2]):
-			unique_values = np.unique(frame[:,:,k])
-			if len(unique_values)==1:
-				frame[0,0,k] += 1
-		
-		frame = np.moveaxis([interpolate_nan(frame[:,:,c].copy()) for c in range(frame.shape[-1])],0,-1)
+		frame = _fix_no_contrast(frame)
+		frame = interpolate_nan_multichannel(frame)
 		frame[:,:,none_channel_indices] = 0.
 
 		if model_type=="stardist":
-
-			Y_pred, details = model.predict_instances(frame, n_tiles=model._guess_n_tiles(frame), show_tile_progress=False, verbose=False)
-			Y_pred = Y_pred.astype(np.uint16)
+			Y_pred = _segment_image_with_stardist_model(frame, model=model, return_details=False)
 
 		elif model_type=="cellpose":
-			
-			img = np.moveaxis(frame, -1, 0)
-			Y_pred, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
-			Y_pred = Y_pred.astype(np.uint16)
+			Y_pred = _segment_image_with_cellpose_model(frame, model=model, diameter=diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold)
 
 		if Y_pred.shape != stack[0].shape[:2]:
-			Y_pred = zoom(Y_pred, [1./scale_model,1./scale_model],order=0)
-		if Y_pred.shape != template.shape[:2]:
-			Y_pred = resize(Y_pred, template.shape[:2], order=0)
+			Y_pred = _rescale_labels(Y_pred, scale_model)
+		
+		Y_pred = _check_label_dims(Y_pred, template=template)
 
 		labels.append(Y_pred)
 
@@ -315,6 +269,7 @@ def segment_frame_from_thresholds(frame, target_channel=0, thresholds=None, equa
 	"""
 
 	img = frame[:,:,target_channel]
+	img = interpolate_nan(img)
 	if equalize_reference is not None:
 		img = match_histograms(img, equalize_reference)
 	img_mc = frame.copy()

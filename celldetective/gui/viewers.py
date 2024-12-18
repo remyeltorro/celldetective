@@ -14,7 +14,7 @@ import os
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QListWidget, QShortcut
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeySequence, QDoubleValidator
-from celldetective.gui.gui_utils import FigureCanvas, center_window, QuickSliderLayout, QHSeperationLine, ThresholdLineEdit
+from celldetective.gui.gui_utils import FigureCanvas, center_window, QuickSliderLayout, QHSeperationLine, ThresholdLineEdit, PreprocessingLayout2
 from celldetective.gui import Styles
 from superqt import QLabeledDoubleSlider, QLabeledSlider, QLabeledDoubleRangeSlider
 from superqt.fonticon import icon
@@ -626,21 +626,26 @@ class CellEdgeVisualizer(StackVisualizer):
 
 class SpotDetectionVisualizer(StackVisualizer):
 	
-	def __init__(self, parent_channel_cb=None, parent_diameter_le=None, parent_threshold_le=None, cell_type='targets', labels=None, *args, **kwargs):
+	def __init__(self, parent_channel_cb=None, parent_diameter_le=None, parent_threshold_le=None, parent_preprocessing_list=None, cell_type='targets', labels=None, *args, **kwargs):
 
 		super().__init__(*args, **kwargs)
 		
 		self.cell_type = cell_type
 		self.labels = labels
 		self.detection_channel = self.target_channel
+
 		self.parent_channel_cb = parent_channel_cb
 		self.parent_diameter_le = parent_diameter_le
 		self.parent_threshold_le = parent_threshold_le
-		self.spot_sizes = []
+		self.parent_preprocessing_list = parent_preprocessing_list
 
+		self.spot_sizes = []
 		self.floatValidator = QDoubleValidator()
 		self.init_scatter()
-		self.generate_detection_channel()
+		
+		self.generate_detection_channel()		
+		self.detection_channel = self.detection_channel_cb.currentIndex()
+
 		self.generate_spot_detection_params()
 		self.generate_add_measurement_btn()
 		self.load_labels()
@@ -663,10 +668,10 @@ class SpotDetectionVisualizer(StackVisualizer):
 
 		# Data-to-pixel scale
 		ax_width_in_pixels = self.ax.bbox.width
-		ax_height_in_pixels = self.ax.bbox.height
+		ax_height_in_pixels =self.ax.bbox.height
 
-		x_scale = (xlim[1] - xlim[0]) / ax_width_in_pixels
-		y_scale = (ylim[1] - ylim[0]) / ax_height_in_pixels
+		x_scale = (float(xlim[1]) - float(xlim[0])) / ax_width_in_pixels
+		y_scale = (float(ylim[1]) - float(ylim[0])) / ax_height_in_pixels
 
 		# Choose the smaller scale for square pixels
 		scale = min(x_scale, y_scale)
@@ -674,7 +679,7 @@ class SpotDetectionVisualizer(StackVisualizer):
 		# Convert radius_px to data units
 		if len(self.spot_sizes)>0:
 
-			radius_data_units = self.spot_sizes / scale
+			radius_data_units = self.spot_sizes / float(scale)
 
 			# Convert to scatter `s` size (points squared)
 			radius_pts = radius_data_units * (72. / self.fig.dpi )
@@ -697,8 +702,7 @@ class SpotDetectionVisualizer(StackVisualizer):
 		if self.mode=='virtual':
 			self.init_label = imread(self.mask_paths[value])
 			self.target_img = load_frames(self.img_num_per_channel[self.detection_channel, value], 
-								self.stack_path,
-								normalize_input=False).astype(float)[:,:,0]
+								self.stack_path,normalize_input=False).astype(float)[:,:,0]
 		elif self.mode=='direct':
 			self.init_label = self.labels[value,:,:]
 			self.target_img = self.stack[value,:,:,self.detection_channel].copy()
@@ -707,18 +711,28 @@ class SpotDetectionVisualizer(StackVisualizer):
 
 		self.reset_detection()
 		self.control_valid_parameters() # set current diam and threshold
-		blobs_filtered = extract_blobs_in_image(self.target_img, self.init_label,threshold=self.thresh, diameter=self.diameter)
+		#self.change_frame(self.frame_slider.value())
+		#self.set_detection_channel_index(self.detection_channel_cb.currentIndex())
+
+		image_preprocessing = self.preprocessing.list.items
+		if image_preprocessing==[]:
+			image_preprocessing = None
+
+		blobs_filtered = extract_blobs_in_image(self.target_img, self.init_label,threshold=self.thresh, diameter=self.diameter, image_preprocessing=image_preprocessing)
 		if blobs_filtered is not None:
 			self.spot_positions = np.array([[x,y] for y,x,_ in blobs_filtered])
-			
-			self.spot_sizes = np.sqrt(2)*np.array([sig for _,_,sig in blobs_filtered])
-			print(f"{self.spot_sizes=}")
+			if len(self.spot_positions)>0:
+				self.spot_sizes = np.sqrt(2)*np.array([sig for _,_,sig in blobs_filtered])
 			#radius_pts = self.spot_sizes * (self.fig.dpi / 72.0)
 			#sizes = np.pi*(radius_pts**2)
-
-			self.spot_scat.set_offsets(self.spot_positions)
+			if len(self.spot_positions)>0:
+				self.spot_scat.set_offsets(self.spot_positions)
+			else:
+				empty_offset = np.ma.masked_array([0, 0], mask=True)
+				self.spot_scat.set_offsets(empty_offset)
 			#self.spot_scat.set_sizes(sizes)
-			self.update_marker_sizes()
+			if len(self.spot_positions)>0:
+				self.update_marker_sizes()
 			self.canvas.canvas.draw()
 
 	def reset_detection(self):
@@ -778,17 +792,34 @@ class SpotDetectionVisualizer(StackVisualizer):
 		self.detection_channel_cb.addItems(self.channel_names)
 		self.detection_channel_cb.currentIndexChanged.connect(self.set_detection_channel_index)
 		channel_layout.addWidget(self.detection_channel_cb, 75)
+
+		# self.invert_check = QCheckBox('invert')
+		# if self.invert:
+		# 	self.invert_check.setChecked(True)
+		# self.invert_check.toggled.connect(self.set_invert)
+		# channel_layout.addWidget(self.invert_check, 10)
+
 		self.canvas.layout.addLayout(channel_layout)
+		
+		self.preprocessing = PreprocessingLayout2(fraction=25, parent_window=self)
+		self.preprocessing.setContentsMargins(15,0,15,0)
+		self.canvas.layout.addLayout(self.preprocessing)
+
+
+	# def set_invert(self):
+	# 	if self.invert_check.isChecked():
+	# 		self.invert = True
+	# 	else:
+	# 		self.invert = False
 
 	def set_detection_channel_index(self, value):
 
 		self.detection_channel = value
 		if self.mode == 'direct':
-			self.last_frame = self.stack[-1,:,:,self.target_channel]
+			self.target_img = self.stack[-1,:,:,self.detection_channel]
 		elif self.mode == 'virtual':
-			self.target_img = load_frames(self.img_num_per_channel[self.detection_channel, self.stack_length-1], 
-										  self.stack_path,
-										  normalize_input=False).astype(float)[:,:,0]
+			self.target_img = load_frames(self.img_num_per_channel[self.detection_channel, self.frame_slider.value()], 
+										  self.stack_path,normalize_input=False).astype(float)[:,:,0]
 
 	def generate_spot_detection_params(self):
 
@@ -865,6 +896,12 @@ class SpotDetectionVisualizer(StackVisualizer):
 			self.parent_diameter_le.setText(self.spot_diam_le.text())
 		if self.parent_threshold_le is not None:
 			self.parent_threshold_le.setText(self.spot_thresh_le.text())
+		if self.parent_preprocessing_list is not None:
+			self.parent_preprocessing_list.clear()
+			items = self.preprocessing.list.getItems()
+			for item in items:
+				self.parent_preprocessing_list.addItemToList(item)
+			self.parent_preprocessing_list.items = self.preprocessing.list.items
 		self.close()
 
 class CellSizeViewer(StackVisualizer):

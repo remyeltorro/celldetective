@@ -3,7 +3,8 @@ from PyQt5.QtWidgets import QAction, QMenu, QMainWindow, QMessageBox, QLabel, QW
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from celldetective.filters import std_filter, gauss_filter
-from celldetective.gui.gui_utils import center_window, FigureCanvas, ListWidget, FilterChoice, color_from_class, help_generic
+from celldetective.gui.gui_utils import center_window, FigureCanvas, color_from_class, help_generic
+from celldetective.gui.gui_utils import PreprocessingLayout
 from celldetective.utils import get_software_location, extract_experiment_channels, rename_intensity_column, estimate_unreliable_edge
 from celldetective.io import auto_load_number_of_frames, load_frames
 from celldetective.segmentation import threshold_image, identify_markers_from_binary, apply_watershed
@@ -22,6 +23,7 @@ import json
 import os
 
 from celldetective.gui import Styles
+
 
 class ThresholdConfigWizard(QMainWindow, Styles):
 	"""
@@ -140,53 +142,8 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 
 	def populate_left_panel(self):
 
-		self.filters_qlist = ListWidget(FilterChoice, [])
-
-		grid_preprocess = QGridLayout()
-		grid_preprocess.setContentsMargins(20, 20, 20, 20)
-
-		filter_list_option_grid = QHBoxLayout()
-		section_preprocess = QLabel("Preprocessing")
-		section_preprocess.setStyleSheet("font-weight: bold;")
-		filter_list_option_grid.addWidget(section_preprocess, 90, alignment=Qt.AlignLeft)
-
-		self.delete_filter = QPushButton("")
-		self.delete_filter.setStyleSheet(self.button_select_all)
-		self.delete_filter.setIcon(icon(MDI6.trash_can, color="black"))
-		self.delete_filter.setToolTip("Remove filter")
-		self.delete_filter.setIconSize(QSize(20, 20))
-		self.delete_filter.clicked.connect(self.filters_qlist.removeSel)
-
-		self.add_filter = QPushButton("")
-		self.add_filter.setStyleSheet(self.button_select_all)
-		self.add_filter.setIcon(icon(MDI6.filter_plus, color="black"))
-		self.add_filter.setToolTip("Add filter")
-		self.add_filter.setIconSize(QSize(20, 20))
-		self.add_filter.clicked.connect(self.filters_qlist.addItem)
-
-		self.help_prefilter_btn = QPushButton()
-		self.help_prefilter_btn.setIcon(icon(MDI6.help_circle,color=self.help_color))
-		self.help_prefilter_btn.setIconSize(QSize(20, 20))
-		self.help_prefilter_btn.clicked.connect(self.help_prefilter)
-		self.help_prefilter_btn.setStyleSheet(self.button_select_all)
-		self.help_prefilter_btn.setToolTip("Help.")
-
-		# filter_list_option_grid.addWidget(QLabel(""),90)
-		filter_list_option_grid.addWidget(self.delete_filter, 5)
-		filter_list_option_grid.addWidget(self.add_filter, 5)
-		filter_list_option_grid.addWidget(self.help_prefilter_btn, 5)
-
-		grid_preprocess.addLayout(filter_list_option_grid, 0, 0, 1, 3)
-		grid_preprocess.addWidget(self.filters_qlist, 1, 0, 1, 3)
-
-		self.apply_filters_btn = QPushButton("Apply")
-		self.apply_filters_btn.setIcon(icon(MDI6.filter_cog_outline, color="white"))
-		self.apply_filters_btn.setIconSize(QSize(20, 20))
-		self.apply_filters_btn.setStyleSheet(self.button_style_sheet)
-		self.apply_filters_btn.clicked.connect(self.preprocess_image)
-		grid_preprocess.addWidget(self.apply_filters_btn, 2, 0, 1, 3)
-
-		self.left_panel.addLayout(grid_preprocess)
+		self.preprocessing = PreprocessingLayout(self)
+		self.left_panel.addLayout(self.preprocessing)
 
 		###################
 		# THRESHOLD SECTION
@@ -484,7 +441,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		self.fcanvas = FigureCanvas(self.fig, interactive=True)
 		self.ax.clear()
 
-		self.im = self.ax.imshow(self.img, cmap='gray')
+		self.im = self.ax.imshow(self.img, cmap='gray', interpolation='none')
 
 		self.binary = threshold_image(self.img, self.threshold_slider.value()[0], self.threshold_slider.value()[1],
 									  foreground_value=1., fill_holes=True, edge_exclusion=None)
@@ -640,7 +597,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		"""
 
 		self.reload_frame()
-		filters = self.filters_qlist.items
+		filters = self.preprocessing.list.items
 		self.edge = estimate_unreliable_edge(filters)
 		self.img = filter_image(self.img, filters)
 		self.refresh_imshow()
@@ -853,7 +810,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		instructions = {
 			"target_channel": self.channels_cb.currentText(),  # for now index but would be more universal to use name
 			"thresholds": self.threshold_slider.value(),
-			"filters": self.filters_qlist.items,
+			"filters": self.preprocessing.list.items,
 			"marker_min_distance": self.min_dist,
 			"marker_footprint_size": self.footprint,
 			"feature_queries": [self.property_query_le.text()],
@@ -906,7 +863,7 @@ class ThresholdConfigWizard(QMainWindow, Styles):
 		items_to_add = [f[0] + '_filter' for f in filters]
 		self.filters_qlist.list_widget.clear()
 		self.filters_qlist.list_widget.addItems(items_to_add)
-		self.filters_qlist.items = filters
+		self.preprocessing.list.items = filters
 
 		self.apply_filters_btn.click()
 

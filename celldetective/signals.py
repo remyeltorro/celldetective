@@ -167,12 +167,13 @@ def analyze_signals(trajectories, model, interpolate_na=True,
 	if selected_signals is None:
 		selected_signals = []
 		for s in required_signals:
-			pattern_test = [s in a or s==a for a in available_signals]
-			#print(f'Pattern test for signal {s}: ', pattern_test)
-			assert np.any(pattern_test),f'No signal matches with the requirements of the model {required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
-			valid_columns = natsorted(np.array(available_signals)[np.array(pattern_test)])
-			print(f"Selecting the first time series among: {valid_columns} for input requirement {s}...")
-			selected_signals.append(valid_columns[0])
+			priority_cols = [a for a in available_signals if a==s]
+			second_priority_cols = [a for a in available_signals if a.startswith(s) and a!=s]
+			third_priority_cols = [a for a in available_signals if s in a and not a.startswith(s)]
+			candidates = priority_cols + second_priority_cols + third_priority_cols
+			assert len(candidates)>0,f'No signal matches with the requirements of the model {required_signals}. Please pass the signals manually with the argument selected_signals or add measurements. Abort.'
+			print(f"Selecting the first time series among: {candidates} for input requirement {s}...")
+			selected_signals.append(candidates[0])
 	else:
 		assert len(selected_signals)==len(required_signals),f'Mismatch between the number of required signals {required_signals} and the provided signals {selected_signals}... Abort.'
 
@@ -877,6 +878,7 @@ class SignalDetectionModel(object):
 		self.n_classes = self.model_class.layers[-1].output_shape[-1]
 
 		assert self.model_class.layers[0].input_shape[0] == self.model_reg.layers[0].input_shape[0], f"mismatch between input shape of classification: {self.model_class.layers[0].input_shape[0]} and regression {self.model_reg.layers[0].input_shape[0]} models... Error."
+
 
 		return True
 

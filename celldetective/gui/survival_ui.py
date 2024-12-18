@@ -11,12 +11,11 @@ import os
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 from glob import glob
-import pandas as pd
 from celldetective.gui import Styles
 from matplotlib import colormaps
 from celldetective.events import compute_survival
-from natsort import natsorted
 from celldetective.relative_measurements import expand_pair_table
+import matplotlib.cm
 from celldetective.neighborhood import extract_neighborhood_in_pair_table
 
 class ConfigSurvival(QWidget, Styles):
@@ -90,13 +89,13 @@ class ConfigSurvival(QWidget, Styles):
 			""")
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
-		
+
 		pops = []
 		for population in ['effectors','targets','pairs']:
 			tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{population}.csv']))
 			if len(tables)>0:
 				pops.append(population)
-		
+
 		tables_targets = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_targets.csv']))
 		self.cols_targets = extract_cols_from_table_list(tables_targets)
 		tables_effectors = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_effectors.csv']))
@@ -134,8 +133,8 @@ class ConfigSurvival(QWidget, Styles):
 			pass
 
 
-		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('cmap: ')] #QLabel('class: '), 
-		self.cb_options = [pops, ['0'], [], []] #['class'], 
+		labels = [QLabel('population: '), QLabel('time of\nreference: '), QLabel('time of\ninterest: '), QLabel('cmap: ')] #QLabel('class: '),
+		self.cb_options = [pops, ['0'], [], []] #['class'],
 		self.cbs = [QComboBox() for i in range(len(labels))]
 
 		self.cbs[-1] = QColormapComboBox()
@@ -153,10 +152,12 @@ class ConfigSurvival(QWidget, Styles):
 
 		all_cms = list(colormaps)
 		for cm in all_cms:
-			try:
-				self.cbs[-1].addColormap(cm)
-			except:
-				pass
+			if hasattr(matplotlib.cm, str(cm).lower()):
+				self.cbs[-1].addColormap(cm.lower())
+			#try:
+			# 	self.cbs[-1].addColormap(cm)
+			# except:
+			# 	pass
 
 		main_layout.addLayout(choice_layout)
 
@@ -204,7 +205,7 @@ class ConfigSurvival(QWidget, Styles):
 		self.neighborhood_keys = None
 		self.population = self.cbs[0].currentText()
 		pop_split = self.population.split('-')
-		
+
 		if len(pop_split)==2:
 
 			self.population = 'pairs'
@@ -241,7 +242,7 @@ class ConfigSurvival(QWidget, Styles):
 			time_cols_pairs = list(self.cols_pairs[time_idx])
 
 			time_columns = time_cols_ref + time_cols_neigh + time_cols_pairs
-		
+
 		else:
 			if self.population=='targets':
 				self.all_columns = self.cols_targets
@@ -266,10 +267,7 @@ class ConfigSurvival(QWidget, Styles):
 
 	def process_survival(self):
 
-		print('you clicked!!')
 		self.FrameToMin = float(self.time_calibration_le.text().replace(',','.'))
-		print(self.FrameToMin, 'set')
-
 		self.time_of_interest = self.cbs[2].currentText()
 		if self.time_of_interest=="t0":
 			self.class_of_interest = "class"
@@ -279,9 +277,6 @@ class ConfigSurvival(QWidget, Styles):
 
 		# read instructions from combobox options
 		self.load_available_tables_local()
-		print(f"{self.class_of_interest=}")
-
-
 		if self.df is not None:
 			
 			try:
@@ -292,7 +287,6 @@ class ConfigSurvival(QWidget, Styles):
 				print(e, ' The query is misunderstood and will not be applied...')
 			
 			self.interpret_pos_location()
-			print(f"{self.class_of_interest in list(self.df.columns) and self.cbs[2].currentText() in list(self.df.columns)=}")
 			if self.class_of_interest in list(self.df.columns) and self.cbs[2].currentText() in list(self.df.columns):
 				self.compute_survival_functions()
 			else:
@@ -328,8 +322,6 @@ class ConfigSurvival(QWidget, Styles):
 		self.position_option = self.parent_window.parent_window.position_list.getSelectedIndices()
 
 		self.df, self.df_pos_info = load_experiment_tables(self.exp_dir, well_option=self.well_option, position_option=self.position_option, population=self.population, return_pos_info=True)
-		
-
 
 		if self.df is None:
 			msgBox = QMessageBox()
@@ -345,9 +337,7 @@ class ConfigSurvival(QWidget, Styles):
 			#print(f"{self.df_well_info=}")
 
 		if self.population=='pairs':
-			print('we have pairs so extract work needs to be done...')
 			self.df = expand_pair_table(self.df)
-			print(f"{self.neighborhood_keys[0]=}")
 			self.df = extract_neighborhood_in_pair_table(self.df, reference_population=self.population_reference, neighbor_population=self.population_neigh, neighborhood_key=self.neighborhood_keys[0], contact_only=True)
 
 
@@ -361,30 +351,19 @@ class ConfigSurvival(QWidget, Styles):
 				cut_observation_time = None		
 		except Exception as e:
 			pass
-		print(f"{cut_observation_time=}")
 
 		pairs = False
 		if self.neighborhood_keys is not None:
 			pairs = True
 
-		print('we compute the survival function!!!')
-		print(f"{list(self.df.columns)=}")
-		print(self.df.head(30))
-
-		for block,movie_group in self.df.groupby(['well','position']):
-			print(f"{block=}")
-
-
 		# Per position survival
 		for block,movie_group in self.df.groupby(['well','position']):
-			print('we compute survival per position!!!!')
 			ks = compute_survival(movie_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin, cut_observation_time=cut_observation_time, pairs=pairs)
 			if ks is not None:
 				self.df_pos_info.loc[self.df_pos_info['pos_path']==block[1],'survival_fit'] = ks
 
 		# Per well survival
 		for well,well_group in self.df.groupby('well'):
-			print('we compute survival per well!!!!')
 			ks = compute_survival(well_group, self.class_of_interest, self.cbs[2].currentText(), t_reference=self.cbs[1].currentText(), FrameToMin=self.FrameToMin, cut_observation_time=cut_observation_time, pairs=pairs)
 			if ks is not None:
 				self.df_well_info.loc[self.df_well_info['well_path']==well,'survival_fit'] = ks

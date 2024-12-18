@@ -6,21 +6,17 @@ import argparse
 import datetime
 import os
 import json
-from stardist.models import StarDist2D
-from cellpose.models import CellposeModel
-from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames, extract_position_name
-from celldetective.utils import interpolate_nan, _estimate_scale_factor, _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
+from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, extract_position_name, _load_frames_to_segment, _check_label_dims
+from celldetective.utils import _prep_stardist_model, _prep_cellpose_model, _rescale_labels, _segment_image_with_stardist_model,_segment_image_with_cellpose_model,_get_normalize_kwargs_from_config, _estimate_scale_factor, _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
 from tqdm import tqdm
 import numpy as np
-from skimage.transform import resize
 from csbdeep.io import save_tiff_imagej_compatible
 import gc
 from art import tprint
-from scipy.ndimage import zoom
-
+import concurrent.futures
 
 tprint("Segment")
 
@@ -91,9 +87,7 @@ print(f'Required channels: {required_channels} located at channel indices {chann
 required_spatial_calibration = input_config['spatial_calibration']
 print(f'Spatial calibration expected by the model: {required_spatial_calibration}...')
 
-normalization_percentile = input_config['normalization_percentile']
-normalization_clip = input_config['normalization_clip']
-normalization_values = input_config['normalization_values']
+normalize_kwargs = _get_normalize_kwargs_from_config(input_config)
 
 model_type = input_config['model_type']
 
@@ -142,80 +136,39 @@ with open(pos+f'log_{mode}.json', 'a') as f:
 # Loop over all frames and segment
 def segment_index(indices):
 
-	global scale
-
 	if model_type=='stardist':
-		model = StarDist2D(None, name=modelname, basedir=Path(model_complete_path).parent)
-		model.config.use_gpu = use_gpu
-		model.use_gpu = use_gpu
-		print(f"StarDist model {modelname} successfully loaded.")
-		scale_model = scale
+		model, scale_model = _prep_stardist_model(modelname, Path(model_complete_path).parent, use_gpu=use_gpu, scale=scale)
 
 	elif model_type=='cellpose':
-
-		import torch
-		if not use_gpu:
-			device = torch.device("cpu")
-		else:
-			device = torch.device("cuda")
-
-		model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=model_complete_path+modelname, model_type=None, nchan=len(required_channels)) #diam_mean=30.0,
-		if scale is None:
-			scale_model = model.diam_mean / model.diam_labels
-		else:
-			scale_model = scale * model.diam_mean / model.diam_labels
-		print(f"Diam mean: {model.diam_mean}; Diam labels: {model.diam_labels}; Final rescaling: {scale_model}...")
-		print(f'Cellpose model {modelname} successfully loaded.')
+		model, scale_model = _prep_cellpose_model(modelname, model_complete_path, use_gpu=use_gpu, n_channels=len(required_channels), scale=scale)
 
 	for t in tqdm(indices,desc="frame"):
-		
-		# Load channels at time t
-		values = []
-		percentiles = []
-		for k in range(len(normalization_percentile)):
-			if normalization_percentile[k]:
-				percentiles.append(normalization_values[k])
-				values.append(None)
-			else:
-				percentiles.append(None)
-				values.append(normalization_values[k])
 
-		f = load_frames(img_num_channels[:,t], file, scale=scale_model, normalize_input=True, normalize_kwargs={"percentiles": percentiles, 'values': values, 'clip': normalization_clip})
-		f = np.moveaxis([interpolate_nan(f[:,:,c].copy()) for c in range(f.shape[-1])],0,-1)
-
-		if np.any(img_num_channels[:,t]==-1):
-			f[:,:,np.where(img_num_channels[:,t]==-1)[0]] = 0.	
+		f = _load_frames_to_segment(file, img_num_channels[:,t], scale_model=scale_model, normalize_kwargs=normalize_kwargs)
 
 		if model_type=="stardist":
-			Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)
-			Y_pred = Y_pred.astype(np.uint16)
-
+			Y_pred = _segment_image_with_stardist_model(f, model=model, return_details=False)
 		elif model_type=="cellpose":
-
-			img = np.moveaxis(f, -1, 0)
-			Y_pred, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
-			Y_pred = Y_pred.astype(np.uint16)
+			Y_pred = _segment_image_with_cellpose_model(f, model=model, diameter=diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold)
 
 		if scale is not None:
-			Y_pred = zoom(Y_pred, [1./scale_model,1./scale_model],order=0)
+			Y_pred = _rescale_labels(Y_pred, scale_model=scale_model)
 
-		template = load_frames(0,file,scale=1,normalize_input=False)
-		if Y_pred.shape != template.shape[:2]:
-			Y_pred = resize(Y_pred, template.shape[:2], order=0)
+		Y_pred = _check_label_dims(Y_pred, file)
 
 		save_tiff_imagej_compatible(pos+os.sep.join([label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
 
 		del f;
-		del template;
 		del Y_pred;
 		gc.collect()
+
+	del model;
+	gc.collect()
 
 	return
 
 
 print(f"Starting the segmentation with {n_threads} thread(s) and GPU={use_gpu}...")
-
-import concurrent.futures
 
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))

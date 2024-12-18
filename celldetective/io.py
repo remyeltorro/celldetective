@@ -25,10 +25,11 @@ from magicgui import magicgui
 from pathlib import Path, PurePath
 from shutil import copyfile, rmtree
 
-from celldetective.utils import ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
-from celldetective.utils import _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
+from celldetective.utils import _rearrange_multichannel_frame, _fix_no_contrast, zoom_multiframes,ConfigSectionMap, extract_experiment_channels, _extract_labels_from_config, get_zenodo_files, download_zenodo_file
+from celldetective.utils import interpolate_nan_multichannel, _estimate_scale_factor, _extract_channel_indices_from_config, _extract_channel_indices, _extract_nbr_channels_from_config, _get_img_num_per_channel, normalize_per_channel
 
 from stardist import fill_label_holes
+from skimage.transform import resize
 
 
 def extract_experiment_from_well(well_path):
@@ -3306,27 +3307,16 @@ def load_frames(img_nums, stack_path, scale=None, normalize_input=True, dtype=fl
 			f'Error in loading the frame {img_nums} {e}. Please check that the experiment channel information is consistent with the movie being read.')
 		return None
 
-	if frames.ndim == 3:
-		# Systematically move channel axis to the end
-		channel_axis = np.argmin(frames.shape)
-		frames = np.moveaxis(frames, channel_axis, -1)
-
-	if frames.ndim==2:
-		frames = frames[:,:,np.newaxis].astype(float)
+	frames = _rearrange_multichannel_frame(frames)
 
 	if normalize_input:
 		frames = normalize_multichannel(frames, **normalize_kwargs)
 
 	if scale is not None:
-		frames = [zoom(frames[:,:,c].copy(), [scale,scale], order=3, prefilter=False) for c in range(frames.shape[-1])]
-		frames = np.moveaxis(frames,0,-1)
+		frames = zoom_multiframes(frames, scale)
 
 	# add a fake pixel to prevent auto normalization errors on images that are uniform
-	# to revisit
-	for k in range(frames.shape[2]):
-		unique_values = np.unique(frames[:, :, k])
-		if len(unique_values) == 1:
-			frames[0, 0, k] += 1
+	frames = _fix_no_contrast(frames)
 
 	return frames.astype(dtype)
 
@@ -3531,6 +3521,29 @@ def extract_experiment_folder_output(experiment_folder, destination_folder):
 
 			for t in tab_path:
 				copyfile(t, os.sep.join([output_tables_folder, os.path.split(t)[-1]]))
+
+def _load_frames_to_segment(file, indices, scale_model=None, normalize_kwargs=None):
+	
+	frames = load_frames(indices, file, scale=scale_model, normalize_input=True, normalize_kwargs=normalize_kwargs)
+	frames = interpolate_nan_multichannel(frames)
+
+	if np.any(indices==-1):
+		frames[:,:,np.where(indices==-1)[0]] = 0.
+
+	return frames
+
+def _check_label_dims(lbl, file=None, template=None):
+	
+	if file is not None:
+		template = load_frames(0,file,scale=1,normalize_input=False)
+	elif template is not None:
+		template = template
+	else:
+		return lbl
+
+	if lbl.shape != template.shape[:2]:
+		lbl = resize(lbl, template.shape[:2], order=0)
+	return lbl
 
 
 if __name__ == '__main__':

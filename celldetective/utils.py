@@ -29,9 +29,219 @@ from scipy import ndimage
 from skimage.morphology import disk
 from scipy.stats import ks_2samp
 from cliffs_delta import cliffs_delta
+from stardist.models import StarDist2D
+from cellpose.models import CellposeModel
 
+
+def _rearrange_multichannel_frame(frame):
+
+	"""
+	Rearranges the axes of a multi-channel frame to ensure the channel axis is at the end.
+
+	This function standardizes the input frame to ensure that the channel axis (if present) 
+	is moved to the last position. For 2D frames, it adds a singleton channel axis at the end.
+
+	Parameters
+	----------
+	frame : ndarray
+		The input frame to be rearranged. Can be 2D or 3D. 
+		- If 3D, the function identifies the channel axis (assumed to be the axis with the smallest size) 
+		  and moves it to the last position.
+		- If 2D, the function adds a singleton channel axis to make it compatible with 3D processing.
+
+	Returns
+	-------
+	ndarray
+		The rearranged frame with the channel axis at the end. 
+		- For 3D frames, the output shape will have the channel axis as the last dimension.
+		- For 2D frames, the output will have shape `(H, W, 1)` where `H` and `W` are the height and width of the frame.
+
+	Notes
+	-----
+	- This function assumes that in a 3D input, the channel axis is the one with the smallest size.
+	- For 2D frames, this function ensures compatibility with multi-channel processing pipelines by 
+	  adding a singleton dimension for the channel axis.
+
+	Examples
+	--------
+	Rearranging a 3D multi-channel frame:
+	>>> frame = np.zeros((10, 10, 3))  # Already channel-last
+	>>> _rearrange_multichannel_frame(frame).shape
+	(10, 10, 3)
+
+	Rearranging a 3D frame with channel axis not at the end:
+	>>> frame = np.zeros((3, 10, 10))  # Channel-first
+	>>> _rearrange_multichannel_frame(frame).shape
+	(10, 10, 3)
+
+	Converting a 2D frame to have a channel axis:
+	>>> frame = np.zeros((10, 10))  # Grayscale image
+	>>> _rearrange_multichannel_frame(frame).shape
+	(10, 10, 1)
+	"""
+
+
+	if frame.ndim == 3:
+		# Systematically move channel axis to the end
+		channel_axis = np.argmin(frame.shape)
+		frame = np.moveaxis(frame, channel_axis, -1)
+
+	if frame.ndim==2:
+		frame = frame[:,:,np.newaxis]
+
+	return frame
+
+def _fix_no_contrast(frames, value=1):
+
+	"""
+	Ensures that frames with no contrast (i.e., containing only a single unique value) are adjusted.
+
+	This function modifies frames that lack contrast by adding a small value to the first pixel in 
+	the affected frame. This prevents downstream issues in image processing pipelines that require 
+	a minimum level of contrast.
+
+	Parameters
+	----------
+	frames : ndarray
+		A 3D array of shape `(H, W, N)`, where:
+		- `H` is the height of the frame,
+		- `W` is the width of the frame,
+		- `N` is the number of frames or channels.
+		Each frame (or channel) is independently checked for contrast.
+	value : int or float, optional
+		The value to add to the first pixel (`frames[0, 0, k]`) of any frame that lacks contrast. 
+		Default is `1`.
+
+	Returns
+	-------
+	ndarray
+		The modified `frames` array, where frames with no contrast have been adjusted.
+
+	Notes
+	-----
+	- A frame is determined to have "no contrast" if all its pixel values are identical.
+	- Only the first pixel (`[0, 0, k]`) of a no-contrast frame is modified, leaving the rest 
+	  of the frame unchanged.
+	"""
+
+	for k in range(frames.shape[2]):
+		unique_values = np.unique(frames[:,:,k])
+		if len(unique_values)==1:
+			frames[0,0,k] += value
+	return frames
+
+def zoom_multiframes(frames, zoom_factor):
+	frames = [zoom(frames[:,:,c].copy(), [zoom_factor,zoom_factor], order=3, prefilter=False) for c in range(frames.shape[-1])]
+	frames = np.moveaxis(frames,0,-1)
+	return frames
+
+def _prep_stardist_model(model_name, path, use_gpu=False, scale=1):
+
+	model = StarDist2D(None, name=model_name, basedir=path)
+	model.config.use_gpu = use_gpu
+	model.use_gpu = use_gpu
+	scale_model = scale	
+	print(f"StarDist model {model_name} successfully loaded...")
+	return model, scale_model
+
+def _prep_cellpose_model(model_name, path, use_gpu=False, n_channels=2, scale=None):
+
+	import torch
+	if not use_gpu:
+		device = torch.device("cpu")
+	else:
+		device = torch.device("cuda")
+
+	model = CellposeModel(gpu=use_gpu, device=device, pretrained_model=path+model_name, model_type=None, nchan=n_channels) #diam_mean=30.0,
+	if scale is None:
+		scale_model = model.diam_mean / model.diam_labels
+	else:
+		scale_model = scale * model.diam_mean / model.diam_labels
+
+	print(f"Diam mean: {model.diam_mean}; Diam labels: {model.diam_labels}; Final rescaling: {scale_model}...")
+	print(f'Cellpose model {model_name} successfully loaded...')
+	return model, scale_model	
+
+
+def _get_normalize_kwargs_from_config(config):
+	
+	if isinstance(config, str):
+		if os.path.exists(config):
+			with open(config) as cfg:
+				config = json.load(cfg)
+		else:
+			print('Configuration could not be loaded...')
+			os.abort()		
+
+	normalization_percentile = config['normalization_percentile']
+	normalization_clip = config['normalization_clip']
+	normalization_values = config['normalization_values']
+	normalize_kwargs = _get_normalize_kwargs(normalization_percentile, normalization_values, normalization_clip)
+
+	return normalize_kwargs
+
+def _get_normalize_kwargs(normalization_percentile, normalization_values, normalization_clip):
+
+	values = []
+	percentiles = []
+	for k in range(len(normalization_percentile)):
+		if normalization_percentile[k]:
+			percentiles.append(normalization_values[k])
+			values.append(None)
+		else:
+			percentiles.append(None)
+			values.append(normalization_values[k])
+
+	return {"percentiles": percentiles, 'values': values, 'clip': normalization_clip}
+
+def _segment_image_with_cellpose_model(img, model=None, diameter=None, cellprob_threshold=None, flow_threshold=None):
+	
+	img = np.moveaxis(img, -1, 0)
+	lbl, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
+	
+	return lbl.astype(np.uint16)
+
+def _segment_image_with_stardist_model(img, model=None, return_details=False):
+	
+	lbl, details = model.predict_instances(img, n_tiles=model._guess_n_tiles(img), show_tile_progress=False, verbose=False)
+	if not return_details:
+		return lbl.astype(np.uint16)
+	else:
+		return lbl.astype(np.uint16), details
+
+def _rescale_labels(lbl, scale_model=1):
+	return zoom(lbl, [1./scale_model, 1./scale_model], order=0)
 
 def extract_cols_from_table_list(tables, nrows=1):
+
+	"""
+	Extracts a unique list of column names from a list of CSV tables.
+
+	Parameters
+	----------
+	tables : list of str
+		A list of file paths to the CSV tables from which to extract column names.
+	nrows : int, optional
+		The number of rows to read from each table to identify the columns.
+		Default is 1.
+
+	Returns
+	-------
+	numpy.ndarray
+		An array of unique column names found across all the tables.
+	
+	Notes
+	-----
+	- This function reads only the first `nrows` rows of each table to improve performance when dealing with large files.
+	- The function ensures that column names are unique by consolidating them using `numpy.unique`.
+	
+	Examples
+	--------
+	>>> tables = ["table1.csv", "table2.csv"]
+	>>> extract_cols_from_table_list(tables)
+	array(['Column1', 'Column2', 'Column3'], dtype='<U8')
+	"""
+
 	all_columns = []
 	for tab in tables:
 		cols = pd.read_csv(tab, nrows=1).columns.tolist()
@@ -41,18 +251,48 @@ def extract_cols_from_table_list(tables, nrows=1):
 
 def safe_log(array):
 
-	if isinstance(array,int) or isinstance(array,float):
-		if value<=0.:
-			return np.nan
-		else:
-			return np.log10(value)
-	else:
-		if isinstance(array, list):
-			array = np.array(array)
-		output_array = np.zeros_like(array).astype(float)
-		output_array[:] = np.nan
-		output_array[array==array] = np.log10(array[array==array])
-		return output_array
+	"""
+	Safely computes the base-10 logarithm for numeric inputs, handling invalid or non-positive values.
+
+	Parameters
+	----------
+	array : int, float, list, or numpy.ndarray
+		The input value or array for which to compute the logarithm. 
+		Can be a single number (int or float), a list, or a numpy array.
+
+	Returns
+	-------
+	float or numpy.ndarray
+		- If the input is a single numeric value, returns the base-10 logarithm as a float, or `np.nan` if the value is non-positive.
+		- If the input is a list or numpy array, returns a numpy array with the base-10 logarithm of each element.
+		  Invalid or non-positive values are replaced with `np.nan`.
+
+	Notes
+	-----
+	- Non-positive values (`<= 0`) are considered invalid and will result in `np.nan`.
+	- NaN values in the input array are preserved in the output.
+	- If the input is a list, it is converted to a numpy array for processing.
+
+	Examples
+	--------
+	>>> safe_log(10)
+	1.0
+
+	>>> safe_log(-5)
+	nan
+
+	>>> safe_log([10, 0, -5, 100])
+	array([1.0, nan, nan, 2.0])
+
+	>>> import numpy as np
+	>>> safe_log(np.array([1, 10, 100]))
+	array([0.0, 1.0, 2.0])
+	"""
+
+	array = np.asarray(array, dtype=float)
+	result = np.where(array > 0, np.log10(array), np.nan)
+
+	return result.item() if np.isscalar(array) else result
 
 def contour_of_instance_segmentation(label, distance):
 
@@ -114,20 +354,35 @@ def contour_of_instance_segmentation(label, distance):
 
 def extract_identity_col(trajectories):
 
-	if 'TRACK_ID' in list(trajectories.columns):
-		if not np.all(trajectories['TRACK_ID'].isnull()):
-			id_col = 'TRACK_ID'
-		else:
-			if 'ID' in list(trajectories.columns):
-				id_col = 'ID'
-	elif 'ID' in list(trajectories.columns):
-		
-		id_col = 'ID'
-	else:
-		print('ID or TRACK ID column could not be found in the table...')
-		id_col = None
+	"""
+	Determines the identity column name in a DataFrame of trajectories.
 
-	return id_col
+	This function checks the provided DataFrame for the presence of a column 
+	that can serve as the identity column. It first looks for the column 
+	'TRACK_ID'. If 'TRACK_ID' exists but contains only null values, it checks 
+	for the column 'ID' instead. If neither column is found, the function 
+	returns `None` and prints a message indicating the issue.
+
+	Parameters
+	----------
+	trajectories : pandas.DataFrame
+		A DataFrame containing trajectory data. The function assumes that 
+		the identity of each trajectory might be stored in either the 
+		'TRACK_ID' or 'ID' column.
+
+	Returns
+	-------
+	str or None
+		The name of the identity column ('TRACK_ID' or 'ID') if found; 
+		otherwise, `None`.
+	"""
+	
+	for col in ['TRACK_ID', 'ID']:
+		if col in trajectories.columns and not trajectories[col].isnull().all():
+			return col
+
+	print('ID or TRACK_ID column could not be found in the table...')
+	return None
 
 def derivative(x, timeline, window, mode='bi'):
 	
@@ -187,7 +442,7 @@ def derivative(x, timeline, window, mode='bi'):
 	if mode=='bi':
 		assert window%2==1,'Please set an odd window for the bidirectional mode'
 		lower_bound = window//2
-		upper_bound = len(x) - window//2 - 1
+		upper_bound = len(x) - window//2
 	elif mode=='forward':
 		lower_bound = 0
 		upper_bound = len(x) - window
@@ -197,7 +452,7 @@ def derivative(x, timeline, window, mode='bi'):
 
 	for t in range(lower_bound,upper_bound):
 		if mode=='bi':
-			dxdt[t] = (x[t+window//2+1] - x[t-window//2]) / (timeline[t+window//2+1] - timeline[t-window//2])
+			dxdt[t] = (x[t+window//2] - x[t-window//2]) / (timeline[t+window//2] - timeline[t-window//2])
 		elif mode=='forward':
 			dxdt[t] = (x[t+window] - x[t]) /  (timeline[t+window] - timeline[t])
 		elif mode=='backward':
@@ -533,6 +788,11 @@ def mask_edges(binary_mask, border_size):
 
 	return binary_mask
 
+def demangle_column_name(name):
+	if name.startswith("BACKTICK_QUOTED_STRING_"):
+		# Unquote backtick-quoted string.
+		return name[len("BACKTICK_QUOTED_STRING_"):].replace("_DOT_", ".").replace("_SLASH_", "/")
+	return name
 
 def extract_cols_from_query(query: str):
 	
@@ -555,13 +815,6 @@ def extract_cols_from_query(query: str):
 
 			# Add the name to the globals dictionary with a dummy value.
 			variables[name] = None
-
-	# Reverse mangling for special characters in column names.
-	def demangle_column_name(name):
-		if name.startswith("BACKTICK_QUOTED_STRING_"):
-			# Unquote backtick-quoted string.
-			return name[len("BACKTICK_QUOTED_STRING_"):].replace("_DOT_", ".").replace("_SLASH_", "/")
-		return name
 
 	return [demangle_column_name(name) for name in variables.keys()]
 
@@ -1307,7 +1560,6 @@ def _extract_channel_indices_from_config(config, channels_to_extract):
 	# [1, 2] or None if an error occurs or the channels are not found.
 	"""
 
-	# V2
 	channels = []
 	for c in channels_to_extract:
 		try:
@@ -1319,30 +1571,6 @@ def _extract_channel_indices_from_config(config, channels_to_extract):
 	if np.all([c is None for c in channels]):
 		channels = None
 
-	# channels = []
-	# for c in channels_to_extract:
-	# 	if c!='None' and c is not None:
-	# 		try:
-	# 			c1 = int(ConfigSectionMap(config,"Channels")[c])
-	# 			channels.append(c1)
-	# 		except Exception as e:
-	# 			print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
-	# 			channels = None
-	# 			break
-	# 	else:
-	# 		channels.append(None)
-
-	# LEGACY
-	if channels is None:
-		channels = []
-		for c in channels_to_extract:
-			try:
-				c1 = int(ConfigSectionMap(config,"MovieSettings")[c])
-				channels.append(c1)
-			except Exception as e:
-				print(f"Error {e}. The channel required by the model is not available in your data... Check the configuration file.")
-				channels = None
-				break
 	return channels
 
 def _extract_nbr_channels_from_config(config, return_names=False):
@@ -2384,13 +2612,6 @@ def download_zenodo_file(file, output_dir):
 	if len(file_to_rename)>0 and not file_to_rename[0].endswith(os.sep) and not file.startswith('demo'):
 		os.rename(file_to_rename[0], os.sep.join([output_dir,file,file]))
 
-	#if file.startswith('db_'):
-	#	os.rename(os.sep.join([output_dir,file.replace('db_','')]), os.sep.join([output_dir,file]))
-	#if file=='db-si-NucPI':
-	#	os.rename(os.sep.join([output_dir,'db2-NucPI']), os.sep.join([output_dir,file]))
-	#if file=='db-si-NucCondensation':
-	#	os.rename(os.sep.join([output_dir,'db1-NucCondensation']), os.sep.join([output_dir,file]))
-
 	os.remove(path_to_zip_file)
 
 def interpolate_nan(img, method='nearest'):
@@ -2414,6 +2635,11 @@ def interpolate_nan(img, method='nearest'):
 		return interp_grid
 	else:
 		return img
+
+
+def interpolate_nan_multichannel(frames):
+	frames = np.moveaxis([interpolate_nan(frames[:,:,c].copy()) for c in range(frames.shape[-1])],0,-1)
+	return frames
 
 def collapse_trajectories_by_status(df, status=None, projection='mean', population='effectors', groupby_columns=['position','TRACK_ID']):
 	

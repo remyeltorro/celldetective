@@ -29,7 +29,7 @@ class ProgressWindow(QDialog):
 
 		self.__runner  = Runner(process=self.__process, progress_bar=self.progress_bar, process_args=process_args, remaining_time_label=self.time_left_lbl)
 		self.pool = QThreadPool.globalInstance()
-		print("Multithreading with maximum %d threads" % self.pool.maxThreadCount())
+		#print("Multithreading with maximum %d threads" % self.pool.maxThreadCount())
 
 		#self.__btn_run.clicked.connect(self.__run_net)
 		self.__btn_stp.clicked.connect(self.__stp_net)

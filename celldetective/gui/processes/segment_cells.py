@@ -3,7 +3,7 @@ import time
 import datetime
 import os
 import json
-from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames, _check_label_dims, _load_frames_to_segment
+from celldetective.io import extract_position_name, locate_segmentation_model, auto_load_number_of_frames, load_frames, _check_label_dims, _load_frames_to_segment
 from celldetective.utils import _rescale_labels, _segment_image_with_stardist_model, _segment_image_with_cellpose_model, _prep_stardist_model, _prep_cellpose_model, _get_normalize_kwargs_from_config, extract_experiment_channels, _estimate_scale_factor, _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from pathlib import Path, PurePath
 from glob import glob
@@ -33,6 +33,11 @@ class BaseSegmentProcess(Process):
 
 		# Experiment
 		self.locate_experiment_config()
+
+		print(f"Position: {extract_position_name(self.pos)}...")
+		print("Configuration file: ",self.config)
+		print(f"Population: {self.mode}...")
+
 		self.extract_experiment_parameters()
 		self.detect_movie_length()
 		self.write_folders()
@@ -46,8 +51,8 @@ class BaseSegmentProcess(Process):
 		elif self.mode=="effector" or self.mode=="effectors":
 			self.label_folder = "labels_effectors"
 
-		print('Erasing the previous labels folder...')
 		if os.path.exists(self.pos+self.label_folder):
+			print('Erasing the previous labels folder...')
 			rmtree(self.pos+self.label_folder)
 		os.mkdir(self.pos+self.label_folder)
 		print(f'Labels folder successfully generated...')
@@ -68,7 +73,7 @@ class BaseSegmentProcess(Process):
 		self.config = PurePath(expfolder,Path("config.ini"))
 
 		if not os.path.exists(self.config):
-			print('The configuration file for the experiment was not found...')
+			print('The configuration file for the experiment could not be located. Abort.')
 			self.abort_process()
 
 	def detect_movie_length(self):
@@ -120,6 +125,7 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 
 		self.model_type = self.input_config['model_type']
 		self.required_spatial_calibration = self.input_config['spatial_calibration']
+		print(f'Spatial calibration expected by the model: {self.required_spatial_calibration}...')
 		
 		if self.model_type=='cellpose':
 			self.diameter = self.input_config['diameter']
@@ -136,13 +142,13 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 	def detect_channels(self):
 		
 		self.channel_indices = _extract_channel_indices_from_config(self.config, self.required_channels)
-		print(f'Required channels: {self.required_channels} located at channel indices {self.channel_indices}...')
+		print(f'Required channels: {self.required_channels} located at channel indices {self.channel_indices}.')
 		self.img_num_channels = _get_img_num_per_channel(self.channel_indices, int(self.len_movie), self.nbr_channels)
 
 	def detect_rescaling(self):
 
 		self.scale = _estimate_scale_factor(self.spatial_calibration, self.required_spatial_calibration)
-		print(f"Scale = {self.scale}...")
+		print(f"Scale: {self.scale}...")
 
 	def locate_model_path(self):
 
@@ -151,7 +157,7 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 			print('Model could not be found. Abort.')
 			self.abort_process()
 		else:
-			print(f'Model successfully located in {self.model_complete_path}...')
+			print(f'Model path: {self.model_complete_path}...')
 		
 		if not os.path.exists(self.model_complete_path+"config_input.json"):
 			print('The configuration for the inputs to the model could not be located. Abort.')

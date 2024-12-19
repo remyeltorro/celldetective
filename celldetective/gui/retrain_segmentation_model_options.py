@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication,QRadioButton, QMessageBox, QScrollArea, QComboBox, QFrame, QFileDialog, QGridLayout, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QDialog, QMainWindow, QApplication,QRadioButton, QMessageBox, QScrollArea, QComboBox, QFrame, QFileDialog, QGridLayout, QLineEdit, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QIcon
 from celldetective.gui.gui_utils import center_window
@@ -17,6 +17,8 @@ import os
 from glob import glob
 from datetime import datetime
 from celldetective.gui import Styles
+from celldetective.gui.processes.train_segmentation_model import TrainSegModelProcess
+from celldetective.gui.workers import ProgressWindow
 
 class ConfigSegmentationModelTraining(QMainWindow, Styles):
 	
@@ -29,6 +31,7 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		
 		super().__init__()
 		self.parent_window = parent_window
+		self.use_gpu = self.parent_window.use_gpu
 		self.setWindowTitle("Train segmentation model")
 		self.setWindowIcon(QIcon(os.sep.join(['celldetective','icons','mexican-hat.png'])))
 		self.mode = self.parent_window.mode
@@ -597,24 +600,34 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		epochs = self.epochs_slider.value()
 		spatial_calib = float(self.spatial_calib_le.text().replace(',','.'))
 
-		training_instructions = {'model_name': model_name,'model_type': model_type, 'pretrained': pretrained_model, 'spatial_calibration': spatial_calib, 'channel_option': channels, 'normalization_percentile': normalization_mode,
+		self.training_instructions = {'model_name': model_name,'model_type': model_type, 'pretrained': pretrained_model, 'spatial_calibration': spatial_calib, 'channel_option': channels, 'normalization_percentile': normalization_mode,
 		'normalization_clip': clip_values,'normalization_values': norm_values, 'ds': data_folders, 'augmentation_factor': aug_factor, 'validation_split': val_split,
 		'learning_rate': lr, 'batch_size': bs, 'epochs': epochs}
 
-		print(training_instructions)
 
 		model_folder = os.sep.join([self.software_models_dir,model_name, ''])
 		print(model_folder)
 		if not os.path.exists(model_folder):
 			os.mkdir(model_folder)
 
-		training_instructions.update({'target_directory': self.software_models_dir})
+		self.training_instructions.update({'target_directory': self.software_models_dir})
 
-		print(f"Set of instructions: {training_instructions}")
+		print(f"Set of instructions: {self.training_instructions}")
+
+		self.instructions = model_folder+"training_instructions.json"
+
 		with open(model_folder+"training_instructions.json", 'w') as f:
-			json.dump(training_instructions, f, indent=4)
+			json.dump(self.training_instructions, f, indent=4)
 		
-		train_segmentation_model(model_folder+"training_instructions.json", use_gpu=self.parent_window.parent_window.parent_window.use_gpu)
+		# process_args = {"instructions": self.instructions, "use_gpu": self.use_gpu}
+		# self.job = ProgressWindow(TrainSegModelProcess, parent_window=self, title="Training", position_info=False, process_args=process_args)
+		# result = self.job.exec_()
+		# if result == QDialog.Accepted:
+		# 	pass
+		# elif result == QDialog.Rejected:
+		# 	return None		
+
+		train_segmentation_model(self.instructions, use_gpu=self.parent_window.parent_window.parent_window.use_gpu)
 
 		self.parent_window.init_seg_model_list()
 		idx = self.parent_window.seg_model_list.findText(model_name)

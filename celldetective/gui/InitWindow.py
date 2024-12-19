@@ -1,7 +1,7 @@
 import os
 
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtWidgets import QFileDialog, QWidget, QVBoxLayout, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
+from PyQt5.QtWidgets import QFileDialog, QDialog, QWidget, QVBoxLayout, QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QMenu, QAction
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QIcon, QDesktopServices, QIntValidator
 
@@ -19,6 +19,9 @@ import gc
 from subprocess import check_output, Popen
 from psutil import cpu_count
 import json
+
+from celldetective.gui.processes.downloader import DownloadProcess
+from celldetective.gui.workers import ProgressWindow
 
 class AppInitWindow(QMainWindow, Styles):
 
@@ -42,11 +45,11 @@ class AppInitWindow(QMainWindow, Styles):
 		except Exception: # this command not being found can raise quite a few different errors depending on the configuration
 			print('No NVIDIA GPU detected...')
 			self.use_gpu = False
-		
+
 		self.soft_path = software_location
 		self.onlyInt = QIntValidator()
 		self.setWindowIcon(QIcon(os.sep.join([self.soft_path,'celldetective','icons','logo.png'])))
-		center_window(self)
+
 		self._createActions()
 		self._createMenuBar()
 
@@ -63,6 +66,8 @@ class AppInitWindow(QMainWindow, Styles):
 		self.create_buttons_hbox()
 		self.setCentralWidget(central_widget)
 		self.reload_previous_gpu_threads()
+		center_window(self)
+
 		self.show()
 	
 	def closeEvent(self, event):
@@ -188,18 +193,27 @@ class AppInitWindow(QMainWindow, Styles):
 		self.openCytotoxicityAssayDemo.triggered.connect(self.download_cytotoxicity_assay_demo)
 
 	def download_spreading_assay_demo(self):
-		
+
 		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
 		if self.target_dir=='':
 			return None
-		
+
 		if not os.path.exists(os.sep.join([self.target_dir,'demo_ricm'])):
-			download_zenodo_file('demo_ricm', self.target_dir)
+			self.output_dir = self.target_dir
+			self.file = 'demo_ricm'
+			process_args = {"output_dir": self.output_dir, "file": self.file}
+			self.job = ProgressWindow(DownloadProcess, parent_window=self, title="Download", position_info=False, process_args=process_args)
+			result = self.job.exec_()
+			if result == QDialog.Accepted:
+				pass
+			elif result == QDialog.Rejected:
+				return None
+			#download_zenodo_file('demo_ricm', self.target_dir)
 		self.experiment_path_selection.setText(os.sep.join([self.target_dir, 'demo_ricm']))
 		self.validate_button.click()
 
 	def download_cytotoxicity_assay_demo(self):
-		
+
 		self.target_dir = str(QFileDialog.getExistingDirectory(self, 'Select Folder for Download'))
 		if self.target_dir=='':
 			return None
@@ -290,7 +304,7 @@ class AppInitWindow(QMainWindow, Styles):
 
 
 	def open_experiment(self):
-		
+
 		self.browse_experiment_folder()
 		if self.experiment_path_selection.text()!='':
 			self.open_directory()
@@ -310,7 +324,7 @@ class AppInitWindow(QMainWindow, Styles):
 		QDesktopServices.openUrl(doc_url)
 
 	def open_models_folder(self):
-		
+
 		path = os.sep.join([self.soft_path,'celldetective','models',os.sep])
 		try:
 			Popen(f'explorer {os.path.realpath(path)}')

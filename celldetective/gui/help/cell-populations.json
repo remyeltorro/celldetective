@@ -1,11 +1,11 @@
 {
-  "Do you have more than one cell population of interest in the images?": {
+  "Do you have multiple cell populations of interest in your images?": {
     "yes": {
-      "Do you have more than two cell populations of interest?": {
-        "yes": "The study of interactions between more than two cell populations is not currently supported in celldetective. Either study the cell populations two-by-two or group several populations into one (e.g. all effector-like cells vs all target-like cells). You can use the classification tools of celldetective to decompose the responses per cell population at a later stage.",
-        "no": "Identify the effector-like population (effects some changes on the other population) and the target-like population. If this characterization is ill-defined, choose a convention and stick to it. Beware, the available non-generalist Deep-learning models differ slightly for the two populations."
+      "Do you have more than two distinct cell populations of interest?": {
+        "yes": "Currently, celldetective does not support the analysis of interactions between more than two cell populations at once. We recommend studying interactions between two populations at a time, or grouping similar populations together (e.g., effector-like vs target-like cells). Later, you can use celldetective's classification tools to break down the results by individual cell population.",
+        "no": "Identify the effector-like population (which influences changes in the target population) and the target-like population. If you're unsure about the exact definitions, choose a convention and apply it consistently. Please note, the non-generalist deep learning models in celldetective may treat these populations slightly differently."
       }
     },
-    "no": "Pass your cell population as either EFFECTORS or TARGETS and stick with the convention. Beware, the available non-generalist Deep-learning model differs slightly for the two populations."
+    "no": "Assign your cell population as either `effectors` or `targets` and maintain consistency with this choice throughout your analysis. Keep in mind that the non-generalist deep learning models in celldetective may treat these populations differently."
   }
 }

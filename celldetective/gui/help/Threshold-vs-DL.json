@@ -1,26 +1,26 @@
 {
-  "Cell masks can be extracted from a single channel": {
+  "Can cell masks be extracted from a single channel?": {
     "yes": {
-      "Rare cell-cell contacts": {
+      "Are cell-cell contacts rare?": {
         "yes": {
-          "Non-cell objects easily separable": {
+          "Are non-cell objects easy to separate from cells?": {
             "yes": {
-              "Background heterogeneities": {
+              "Are there background heterogeneities in the images?": {
                 "yes": {
-                  "Correction possible": {
-                    "yes": "Threshold pipeline",
-                    "no" : "DL"
+                  "Can the heterogeneities be corrected?": {
+                    "yes": "to use a threshold-based pipeline for mask extraction.",
+                    "no": "to use a deep learning approach for better segmentation."
                   }
                 },
-                "no": "Threshold pipeline"
+                "no": "to use a threshold-based pipeline for mask extraction."
               }
             },
-            "no": "DL"
+            "no": "to use a deep learning approach for segmentation."
           }
         },
-        "no": "DL"
+        "no": "to use a deep learning approach for segmentation."
       }
     },
-    "no": "DL"
+    "no": "to use a deep learning approach for segmentation."
   }
 }

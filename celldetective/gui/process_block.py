@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QComboBox, QListWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
+from PyQt5.QtWidgets import QDialog, QFrame, QGridLayout, QComboBox, QListWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QCheckBox, \
 	QMessageBox, QWidget
 from PyQt5.QtCore import Qt, QSize
 from superqt.fonticon import icon
@@ -10,7 +10,7 @@ from celldetective.gui.signal_annotator import MeasureAnnotator
 from celldetective.gui.signal_annotator2 import SignalAnnotator2
 from celldetective.io import get_segmentation_models_list, control_segmentation_napari, get_signal_models_list, \
 	control_tracks, load_experiment_tables, get_pair_signal_models_list
-from celldetective.io import locate_segmentation_model, fix_missing_labels, auto_load_number_of_frames, load_frames, locate_signal_model
+from celldetective.io import locate_segmentation_model, extract_position_name, fix_missing_labels, auto_load_number_of_frames, load_frames, locate_signal_model
 from celldetective.gui import SegmentationModelLoader, ClassifierWidget, ConfigNeighborhoods, ConfigSegmentationModelTraining, ConfigTracking, SignalAnnotator, ConfigSignalModelTraining, ConfigMeasurements, ConfigSignalAnnotator, TableUI
 from celldetective.gui.gui_utils import QHSeperationLine
 from celldetective.relative_measurements import rel_measure_at_position
@@ -37,6 +37,14 @@ from celldetective.gui.layouts import CellposeParamsWidget, StarDistParamsWidget
 from celldetective.gui import Styles
 from celldetective.utils import get_software_location
 
+from celldetective.gui.workers import ProgressWindow
+from celldetective.gui.processes.segment_cells import SegmentCellThresholdProcess, SegmentCellDLProcess
+from celldetective.gui.processes.track_cells import TrackingProcess
+from celldetective.gui.processes.measure_cells import MeasurementProcess
+
+import time
+import asyncio
+
 class ProcessPanel(QFrame, Styles):
 	def __init__(self, parent_window, mode):
 
@@ -52,6 +60,8 @@ class ProcessPanel(QFrame, Styles):
 		self.wells = np.array(self.parent_window.wells,dtype=str)
 		self.cellpose_calibrated = False
 		self.stardist_calibrated = False
+		self.use_gpu = self.parent_window.parent_window.use_gpu
+		self.n_threads = self.parent_window.parent_window.n_threads
 
 		self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
 		self.grid = QGridLayout(self)
@@ -264,7 +274,7 @@ class ProcessPanel(QFrame, Styles):
 		#self.to_disable.append(self.cell_models_list)
 
 		self.train_signal_model_btn = QPushButton("TRAIN")
-		self.train_signal_model_btn.setToolTip("Open a dialog box to create a new target segmentation model.")
+		self.train_signal_model_btn.setToolTip("Train or retrain an event detection model\non newly annotated data.")
 		self.train_signal_model_btn.setIcon(icon(MDI6.redo_variant,color='black'))
 		self.train_signal_model_btn.setIconSize(QSize(20, 20))
 		self.train_signal_model_btn.setStyleSheet(self.button_style_sheet_3)
@@ -284,7 +294,7 @@ class ProcessPanel(QFrame, Styles):
 		self.signal_models_list.addItems(signal_models)
 
 	def generate_tracking_options(self):
-		
+
 		grid_track = QHBoxLayout()
 
 		self.track_action = QCheckBox("TRACK")
@@ -363,7 +373,7 @@ class ProcessPanel(QFrame, Styles):
 		self.segment_action = QCheckBox("SEGMENT")
 		self.segment_action.setStyleSheet(self.menu_check_style)
 		self.segment_action.setIcon(icon(MDI6.bacteria, color='black'))
-		self.segment_action.setToolTip(f"Segment the {self.mode} cells on the images.")
+		self.segment_action.setToolTip(f"Segment the {self.mode[:-1]} cells on the images.")
 		self.segment_action.toggled.connect(self.enable_segmentation_model_list)
 		#self.to_disable.append(self.segment_action)
 		grid_segment.addWidget(self.segment_action, 90)
@@ -390,6 +400,7 @@ class ProcessPanel(QFrame, Styles):
 		model_zoo_layout = QHBoxLayout()
 		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
 		self.seg_model_list = QComboBox()
+		self.seg_model_list.currentIndexChanged.connect(self.reset_generalist_setup)
 		#self.to_disable.append(self.tc_seg_model_list)
 		self.seg_model_list.setGeometry(50, 50, 200, 30)
 		self.init_seg_model_list()
@@ -750,18 +761,19 @@ class ProcessPanel(QFrame, Styles):
 			self.model_name = self.seg_models[self.seg_model_list.currentIndex()]
 		print(self.model_name, self.seg_model_list.currentIndex())
 
-		if self.model_name.startswith('CP') and self.model_name in self.seg_models_generic and not self.cellpose_calibrated:
+		if self.segment_action.isChecked() and self.model_name.startswith('CP') and self.model_name in self.seg_models_generic and not self.cellpose_calibrated:
 
 			self.diamWidget = CellposeParamsWidget(self, model_name=self.model_name)
 			self.diamWidget.show()
 			return None
 
-		if self.model_name.startswith('SD') and self.model_name in self.seg_models_generic and not self.stardist_calibrated:
+		if self.segment_action.isChecked() and self.model_name.startswith('SD') and self.model_name in self.seg_models_generic and not self.stardist_calibrated:
 
 			self.diamWidget = StarDistParamsWidget(self, model_name = self.model_name)
 			self.diamWidget.show()
 			return None
 
+		self.movie_prefix = self.parent_window.movie_prefix
 
 		for w_idx in self.well_index:
 
@@ -775,6 +787,7 @@ class ProcessPanel(QFrame, Styles):
 
 				self.pos = natsorted(glob(well+f"{os.path.split(well)[-1].replace('W','').replace(os.sep,'')}*/"))[pos_idx]
 				print(f"Position {self.pos}...\nLoading stack movie...")
+				self.pos_name = extract_position_name(self.pos)
 
 				if not os.path.exists(self.pos + 'output/'):
 					os.mkdir(self.pos + 'output/')
@@ -805,9 +818,27 @@ class ProcessPanel(QFrame, Styles):
 								return None
 						else:
 							print(f"Segmentation from threshold config: {self.threshold_config}")
-							segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
+							process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads, "threshold_instructions": self.threshold_config, "use_gpu": self.use_gpu}
+							self.job = ProgressWindow(SegmentCellThresholdProcess, parent_window=self, title="Segment", process_args = process_args)
+							result = self.job.exec_()
+							if result == QDialog.Accepted:
+								pass
+							elif result == QDialog.Rejected:
+								return None
+							#segment_from_threshold_at_position(self.pos, self.mode, self.threshold_config, threads=self.parent_window.parent_window.n_threads)
 					else:
-						segment_at_position(self.pos, self.mode, self.model_name, stack_prefix=self.parent_window.movie_prefix, use_gpu=self.parent_window.parent_window.use_gpu, threads=self.parent_window.parent_window.n_threads)
+						# model = locate_segmentation_model(self.model_name)
+						# if model is None:
+						# 	process = {"output_dir": self.output_dir, "file": self.model_name}
+						# 	self.download_model_job = ProgressWindow(DownloadProcess, parent_window=self, title="Download", process_args = args)
+
+						process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads, "model_name": self.model_name, "use_gpu": self.use_gpu}
+						self.job = ProgressWindow(SegmentCellDLProcess, parent_window=self, title="Segment", process_args = process_args)
+						result = self.job.exec_()
+						if result == QDialog.Accepted:
+							pass
+						elif result == QDialog.Rejected:
+							return None
 
 				if self.track_action.isChecked():
 					if os.path.exists(os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])) and not self.parent_window.position_list.isMultipleSelection():
@@ -819,10 +850,25 @@ class ProcessPanel(QFrame, Styles):
 						returnValue = msgBox.exec()
 						if returnValue == QMessageBox.No:
 							return None
-					track_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
+
+					process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads}
+					self.job = ProgressWindow(TrackingProcess, parent_window=self, title="Tracking", process_args=process_args)
+					result = self.job.exec_()
+					if result == QDialog.Accepted:
+						pass
+					elif result == QDialog.Rejected:
+						return None
+					#track_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
 
 				if self.measure_action.isChecked():
-					measure_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
+					process_args = {"pos": self.pos, "mode": self.mode, "n_threads": self.n_threads}
+					self.job = ProgressWindow(MeasurementProcess, parent_window=self, title="Measurement", process_args=process_args)
+					result = self.job.exec_()
+					if result == QDialog.Accepted:
+						pass
+					elif result == QDialog.Rejected:
+						return None
+					#measure_at_position(self.pos, self.mode, threads=self.parent_window.parent_window.n_threads)
 
 				table = os.sep.join([self.pos, 'output', 'tables', f'trajectories_{self.mode}.csv'])
 				if self.signal_analysis_action.isChecked() and os.path.exists(table):
@@ -845,12 +891,16 @@ class ProcessPanel(QFrame, Styles):
 
 			# self.stack = None
 		self.parent_window.update_position_options()
-
 		for action in [self.segment_action, self.track_action, self.measure_action, self.signal_analysis_action]:
 			if action.isChecked():
 				action.setChecked(False)
 
 		self.cellpose_calibrated = False
+		self.stardist_calibrated = False
+
+	def reset_generalist_setup(self, index):
+		self.cellpose_calibrated = False
+		self.stardist_calibrated = False
 
 	def open_napari_tracking(self):
 		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')
@@ -1207,7 +1257,7 @@ class NeighPanel(QFrame, Styles):
 		self.neigh_action.setChecked(False)
 
 	def open_classifier_ui_pairs(self):
-		
+
 		self.mode = "pairs"
 		self.load_available_tables()
 		if self.df is None:

@@ -1337,7 +1337,7 @@ class TableUI(QMainWindow, Styles):
 				file_name += ".csv"
 			invalid_cols = [c for c in list(self.data.columns) if c.startswith('Unnamed')]
 			if len(invalid_cols)>0:
-				self.data = self.data.drop(invalid_cols, axis=1)	
+				self.data = self.data.drop(invalid_cols, axis=1)
 			self.data.to_csv(file_name, index=False)
 
 	def test_bool(self, array):

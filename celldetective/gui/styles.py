@@ -125,6 +125,7 @@ class Styles(object):
 				font-size: 8px;
 			}
 			QPushButton:hover {
+				color: white;
 				background-color: #2070EB;
 			}
 			QPushButton:pressed {

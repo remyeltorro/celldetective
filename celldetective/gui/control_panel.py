@@ -31,7 +31,6 @@ class ControlPanel(QMainWindow, Styles):
 		self.setWindowTitle("celldetective")
 		self.setWindowIcon(self.celldetective_icon)
 		self.parent_window = parent_window
-		center_window(self)
 
 		self.init_wells_and_positions()
 		self.load_configuration()
@@ -92,6 +91,10 @@ class ControlPanel(QMainWindow, Styles):
 		self.screen_height = desktop.screenGeometry().height()
 		self.screen_width = desktop.screenGeometry().width()
 		self.scroll.setMinimumWidth(440)
+		
+		self.setAttribute(Qt.WA_DeleteOnClose)
+		center_window(self)
+
 
 		self.well_list.setCurrentIndex(0)
 		#self.position_list.setCurrentIndex(0)
@@ -536,14 +539,14 @@ class ControlPanel(QMainWindow, Styles):
 				# if os.path.exists(os.sep.join([self.pos,'labels_targets', os.sep])):
 				self.ProcessTargets.check_seg_btn.setEnabled(True)
 				
-				if os.path.exists(os.sep.join([self.pos,'output','tables','napari_target_trajectories.npy'])):
-					self.ProcessTargets.check_tracking_result_btn.setEnabled(True)
-				else:
-					self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
-				if os.path.exists(os.sep.join([self.pos,'output','tables','napari_effector_trajectories.npy'])):
-					self.ProcessEffectors.check_tracking_result_btn.setEnabled(True)
-				else:
-					self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
+				# if os.path.exists(os.sep.join([self.pos,'output','tables','napari_target_trajectories.npy'])):
+				# 	self.ProcessTargets.check_tracking_result_btn.setEnabled(True)
+				# else:
+				# 	self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
+				# if os.path.exists(os.sep.join([self.pos,'output','tables','napari_effector_trajectories.npy'])):
+				# 	self.ProcessEffectors.check_tracking_result_btn.setEnabled(True)
+				# else:
+				# 	self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)
 
 				if os.path.exists(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv'])):
 					df = pd.read_csv(os.sep.join([self.pos,'output','tables','trajectories_effectors.csv']), nrows=1)
@@ -553,8 +556,10 @@ class ControlPanel(QMainWindow, Styles):
 						self.ProcessEffectors.check_signals_btn.setEnabled(True)
 						self.ProcessEffectors.delete_tracks_btn.show()
 						self.ProcessEffectors.signal_analysis_action.setEnabled(True)
+						self.ProcessEffectors.check_tracking_result_btn.setEnabled(True)
 					else:
-						self.ProcessEffectors.signal_analysis_action.setEnabled(False)						
+						self.ProcessEffectors.signal_analysis_action.setEnabled(False)
+						self.ProcessEffectors.check_tracking_result_btn.setEnabled(False)			
 
 					#self.ProcessEffectors.signal_analysis_action.setEnabled(True)
 					self.ProcessEffectors.view_tab_btn.setEnabled(True)
@@ -575,9 +580,12 @@ class ControlPanel(QMainWindow, Styles):
 					if id_col=='TRACK_ID':
 						self.ProcessTargets.check_signals_btn.setEnabled(True)
 						self.ProcessTargets.signal_analysis_action.setEnabled(True)
+						self.ProcessTargets.check_tracking_result_btn.setEnabled(True)
 						self.ProcessTargets.delete_tracks_btn.show()
 					else:
-						self.ProcessTargets.signal_analysis_action.setEnabled(False)						
+						self.ProcessTargets.signal_analysis_action.setEnabled(False)
+						self.ProcessTargets.check_tracking_result_btn.setEnabled(False)
+
 					#self.ProcessTargets.signal_analysis_action.setEnabled(True)
 					self.ProcessTargets.view_tab_btn.setEnabled(True)
 					self.ProcessTargets.classify_btn.setEnabled(True)

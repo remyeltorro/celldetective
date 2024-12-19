@@ -7,8 +7,8 @@ import os
 import json
 from celldetective.io import auto_load_number_of_frames, load_frames, fix_missing_labels, locate_labels, extract_position_name
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
-from celldetective.utils import remove_redundant_features, remove_trajectory_measurements
-from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity
+from celldetective.utils import _remove_invalid_cols, remove_redundant_features, remove_trajectory_measurements, _extract_coordinates_from_features
+from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity, center_of_mass_to_abs_coordinates, measure_radial_distance_to_center
 from pathlib import Path, PurePath
 from glob import glob
 from tqdm import tqdm
@@ -68,7 +68,7 @@ instr_path = PurePath(expfolder,Path(f"{instruction_file}"))
 print('Looking for measurement instruction file...')
 
 if os.path.exists(instr_path):
-	
+
 	with open(instr_path, 'r') as f:
 		instructions = json.load(f)
 		print(f"Measurement instruction file successfully loaded...")
@@ -171,14 +171,6 @@ else:
 	features += ['centroid']
 	do_iso_intensities = False
 
-# if 'centroid' not in features:
-# 	features += ['centroid']
-
-# if (features is not None) and (trajectories is not None):
-# 	features = remove_redundant_features(features, 
-# 										trajectories.columns,
-# 										channel_names=channel_names
-# 										)
 
 len_movie_auto = auto_load_number_of_frames(file)
 if len_movie_auto is not None:
@@ -236,7 +228,7 @@ with open(pos + f'log_{mode}.json', 'a') as f:
 
 def measure_index(indices):
 
-	global column_labels
+	#global column_labels
 
 	for t in tqdm(indices,desc="frame"):
 
@@ -258,10 +250,7 @@ def measure_index(indices):
 											 channels=channel_names, haralick_options=haralick_options, verbose=False,
 											 normalisation_list=background_correction, spot_detection=spot_detection)
 			if trajectories is None:
-				positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
-				positions_at_t['ID'] = np.arange(len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
-				positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
-				positions_at_t['FRAME'] = int(t)
+				positions_at_t = _extract_coordinates_from_features(feature_table, timepoint=t)
 				column_labels = {'track': "ID", 'time': column_labels['time'], 'x': column_labels['x'],
 								 'y': column_labels['y']}
 			feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
@@ -278,25 +267,14 @@ def measure_index(indices):
 			measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 			measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
 
-		center_of_mass_x_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_x')]
-		center_of_mass_y_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_y')]
-		for c in center_of_mass_x_cols:
-			measurements_at_t.loc[:,c.replace('_x','_POSITION_X')] = measurements_at_t[c] + measurements_at_t['POSITION_X']
-		for c in center_of_mass_y_cols:
-			measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
-		measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
-		
-		try:
-			measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[column_labels['x']] - img.shape[0] / 2) ** 2 + (
-					measurements_at_t[column_labels['y']] - img.shape[1] / 2) ** 2)
-		except Exception as e:
-			print(f"{e=}")
+		measurements_at_t = center_of_mass_to_abs_coordinates(measurements_at_t)
+		measurements_at_t = measure_radial_distance_to_center(measurements_at_t, volume=img.shape, column_labels=column_labels)
 
 		if measurements_at_t is not None:
 			measurements_at_t[column_labels['time']] = t
 			timestep_dataframes.append(measurements_at_t)
 
-	return 
+	return
 
 
 print(f"Starting the measurements with {n_threads} thread(s)...")
@@ -327,12 +305,10 @@ if len(timestep_dataframes)>0:
 		df = df.dropna(subset=[column_labels['track']])
 	else:
 		df['ID'] = np.arange(len(df))
+		df = df.sort_values(by=[column_labels['time'], 'ID'])
 
 	df = df.reset_index(drop=True)
-	
-	invalid_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
-	if len(invalid_cols)>0:
-		df = df.drop(invalid_cols, axis=1)	
+	df = _remove_invalid_cols(df)
 
 	df.to_csv(pos+os.sep.join(["output", "tables", table_name]), index=False)
 	print(f'Measurement table successfully exported in  {os.sep.join(["output", "tables"])}...')

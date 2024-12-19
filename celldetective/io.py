@@ -2843,7 +2843,7 @@ def get_segmentation_models_list(mode='targets', return_path=False):
 		return available_models, modelpath
 
 
-def locate_segmentation_model(name):
+def locate_segmentation_model(name, download=True):
 	
 	"""
 	Locates a specified segmentation model within the local 'celldetective' directory or
@@ -2883,13 +2883,15 @@ def locate_segmentation_model(name):
 		if name == m.replace('\\', os.sep).split(os.sep)[-2]:
 			match = m
 			return match
-	# else no match, try zenodo
-	files, categories = get_zenodo_files()
-	if name in files:
-		index = files.index(name)
-		cat = categories[index]
-		download_zenodo_file(name, os.sep.join([main_dir, cat]))
-		match = os.sep.join([main_dir, cat, name]) + os.sep
+	if download:
+		# else no match, try zenodo
+		files, categories = get_zenodo_files()
+		if name in files:
+			index = files.index(name)
+			cat = categories[index]
+			download_zenodo_file(name, os.sep.join([main_dir, cat]))
+			match = os.sep.join([main_dir, cat, name]) + os.sep
+
 	return match
 
 
@@ -3531,6 +3533,10 @@ def _load_frames_to_segment(file, indices, scale_model=None, normalize_kwargs=No
 		frames[:,:,np.where(indices==-1)[0]] = 0.
 
 	return frames
+
+def _load_frames_to_measure(file, indices):
+	return load_frames(indices, file, scale=None, normalize_input=False)
+
 
 def _check_label_dims(lbl, file=None, template=None):
 	

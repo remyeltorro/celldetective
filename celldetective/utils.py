@@ -32,34 +32,63 @@ from cliffs_delta import cliffs_delta
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 
+def _remove_invalid_cols(df):
+	invalid_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
+	if len(invalid_cols)>0:
+		df = df.drop(invalid_cols, axis=1)
+	return df
+
+def _extract_coordinates_from_features(features, timepoint):
+
+	coords = features[['centroid-1', 'centroid-0', 'class_id']].copy()
+	coords['ID'] = np.arange(len(coords))
+	coords.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
+	coords['FRAME'] = int(timepoint)
+
+	return coords
+
+def _mask_intensity_measurements(df, mask_channels):
+
+	if mask_channels is not None:
+		
+		cols_to_drop = []
+		columns = df.columns
+
+		for mc in mask_channels:
+			cols_to_remove = [c for c in columns if mc in c]
+			cols_to_drop.extend(cols_to_remove)
+
+		if len(cols_to_drop)>0:
+			df = df.drop(cols_to_drop, axis=1)
+	return df
 
 def _rearrange_multichannel_frame(frame):
 
 	"""
 	Rearranges the axes of a multi-channel frame to ensure the channel axis is at the end.
 
-	This function standardizes the input frame to ensure that the channel axis (if present) 
+	This function standardizes the input frame to ensure that the channel axis (if present)
 	is moved to the last position. For 2D frames, it adds a singleton channel axis at the end.
 
 	Parameters
 	----------
 	frame : ndarray
-		The input frame to be rearranged. Can be 2D or 3D. 
-		- If 3D, the function identifies the channel axis (assumed to be the axis with the smallest size) 
+		The input frame to be rearranged. Can be 2D or 3D.
+		- If 3D, the function identifies the channel axis (assumed to be the axis with the smallest size)
 		  and moves it to the last position.
 		- If 2D, the function adds a singleton channel axis to make it compatible with 3D processing.
 
 	Returns
 	-------
 	ndarray
-		The rearranged frame with the channel axis at the end. 
+		The rearranged frame with the channel axis at the end.
 		- For 3D frames, the output shape will have the channel axis as the last dimension.
 		- For 2D frames, the output will have shape `(H, W, 1)` where `H` and `W` are the height and width of the frame.
 
 	Notes
 	-----
 	- This function assumes that in a 3D input, the channel axis is the one with the smallest size.
-	- For 2D frames, this function ensures compatibility with multi-channel processing pipelines by 
+	- For 2D frames, this function ensures compatibility with multi-channel processing pipelines by
 	  adding a singleton dimension for the channel axis.
 
 	Examples
@@ -96,8 +125,8 @@ def _fix_no_contrast(frames, value=1):
 	"""
 	Ensures that frames with no contrast (i.e., containing only a single unique value) are adjusted.
 
-	This function modifies frames that lack contrast by adding a small value to the first pixel in 
-	the affected frame. This prevents downstream issues in image processing pipelines that require 
+	This function modifies frames that lack contrast by adding a small value to the first pixel in
+	the affected frame. This prevents downstream issues in image processing pipelines that require
 	a minimum level of contrast.
 
 	Parameters
@@ -109,7 +138,7 @@ def _fix_no_contrast(frames, value=1):
 		- `N` is the number of frames or channels.
 		Each frame (or channel) is independently checked for contrast.
 	value : int or float, optional
-		The value to add to the first pixel (`frames[0, 0, k]`) of any frame that lacks contrast. 
+		The value to add to the first pixel (`frames[0, 0, k]`) of any frame that lacks contrast.
 		Default is `1`.
 
 	Returns
@@ -120,7 +149,7 @@ def _fix_no_contrast(frames, value=1):
 	Notes
 	-----
 	- A frame is determined to have "no contrast" if all its pixel values are identical.
-	- Only the first pixel (`[0, 0, k]`) of a no-contrast frame is modified, leaving the rest 
+	- Only the first pixel (`[0, 0, k]`) of a no-contrast frame is modified, leaving the rest
 	  of the frame unchanged.
 	"""
 
@@ -140,7 +169,7 @@ def _prep_stardist_model(model_name, path, use_gpu=False, scale=1):
 	model = StarDist2D(None, name=model_name, basedir=path)
 	model.config.use_gpu = use_gpu
 	model.use_gpu = use_gpu
-	scale_model = scale	
+	scale_model = scale
 	print(f"StarDist model {model_name} successfully loaded...")
 	return model, scale_model
 
@@ -160,18 +189,18 @@ def _prep_cellpose_model(model_name, path, use_gpu=False, n_channels=2, scale=No
 
 	print(f"Diam mean: {model.diam_mean}; Diam labels: {model.diam_labels}; Final rescaling: {scale_model}...")
 	print(f'Cellpose model {model_name} successfully loaded...')
-	return model, scale_model	
+	return model, scale_model
 
 
 def _get_normalize_kwargs_from_config(config):
-	
+
 	if isinstance(config, str):
 		if os.path.exists(config):
 			with open(config) as cfg:
 				config = json.load(cfg)
 		else:
 			print('Configuration could not be loaded...')
-			os.abort()		
+			os.abort()
 
 	normalization_percentile = config['normalization_percentile']
 	normalization_clip = config['normalization_clip']
@@ -195,14 +224,14 @@ def _get_normalize_kwargs(normalization_percentile, normalization_values, normal
 	return {"percentiles": percentiles, 'values': values, 'clip': normalization_clip}
 
 def _segment_image_with_cellpose_model(img, model=None, diameter=None, cellprob_threshold=None, flow_threshold=None):
-	
+
 	img = np.moveaxis(img, -1, 0)
 	lbl, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
-	
+
 	return lbl.astype(np.uint16)
 
 def _segment_image_with_stardist_model(img, model=None, return_details=False):
-	
+
 	lbl, details = model.predict_instances(img, n_tiles=model._guess_n_tiles(img), show_tile_progress=False, verbose=False)
 	if not return_details:
 		return lbl.astype(np.uint16)
@@ -229,12 +258,12 @@ def extract_cols_from_table_list(tables, nrows=1):
 	-------
 	numpy.ndarray
 		An array of unique column names found across all the tables.
-	
+
 	Notes
 	-----
 	- This function reads only the first `nrows` rows of each table to improve performance when dealing with large files.
 	- The function ensures that column names are unique by consolidating them using `numpy.unique`.
-	
+
 	Examples
 	--------
 	>>> tables = ["table1.csv", "table2.csv"]
@@ -257,7 +286,7 @@ def safe_log(array):
 	Parameters
 	----------
 	array : int, float, list, or numpy.ndarray
-		The input value or array for which to compute the logarithm. 
+		The input value or array for which to compute the logarithm.
 		Can be a single number (int or float), a list, or a numpy array.
 
 	Returns
@@ -357,26 +386,26 @@ def extract_identity_col(trajectories):
 	"""
 	Determines the identity column name in a DataFrame of trajectories.
 
-	This function checks the provided DataFrame for the presence of a column 
-	that can serve as the identity column. It first looks for the column 
-	'TRACK_ID'. If 'TRACK_ID' exists but contains only null values, it checks 
-	for the column 'ID' instead. If neither column is found, the function 
+	This function checks the provided DataFrame for the presence of a column
+	that can serve as the identity column. It first looks for the column
+	'TRACK_ID'. If 'TRACK_ID' exists but contains only null values, it checks
+	for the column 'ID' instead. If neither column is found, the function
 	returns `None` and prints a message indicating the issue.
 
 	Parameters
 	----------
 	trajectories : pandas.DataFrame
-		A DataFrame containing trajectory data. The function assumes that 
-		the identity of each trajectory might be stored in either the 
+		A DataFrame containing trajectory data. The function assumes that
+		the identity of each trajectory might be stored in either the
 		'TRACK_ID' or 'ID' column.
 
 	Returns
 	-------
 	str or None
-		The name of the identity column ('TRACK_ID' or 'ID') if found; 
+		The name of the identity column ('TRACK_ID' or 'ID') if found;
 		otherwise, `None`.
 	"""
-	
+
 	for col in ['TRACK_ID', 'ID']:
 		if col in trajectories.columns and not trajectories[col].isnull().all():
 			return col

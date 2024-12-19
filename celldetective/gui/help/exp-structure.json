@@ -1,33 +1,33 @@
 {
-  "Did you test different biological conditions?": {
+  "Have you tested multiple biological conditions in your experiment?": {
     "yes": {
-      "Did you image several positions (tiles) per biological condition?": {
+      "Did you capture images at multiple positions (tiles) for each biological condition?": {
         "yes": {
-          "Did you record a time-lapse?": {
-            "yes": "Set N wells for the N biological conditions. Set M positions per well. Put the respective time-lapse stack in each generated position folder.",
-            "no": "Set N wells for the N biological conditions. Set a single position per well. Assemble all the tiles into a single stack per condition."
+          "Did you record time-lapse sequences for your images?": {
+            "yes": "Set up N wells to represent your N biological conditions. Assign M positions for each well. Place each time-lapse sequence into its corresponding position folder.",
+            "no": "Set up N wells for your N biological conditions. Assign one position per well. Combine all tiles into a single image stack for each condition."
           }
         },
         "no": {
-          "Did you record a time-lapse?": {
-            "yes": "Set N wells for the N biological conditions. Set a single position per well. Put the respective time-lapse stack in each generated position folder.",
-            "no": "There is not enough data to create a valid stack. Consider merging different experiments to generate several positions."
+          "Did you record time-lapse sequences for your images?": {
+            "yes": "Set up N wells to represent your N biological conditions. Assign one position per well. Place each time-lapse sequence into its corresponding position folder.",
+            "no": "There isn’t enough data to create a valid stack. Consider combining data from multiple experiments to create stacks with more positions."
           }
         }
       }
     },
     "no": {
-      "Did you image several positions (tiles)?": {
+      "Did you capture images at multiple positions (tiles)?": {
         "yes": {
-          "Did you record a time-lapse?": {
-            "yes": "Set a single well. Set N positions. Put the respective time-lapse stack in each generated position folder.",
-            "no": "Set a single well. Set a single position. Assemble all the tiles into a single stack and put it in this position folder."
+          "Did you record time-lapse sequences for your images?": {
+            "yes": "Set up a single well. Assign N positions. Place each time-lapse sequence into its corresponding position folder.",
+            "no": "Set up a single well. Assign one position. Combine all tiles into a single image stack and place it into the position folder."
           }
         },
         "no": {
-          "Did you record a time-lapse?": {
-            "yes": "Set a single well and a single position. Put the time-lapse stack in the generated position folder.",
-            "no": "There is not enough data to create a valid stack. Consider merging different experiments to generate several positions."
+          "Did you record time-lapse sequences for your images?": {
+            "yes": "Set up a single well and a single position. Place the time-lapse sequence into the position folder.",
+            "no": "There isn’t enough data to create a valid stack. Consider combining data from multiple experiments to increase the number of positions."
           }
         }
       }

@@ -1,16 +1,16 @@
 {
-  "Do you want to exploit the instantaneous classification to interpret cell tracks as a whole?": {
+  "Do you want to use instantaneous classification to interpret entire cell tracks?": {
     "yes": {
-      "Do the cells exhibit irreversible transitions between the negative and positive state?": {
-        "yes": "Tick the 'irreversible event' option. This will generate a class of either 0 (an observed transition), 1 (no observed transition) or 2 (a left-censored transition) for your cells. In case of doubt, transitioning cells (class 0) will be assigned to class 2. Lower the R² threshold if too many transitions are misidentified.",
+      "Do the cells undergo irreversible transitions between negative and positive states?": {
+        "yes": "Select the `irreversible event` option. This will classify cells as 0 (transition observed), 1 (no transition observed), or 2 (left-censored transition). In cases of uncertainty, transitioning cells (class 0) will be reassigned to class 2. If too many transitions are misidentified, consider lowering the R2 threshold.",
         "no": {
-          "Do the cells have a unique state from the beginning to the end of the movie?": {
-            "yes": "Tick the 'unique state' option. This will generate a class of either 1 (always negative) or 2 (always positive) for your cells.",
-            "no": "No model of propagation fit for your data is currently available in celldetective. Do not hesitate to formulate a <a href='https://github.com/remyeltorro/celldetective/issues/new?assignees=&labels=&projects=&template=%E2%AD%90-feature-request.md&title=%5BFEATURE%5D'>request</a>."
+          "Do cells maintain a single state (positive or negative) throughout the movie?": {
+            "yes": "Select the 'unique state' option. Cells will be classified as 1 (always negative) or 2 (always positive).",
+            "no": "Currently, no propagation model in celldetective fits your data. Feel free to submit a <a href='https://github.com/remyeltorro/celldetective/issues/new?assignees=&labels=&projects=&template=%E2%AD%90-feature-request.md&title=%5BFEATURE%5D'>feature request</a>."
           }
         }
       }
     },
-    "no": "Then you do not need to tick the 'Time correlated' option. Each cell at each time point is classified independently."
+    "no": "You do not need to enable the `Time correlated` option. Each cell will be classified independently at each time point."
   }
 }

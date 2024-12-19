@@ -6,7 +6,7 @@ from PyQt5.QtGui import QIcon, QDoubleValidator
 from celldetective.gui.gui_utils import center_window
 from celldetective.gui.generic_signal_plot import GenericSignalPlotWidget
 from superqt import QLabeledSlider, QColormapComboBox, QSearchableComboBox
-from celldetective.utils import get_software_location, _extract_labels_from_config
+from celldetective.utils import get_software_location, _extract_labels_from_config, extract_cols_from_table_list
 from celldetective.io import load_experiment_tables
 from celldetective.signals import mean_signal
 import numpy as np
@@ -92,8 +92,14 @@ class ConfigSignalPlot(QWidget, Styles):
 			""")
 		main_layout.addWidget(panel_title, alignment=Qt.AlignCenter)
 
+		pops = []
+		for population in ['effectors','targets','pairs']:
+			tables = glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{population}.csv']))
+			if len(tables)>0:
+				pops.append(population)
+
 		labels = [QLabel('population: '), QLabel('class: '), QLabel('time of\ninterest: '), QLabel('cmap: ')]
-		self.cb_options = [['targets','effectors'],[], [], []]
+		self.cb_options = [pops,[], [], []]
 		self.cbs = [QComboBox() for i in range(len(labels))]
 		self.cbs[-1] = QColormapComboBox()
 		
@@ -161,12 +167,11 @@ class ConfigSignalPlot(QWidget, Styles):
 	def set_classes_and_times(self):
 
 		# Look for all classes and times
-		tables = natsorted(glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_*.csv'])))
-		self.all_columns = []
-		for tab in tables:
-			cols = pd.read_csv(tab, nrows=1).columns.tolist()
-			self.all_columns.extend(cols)
-		self.all_columns = np.unique(self.all_columns)
+		population = self.cbs[0].currentText()
+		tables = natsorted(glob(self.exp_dir+os.sep.join(['W*','*','output','tables',f'trajectories_{population}.csv'])))
+		
+		self.all_columns = extract_cols_from_table_list(tables)
+
 		class_idx = np.array([s.startswith('class_') for s in self.all_columns])
 		time_idx = np.array([s.startswith('t_') for s in self.all_columns])
 		

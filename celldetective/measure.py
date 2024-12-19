@@ -311,7 +311,7 @@ def measure_features(img, label, features=['area', 'intensity_mean'], channels=N
 
 	if isinstance(features, list):
 		features = features.copy()
-		
+
 	if features is None:
 		features = []
 
@@ -986,6 +986,69 @@ def blob_detection(image, label, diameter, threshold=0., channel_name=None, targ
 
 	return detections
 
+
+# def blob_detectionv0(image, label, threshold, diameter):
+# 	"""
+# 	Perform blob detection on an image based on labeled regions.
+
+# 	Parameters:
+# 	- image (numpy.ndarray): The input image data.
+# 	- label (numpy.ndarray): An array specifying labeled regions in the image.
+# 	- threshold (float): The threshold value for blob detection.
+# 	- diameter (float): The expected diameter of blobs.
+
+# 	Returns:
+# 	- dict: A dictionary containing information about detected blobs.
+
+# 	This function performs blob detection on an image based on labeled regions. It iterates over each labeled region
+# 	and detects blobs within the region using the Difference of Gaussians (DoG) method. Detected blobs are filtered
+# 	based on the specified threshold and expected diameter. The function returns a dictionary containing the number of
+# 	detected blobs and their mean intensity for each labeled region.
+
+# 	Example:
+# 	>>> image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+# 	>>> label = np.array([[0, 1, 1], [2, 2, 0], [3, 3, 0]])
+# 	>>> threshold = 0.1
+# 	>>> diameter = 5.0
+# 	>>> result = blob_detection(image, label, threshold, diameter)
+# 	>>> print(result)
+# 	{1: [1, 4.0], 2: [0, nan], 3: [0, nan]}
+
+# 	Note:
+# 	- Blobs are detected using the Difference of Gaussians (DoG) method.
+# 	- Detected blobs are filtered based on the specified threshold and expected diameter.
+# 	- The returned dictionary contains information about the number of detected blobs and their mean intensity
+# 	  for each labeled region.
+# 	"""
+# 	blob_labels = {}
+# 	dilated_image = ndimage.grey_dilation(label, footprint=disk(10))
+# 	for mask_index in np.unique(label):
+# 		if mask_index == 0:
+# 			continue
+# 		removed_background = image.copy()
+# 		one_mask = label.copy()
+# 		one_mask[np.where(label != mask_index)] = 0
+# 		dilated_copy = dilated_image.copy()
+# 		dilated_copy[np.where(dilated_image != mask_index)] = 0
+# 		removed_background[np.where(dilated_copy == 0)] = 0
+# 		min_sigma = (1 / (1 + math.sqrt(2))) * diameter
+# 		max_sigma = math.sqrt(2) * min_sigma
+# 		blobs = blob_dog(removed_background, threshold=threshold, min_sigma=min_sigma,
+# 										 max_sigma=max_sigma)
+
+# 		mask = np.array([one_mask[int(y), int(x)] != 0 for y, x, r in blobs])
+# 		if not np.any(mask):
+# 			continue
+# 		blobs_filtered = blobs[mask]
+# 		binary_blobs = np.zeros_like(label)
+# 		for blob in blobs_filtered:
+# 			y, x, r = blob
+# 			rr, cc = dsk((y, x), r, shape=binary_blobs.shape)
+# 			binary_blobs[rr, cc] = 1
+# 		spot_intensity = regionprops_table(binary_blobs, removed_background, ['intensity_mean'])
+# 		blob_labels[mask_index] = [blobs_filtered.shape[0], spot_intensity['intensity_mean'][0]]
+# 	return blob_labels
+
 ### Classification ####
 
 def estimate_time(df, class_attr, model='step_function', class_of_interest=[2], r2_threshold=0.5):
@@ -1169,7 +1232,7 @@ def classify_transient_events(data, class_attr, pre_event=None):
 		indices = track[class_attr].index
 
 		if pre_event is not None:
-			
+
 			if track['class_'+pre_event].values[0]==1:
 				df.loc[indices, class_attr] = np.nan
 				df.loc[indices, stat_col] = np.nan
@@ -1180,7 +1243,7 @@ def classify_transient_events(data, class_attr, pre_event=None):
 				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
 				df.loc[indices_pre, stat_col] = np.nan # set to NaN all statuses before pre-event
 				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
-		
+
 		status = track[stat_col].to_numpy()
 		timeline = track['FRAME'].to_numpy()
 		timeline_safe = timeline[status==status]
@@ -1192,21 +1255,21 @@ def classify_transient_events(data, class_attr, pre_event=None):
 
 		if len(peaks)>0:
 			idx = np.argmax(widths)
-			peak = peaks[idx]; width = widths[idx]; 
+			peak = peaks[idx]; width = widths[idx];
 			if width >= minimum_weight:
 				left = left[idx]; right = right[idx];
 				left = timeline_safe[int(left)]; right = timeline_safe[int(right)];
-				
+
 				df.loc[indices, class_attr] = 0
 				df.loc[indices, class_attr.replace('class_','t_')] = left + (right - left)/2.0
 			else:
 				df.loc[indices, class_attr] = 1
-				df.loc[indices, class_attr.replace('class_','t_')] = -1				
+				df.loc[indices, class_attr.replace('class_','t_')] = -1
 		else:
 			df.loc[indices, class_attr] = 1
 			df.loc[indices, class_attr.replace('class_','t_')] = -1
 
-		
+
 	print("Classes: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 
 	return df
@@ -1286,7 +1349,7 @@ def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_
 			indices_pre_detection = track.loc[track['FRAME']<=t_firstdetection,class_attr].index
 			track.loc[indices_pre_detection,stat_col] = 0.0
 			df.loc[indices_pre_detection,stat_col] = 0.0
-		
+
 		# The non-NaN part of track (post pre-event)
 		track_valid = track.dropna(subset=stat_col, inplace=False)
 		status_values = track_valid[stat_col].to_numpy()
@@ -1300,7 +1363,7 @@ def classify_irreversible_events(data, class_attr, r2_threshold=0.5, percentile_
 		else:
 			# ambiguity, possible transition, use `unique_state` technique after
 			df.loc[indices, class_attr] = 2
-		
+
 	print("Classes after initial pass: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 
 	df.loc[df[class_attr]!=2, class_attr.replace('class', 't')] = -1
@@ -1363,7 +1426,7 @@ def classify_unique_states(df, class_attr, percentile=50, pre_event=None):
 		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
 
 	stat_col = class_attr.replace('class','status')
-	
+
 	for tid, track in df.groupby(sort_cols):
 
 		indices = track[class_attr].index
@@ -1487,5 +1550,26 @@ def classify_tracks_from_query(df, event_name, query, irreversible_event=True, u
 	df.reset_index(inplace=True, drop=True)
 
 	df = interpret_track_classification(df, class_attr, irreversible_event=irreversible_event, unique_state=unique_state, r2_threshold=r2_threshold, percentile_recovery=percentile_recovery)
+
+	return df
+
+def measure_radial_distance_to_center(df, volume, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
+
+	try:
+		df['radial_distance'] = np.sqrt((df[column_labels['x']] - volume[0] / 2) ** 2 + (df[column_labels['y']] - volume[1] / 2) ** 2)
+	except Exception as e:
+		print(f"{e=}")
+
+	return df
+
+def center_of_mass_to_abs_coordinates(df):
+	
+	center_of_mass_x_cols = [c for c in list(df.columns) if c.endswith('centre_of_mass_x')]
+	center_of_mass_y_cols = [c for c in list(df.columns) if c.endswith('centre_of_mass_y')]
+	for c in center_of_mass_x_cols:
+		df.loc[:,c.replace('_x','_POSITION_X')] = df[c] + df['POSITION_X']
+	for c in center_of_mass_y_cols:
+		df.loc[:,c.replace('_y','_POSITION_Y')] = df[c] + df['POSITION_Y']
+	df = df.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
 
 	return df

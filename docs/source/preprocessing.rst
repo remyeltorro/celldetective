@@ -16,7 +16,7 @@ Off-software preprocessing
 Registration
 ~~~~~~~~~~~~
 
-We highly recommend aligning your movies before using Celldetective. A common tool for this is the **Linear Stack Alignment with SIFT Multichannel** plugin available in **Fiji** [#]_ , which can be activated by enabling the PTBIOP update site (see discussion here_).
+We highly recommend aligning your movies before using Celldetective. A common tool for this is the **Linear Stack Alignment with SIFT Multichannel** plugin available in Fiji [#]_ , which can be activated by enabling the PTBIOP update site (see discussion here_).
 
 .. _here: https://forum.image.sc/t/registration-of-multi-channel-timelapse-with-linear-stack-alignment-with-sift/50209/16
 
@@ -48,9 +48,6 @@ Sometimes, preprocessing your images directly within Celldetective can simplify 
 
 Background correction
 ~~~~~~~~~~~~~~~~~~~~~
-
-.. note:: 
-    The background correction feature started being available in version 1.1.0
 
 Celldetective includes two techniques for background correction. The first is fit-based, where the idea is to fit a background for each image, where cells are excluded, with a 2D model (plane, paraboloid), and apply it. The second leverages the multiple-position organization of the experiment folder to build a median background, without cells.
 
@@ -92,3 +89,9 @@ With the **channel offset correction** module, you can:
 #. Adjust the overlay position using keyboard arrows until alignment is satisfactory.
 
 #. Apply the correction and add it to the protocol list.
+
+
+Bibliography
+------------
+
+.. [#] Schindelin, J., Arganda-Carreras, I., Frise, E. et al. Fiji: an open-source platform for biological-image analysis. Nat Methods 9, 676–682 (2012). https://doi.org/10.1038/nmeth.2019

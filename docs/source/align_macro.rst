@@ -1,23 +1,18 @@
-SIFT alignment with ImageJ macro
-================================
+ImageJ macro for processing experiment projects
+===============================================
 
-.. _align_macro:
-
-We highly recommend that you align the movie beforehand using for example, the "Linear Stack Alignment with SIFT Multichannel" tool available in Fiji, when activating the PTBIOP update site [#]_ (see discussion here_). 
-
-.. _here: https://forum.image.sc/t/registration-of-multi-channel-timelapse-with-linear-stack-alignment-with-sift/50209/16
+.. _imagej_macro:
 
 
-How to use it
--------------
+You can apply custom preprocessing steps to stacks organized in a Celldetective experiment project using an ImageJ macro. The provided macro automatically detects the well/position structure within the experiment folder.
 
-.. figure:: _static/align-stack-sift.gif
-    :align: center
-    :alt: sift_align
-    
-    Demonstration of the of the SIFT multichannel tool on FIJI
+Inside the innermost loop (after opening a stack), you can define your preprocessing steps. When running the macro, you will be prompted to select the root folder of your Celldetective experiment, and the macro will handle the folder traversal.
 
-We provide an ImageJ macro to perform the registration of batches of ADCC movies. We ask the user to put all of the .tif files to register in a folder and create a subfolder "aligned/" in which the registered files will be saved. 
+Registration with SIFT: Example Macro
+-------------------------------------
+
+Below is an example macro for stack registration using the Linear Stack Alignment with SIFT Multichannel plugin in ImageJ. This macro aligns movies based on a target channel and saves the output with a specific prefix (``Aligned_``).
+
 
 .. code-block:: java
 
@@ -35,17 +30,27 @@ We provide an ImageJ macro to perform the registration of batches of ADCC movies
         well = wells[i];
         
         if(endsWith(well, File.separator)){
+            
             positions = getFileList(experiment+well);
+            
             for (j=0;j<positions.length;j++) {
+                
                 pos = positions[j];
                 movie = getFileList(experiment+well+pos+"movie"+File.separator);
+                
                 for (k=0;k<movie.length;k++) {
                     if (startsWith(movie[k], prefix)) {
+                        
+                        // Open stack
                         open(experiment+well+pos+"movie"+File.separator+movie[k]);
                         Stack.setDisplayMode("grayscale");
+
+                        // Here write the preprocessing steps
                         Stack.setChannel(target_channel_int);
                         run("Enhance Contrast", "saturated=0.35");
                         run("Linear Stack Alignment with SIFT MultiChannel", "registration_channel="+target_channel+" initial_gaussian_blur=1.60 steps_per_scale_octave="+octave_steps+" minimum_image_size=64 maximum_image_size=1024 feature_descriptor_size=4 feature_descriptor_orientation_bins=8 closest/next_closest_ratio=0.92 maximal_alignment_error=25 inlier_ratio=0.05 expected_transformation=Rigid interpolate");
+
+                        // Save output
                         saveAs("Tiff", experiment+well+pos+"movie"+File.separator+"Aligned_"+movie[k]);
                         close();
                         close();
@@ -58,10 +63,3 @@ We provide an ImageJ macro to perform the registration of batches of ADCC movies
     }
 
     print("Done.");
-
-This code is a Fiji macro script that performs image alignment on TIFF files located in a specific folder. It prompts the user to select the folder, gets a list of .tif files in the folder and runs image alignment using Linear Stack Alignment with SIFT MultiChannel algorithm on each image. The aligned images are then saved in a subfolder with a prefix "Aligned_" added to the original file name. It also run "Collect Garbage" at the start and end of loop to free up memory.
-
-References
-----------
-
-.. [#] https://www.epfl.ch/research/facilities/ptbiop/

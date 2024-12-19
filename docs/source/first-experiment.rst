@@ -58,7 +58,7 @@ In Celldetective, "processing a movie" is synonymous with processing a position.
     :align: center
     :alt: exp_folder_mimics_glass_slide
     
-    **Celldetective’s main GUI.** a) the startup window can be used to either (b) create a new experiment or (c) load an experiment. b) The new experiment utility guides the user in the making of an experiment configuration, providing all the necessary information to manipulate the experimental data. c) A control panel interfaces all the processing functions, to detect and measure single cells. The top part controls whether the processing modules should be applied to a position, a well or all wells and conditions sequentially.
+    Startup window (top). Panels to create (left) or process (right) an experiment.
 
 
 .. note::

@@ -1552,3 +1552,24 @@ def classify_tracks_from_query(df, event_name, query, irreversible_event=True, u
 	df = interpret_track_classification(df, class_attr, irreversible_event=irreversible_event, unique_state=unique_state, r2_threshold=r2_threshold, percentile_recovery=percentile_recovery)
 
 	return df
+
+def measure_radial_distance_to_center(df, volume, column_labels={'track': "TRACK_ID", 'time': 'FRAME', 'x': 'POSITION_X', 'y': 'POSITION_Y'}):
+
+	try:
+		df['radial_distance'] = np.sqrt((df[column_labels['x']] - volume[0] / 2) ** 2 + (df[column_labels['y']] - volume[1] / 2) ** 2)
+	except Exception as e:
+		print(f"{e=}")
+
+	return df
+
+def center_of_mass_to_abs_coordinates(df):
+	
+	center_of_mass_x_cols = [c for c in list(df.columns) if c.endswith('centre_of_mass_x')]
+	center_of_mass_y_cols = [c for c in list(df.columns) if c.endswith('centre_of_mass_y')]
+	for c in center_of_mass_x_cols:
+		df.loc[:,c.replace('_x','_POSITION_X')] = df[c] + df['POSITION_X']
+	for c in center_of_mass_y_cols:
+		df.loc[:,c.replace('_y','_POSITION_Y')] = df[c] + df['POSITION_Y']
+	df = df.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
+
+	return df

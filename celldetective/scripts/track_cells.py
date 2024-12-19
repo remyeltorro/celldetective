@@ -7,7 +7,7 @@ import datetime
 import os
 import json
 from celldetective.io import auto_load_number_of_frames, load_frames, interpret_tracking_configuration, extract_position_name
-from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
+from celldetective.utils import _mask_intensity_measurements, extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, extract_experiment_channels
 from celldetective.measure import drop_tonal_features, measure_features
 from celldetective.tracking import track
 from pathlib import Path, PurePath
@@ -20,6 +20,8 @@ import os
 from natsort import natsorted
 from art import tprint
 from tifffile import imread
+import concurrent.futures
+
 
 tprint("Track")
 
@@ -173,35 +175,39 @@ if not btrack_option:
 
 def measure_index(indices):
 
+	props = []
+
 	for t in tqdm(indices,desc="frame"):
 		
 		# Load channels at time t
-		img = load_frames(img_num_channels[:,t], file, scale=None, normalize_input=False)
-		lbl = imread(label_path[t])
+		img = _load_frames_to_measure(file, indices=img_num_channels[:,t])
+		lbl = locate_labels(pos, population=mode, frames=t)
+		if lbl is None:
+			continue
 
 		df_props = measure_features(img, lbl, features = features+['centroid'], border_dist=None, 
 										channels=channel_names, haralick_options=haralick_options, verbose=False, 
 									)
 		df_props.rename(columns={'centroid-1': 'x', 'centroid-0': 'y'},inplace=True)
 		df_props['t'] = int(t)
-		timestep_dataframes.append(df_props)
-	return 
 
+		props.append(df_props)
 
+	return props
 
 print(f"Measuring features with {n_threads} thread(s)...")
-
-import concurrent.futures
 
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))
 chunks = np.array_split(indices, n_threads)
 
+timestep_dataframes = []
 with concurrent.futures.ThreadPoolExecutor() as executor:
 	results = executor.map(measure_index, chunks)
 	try:
 		for i,return_value in enumerate(results):
-			print(f"Thread {i} output check: ",return_value)
+			print(f"Thread {i} completed...")
+			timestep_dataframes.extend(return_value)
 	except Exception as e:
 		print("Exception: ", e)
 
@@ -210,15 +216,7 @@ print('Features successfully measured...')
 df = pd.concat(timestep_dataframes)	
 df.reset_index(inplace=True, drop=True)
 
-if mask_channels is not None:
-	cols_to_drop = []
-	for mc in mask_channels:
-		columns = df.columns
-		col_contains = [mc in c for c in columns]
-		to_remove = np.array(columns)[np.array(col_contains)]
-		cols_to_drop.extend(to_remove)
-	if len(cols_to_drop)>0:
-		df = df.drop(cols_to_drop, axis=1)
+df = _mask_intensity_measurements(df, mask_channels)
 
 # do tracking
 if btrack_option:

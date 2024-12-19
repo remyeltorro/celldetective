@@ -3,18 +3,14 @@ import time
 import datetime
 import os
 import json
-from stardist.models import StarDist2D
-from cellpose.models import CellposeModel
-from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames
-from celldetective.utils import extract_experiment_channels, interpolate_nan, _estimate_scale_factor, _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
+from celldetective.io import locate_segmentation_model, auto_load_number_of_frames, load_frames, _check_label_dims, _load_frames_to_segment
+from celldetective.utils import _rescale_labels, _segment_image_with_stardist_model, _segment_image_with_cellpose_model, _prep_stardist_model, _prep_cellpose_model, _get_normalize_kwargs_from_config, extract_experiment_channels, _estimate_scale_factor, _extract_channel_indices_from_config, ConfigSectionMap, _extract_nbr_channels_from_config, _get_img_num_per_channel
 from pathlib import Path, PurePath
 from glob import glob
 from shutil import rmtree
 from tqdm import tqdm
 import numpy as np
-from skimage.transform import resize
 from csbdeep.io import save_tiff_imagej_compatible
-from scipy.ndimage import zoom
 from celldetective.segmentation import segment_frame_from_thresholds
 import gc
 from art import tprint
@@ -50,11 +46,11 @@ class BaseSegmentProcess(Process):
 		elif self.mode=="effector" or self.mode=="effectors":
 			self.label_folder = "labels_effectors"
 
-		print('Erasing previous segmentation folder.')
+		print('Erasing the previous labels folder...')
 		if os.path.exists(self.pos+self.label_folder):
 			rmtree(self.pos+self.label_folder)
 		os.mkdir(self.pos+self.label_folder)
-		print(f'Folder {self.pos+self.label_folder} successfully generated.')
+		print(f'Labels folder successfully generated...')
 
 
 	def extract_experiment_parameters(self):
@@ -120,9 +116,8 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 	def extract_model_input_parameters(self):
 
 		self.required_channels = self.input_config["channels"]
-		self.normalization_percentile = self.input_config['normalization_percentile']
-		self.normalization_clip = self.input_config['normalization_clip']
-		self.normalization_values = self.input_config['normalization_values']
+		self.normalize_kwargs = _get_normalize_kwargs_from_config(self.input_config)
+
 		self.model_type = self.input_config['model_type']
 		self.required_spatial_calibration = self.input_config['spatial_calibration']
 		
@@ -175,69 +170,29 @@ class SegmentCellDLProcess(BaseSegmentProcess):
 		try:
 
 			if self.model_type=='stardist':
-				model = StarDist2D(None, name=self.model_name, basedir=Path(self.model_complete_path).parent)
-				model.config.use_gpu = self.use_gpu
-				model.use_gpu = self.use_gpu
-				print(f"StarDist model {self.model_name} successfully loaded.")
-				scale_model = self.scale
+				model, scale_model = _prep_stardist_model(self.model_name, Path(self.model_complete_path).parent, use_gpu=self.use_gpu, scale=self.scale)
 
 			elif self.model_type=='cellpose':
-
-				import torch
-				if not self.use_gpu:
-					device = torch.device("cpu")
-				else:
-					device = torch.device("cuda")
-
-				model = CellposeModel(gpu=self.use_gpu, device=device, pretrained_model=self.model_complete_path+self.model_name, model_type=None, nchan=len(self.required_channels)) #diam_mean=30.0,
-				if self.scale is None:
-					scale_model = model.diam_mean / model.diam_labels
-				else:
-					scale_model = self.scale * model.diam_mean / model.diam_labels
-				print(f"Diam mean: {model.diam_mean}; Diam labels: {model.diam_labels}; Final rescaling: {scale_model}...")
-				print(f'Cellpose model {self.model_name} successfully loaded.')
+				model, scale_model = _prep_cellpose_model(self.model_name, self.model_complete_path, use_gpu=self.use_gpu, n_channels=len(self.required_channels), scale=self.scale)
 
 			for t in tqdm(range(self.len_movie),desc="frame"):
 				
-				# Load channels at time t
-				values = []
-				percentiles = []
-				for k in range(len(self.normalization_percentile)):
-					if self.normalization_percentile[k]:
-						percentiles.append(self.normalization_values[k])
-						values.append(None)
-					else:
-						percentiles.append(None)
-						values.append(self.normalization_values[k])
-
-				f = load_frames(self.img_num_channels[:,t], self.file, scale=scale_model, normalize_input=True, normalize_kwargs={"percentiles": percentiles, 'values': values, 'clip': self.normalization_clip})
-				f = np.moveaxis([interpolate_nan(f[:,:,c].copy()) for c in range(f.shape[-1])],0,-1)
-
-				if np.any(self.img_num_channels[:,t]==-1):
-					f[:,:,np.where(self.img_num_channels[:,t]==-1)[0]] = 0.
-				
+				f = _load_frames_to_segment(self.file, self.img_num_channels[:,t], scale_model=scale_model, normalize_kwargs=self.normalize_kwargs)
 
 				if self.model_type=="stardist":
-					Y_pred, details = model.predict_instances(f, n_tiles=model._guess_n_tiles(f), show_tile_progress=False, verbose=False)
-					Y_pred = Y_pred.astype(np.uint16)
+					Y_pred = _segment_image_with_stardist_model(f, model=model, return_details=False)
 
 				elif self.model_type=="cellpose":
-
-					img = np.moveaxis(f, -1, 0)
-					Y_pred, _, _ = model.eval(img, diameter = self.diameter, cellprob_threshold=self.cellprob_threshold, flow_threshold=self.flow_threshold, channels=None, normalize=False)
-					Y_pred = Y_pred.astype(np.uint16)
+					Y_pred = _segment_image_with_cellpose_model(f, model=model, diameter=self.diameter, cellprob_threshold=self.cellprob_threshold, flow_threshold=self.flow_threshold)
 
 				if self.scale is not None:
-					Y_pred = zoom(Y_pred, [1./scale_model,1./scale_model],order=0)
-
-				template = load_frames(0,self.file,scale=1,normalize_input=False)
-				if Y_pred.shape != template.shape[:2]:
-					Y_pred = resize(Y_pred, template.shape[:2], order=0)
+					Y_pred = _rescale_labels(Y_pred, scale_model=scale_model)
+				
+				Y_pred = _check_label_dims(Y_pred, file=self.file)
 
 				save_tiff_imagej_compatible(self.pos+os.sep.join([self.label_folder,f"{str(t).zfill(4)}.tif"]), Y_pred, axes='YX')
 				
 				del f;
-				del template;
 				del Y_pred;
 				gc.collect()
 				
@@ -304,8 +259,7 @@ class SegmentCellThresholdProcess(BaseSegmentProcess):
 		
 		self.required_channels = [self.threshold_instructions['target_channel']]
 		if 'equalize_reference' in self.threshold_instructions:
-			self.equalize, self.equalize_time = self.threshold_instructions['equalize_reference']
-			
+			self.equalize, self.equalize_time = self.threshold_instructions['equalize_reference']		
 
 	def write_log(self):
 
@@ -347,19 +301,21 @@ class SegmentCellThresholdProcess(BaseSegmentProcess):
 		except Exception as e:
 			print(e)
 
+		return
+
 	def run(self):
 
 		self.indices = list(range(self.img_num_channels.shape[1]))
 		chunks = np.array_split(self.indices, self.n_threads)
 
 		with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_threads) as executor:
-			result_futures = list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
-			for future in concurrent.futures.as_completed(result_futures):
-				try:
-					print(future.result())
-				except Exception as e:
-					print('e is', e, type(e))
-		
+			results = results = executor.map(self.parallel_job, chunks) #list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
+			try:
+				for i,return_value in enumerate(results):
+					print(f"Thread {i} output check: ",return_value)
+			except Exception as e:
+				print("Exception: ", e)
+
 		# Send end signal
 		self.queue.put("finished")
 		self.queue.close()

@@ -619,15 +619,15 @@ class ConfigSegmentationModelTraining(QMainWindow, Styles):
 		with open(model_folder+"training_instructions.json", 'w') as f:
 			json.dump(self.training_instructions, f, indent=4)
 		
-		process_args = {"instructions": self.instructions, "use_gpu": self.use_gpu}
-		self.job = ProgressWindow(TrainSegModelProcess, parent_window=self, title="Training", position_info=False, process_args=process_args)
-		result = self.job.exec_()
-		if result == QDialog.Accepted:
-			pass
-		elif result == QDialog.Rejected:
-			return None		
+		# process_args = {"instructions": self.instructions, "use_gpu": self.use_gpu}
+		# self.job = ProgressWindow(TrainSegModelProcess, parent_window=self, title="Training", position_info=False, process_args=process_args)
+		# result = self.job.exec_()
+		# if result == QDialog.Accepted:
+		# 	pass
+		# elif result == QDialog.Rejected:
+		# 	return None		
 
-		#train_segmentation_model(self.instructions, use_gpu=self.parent_window.parent_window.parent_window.use_gpu)
+		train_segmentation_model(self.instructions, use_gpu=self.parent_window.parent_window.parent_window.use_gpu)
 
 		self.parent_window.init_seg_model_list()
 		idx = self.parent_window.seg_model_list.findText(model_name)

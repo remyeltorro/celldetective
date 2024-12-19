@@ -7,8 +7,8 @@ from pathlib import Path, PurePath
 
 from celldetective.io import auto_load_number_of_frames, load_frames, locate_labels
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel
-from celldetective.utils import remove_trajectory_measurements
-from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity
+from celldetective.utils import remove_trajectory_measurements, _extract_coordinates_from_features, _remove_invalid_cols
+from celldetective.measure import drop_tonal_features, measure_features, measure_isotropic_intensity, measure_radial_distance_to_center, center_of_mass_to_abs_coordinates
 
 from glob import glob
 from tqdm import tqdm
@@ -73,13 +73,15 @@ class MeasurementProcess(Process):
 
 
 	def read_measurement_instructions(self):
-		
+
+		print('Looking for measurement instruction file...')
 		instr_path = PurePath(self.expfolder,Path(f"{self.instruction_file}"))
 		if os.path.exists(instr_path):
-			print(f"Tracking instructions for the {self.mode} population has been successfully located.")
 			with open(instr_path, 'r') as f:
 				self.instructions = json.load(f)
-				print("Reading the following instructions: ", self.instructions)
+				print(f"Measurement instruction file successfully loaded...")
+				print(f"Instructions: {self.instructions}...")
+
 			if 'background_correction' in self.instructions:
 				self.background_correction = self.instructions['background_correction']
 			else:
@@ -213,7 +215,7 @@ class MeasurementProcess(Process):
 
 	def detect_movie_and_labels(self):
 
-		self.label_path = natsorted(glob(self.pos+f"{self.label_folder}"+os.sep+"*.tif"))
+		self.label_path = natsorted(glob(os.sep.join([self.pos, self.label_folder, '*.tif'])))
 		if len(self.label_path)>0:
 			print(f"Found {len(self.label_path)} segmented frames...")
 		else:
@@ -237,8 +239,6 @@ class MeasurementProcess(Process):
 
 		measurements = []
 
-		# try:
-
 		for t in tqdm(indices,desc="frame"):
 
 			if self.file is not None:
@@ -250,8 +250,6 @@ class MeasurementProcess(Process):
 				if lbl is None:
 					continue
 
-				#lbl = imread(self.label_path[t])
-
 			if self.trajectories is not None:
 
 				positions_at_t = self.trajectories.loc[self.trajectories[self.column_labels['time']]==t].copy()
@@ -261,10 +259,7 @@ class MeasurementProcess(Process):
 												 channels=self.channel_names, haralick_options=self.haralick_options, verbose=False,
 												 normalisation_list=self.background_correction, spot_detection=self.spot_detection)
 				if self.trajectories is None:
-					positions_at_t = feature_table[['centroid-1', 'centroid-0', 'class_id']].copy()
-					positions_at_t['ID'] = np.arange(len(positions_at_t))  # temporary ID for the cells, that will be reset at the end since they are not tracked
-					positions_at_t.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
-					positions_at_t['FRAME'] = int(t)
+					positions_at_t = _extract_coordinates_from_features(feature_table, timepoint=t)
 					column_labels = {'track': "ID", 'time': self.column_labels['time'], 'x': self.column_labels['x'],
 									 'y': self.column_labels['y']}
 				feature_table.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
@@ -281,20 +276,8 @@ class MeasurementProcess(Process):
 				measurements_at_t = positions_at_t.merge(feature_table, how='outer', on='class_id',suffixes=('_delme', ''))
 				measurements_at_t = measurements_at_t[[c for c in measurements_at_t.columns if not c.endswith('_delme')]]
 		
-			center_of_mass_x_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_x')]
-			center_of_mass_y_cols = [c for c in list(measurements_at_t.columns) if c.endswith('centre_of_mass_y')]
-			for c in center_of_mass_x_cols:
-				measurements_at_t.loc[:,c.replace('_x','_POSITION_X')] = measurements_at_t[c] + measurements_at_t['POSITION_X']
-			for c in center_of_mass_y_cols:
-				measurements_at_t.loc[:,c.replace('_y','_POSITION_Y')] = measurements_at_t[c] + measurements_at_t['POSITION_Y']
-			measurements_at_t = measurements_at_t.drop(columns = center_of_mass_x_cols+center_of_mass_y_cols)
-			
-			try:
-				measurements_at_t['radial_distance'] = np.sqrt((measurements_at_t[self.column_labels['x']] - img.shape[0] / 2) ** 2 + (
-						measurements_at_t[self.column_labels['y']] - img.shape[1] / 2) ** 2)
-			except Exception as e:
-				print(f"{e=}")
-
+			measurements_at_t = center_of_mass_to_abs_coordinates(measurements_at_t)
+			measurements_at_t = measure_radial_distance_to_center(measurements_at_t, volume=img.shape, column_labels=self.column_labels)
 
 			self.sum_done+=1/self.len_movie*100
 			mean_exec_per_step = (time.time() - self.t0) / (self.sum_done*self.len_movie / 100 + 1)
@@ -307,28 +290,25 @@ class MeasurementProcess(Process):
 				measurements_at_t = pd.DataFrame()
 
 			measurements.append(measurements_at_t)
-			
-		
-		# except Exception as e:
-		# 	print(e)
 
 		return measurements
 
 	def run(self):
-
 
 		self.indices = list(range(self.img_num_channels.shape[1]))
 		chunks = np.array_split(self.indices, self.n_threads)
 
 		self.timestep_dataframes = []
 		with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_threads) as executor:
-			result_futures = list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
-			for future in concurrent.futures.as_completed(result_futures):
-				try:
-					res = future.result()
-					self.timestep_dataframes.extend(res)
-				except Exception as e:
-					print('e is', e, type(e))
+			results = executor.map(self.parallel_job, chunks) #list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
+			try:
+				for i,return_value in enumerate(results):
+					print(f'Thread {i} completed...')
+					self.timestep_dataframes.extend(return_value)
+			except Exception as e:
+				print("Exception: ", e)
+		
+		print('Measurements successfully performed...')
 
 		if len(self.timestep_dataframes)>0:
 
@@ -342,9 +322,10 @@ class MeasurementProcess(Process):
 				df = df.sort_values(by=[self.column_labels['time'], 'ID'])
 
 			df = df.reset_index(drop=True)
-
+			df = _remove_invalid_cols(df)
+			
 			df.to_csv(self.pos+os.sep.join(["output", "tables", self.table_name]), index=False)
-			print(f'Measurements successfully written in table {self.pos+os.sep.join(["output", "tables", self.table_name])}')
+			print(f'Measurement table successfully exported in  {os.sep.join(["output", "tables"])}...')
 			print('Done.')
 		else:
 			print('No measurement could be performed. Check your inputs.')

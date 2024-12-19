@@ -3,8 +3,8 @@ import time
 import datetime
 import os
 import json
-from celldetective.io import auto_load_number_of_frames, load_frames
-from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel
+from celldetective.io import auto_load_number_of_frames, load_frames, _load_frames_to_measure, locate_labels
+from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, _mask_intensity_measurements
 from pathlib import Path, PurePath
 from glob import glob
 from tqdm import tqdm
@@ -51,6 +51,11 @@ class TrackingProcess(Process):
 
 		self.write_log()
 
+		if not self.btrack_option:
+			self.features = []
+			self.channel_names = None
+			self.haralick_options = None
+
 		self.sum_done = 0
 		self.t0 = time.time()
 
@@ -83,6 +88,16 @@ class TrackingProcess(Process):
 				self.post_processing_options = self.instructions['post_processing_options']
 			else:
 				self.post_processing_options = None
+			
+			self.btrack_option = True
+			if 'btrack_option' in self.instructions:
+				self.btrack_option = self.instructions['btrack_option']
+			self.search_range = None
+			if 'search_range' in self.instructions:
+				self.search_range = self.instructions['search_range']
+			self.memory = None
+			if 'memory' in self.instructions:
+				self.memory = self.instructions['memory']
 		else:
 			print('Tracking instructions could not be located... Using a standard bTrack motion model instead...')
 			self.btrack_config = interpret_tracking_configuration(None)
@@ -90,6 +105,9 @@ class TrackingProcess(Process):
 			self.mask_channels = None
 			self.haralick_options = None
 			self.post_processing_options = None
+			self.btrack_option = True
+			self.memory = None
+			self.search_range = None
 
 		if self.features is None:
 			self.features = []
@@ -182,8 +200,10 @@ class TrackingProcess(Process):
 			for t in tqdm(indices,desc="frame"):
 				
 				# Load channels at time t
-				img = load_frames(self.img_num_channels[:,t], self.file, scale=None, normalize_input=False)
-				lbl = imread(self.label_path[t])
+				img = _load_frames_to_measure(self.file, indices=self.img_num_channels[:,t])
+				lbl = locate_labels(self.pos, population=self.mode, frames=t)
+				if lbl is None:
+					continue
 
 				df_props = measure_features(img, lbl, features = self.features+['centroid'], border_dist=None, 
 												channels=self.channel_names, haralick_options=self.haralick_options, verbose=False)
@@ -210,26 +230,26 @@ class TrackingProcess(Process):
 
 		self.timestep_dataframes = []
 		with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_threads) as executor:
-			result_futures = list(map(lambda x: executor.submit(self.parallel_job, x), chunks))
-			for future in concurrent.futures.as_completed(result_futures):
-				try:
-					res = future.result()
-					self.timestep_dataframes.extend(res)
-				except Exception as e:
-					print('e is', e, type(e))
+			results = executor.map(self.parallel_job, chunks)
+			try:
+				for i,return_value in enumerate(results):
+					print(f'Thread {i} completed...')
+					#print(f"Thread {i} output check: ",return_value)
+					self.timestep_dataframes.extend(return_value)
+			except Exception as e:
+				print("Exception: ", e)
+
+		print('Features successfully measured...')
 
 		df = pd.concat(self.timestep_dataframes)	
 		df.reset_index(inplace=True, drop=True)
+		df = _mask_intensity_measurements(df, self.mask_channels)
 
-		if self.mask_channels is not None:
-			cols_to_drop = []
-			for mc in self.mask_channels:
-				columns = df.columns
-				col_contains = [mc in c for c in columns]
-				to_remove = np.array(columns)[np.array(col_contains)]
-				cols_to_drop.extend(to_remove)
-			if len(cols_to_drop)>0:
-				df = df.drop(cols_to_drop, axis=1)
+		# do tracking
+		if self.btrack_option:
+			tracker = 'bTrack'
+		else:
+			tracker = 'trackpy'
 
 		# do tracking
 		trajectories, napari_data = track(None,
@@ -242,15 +262,18 @@ class TrackingProcess(Process):
 				  			track_kwargs={'step_size': 100}, 
 				  			clean_trajectories_kwargs=self.post_processing_options, 
 				  			volume=(self.shape_x, self.shape_y),
+				  			btrack_option=self.btrack_option, 
+				  			search_range=self.search_range,
+				  			memory=self.memory,
 				  			)
+		print(f"Tracking successfully performed...")
 
 		# out trajectory table, create POSITION_X_um, POSITION_Y_um, TIME_min (new ones)
 		# Save napari data
 		np.save(self.pos+os.sep.join(['output', 'tables', self.napari_name]), napari_data, allow_pickle=True)
-		print(f"napari data successfully saved in {self.pos+os.sep.join(['output', 'tables'])}")
 
 		trajectories.to_csv(self.pos+os.sep.join(['output', 'tables', self.table_name]), index=False)
-		print(f"Table {self.table_name} successfully saved in {os.sep.join(['output', 'tables'])}")
+		print(f"Trajectory table successfully exported in {os.sep.join(['output', 'tables'])}...")
 
 		if os.path.exists(self.pos+os.sep.join(['output', 'tables', self.table_name.replace('.csv','.pkl')])):
 			os.remove(self.pos+os.sep.join(['output', 'tables', self.table_name.replace('.csv','.pkl')]))

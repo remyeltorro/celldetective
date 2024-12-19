@@ -3534,6 +3534,10 @@ def _load_frames_to_segment(file, indices, scale_model=None, normalize_kwargs=No
 
 	return frames
 
+def _load_frames_to_measure(file, indices):
+	return load_frames(indices, file, scale=None, normalize_input=False)
+
+
 def _check_label_dims(lbl, file=None, template=None):
 	
 	if file is not None:

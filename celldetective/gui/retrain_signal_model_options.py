@@ -586,14 +586,14 @@ class ConfigSignalModelTraining(QMainWindow, Styles):
 		with open(model_folder+"training_instructions.json", 'w') as f:
 			json.dump(training_instructions, f, indent=4)
 		
-		self.instructions = model_folder+"training_instructions.json"
-		process_args = {"instructions": self.instructions} # "use_gpu": self.use_gpu
-		self.job = ProgressWindow(TrainSignalModelProcess, parent_window=self, title="Training", position_info=False, process_args=process_args)
-		result = self.job.exec_()
-		if result == QDialog.Accepted:
-			pass
-		elif result == QDialog.Rejected:
-			return None	
+		# self.instructions = model_folder+"training_instructions.json"
+		# process_args = {"instructions": self.instructions} # "use_gpu": self.use_gpu
+		# self.job = ProgressWindow(TrainSignalModelProcess, parent_window=self, title="Training", position_info=False, process_args=process_args)
+		# result = self.job.exec_()
+		# if result == QDialog.Accepted:
+		# 	pass
+		# elif result == QDialog.Rejected:
+		# 	return None	
 
-		#train_signal_model(model_folder+"training_instructions.json")
+		train_signal_model(model_folder+"training_instructions.json")
 		self.parent_window.refresh_signal_models()

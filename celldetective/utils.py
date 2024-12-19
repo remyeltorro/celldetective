@@ -32,6 +32,35 @@ from cliffs_delta import cliffs_delta
 from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 
+def _remove_invalid_cols(df):
+	invalid_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
+	if len(invalid_cols)>0:
+		df = df.drop(invalid_cols, axis=1)
+	return df
+
+def _extract_coordinates_from_features(features, timepoint):
+
+	coords = features[['centroid-1', 'centroid-0', 'class_id']].copy()
+	coords['ID'] = np.arange(len(coords))
+	coords.rename(columns={'centroid-1': 'POSITION_X', 'centroid-0': 'POSITION_Y'}, inplace=True)
+	coords['FRAME'] = int(timepoint)
+
+	return coords
+
+def _mask_intensity_measurements(df, mask_channels):
+
+	if mask_channels is not None:
+		
+		cols_to_drop = []
+		columns = df.columns
+
+		for mc in mask_channels:
+			cols_to_remove = [c for c in columns if mc in c]
+			cols_to_drop.extend(cols_to_remove)
+
+		if len(cols_to_drop)>0:
+			df = df.drop(cols_to_drop, axis=1)
+	return df
 
 def _rearrange_multichannel_frame(frame):
 

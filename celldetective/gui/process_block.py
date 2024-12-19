@@ -400,6 +400,7 @@ class ProcessPanel(QFrame, Styles):
 		model_zoo_layout = QHBoxLayout()
 		model_zoo_layout.addWidget(QLabel("Model zoo:"),90)
 		self.seg_model_list = QComboBox()
+		self.seg_model_list.currentIndexChanged.connect(self.reset_generalist_setup)
 		#self.to_disable.append(self.tc_seg_model_list)
 		self.seg_model_list.setGeometry(50, 50, 200, 30)
 		self.init_seg_model_list()
@@ -895,6 +896,11 @@ class ProcessPanel(QFrame, Styles):
 				action.setChecked(False)
 
 		self.cellpose_calibrated = False
+		self.stardist_calibrated = False
+
+	def reset_generalist_setup(self, index):
+		self.cellpose_calibrated = False
+		self.stardist_calibrated = False
 
 	def open_napari_tracking(self):
 		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')

@@ -1191,7 +1191,11 @@ def locate_labels(position, population='target', frames=None):
 	elif isinstance(frames, (int,float, np.int_)):
 
 		tzfill = str(int(frames)).zfill(4)
-		idx = label_names.index(f"{tzfill}.tif")
+		try:
+			idx = label_names.index(f"{tzfill}.tif")
+		except:
+			idx = -1
+
 		if idx==-1:
 			labels = None
 		else:
@@ -1201,7 +1205,11 @@ def locate_labels(position, population='target', frames=None):
 		labels = []
 		for f in frames:
 			tzfill = str(int(f)).zfill(4)
-			idx = label_names.index(f"{tzfill}.tif")
+			try:
+				idx = label_names.index(f"{tzfill}.tif")
+			except:
+				idx = -1
+			
 			if idx==-1:
 				labels.append(None)
 			else:

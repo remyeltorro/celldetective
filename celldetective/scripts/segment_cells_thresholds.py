@@ -16,6 +16,7 @@ import numpy as np
 from csbdeep.io import save_tiff_imagej_compatible
 import gc
 from art import tprint
+import concurrent.futures
 
 tprint("Segment")
 
@@ -123,8 +124,6 @@ def segment_index(indices):
 
 
 print(f"Starting the segmentation with {n_threads} thread(s)...")
-
-import concurrent.futures
 
 # Multithreading
 indices = list(range(img_num_channels.shape[1]))

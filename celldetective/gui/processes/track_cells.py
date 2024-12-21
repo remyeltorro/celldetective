@@ -3,7 +3,7 @@ import time
 import datetime
 import os
 import json
-from celldetective.io import auto_load_number_of_frames, load_frames, _load_frames_to_measure, locate_labels
+from celldetective.io import auto_load_number_of_frames, _load_frames_to_measure, locate_labels
 from celldetective.utils import extract_experiment_channels, ConfigSectionMap, _get_img_num_per_channel, _mask_intensity_measurements
 from pathlib import Path, PurePath
 from glob import glob
@@ -21,7 +21,6 @@ from celldetective.tracking import track
 import pandas as pd
 from natsort import natsorted
 from art import tprint
-from tifffile import imread
 
 
 class TrackingProcess(Process):

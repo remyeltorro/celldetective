@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 from glob import glob
 from natsort import natsorted
-import pandas as pd
 import math
 from celldetective.gui import Styles
 from matplotlib import colormaps

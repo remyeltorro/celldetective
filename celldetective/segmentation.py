@@ -8,7 +8,6 @@ from .utils import _estimate_scale_factor, _extract_channel_indices
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
-from skimage.transform import resize
 from celldetective.io import _view_on_napari, locate_labels, locate_stack, _view_on_napari, _check_label_dims
 from celldetective.filters import * #rework this to give a name
 from celldetective.utils import interpolate_nan_multichannel,_rearrange_multichannel_frame, _fix_no_contrast, zoom_multiframes, _rescale_labels, rename_intensity_column, mask_edges, _prep_stardist_model, _prep_cellpose_model, estimate_unreliable_edge,_get_normalize_kwargs_from_config, _segment_image_with_stardist_model, _segment_image_with_cellpose_model

@@ -33,12 +33,75 @@ from stardist.models import StarDist2D
 from cellpose.models import CellposeModel
 
 def _remove_invalid_cols(df):
+
+	"""
+	Removes invalid columns from a DataFrame.
+
+	This function identifies and removes columns in the DataFrame whose names 
+	start with "Unnamed", which often indicate extraneous or improperly 
+	formatted columns (e.g., leftover columns from improperly read CSV files).
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		The input DataFrame from which invalid columns will be removed.
+
+	Returns
+	-------
+	pandas.DataFrame
+		A new DataFrame with the invalid columns removed. If no invalid 
+		columns are found, the original DataFrame is returned unchanged.
+
+	Notes
+	-----
+	- This function does not modify the original DataFrame in place; instead, 
+	  it returns a new DataFrame.
+	- Columns starting with "Unnamed" are commonly introduced when saving 
+	  or loading data files with misaligned headers.
+	"""
+
 	invalid_cols = [c for c in list(df.columns) if c.startswith('Unnamed')]
 	if len(invalid_cols)>0:
 		df = df.drop(invalid_cols, axis=1)
 	return df
 
 def _extract_coordinates_from_features(features, timepoint):
+
+	"""
+	Extracts spatial coordinates and other relevant metadata from a features DataFrame.
+
+	This function processes a DataFrame of features to extract and rename centroid 
+	coordinates, assign a unique identifier to each feature, and add a frame (timepoint) 
+	column. The resulting DataFrame is structured for use in trajectory analysis.
+
+	Parameters
+	----------
+	features : pandas.DataFrame
+		A DataFrame containing feature data, including columns for centroids 
+		(`'centroid-1'` and `'centroid-0'`) and feature classes (`'class_id'`).
+	timepoint : int
+		The timepoint (frame) to assign to all features. This is used to populate 
+		the `'FRAME'` column in the output.
+
+	Returns
+	-------
+	pandas.DataFrame
+		A DataFrame containing the extracted coordinates and additional metadata, 
+		with the following columns:
+		- `'POSITION_X'`: X-coordinate of the centroid.
+		- `'POSITION_Y'`: Y-coordinate of the centroid.
+		- `'class_id'`: The label associated to the cell mask.
+		- `'ID'`: A unique identifier for each cell (index-based).
+		- `'FRAME'`: The timepoint associated with the features.
+
+	Notes
+	-----
+	- The function assumes that the input DataFrame contains columns `'centroid-1'`, 
+	  `'centroid-0'`, and `'class_id'`. Missing columns will raise a KeyError.
+	- The `'ID'` column is created based on the index of the input DataFrame.
+	- This function renames `'centroid-1'` to `'POSITION_X'` and `'centroid-0'` 
+	  to `'POSITION_Y'`.
+	"""
 
 	coords = features[['centroid-1', 'centroid-0', 'class_id']].copy()
 	coords['ID'] = np.arange(len(coords))
@@ -48,6 +111,37 @@ def _extract_coordinates_from_features(features, timepoint):
 	return coords
 
 def _mask_intensity_measurements(df, mask_channels):
+
+	"""
+	Removes columns from a DataFrame that match specific channel name patterns.
+
+	This function filters out intensity measurement columns in a DataFrame based on 
+	specified channel names. It identifies columns containing the channel 
+	names as substrings and drops them from the DataFrame.
+
+	Parameters
+	----------
+	df : pandas.DataFrame
+		The input DataFrame containing intensity measurement data. Column names should 
+		include the mask channel names if they are to be filtered.
+	mask_channels : list of str or None
+		A list of channel names (as substrings) to use for identifying columns 
+		to remove. If `None`, no filtering is applied, and the original DataFrame is 
+		returned.
+
+	Returns
+	-------
+	pandas.DataFrame
+		The modified DataFrame with specified columns removed. If no columns match 
+		the mask channels, the original DataFrame is returned.
+
+	Notes
+	-----
+	- The function searches for mask channel substrings in column names. 
+	  Partial matches are sufficient to mark a column for removal.
+	- If no mask channels are specified (`mask_channels` is `None`), the function 
+	  does not modify the input DataFrame.
+	"""
 
 	if mask_channels is not None:
 		
@@ -160,11 +254,74 @@ def _fix_no_contrast(frames, value=1):
 	return frames
 
 def zoom_multiframes(frames, zoom_factor):
+
+	"""
+	Applies zooming to each frame (channel) in a multi-frame image.
+
+	This function resizes each channel of a multi-frame image independently using a specified zoom factor. 
+	The zoom is applied using spline interpolation of the specified order, and the channels are combined 
+	back into the original format.
+
+	Parameters
+	----------
+	frames : ndarray
+		A multi-frame image with dimensions `(height, width, channels)`. The last axis represents different 
+		channels.
+	zoom_factor : float
+		The zoom factor to apply to each channel. Values greater than 1 increase the size, and values 
+		between 0 and 1 decrease the size.
+
+	Returns
+	-------
+	ndarray
+		A new multi-frame image with the same number of channels as the input, but with the height and width 
+		scaled by the zoom factor.
+
+	Notes
+	-----
+	- The function uses spline interpolation (order 3) for resizing, which provides smooth results.
+	- `prefilter=False` is used to prevent additional filtering during the zoom operation.
+	- The function assumes that the input is in `height x width x channels` format, with channels along the 
+	  last axis.
+	"""
+
 	frames = [zoom(frames[:,:,c].copy(), [zoom_factor,zoom_factor], order=3, prefilter=False) for c in range(frames.shape[-1])]
 	frames = np.moveaxis(frames,0,-1)
 	return frames
 
 def _prep_stardist_model(model_name, path, use_gpu=False, scale=1):
+
+	"""
+	Prepares and loads a StarDist2D model for segmentation tasks.
+
+	This function initializes a StarDist2D model with the specified parameters, sets GPU usage if desired, 
+	and allows scaling to adapt the model for specific applications.
+
+	Parameters
+	----------
+	model_name : str
+		The name of the StarDist2D model to load. This name should match the model saved in the specified path.
+	path : str
+		The directory where the model is stored.
+	use_gpu : bool, optional
+		If `True`, the model will be configured to use GPU acceleration for computations. Default is `False`.
+	scale : int or float, optional
+		A scaling factor for the model. This can be used to adapt the model for specific image resolutions. 
+		Default is `1`.
+
+	Returns
+	-------
+	tuple
+		- model : StarDist2D
+			The loaded StarDist2D model configured with the specified parameters.
+		- scale_model : int or float
+			The scaling factor passed to the function.
+
+	Notes
+	-----
+	- Ensure the StarDist2D package is installed and the model files are correctly stored in the provided path.
+	- GPU support depends on the availability of compatible hardware and software setup.
+	"""
 
 	model = StarDist2D(None, name=model_name, basedir=path)
 	model.config.use_gpu = use_gpu
@@ -174,6 +331,42 @@ def _prep_stardist_model(model_name, path, use_gpu=False, scale=1):
 	return model, scale_model
 
 def _prep_cellpose_model(model_name, path, use_gpu=False, n_channels=2, scale=None):
+
+	"""
+	Prepares and loads a Cellpose model for segmentation tasks.
+
+	This function initializes a Cellpose model with the specified parameters, configures GPU usage if available, 
+	and calculates or applies a scaling factor for the model based on image resolution.
+
+	Parameters
+	----------
+	model_name : str
+		The name of the pretrained Cellpose model to load.
+	path : str
+		The directory where the model is stored.
+	use_gpu : bool, optional
+		If `True`, the model will use GPU acceleration for computations. Default is `False`.
+	n_channels : int, optional
+		The number of input channels expected by the model. Default is `2`.
+	scale : float, optional
+		A scaling factor to adjust the model's output to match the image resolution. If not provided, the scale is 
+		automatically calculated based on the model's diameter parameters.
+
+	Returns
+	-------
+	tuple
+		- model : CellposeModel
+			The loaded Cellpose model configured with the specified parameters.
+		- scale_model : float
+			The scaling factor applied to the model, calculated or provided.
+
+	Notes
+	-----
+	- Ensure the Cellpose package is installed and the model files are correctly stored in the provided path.
+	- GPU support depends on the availability of compatible hardware and software setup.
+	- The scale is calculated as `(diam_mean / diam_labels)` if `scale` is not provided, where `diam_mean` and 
+	  `diam_labels` are attributes of the model.
+	"""
 
 	import torch
 	if not use_gpu:
@@ -223,14 +416,86 @@ def _get_normalize_kwargs(normalization_percentile, normalization_values, normal
 
 	return {"percentiles": percentiles, 'values': values, 'clip': normalization_clip}
 
-def _segment_image_with_cellpose_model(img, model=None, diameter=None, cellprob_threshold=None, flow_threshold=None):
+def _segment_image_with_cellpose_model(img, model=None, diameter=None, cellprob_threshold=None, flow_threshold=None, channel_axis=-1):
 
-	img = np.moveaxis(img, -1, 0)
+	"""
+	Segments an input image using a Cellpose model.
+
+	This function applies a preloaded Cellpose model to segment an input image and returns the resulting labeled mask. 
+	The image is rearranged into the format expected by the Cellpose model, with the specified channel axis moved to the first dimension.
+
+	Parameters
+	----------
+	img : ndarray
+		The input image to be segmented. It is expected to have a channel axis specified by `channel_axis`.
+	model : CellposeModel, optional
+		A preloaded Cellpose model instance used for segmentation.
+	diameter : float, optional
+		The diameter of objects to segment. If `None`, the model's default diameter is used.
+	cellprob_threshold : float, optional
+		The threshold for the probability of cells used during segmentation. If `None`, the default threshold is used.
+	flow_threshold : float, optional
+		The threshold for flow error during segmentation. If `None`, the default threshold is used.
+	channel_axis : int, optional
+		The axis of the input image that represents the channels. Default is `-1` (channel-last format).
+
+	Returns
+	-------
+	ndarray
+		A labeled mask of the same spatial dimensions as the input image, with segmented regions assigned unique 
+		integer labels. The dtype of the mask is `uint16`.
+
+	Notes
+	-----
+	- The `img` array is internally rearranged to move the specified `channel_axis` to the first dimension to comply 
+	  with the Cellpose model's input requirements.
+	- Ensure the provided `model` is a properly initialized Cellpose model instance.
+	- Parameters `diameter`, `cellprob_threshold`, and `flow_threshold` allow fine-tuning of the segmentation process.
+	"""
+
+	img = np.moveaxis(img, channel_axis, 0)
 	lbl, _, _ = model.eval(img, diameter = diameter, cellprob_threshold=cellprob_threshold, flow_threshold=flow_threshold, channels=None, normalize=False)
 
 	return lbl.astype(np.uint16)
 
-def _segment_image_with_stardist_model(img, model=None, return_details=False):
+def _segment_image_with_stardist_model(img, model=None, return_details=False, channel_axis=-1):
+
+	"""
+	Segments an input image using a StarDist model.
+
+	This function applies a preloaded StarDist model to segment an input image and returns the resulting labeled mask. 
+	Optionally, additional details about the segmentation can also be returned.
+
+	Parameters
+	----------
+	img : ndarray
+		The input image to be segmented. It is expected to have a channel axis specified by `channel_axis`.
+	model : StarDist2D, optional
+		A preloaded StarDist model instance used for segmentation.
+	return_details : bool, optional
+		Whether to return additional details from the model alongside the labeled mask. Default is `False`.
+	channel_axis : int, optional
+		The axis of the input image that represents the channels. Default is `-1` (channel-last format).
+
+	Returns
+	-------
+	ndarray
+		A labeled mask of the same spatial dimensions as the input image, with segmented regions assigned unique 
+		integer labels. The dtype of the mask is `uint16`.
+	tuple of (ndarray, dict), optional
+		If `return_details` is `True`, returns a tuple where the first element is the labeled mask and the second 
+		element is a dictionary containing additional details about the segmentation.
+
+	Notes
+	-----
+	- The `img` array is internally rearranged to move the specified `channel_axis` to the last dimension to comply 
+	  with the StarDist model's input requirements.
+	- Ensure the provided `model` is a properly initialized StarDist model instance.
+	- The model automatically determines the number of tiles (`n_tiles`) required for processing large images.
+	"""
+
+	if channel_axis!=-1:
+		img = np.moveaxis(img, channel_axis, -1)
 
 	lbl, details = model.predict_instances(img, n_tiles=model._guess_n_tiles(img), show_tile_progress=False, verbose=False)
 	if not return_details:

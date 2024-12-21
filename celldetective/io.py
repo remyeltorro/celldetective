@@ -19,7 +19,6 @@ from csbdeep.io import save_tiff_imagej_compatible
 import skimage.io as skio
 from skimage.measure import regionprops_table, label
 
-from scipy.ndimage import zoom
 from btrack.datasets import cell_config
 from magicgui import magicgui
 from pathlib import Path, PurePath

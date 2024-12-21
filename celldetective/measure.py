@@ -1226,6 +1226,8 @@ def classify_transient_events(data, class_attr, pre_event=None):
 		assert 'class_'+pre_event in cols,"Pre-event class does not seem to be a valid column in the DataFrame..."
 
 	stat_col = class_attr.replace('class','status')
+	continuous_stat_col = stat_col.replace('status_','smooth_status_')
+	df[continuous_stat_col] = df[stat_col].copy()
 
 	for tid,track in df.groupby(sort_cols):
 
@@ -1243,6 +1245,7 @@ def classify_transient_events(data, class_attr, pre_event=None):
 				indices_pre = track.loc[track['FRAME']<=t_pre_event,class_attr].index
 				df.loc[indices_pre, stat_col] = np.nan # set to NaN all statuses before pre-event
 				track.loc[track['FRAME']<=t_pre_event, stat_col] = np.nan
+				track.loc[track['FRAME']<=t_pre_event, continuous_stat_col] = np.nan
 
 		status = track[stat_col].to_numpy()
 		timeline = track['FRAME'].to_numpy()
@@ -1252,7 +1255,7 @@ def classify_transient_events(data, class_attr, pre_event=None):
 		peaks, _ = find_peaks(status_safe)
 		widths, _, left, right = peak_widths(status_safe, peaks, rel_height=1)
 		minimum_weight = 0
-
+		
 		if len(peaks)>0:
 			idx = np.argmax(widths)
 			peak = peaks[idx]; width = widths[idx];
@@ -1261,15 +1264,26 @@ def classify_transient_events(data, class_attr, pre_event=None):
 				left = timeline_safe[int(left)]; right = timeline_safe[int(right)];
 
 				df.loc[indices, class_attr] = 0
-				df.loc[indices, class_attr.replace('class_','t_')] = left + (right - left)/2.0
+				t0 = left #take onset + (right - left)/2.0
+				df.loc[indices, class_attr.replace('class_','t_')] = t0
+				df.loc[track.loc[track[stat_col].isnull(),class_attr].index, continuous_stat_col] = np.nan
+				df.loc[track.loc[track['FRAME']<t0,class_attr].index, continuous_stat_col] = 0
+				df.loc[track.loc[track['FRAME']>=t0,class_attr].index, continuous_stat_col] = 1
 			else:
 				df.loc[indices, class_attr] = 1
 				df.loc[indices, class_attr.replace('class_','t_')] = -1
+				df.loc[indices, continuous_stat_col] = 0
 		else:
 			df.loc[indices, class_attr] = 1
 			df.loc[indices, class_attr.replace('class_','t_')] = -1
+			df.loc[indices, continuous_stat_col] = 0
 
-
+	# restate NaN for out of scope timepoints
+	df.loc[df[stat_col].isnull(),continuous_stat_col] = np.nan
+	if 'inst_'+stat_col in list(df.columns):
+		df = df.drop(columns=['inst_'+stat_col])
+	df = df.rename(columns={stat_col: 'inst_'+stat_col})
+	df = df.rename(columns={continuous_stat_col: stat_col})
 	print("Classes: ",df.loc[df['FRAME']==0,class_attr].value_counts())
 
 	return df

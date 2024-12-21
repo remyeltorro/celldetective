@@ -693,6 +693,10 @@ class ProcessPanel(QFrame, Styles):
 		self.ConfigSignalAnnotator = ConfigSignalAnnotator(self)
 		self.ConfigSignalAnnotator.show()
 
+	def reset_generalist_setup(self, index):
+		self.cellpose_calibrated = False
+		self.stardist_calibrated = False
+
 	def process_population(self):
 
 		# if self.parent_window.well_list.currentText().startswith('Multiple'):
@@ -895,12 +899,7 @@ class ProcessPanel(QFrame, Styles):
 			if action.isChecked():
 				action.setChecked(False)
 
-		self.cellpose_calibrated = False
-		self.stardist_calibrated = False
-
-	def reset_generalist_setup(self, index):
-		self.cellpose_calibrated = False
-		self.stardist_calibrated = False
+		self.reset_generalist_setup(0)
 
 	def open_napari_tracking(self):
 		print(f'View the tracks before post-processing for position {self.parent_window.pos} in napari...')
